@@ -17,20 +17,21 @@ const lnPin _mapping[8]=
     PA10, // 4 TRACESWO_PIN
     PA10, // 5 SWDIO_PIN
     PA10, // 6 SWCLK_PIN
-    (lnPin)-1
+    PA10, // 7 RST
 };
 
 #define TRANSLATE(pin) lnPin xpin; xpin=_mapping[pin&7];
 /**
 
 */
-// https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html
 void defaultPinConf(int pin)
 {
   TRANSLATE(pin);
   lnDigitalWrite(xpin,1);
   lnPinMode(xpin,lnOUTPUT);
 }
+/**
+*/
 void bmp_gpio_init()
 {
   // all at vcc by default
@@ -62,4 +63,25 @@ void bmp_gpio_drive_state(int pin, int driven)
   else
       lnPinMode(xpin,lnINPUT_FLOATING);
 }
+/**
+*/
+extern "C" void platform_srst_set_val(bool assert)
+{
+  TRANSLATE(7);
+  if(assert)
+  {
+    lnPinMode(xpin,lnOUTPUT);
+    lnDigitalWrite(xpin,0);
+  }
+  else
+    lnPinMode(xpin,lnINPUT_FLOATING);
+}
+/**
+*/
+extern "C" bool platform_srst_get_val(void)
+{
+  TRANSLATE(7);
+  return lnDigitalRead(xpin);
+}
+
 // EOF
