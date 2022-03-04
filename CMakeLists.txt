@@ -33,6 +33,7 @@ USE_LIBRARY(tinyUsb)
 
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
-GENERATE_GD32_FIRMWARE(hello hello.cpp)    
-target_link_libraries(hello gd32_usb_usbd)    
+GENERATE_GD32_FIRMWARE(lnBMP src/hello.cpp)    
+ADD_SUBDIRECTORY(lnBlackmagic)
+target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)    
         
