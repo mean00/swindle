@@ -9,7 +9,7 @@ SET(B ${myB}/src )
 
 
 
-SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_gdb.cpp)
+SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_gdb.cpp ${B}/bmp_stubs.cpp)
 SET(BM_SRC ${S}/command.c ${S}/crc32.c ${S}/exception.c ${S}/gdb_hostio.c ${S}/gdb_main.c ${S}/gdb_packet.c ${S}/hex_utils.c ${S}/morse.c ${S}/remote.c ${S}/timing.c)
 SET(BM_TARGET ${T}/adiv5.c ${T}/adiv5_swdp.c ${T}/cortexm.c ${T}/jtag_devs.c
     ${T}/jtagtap_generic.c ${T}/lmi.c ${T}/lpc15xx.c ${T}/lpc43xx.c

@@ -13,7 +13,7 @@
 #include "general.h"
 
 }
-
+extern "C" int gdb_if_init(void);
 uint32_t swd_delay_cnt=0;
 
 extern "C"
@@ -57,16 +57,15 @@ void platform_delay(uint32_t ms)
 void main_task(void *parameters)
 {
 	(void) parameters;
-
+  Logger("Gdb task starting... \n");
 	platform_init();
-
-	while (true) {
-
+  gdb_if_init();
+  Logger("Here we go... \n");
+	while (true)
+  {
 			gdb_main();
-
 	}
-
-	/* Should never get here */
+  xAssert(0);
 }
 
 /**
@@ -133,4 +132,5 @@ void platform_request_boot(void)
 {
 
 }
-}
+} // extern "C"
+// EOF

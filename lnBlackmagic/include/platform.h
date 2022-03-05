@@ -32,6 +32,10 @@
 //#define DEBUG printf
 
 #include "timing.h"
+#include "embedded_printf/printf.h"
+#define vasprintf zobvasprintf
+#define fflush(x) {}
+
 #define BOARD_IDENT "Black Magic Probe (ln), (Firmware 0.1)"
 
 //#define PLATFORM_HAS_TRACESWO 1

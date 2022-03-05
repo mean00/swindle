@@ -16,7 +16,6 @@ extern lnUsbCDC *cdc;
 #include "gdb_main.h"
 #include "target.h"
 #include "gdb_packet.h"
-#include "morse.h"
 #include "general.h"
 
 }
@@ -70,7 +69,7 @@ void cdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event)
 
 /**
 */
-int gdb_if_init(void)
+extern "C" int gdb_if_init(void)
 {
   Logger("Starting CDC \n");
   lnUsbStack *usb = new lnUsbStack;
@@ -85,7 +84,7 @@ int gdb_if_init(void)
 }
 /**
 */
-unsigned char gdb_if_getchar(void)
+extern "C"  unsigned char gdb_if_getchar(void)
 {
   uint8_t v;
   if(!connected) return 0x4;// ??
@@ -100,7 +99,7 @@ unsigned char gdb_if_getchar(void)
 }
 /**
 */
-unsigned char gdb_if_getchar_to(int timeout)
+extern "C"  unsigned char gdb_if_getchar_to(int timeout)
 {
   uint8_t v;
   if(!connected) return 0x4;// ??
@@ -118,7 +117,7 @@ unsigned char gdb_if_getchar_to(int timeout)
 
 /**
 */
-void gdb_if_putchar(unsigned char c, int flush)
+extern "C"  void gdb_if_putchar(unsigned char c, int flush)
 {
     cdc->write(&c,1);
 }

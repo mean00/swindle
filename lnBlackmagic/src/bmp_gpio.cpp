@@ -1,24 +1,10 @@
 #include "lnArduino.h"
 #include "lnGPIO.h"
-
+#include "lnBMP_pinout.h"
 
 extern "C" void bmp_gpio_write(int pin, int value);
 extern "C" int  bmp_gpio_read(int pin);
 extern "C" void bmp_gpio_drive_state(int pin, int driven);
-
-#define BM_NB_PINS 7
-// mapping of BMP gpio to the GPIO we use
-const lnPin _mapping[8]=
-{
-    PA10, // 0 TMS_PIN
-    PA10, // 1 TDI_PIN
-    PA10, // 2 TDO_PIN
-    PA10, // 3 TCK_PIN
-    PA10, // 4 TRACESWO_PIN
-    PA10, // 5 SWDIO_PIN
-    PA10, // 6 SWCLK_PIN
-    PA10, // 7 RST
-};
 
 #define TRANSLATE(pin) lnPin xpin; xpin=_mapping[pin&7];
 /**
@@ -37,6 +23,10 @@ void bmp_gpio_init()
   // all at vcc by default
   for(int i=0;i<BM_NB_PINS;i++)
     defaultPinConf(i);
+  // Set reset to floating
+  TRANSLATE(7);
+  lnPinMode(xpin,lnINPUT_FLOATING);
+
 }
 /**
 */
