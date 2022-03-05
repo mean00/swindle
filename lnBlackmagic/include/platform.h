@@ -33,7 +33,7 @@
 
 #include "timing.h"
 #include "embedded_printf/printf.h"
-#define vasprintf zobvasprintf
+#define vasprintf vasprintf_
 #define fflush(x) {}
 
 #define BOARD_IDENT "Black Magic Probe (ln), (Firmware 0.1)"
