@@ -2,9 +2,14 @@
 SET(S ${CMAKE_SOURCE_DIR}/blackmagic/src)
 SET(T ${CMAKE_SOURCE_DIR}/blackmagic/src/target )
 SET(P ${CMAKE_SOURCE_DIR}/blackmagic/src/platforms )
-SET(B ${CMAKE_SOURCE_DIR}/lnBlackmagic/src )
 
-SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp)
+SET(myB ${CMAKE_SOURCE_DIR}/lnBlackmagic/ )
+
+SET(B ${myB}/src )
+
+
+
+SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_gdb.cpp)
 SET(BM_SRC ${S}/command.c ${S}/crc32.c ${S}/exception.c ${S}/gdb_hostio.c ${S}/gdb_main.c ${S}/gdb_packet.c ${S}/hex_utils.c ${S}/morse.c ${S}/remote.c ${S}/timing.c)
 SET(BM_TARGET ${T}/adiv5.c ${T}/adiv5_swdp.c ${T}/cortexm.c ${T}/jtag_devs.c
     ${T}/jtagtap_generic.c ${T}/lmi.c ${T}/lpc15xx.c ${T}/lpc43xx.c
@@ -20,4 +25,5 @@ target_include_directories(lnBlackmagic PRIVATE ${S}/include ${B}/include ${T} $
 target_compile_definitions(lnBlackmagic PRIVATE PLATFORM_IDENT="ESP32" PC_HOSTED=0)
 
 
-target_include_directories( lnBlackmagic PRIVATE ${IDF_PATH}/components/soc/${TARGET}/include)
+
+target_include_directories( lnBlackmagic PRIVATE  ${myB}/private_include)

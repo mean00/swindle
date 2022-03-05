@@ -76,33 +76,6 @@ void user_init(void)
 	xTaskCreate(&main_task, "main", 4*256, NULL, 2, NULL);
 }
 
-
-/**
-*/
-int gdb_if_init(void)
-{
-    return 0;
-}
-/**
-*/
-unsigned char gdb_if_getchar(void)
-{
-    return 0;
-}
-/**
-*/
-unsigned char gdb_if_getchar_to(int timeout)
-{
-  return 0;
-}
-
-
-/**
-*/
-void gdb_if_putchar(unsigned char c, int flush)
-{
-
-}
 /**
 */
 void platform_max_frequency_set(uint32_t freq)
