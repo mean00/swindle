@@ -28,8 +28,9 @@
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state)
 
-#define DEBUG(x, ...) do { ; } while (0)
-//#define DEBUG printf
+//#define DEBUG(x, ...) do { ; } while (0)
+#define DEBUG Logger
+
 
 #include "timing.h"
 #include "embedded_printf/printf.h"
@@ -44,16 +45,14 @@
 
 #define TMS_SET_MODE() do { } while (0)
 
-#define TMS_PIN       (8) // On wroover module, this is PSRAM clock
-#define TDI_PIN       (9) //
-#define TDO_PIN       (10) //
-#define TCK_PIN       (11) //
-#define TRACESWO_PIN  (12)
-#define SWDIO_PIN     (13)  // On wroover module, this is PSRAM clock
-#define SWCLK_PIN     (14)
+#define TMS_PIN       (8+0) // On wroover module, this is PSRAM clock
+#define TDI_PIN       (8+1) //
+#define TDO_PIN       (8+2) //
+#define TCK_PIN       (8+3) //
+#define TRACESWO_PIN  (8+4)
+#define SWDIO_PIN     (8+5)  // On wroover module, this is PSRAM clock
+#define SWCLK_PIN     (8+6)
 
-
-#define TRACESWO_DUMMY_TX 19
 #define SWCLK_PORT  0
 #define SWDIO_PORT  0
 
@@ -65,8 +64,8 @@ extern void bmp_gpio_drive_state(int pin, int driven);
 #define gpio_set(port, pin)             bmp_gpio_write(pin,1)
 #define gpio_clear(port, pin)           bmp_gpio_write(pin,0)
 #define gpio_get(port, pin)             bmp_gpio_read(pin)
-#define SWDIO_MODE_FLOAT() {}           bmp_gpio_drive_state(SWDIO_PIN,false)
-#define SWDIO_MODE_DRIVE() {}           bmp_gpio_drive_state(SWDIO_PIN,true)
+#define SWDIO_MODE_FLOAT()              bmp_gpio_drive_state(SWDIO_PIN,false)
+#define SWDIO_MODE_DRIVE()              bmp_gpio_drive_state(SWDIO_PIN,true)
 
 extern uint32_t swd_delay_cnt;
 

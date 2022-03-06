@@ -1,0 +1,221 @@
+/*
+  Gpio driver for SWD
+  This code is derived from the blackmagic one but has been modified
+  to aim at simplicity at the expense of performance
+
+Original license header
+
+ * This file is part of the Black Magic Debug project.
+ *
+ * Copyright (C) 2011  Black Sphere Technologies Ltd.
+ * Written by Gareth McMullin <gareth@blacksphere.co.nz>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+ This file implements the SW-DP interface.
+
+ */
+ #include "lnArduino.h"
+ #include "lnBMP_pinout.h"
+ extern "C"
+ {
+
+#include "general.h"
+#include "timing.h"
+#include "adiv5.h"
+
+}
+const lnPin pinDir=PB5;
+uint32_t swd_delay_cnt=10;
+
+#include "lnBMP_swdio.h"
+
+static uint32_t SwdRead(int ticks) ;
+static bool SwdRead_parity(uint32_t *ret, int ticks);
+static void SwdWrite(uint32_t MS, int ticks);
+static void SwdWrite_parity(uint32_t MS, int ticks);
+static void swdioSetAsOutput(bool output);
+
+SwdPin pSWDIO(TSWDIO_PIN);
+SwdPin pSWCLK(TSWDCK_PIN,true);
+SwdPin pReset(TRESET_PIN);
+/**
+
+*/
+void bmp_gpio_init()
+{
+  pSWDIO.on();
+  pSWDIO.output();
+  pSWCLK.on();
+  pSWCLK.output();
+  pReset.input();
+}
+
+/**
+*/
+static uint32_t SwdRead(int len)
+{
+	uint32_t index = 1;
+	uint32_t ret = 0;
+  int res;
+
+  swdioSetAsOutput(false);
+	while (len--)
+  {
+		res = pSWDIO.read();
+    pSWCLK.on();
+    if(res) ret|=index;
+		index <<= 1;
+    pSWCLK.off();
+	}
+	return ret;
+}
+/**
+*/
+static bool SwdRead_parity(uint32_t *ret, int len)
+{
+	uint32_t index = 1;
+	int      res = 0;
+	bool bit;
+
+	swdioSetAsOutput(false);
+  int parity = __builtin_popcount(res);
+
+	while (len--)
+  {
+			bit = pSWDIO.read();
+			pSWCLK.on();
+      if(bit) res|=index;
+			index <<= 1;
+			pSWCLK.off();
+	}
+	bit = pSWDIO.read();
+	pSWCLK.on();
+	pSWCLK.off();
+  if(bit)
+    parity+=1;
+	*ret = res;
+	/* Terminate the read cycle now */
+	swdioSetAsOutput(true);
+	return (parity & 1);
+}
+/*
+
+*/
+static void SwdWrite(uint32_t MS, int ticks)
+{
+  int cnt;
+	swdioSetAsOutput(true);
+  pSWDIO.set(MS & 1);
+	while (ticks--)
+  {
+      pSWCLK.off();
+			MS >>= 1;
+      pSWDIO.set(MS & 1);
+      pSWCLK.off();
+	}
+}
+/**
+*/
+static void SwdWrite_parity(uint32_t MS, int ticks)
+{
+	int parity = __builtin_popcount(MS);
+	int cnt;
+	swdioSetAsOutput(true);
+  pSWDIO.set(MS & 1);
+
+  while (ticks--)
+  {
+			pSWCLK.on();
+      MS >>= 1;
+      pSWDIO.set(MS & 1);
+			pSWCLK.off();
+	}
+	pSWDIO.set(parity & 1);
+  pSWCLK.on();
+	pSWCLK.off();
+}
+
+
+
+/**
+    properly invert SWDIO direction if needed
+*/
+static bool oldDrive=false;
+void swdioSetAsOutput(bool output)
+{
+  if(output==oldDrive) return;
+	oldDrive = output;
+
+  switch(output)
+  {
+      case false: // in
+       {
+           pSWDIO.input();
+           pSWCLK.on();
+           pSWCLK.off();
+           break;
+       }
+       break;
+      case true: // out
+      {
+
+          pSWCLK.on();
+          pSWCLK.off();
+          pSWDIO.output();
+          break;
+      }
+
+  }
+}
+
+
+/**
+*/
+extern "C" void platform_srst_set_val(bool assert)
+{
+  if(assert) // force reset to low
+  {
+    pReset.off();
+    swait();
+    pReset.output();
+  }
+  else // release reset
+  {
+    pReset.input();
+  }
+}
+/**
+*/
+extern "C" bool platform_srst_get_val(void)
+{
+  pReset.input();
+  swait();
+  return pReset.read();
+}
+
+/**
+
+*/
+extern "C" int swdptap_init(ADIv5_DP_t *dp)
+{
+	dp->seq_in  = SwdRead;
+	dp->seq_in_parity  = SwdRead_parity;
+	dp->seq_out = SwdWrite;
+	dp->seq_out_parity  = SwdWrite_parity;
+	return 0;
+}
+
+// EOF

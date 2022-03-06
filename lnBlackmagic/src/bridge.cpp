@@ -2,6 +2,7 @@
 
  */
  #include "lnArduino.h"
+ #include "lnStopWatch.h"
  extern "C"
  {
 #include "version.h"
@@ -13,15 +14,20 @@
 #include "general.h"
 
 }
-extern "C" int gdb_if_init(void);
-uint32_t swd_delay_cnt=0;
 
+lnStopWatch stopWatch(1);
+
+extern "C" int gdb_if_init(void);
+
+void main_task(void *parameters);
+extern void bmp_gpio_init();
 extern "C"
 {
 /**
 */
 void pins_init()
 {
+  bmp_gpio_init();
 }
 
 /**
@@ -53,20 +59,6 @@ void platform_delay(uint32_t ms)
 }
 
 
-/* This is a transplanted main() from main.c */
-void main_task(void *parameters)
-{
-	(void) parameters;
-  Logger("Gdb task starting... \n");
-	platform_init();
-  gdb_if_init();
-  Logger("Here we go... \n");
-	while (true)
-  {
-			gdb_main();
-	}
-  xAssert(0);
-}
 
 /**
 */
@@ -93,12 +85,14 @@ uint32_t platform_max_frequency_get()
 */
 void platform_timeout_set(platform_timeout *t, uint32_t ms)
 {
-
+    stopWatch.restart(ms);
 }
 /**
 */
 bool platform_timeout_is_expired(platform_timeout *t)
 {
+  if(stopWatch.elapsed())
+      return true;
   return false;
 }
 

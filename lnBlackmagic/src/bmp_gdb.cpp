@@ -19,6 +19,7 @@ extern lnUsbCDC *cdc;
 #include "general.h"
 
 }
+extern "C" void pins_init();
 static bool connected=false;
 #define MEVENT(x)                                                                                                      \
     case lnUsbStack::USB_##x: Logger(#x);
@@ -27,7 +28,6 @@ void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
     switch (event)
     {
         MEVENT(CONNECT)
-
               break;
         MEVENT(DISCONNECT)
 
@@ -119,5 +119,31 @@ extern "C"  unsigned char gdb_if_getchar_to(int timeout)
 */
 extern "C"  void gdb_if_putchar(unsigned char c, int flush)
 {
+  int n=c;
+    if(n<' ') n=' ';
+  //  Logger("%c",n);
+    if(flush)
+    {
+    //  Logger("\n");
+    }
     cdc->write(&c,1);
+    if(flush)
+      cdc->flush();
+}
+
+/* This is a transplanted main() from main.c */
+void main_task(void *parameters)
+{
+	(void) parameters;
+  Logger("Gdb task starting... \n");
+	platform_init();
+  pins_init();
+  gdb_if_init();
+  Logger("Here we go... \n");
+	while (true)
+  {
+  //  if(connected)
+			gdb_main();
+	}
+  xAssert(0);
 }
