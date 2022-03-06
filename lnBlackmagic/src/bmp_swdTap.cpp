@@ -1,7 +1,8 @@
 /*
-  Gpio driver for SWD
+  lnBMP: Gpio driver for SWD
   This code is derived from the blackmagic one but has been modified
-  to aim at simplicity at the expense of performance
+  to aim at simplicity at the expense of performances
+  (The compiler may mitigate that)
 
 Original license header
 
@@ -37,8 +38,8 @@ Original license header
 #include "adiv5.h"
 
 }
-const lnPin pinDir=PB5;
-uint32_t swd_delay_cnt=10;
+
+uint32_t swd_delay_cnt=4;
 
 #include "lnBMP_swdio.h"
 
@@ -46,11 +47,13 @@ static uint32_t SwdRead(int ticks) ;
 static bool SwdRead_parity(uint32_t *ret, int ticks);
 static void SwdWrite(uint32_t MS, int ticks);
 static void SwdWrite_parity(uint32_t MS, int ticks);
+
 static void swdioSetAsOutput(bool output);
 
 SwdPin pSWDIO(TSWDIO_PIN);
-SwdPin pSWCLK(TSWDCK_PIN,true);
+SwdPin pSWCLK(TSWDCK_PIN,true); // automatically add delay after toggle
 SwdPin pReset(TRESET_PIN);
+const lnPin pinDirection=PB5;
 /**
 
 */
@@ -61,6 +64,8 @@ void bmp_gpio_init()
   pSWCLK.on();
   pSWCLK.output();
   pReset.input();
+  lnPinMode(pinDirection,lnOUTPUT);
+  lnDigitalWrite(pinDirection,1);
 }
 
 /**
@@ -86,32 +91,17 @@ static uint32_t SwdRead(int len)
 */
 static bool SwdRead_parity(uint32_t *ret, int len)
 {
-	uint32_t index = 1;
-	int      res = 0;
-	bool bit;
-
-	swdioSetAsOutput(false);
-  int parity = __builtin_popcount(res);
-
-	while (len--)
-  {
-			bit = pSWDIO.read();
-			pSWCLK.on();
-      if(bit) res|=index;
-			index <<= 1;
-			pSWCLK.off();
-	}
-	bit = pSWDIO.read();
+	uint32_t res = 0;
+  res= SwdRead( len);
+	int parity = pSWDIO.read();
 	pSWCLK.on();
 	pSWCLK.off();
-  if(bit)
-    parity+=1;
 	*ret = res;
 	/* Terminate the read cycle now */
 	swdioSetAsOutput(true);
-	return (parity & 1);
+	return parity;
 }
-/*
+/**
 
 */
 static void SwdWrite(uint32_t MS, int ticks)
@@ -121,7 +111,7 @@ static void SwdWrite(uint32_t MS, int ticks)
   pSWDIO.set(MS & 1);
 	while (ticks--)
   {
-      pSWCLK.off();
+      pSWCLK.on();
 			MS >>= 1;
       pSWDIO.set(MS & 1);
       pSWCLK.off();
@@ -132,22 +122,11 @@ static void SwdWrite(uint32_t MS, int ticks)
 static void SwdWrite_parity(uint32_t MS, int ticks)
 {
 	int parity = __builtin_popcount(MS);
-	int cnt;
-	swdioSetAsOutput(true);
-  pSWDIO.set(MS & 1);
-
-  while (ticks--)
-  {
-			pSWCLK.on();
-      MS >>= 1;
-      pSWDIO.set(MS & 1);
-			pSWCLK.off();
-	}
+  SwdWrite(MS,ticks);
 	pSWDIO.set(parity & 1);
   pSWCLK.on();
 	pSWCLK.off();
 }
-
 
 
 /**
@@ -163,6 +142,7 @@ void swdioSetAsOutput(bool output)
   {
       case false: // in
        {
+           lnDigitalWrite(pinDirection,0);
            pSWDIO.input();
            pSWCLK.on();
            pSWCLK.off();
@@ -171,13 +151,14 @@ void swdioSetAsOutput(bool output)
        break;
       case true: // out
       {
-
+          lnDigitalWrite(pinDirection,1);
           pSWCLK.on();
           pSWCLK.off();
           pSWDIO.output();
           break;
       }
-
+      default:
+        break;
   }
 }
 

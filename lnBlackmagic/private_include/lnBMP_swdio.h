@@ -27,13 +27,11 @@ public:
     }
     void input()
     {
-      lnDigitalWrite(pinDir,false);
-      lnPinMode(_me,lnINPUT_FLOATING);
+      lnPinMode(_me,lnINPUT_FLOATING);  
     }
     void output()
     {
       lnPinMode(_me,lnOUTPUT);
-      lnDigitalWrite(pinDir,true);
     }
     void set(bool x)
     {
