@@ -74,14 +74,14 @@ static uint32_t SwdRead(int len)
 {
 	uint32_t index = 1;
 	uint32_t ret = 0;
-  int res;
+  int bit;
 
   swdioSetAsOutput(false);
 	while (len--)
   {
-		res = pSWDIO.read();
+		bit = pSWDIO.read();
     pSWCLK.on();
-    if(res) ret|=index;
+    if(bit) ret|=index;
 		index <<= 1;
     pSWCLK.off();
 	}
@@ -93,13 +93,13 @@ static bool SwdRead_parity(uint32_t *ret, int len)
 {
 	uint32_t res = 0;
   res= SwdRead( len);
-	int parity = pSWDIO.read();
+	int currentParity = __builtin_popcount(res) & 1;
+	int parityBit = pSWDIO.read();
 	pSWCLK.on();
 	pSWCLK.off();
 	*ret = res;
-	/* Terminate the read cycle now */
 	swdioSetAsOutput(true);
-	return parity;
+	return currentParity^parityBit; // should be equal
 }
 /**
 

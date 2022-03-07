@@ -40,22 +40,23 @@
 #define BOARD_IDENT "Black Magic Probe (ln), (Firmware 0.1)"
 
 //#define PLATFORM_HAS_TRACESWO 1
-//#define PLATFORM_HAS_DEBUG 1
-//#define ENABLE_DEBUG 1
+#define PLATFORM_HAS_DEBUG 1
+#define ENABLE_DEBUG 1
+#define PLATFORM_PRINTF Logger
 
 #define TMS_SET_MODE() do { } while (0)
 
-#define TMS_PIN       (8+0) // On wroover module, this is PSRAM clock
+#define TMS_PIN       (8+0) //
 #define TDI_PIN       (8+1) //
 #define TDO_PIN       (8+2) //
 #define TCK_PIN       (8+3) //
-#define TRACESWO_PIN  (8+4)
-#define SWDIO_PIN     (8+5)  // On wroover module, this is PSRAM clock
-#define SWCLK_PIN     (8+6)
+#define TRACESWO_PIN  (8+4) //
+#define SWDIO_PIN     (8+5) //
+#define SWCLK_PIN     (8+6) //
 
 #define SWCLK_PORT  0
 #define SWDIO_PORT  0
-
+#if 0
 extern void bmp_gpio_write(int pin, int value);
 extern int  bmp_gpio_read(int pin);
 extern void bmp_gpio_drive_state(int pin, int driven);
@@ -68,5 +69,5 @@ extern void bmp_gpio_drive_state(int pin, int driven);
 #define SWDIO_MODE_DRIVE()              bmp_gpio_drive_state(SWDIO_PIN,true)
 
 extern uint32_t swd_delay_cnt;
-
+#endif
 #endif
