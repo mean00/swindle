@@ -1,9 +1,5 @@
 /*
-  lnBMP: Gpio driver for SWD
-  This code is derived from the blackmagic one but has been modified
-  to aim at simplicity at the expense of performances
-  (The compiler may mitigate that)
-
+  lnBMP:  Completely disable jtag to gain a bit of flash real estate
 Original license header
 
  * This file is part of the Black Magic Debug project.
