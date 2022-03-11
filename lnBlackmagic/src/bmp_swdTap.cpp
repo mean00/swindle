@@ -39,7 +39,7 @@ Original license header
 
 }
 
-uint32_t swd_delay_cnt=4;
+uint32_t swd_delay_cnt=8;
 
 #include "lnBMP_swdio.h"
 
@@ -99,7 +99,7 @@ static bool SwdRead_parity(uint32_t *ret, int len)
 	pSWCLK.off();
 	*ret = res;
 	swdioSetAsOutput(true);
-	return currentParity^parityBit; // should be equal
+	return 1&(currentParity^parityBit); // should be equal
 }
 /**
 
@@ -121,9 +121,9 @@ static void SwdWrite(uint32_t MS, int ticks)
 */
 static void SwdWrite_parity(uint32_t MS, int ticks)
 {
-	int parity = __builtin_popcount(MS);
+	int parity = __builtin_popcount(MS) & 1;
   SwdWrite(MS,ticks);
-	pSWDIO.set(parity & 1);
+	pSWDIO.set(parity);
   pSWCLK.on();
 	pSWCLK.off();
 }
