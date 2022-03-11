@@ -119,16 +119,17 @@ extern "C"  unsigned char gdb_if_getchar_to(int timeout)
 */
 extern "C"  void gdb_if_putchar(unsigned char c, int flush)
 {
+  if(!connected) return;
   int n=c;
-    if(n<' ') n=' ';
-  //  Logger("%c",n);
-    if(flush)
-    {
-    //  Logger("\n");
-    }
-    cdc->write(&c,1);
-    if(flush)
-      cdc->flush();
+  if(n<' ') n=' ';
+
+  if(cdc->write(&c,1)<0)
+  {
+          Logger("Error writing to USB\n");
+          return;
+  }
+  if(flush)
+    cdc->flush();
 }
 
 /* This is a transplanted main() from main.c */
