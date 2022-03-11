@@ -1,0 +1,22 @@
+diff --git a/src/target/adiv5.c b/src/target/adiv5.c
+index 7d16709..edfd048 100644
+--- a/src/target/adiv5.c
++++ b/src/target/adiv5.c
+@@ -724,6 +724,17 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
+ 	TRY_CATCH (e, EXCEPTION_TIMEOUT) {
+ 		ctrlstat = adiv5_dp_read(dp, ADIV5_DP_CTRLSTAT);
+ 	}
++//
++// MEANX : CLEAR FAULT  IF NEED BE
++       if(ctrlstat & ADIV5_DP_CTRLSTAT_STICKYERR)
++       {
++          adiv5_dp_abort(dp, ADIV5_DP_CTRLSTAT_STICKYERR);
++		  ctrlstat = adiv5_dp_read(dp, ADIV5_DP_CTRLSTAT);
++       }
++//
++//
++
++    //
+ 	if (e.type) {
+ 		DEBUG_WARN("DP not responding!  Trying abort sequence...\n");
+ 		adiv5_dp_abort(dp, ADIV5_DP_ABORT_DAPABORT);

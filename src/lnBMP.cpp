@@ -26,7 +26,7 @@ void loop()
     user_init();
     while (1)
     {
-        Logger("*\n");
+        //Logger("*\n");
         delay(1000);
         lnDigitalToggle(LED);
     }
