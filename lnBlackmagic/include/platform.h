@@ -28,8 +28,6 @@
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state)
 
-//#define DEBUG(x, ...) do { ; } while (0)
-#define DEBUG Logger
 
 
 #include "timing.h"
@@ -43,6 +41,8 @@
 #define PLATFORM_HAS_DEBUG 1
 #define ENABLE_DEBUG 1
 #define PLATFORM_PRINTF Logger
+//#define DEBUG(x, ...) do { ; } while (0)
+#define DEBUG Logger
 
 #define TMS_SET_MODE() do { } while (0)
 
