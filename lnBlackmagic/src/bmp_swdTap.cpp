@@ -39,7 +39,7 @@ Original license header
 
 }
 
-uint32_t swd_delay_cnt=8;
+uint32_t swd_delay_cnt=2;
 
 #include "lnBMP_swdio.h"
 
