@@ -64,7 +64,7 @@ void platform_delay(uint32_t ms)
 */
 void user_init(void)
 {
-	xTaskCreate(&main_task, "main", 4*256, NULL, 2, NULL);
+	xTaskCreate(&main_task, "main", 2048, NULL, 5, NULL);
 }
 
 /**
@@ -77,7 +77,7 @@ void platform_max_frequency_set(uint32_t freq)
 */
 uint32_t platform_max_frequency_get()
 {
-  return 160*1000*1000;
+  return 72*1000*1000;
 }
 
 
@@ -85,14 +85,15 @@ uint32_t platform_max_frequency_get()
 */
 void platform_timeout_set(platform_timeout *t, uint32_t ms)
 {
-    stopWatch.restart(ms);
+  t->time=lnGetMs()+ms;
 }
 /**
 */
 bool platform_timeout_is_expired(platform_timeout *t)
 {
-  if(stopWatch.elapsed())
-      return true;
+#warning Take care of wrapping !
+  uint32_t now=lnGetMs();
+  if(now>t->time) return true;
   return false;
 }
 
