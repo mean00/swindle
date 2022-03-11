@@ -7,23 +7,22 @@
 class SwdPin
 {
 public:
-    SwdPin(lnBMPPins no, bool w=false) : _fast(_mapping[no&7])
+    SwdPin(lnBMPPins no) : _fast(_mapping[no&7])
     {
       _me=_mapping[no&7];
       _output=false;
-      _wait=w;
       on();
       output();
     }
+
+
     void on()
     {
        _fast.on();
-       if(_wait) swait();
     }
     void off()
     {
         _fast.off();
-        if(_wait) swait();
     }
     void input()
     {
@@ -48,5 +47,24 @@ protected:
   bool      _output;
   bool      _wait;
   lnFastIO  _fast;
+};
+/**
+*/
+class SwdWaitPin : public SwdPin
+{
+public:  
+    SwdWaitPin(lnBMPPins no) :  SwdPin(no)
+    {
 
+    }
+    void clockOn()
+    {
+       _fast.on();
+       if(_wait) swait();
+    }
+    void clockOff()
+    {
+        _fast.off();
+        if(_wait) swait();
+    }
 };

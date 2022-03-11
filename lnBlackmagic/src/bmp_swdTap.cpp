@@ -51,7 +51,7 @@ static void SwdWrite_parity(uint32_t MS, int ticks);
 static void swdioSetAsOutput(bool output);
 
 SwdPin pSWDIO(TSWDIO_PIN);
-SwdPin pSWCLK(TSWDCK_PIN,true); // automatically add delay after toggle
+SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
 SwdPin pReset(TRESET_PIN);
 const lnPin pinDirection=PB5;
 /**
@@ -61,7 +61,7 @@ void bmp_gpio_init()
 {
   pSWDIO.on();
   pSWDIO.output();
-  pSWCLK.on();
+  pSWCLK.clockOn();
   pSWCLK.output();
   pReset.input();
   lnPinMode(pinDirection,lnOUTPUT);
@@ -80,10 +80,10 @@ static uint32_t SwdRead(int len)
 	while (len--)
   {
 		bit = pSWDIO.read();
-    pSWCLK.on();
+    pSWCLK.clockOn();
     if(bit) ret|=index;
 		index <<= 1;
-    pSWCLK.off();
+    pSWCLK.clockOff();
 	}
 	return ret;
 }
@@ -95,8 +95,8 @@ static bool SwdRead_parity(uint32_t *ret, int len)
   res= SwdRead( len);
 	int currentParity = __builtin_popcount(res) & 1;
 	int parityBit = pSWDIO.read();
-	pSWCLK.on();
-	pSWCLK.off();
+	pSWCLK.clockOn();
+	pSWCLK.clockOff();
 	*ret = res;
 	swdioSetAsOutput(true);
 	return 1&(currentParity^parityBit); // should be equal
@@ -111,10 +111,10 @@ static void SwdWrite(uint32_t MS, int ticks)
   pSWDIO.set(MS & 1);
 	while (ticks--)
   {
-      pSWCLK.on();
+      pSWCLK.clockOn();
 			MS >>= 1;
       pSWDIO.set(MS & 1);
-      pSWCLK.off();
+      pSWCLK.clockOff();
 	}
 }
 /**
@@ -124,8 +124,8 @@ static void SwdWrite_parity(uint32_t MS, int ticks)
 	int parity = __builtin_popcount(MS) & 1;
   SwdWrite(MS,ticks);
 	pSWDIO.set(parity);
-  pSWCLK.on();
-	pSWCLK.off();
+  pSWCLK.clockOn();
+	pSWCLK.clockOff();
 }
 
 
@@ -144,16 +144,16 @@ void swdioSetAsOutput(bool output)
        {
            lnDigitalWrite(pinDirection,0);
            pSWDIO.input();
-           pSWCLK.on();
-           pSWCLK.off();
+           pSWCLK.clockOn();
+           pSWCLK.clockOff();
            break;
        }
        break;
       case true: // out
       {
           lnDigitalWrite(pinDirection,1);
-          pSWCLK.on();
-          pSWCLK.off();
+          pSWCLK.clockOn();
+          pSWCLK.clockOff();
           pSWDIO.output();
           break;
       }
