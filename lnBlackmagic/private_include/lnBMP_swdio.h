@@ -7,7 +7,7 @@
 class SwdPin
 {
 public:
-    SwdPin(lnBMPPins no, bool w=false)
+    SwdPin(lnBMPPins no, bool w=false) : _fast(_mapping[no&7])
     {
       _me=_mapping[no&7];
       _output=false;
@@ -17,17 +17,17 @@ public:
     }
     void on()
     {
-         lnDigitalWrite(_me,true);
-         if(_wait) swait();
+       _fast.on();
+       if(_wait) swait();
     }
     void off()
     {
-          lnDigitalWrite(_me,false);
-          if(_wait) swait();
+        _fast.off();
+        if(_wait) swait();
     }
     void input()
     {
-      lnPinMode(_me,lnINPUT_FLOATING);  
+      lnPinMode(_me,lnINPUT_FLOATING);
     }
     void output()
     {
@@ -35,7 +35,9 @@ public:
     }
     void set(bool x)
     {
-        lnDigitalWrite(_me,x);
+      if(x) on();
+      else  off();
+      //lnDigitalWrite(_me,x);
     }
     int read()
     {
@@ -45,5 +47,6 @@ protected:
   lnPin     _me;
   bool      _output;
   bool      _wait;
+  lnFastIO  _fast;
 
 };
