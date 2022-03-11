@@ -13,11 +13,18 @@ SET(LN_ENABLE_SPI  FALSE CACHE INTERNAL "")
 
 SET(AF_FOLDER  ${CMAKE_SOURCE_DIR}/lnArduino/)
 include(./mcuSelect.cmake)
+# Update paths
 SET(CMAKE_TOOLCHAIN_FILE ${AF_FOLDER}/lnArduino.cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
 PROJECT(lnUsb NONE) # the NONE is very important !
 
 enable_language(C CXX ASM) # this is important too!
+#
+
+include(applyPatch)
+APPLY_PATCH_IF_NEEDED(patched blackmagic_add_ch32_support.patch    blackmagic           "add ch32f103 support") 
+
 
 #
 
