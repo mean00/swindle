@@ -136,7 +136,7 @@ void swdioSetAsOutput(bool output)
   if(output==oldDrive) return;
 	oldDrive = output;
 
-  switch(output)
+  switch((int)output)
   {
       case false: // in
        {
@@ -189,10 +189,10 @@ extern "C" bool platform_srst_get_val(void)
 */
 extern "C" int swdptap_init(ADIv5_DP_t *dp)
 {
-	dp->seq_in  = SwdRead;
+	dp->seq_in         = SwdRead;
 	dp->seq_in_parity  = SwdRead_parity;
-	dp->seq_out = SwdWrite;
-	dp->seq_out_parity  = SwdWrite_parity;
+	dp->seq_out        = SwdWrite;
+	dp->seq_out_parity = SwdWrite_parity;
 	return 0;
 }
 
