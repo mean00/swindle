@@ -7,7 +7,6 @@
  #include "include/lnUsbCDC.h"
  #include "lnBMP_usb_descriptor.h"
 
-extern lnUsbCDC *cdc;
 
  extern "C"
  {
@@ -20,7 +19,7 @@ extern lnUsbCDC *cdc;
 
 }
 extern "C" void pins_init();
-static bool connected=false;
+
 #define MEVENT(x)                                                                                                      \
     case lnUsbStack::USB_##x: Logger(#x);
 void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
@@ -39,33 +38,103 @@ void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
         default: xAssert(0); break;
     }
 }
-//
-lnUsbCDC *cdc=NULL;
-void cdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event)
+
+#define GDB_BUFFER_SIZE 64
+
+class BufferGdb
 {
-  uint8_t buffer[32];
-
-    switch (event)
+public:
+    BufferGdb(int instance)
     {
-      case lnUsbCDC::CDC_DATA_AVAILABLE:
-        {
-        }
-          break;
-      case lnUsbCDC::CDC_SESSION_START:
-          Logger("CDC SESSION START\n");
-          connected=true;
-          break;
-      case lnUsbCDC::CDC_SESSION_END:
-          connected=false;
-          Logger("CDC SESSION END\n");
-          break;
-      default:
-          xAssert(0);
-          break;
+      _instance=instance;
+      _head=_tail=0;
+      _connected=false;
+      _cdc=NULL;
+      _cdc=new lnUsbCDC(_instance);
+      _cdc->setEventHandler(gdbCdcEventHandler,this);
     }
-}
+    bool connected() {return _connected;}
+    static void gdbCdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event)
+    {
+      BufferGdb *bg=(BufferGdb *)cookie;
+      xAssert(interface==bg->_instance);
+      bg->cdcEventHandler(event);
+    }
+    void cdcEventHandler(lnUsbCDC::lnUsbCDCEvents event)
+    {
+        switch (event)
+        {
+          case lnUsbCDC::CDC_DATA_AVAILABLE:
+            {
+            }
+              break;
+          case lnUsbCDC::CDC_SESSION_START:
+              Logger("CDC SESSION START\n");
+              _connected=true;
+              break;
+          case lnUsbCDC::CDC_SESSION_END:
+              _connected=false;
+              Logger("CDC SESSION END\n");
+              break;
+          default:
+              xAssert(0);
+              break;
+        }
+    }
+    /**
+    */
+    unsigned char getChar(int timeout)
+    {
+        while(1)
+        {
+          if(!_connected) return 0x4;// ??
+          if(_tail==_head) // empty
+          {
+            _tail=_head=0;
+            int n=_cdc->read(_buffer,GDB_BUFFER_SIZE);
+            if(n<0) return -1;
+            if(n==0)
+            {
+              lnDelayMs(1);
+              switch(timeout)
+              {
+                case 0: return -1; break;
+                case -1: break;
+                default: timeout--; break;
+              }
+              continue;
+            }
+            _tail+=n;
+          }
+          unsigned char out=_buffer[_head];
+          _head++;
+          return out;
+        }
+    }
+
+    void putChar(unsigned char c,bool flush)
+    {
+        if(!_connected) return;
+        if(_cdc->write(&c,1)<0)
+        {
+                Logger("Error writing to USB\n");
+                return;
+        }
+        if(flush)
+          _cdc->flush();
+    }
+public:
+  int      _instance;
+protected:
+  int     _head,_tail;
+  uint8_t _buffer[GDB_BUFFER_SIZE];
+  lnUsbCDC *_cdc;
+  bool      _connected;
+};
 
 
+//
+BufferGdb *usbGdb=NULL;
 
 /**
 */
@@ -77,60 +146,17 @@ extern "C" int gdb_if_init(void)
   usb->setConfiguration(desc_hs_configuration, desc_fs_configuration, &desc_device, &desc_device_qualifier);
   usb->setEventHandler(NULL, helloUsbEvent);
 
-  cdc=new lnUsbCDC(0);
-  cdc->setEventHandler(cdcEventHandler,NULL);
+  // start gdb CDC/ACM
+  usbGdb =new BufferGdb(0);
+
   usb->start();
   return 0;
 }
 /**
 */
-extern "C"  unsigned char gdb_if_getchar(void)
-{
-  uint8_t v;
-  if(!connected) return 0x4;// ??
-  while(1)
-  {
-    int n=cdc->read(&v,1);
-    if(n>0)
-        return v;
-    lnDelayMs(1);
-  }
-  return 0;
-}
-/**
-*/
-extern "C"  unsigned char gdb_if_getchar_to(int timeout)
-{
-  uint8_t v;
-  if(!connected) return 0x4;// ??
-  while(timeout)
-  {
-    int n=cdc->read(&v,1);
-    if(n>0)
-        return v;
-    lnDelayMs(1);
-    timeout--;
-  }
-  return -1; // ??.
-}
-
-
-/**
-*/
-extern "C"  void gdb_if_putchar(unsigned char c, int flush)
-{
-  if(!connected) return;
-  int n=c;
-  if(n<' ') n=' ';
-
-  if(cdc->write(&c,1)<0)
-  {
-          Logger("Error writing to USB\n");
-          return;
-  }
-  if(flush)
-    cdc->flush();
-}
+extern "C"  unsigned char gdb_if_getchar(void){             return usbGdb->getChar(-1);}
+extern "C"  unsigned char gdb_if_getchar_to(int timeout){   return usbGdb->getChar(timeout);}
+extern "C"  void          gdb_if_putchar(unsigned char c, int flush){  usbGdb->putChar(c,flush);}
 
 /* This is a transplanted main() from main.c */
 void main_task(void *parameters)
@@ -143,8 +169,11 @@ void main_task(void *parameters)
   Logger("Here we go... \n");
 	while (true)
   {
-  //  if(connected)
 			gdb_main();
+      if(!usbGdb->connected())
+      {
+        lnDelayMs(100);
+      }
 	}
   xAssert(0);
 }
