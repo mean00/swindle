@@ -1,8 +1,8 @@
 /*
   lnBMP: Gpio driver for SWD
   This code is derived from the blackmagic one but has been modified
-  to aim at simplicity at the expense of performances
-  (The compiler may mitigate that)
+  to aim at simplicity at the expense of performances (does not matter much though)
+  (The compiler may mitigate that by inlining)
 
 Original license header
 
