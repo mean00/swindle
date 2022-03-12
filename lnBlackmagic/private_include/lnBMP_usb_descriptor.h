@@ -12,8 +12,8 @@
  const char * descriptor [] =
  {
    (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
-   "lnTUSB",                     // 1: Manufacturer
-   "lnTinyUSB Device",              // 2: Product
+   "lnBlackMagic",                     // 1: Manufacturer
+   "Custom implementation of BMP",              // 2: Product
    "45678",                      // 3: Serials, should use chip ID
    "USB CDC",                 // 4: CDC Interface
  };
