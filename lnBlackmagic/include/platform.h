@@ -28,14 +28,14 @@
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state)
 
-
+extern void Logger(const char *fmt,...);
 
 #include "timing.h"
 #include "embedded_printf/printf.h"
 #define vasprintf vasprintf_
 #define fflush(x) {}
 
-#define BOARD_IDENT "Black Magic Probe (ln), (Firmware 0.1)"
+//#define BOARD_IDENT "Black Magic Probe (ln), (Firmware 0.1)"
 
 //#define PLATFORM_HAS_TRACESWO 1
 #define PLATFORM_HAS_DEBUG 1
