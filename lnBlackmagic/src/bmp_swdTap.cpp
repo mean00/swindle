@@ -28,18 +28,16 @@ Original license header
  This file implements the SW-DP interface.
 
  */
- #include "lnArduino.h"
- #include "lnBMP_pinout.h"
- extern "C"
- {
-
-#include "general.h"
-#include "timing.h"
-#include "adiv5.h"
-
+#include "lnArduino.h"
+#include "lnBMP_pinout.h"
+extern "C"
+{
+  #include "general.h"
+  #include "timing.h"
+  #include "adiv5.h"
 }
 
-uint32_t swd_delay_cnt=4;
+uint32_t swd_delay_cnt=1;
 
 #include "lnBMP_swdio.h"
 
@@ -161,7 +159,6 @@ void swdioSetAsOutput(bool output)
         break;
   }
 }
-
 
 /**
 */
