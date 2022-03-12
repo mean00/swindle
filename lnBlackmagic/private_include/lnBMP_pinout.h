@@ -25,6 +25,4 @@ enum lnBMPPins
     TSWDIO_PIN=5,
     TSWDCK_PIN=6,
     TRESET_PIN=7,
-
-
 };
