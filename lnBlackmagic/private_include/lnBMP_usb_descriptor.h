@@ -52,8 +52,8 @@
  {
    ITF_NUM_CDC_0 = 0,
    ITF_NUM_CDC_0_DATA,
-   // FXX ITF_NUM_CDC_1,
-   // FXX ITF_NUM_CDC_1_DATA,
+   ITF_NUM_CDC_1,
+   ITF_NUM_CDC_1_DATA,
    ITF_NUM_TOTAL
  };
 
@@ -62,9 +62,9 @@
    #define EPNUM_CDC_0_OUT     0x02
    #define EPNUM_CDC_0_IN      0x82
 
- // FXX   #define EPNUM_CDC_1_NOTIF   0x83
-   // FXX #define EPNUM_CDC_1_OUT     0x04
-   // FXX #define EPNUM_CDC_1_IN      0x84
+   #define EPNUM_CDC_1_NOTIF   0x83
+   #define EPNUM_CDC_1_OUT     0x04
+   #define EPNUM_CDC_1_IN      0x84
 
  const uint8_t  desc_fs_configuration[] =
  {
@@ -75,7 +75,7 @@
    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
 
    // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-   //FXX TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
+   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
  };
 
 
@@ -90,7 +90,7 @@
    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 512),
 
    // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-   // FXX TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
+   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
  };
 
  // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed

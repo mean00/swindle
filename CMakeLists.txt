@@ -23,7 +23,7 @@ enable_language(C CXX ASM) # this is important too!
 #
 
 include(applyPatch)
-APPLY_PATCH_IF_NEEDED(patched blackmagic_add_ch32_support.patch    blackmagic           "add ch32f103 support") 
+APPLY_PATCH_IF_NEEDED(patched blackmagic_add_ch32_support.patch    blackmagic           "add ch32f103 support")
 
 
 #
@@ -35,12 +35,14 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_subdirectory(${AF_FOLDER})
 
+# tiny USB configuration
+SET(LN_USB_NB_CDC 2) # 2 CDC interfaces
+SET(LN_USB_NB_HID 0) # No HID
 include(${AF_FOLDER}/setup.cmake)
-USE_LIBRARY(tinyUsb)        
+USE_LIBRARY(tinyUsb)
 
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
-GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)    
+GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 ADD_SUBDIRECTORY(lnBlackmagic)
-target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)    
-        
+target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)

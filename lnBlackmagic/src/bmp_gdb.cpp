@@ -40,7 +40,7 @@ void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
 }
 
 #define GDB_BUFFER_SIZE 64
-
+lnUsbCDC *uartCdc=NULL;
 class BufferGdb
 {
 public:
@@ -148,7 +148,7 @@ extern "C" int gdb_if_init(void)
 
   // start gdb CDC/ACM
   usbGdb =new BufferGdb(0);
-
+  uartCdc=new lnUsbCDC(1);
   usb->start();
   return 0;
 }
