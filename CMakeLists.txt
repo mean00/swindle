@@ -24,6 +24,7 @@ enable_language(C CXX ASM) # this is important too!
 
 include(applyPatch)
 APPLY_PATCH_IF_NEEDED(patched blackmagic_add_ch32_support.patch    blackmagic           "add ch32f103 support")
+APPLY_PATCH_IF_NEEDED(patched2 blackmagic_catch_other_commands.patch blackmagic           "catch our commands ")
 
 
 #
