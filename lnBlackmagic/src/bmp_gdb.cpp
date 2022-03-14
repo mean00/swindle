@@ -19,6 +19,7 @@
 
 }
 extern "C" void pins_init();
+extern void serialInit();
 
 #define MEVENT(x)                                                                                                      \
     case lnUsbStack::USB_##x: Logger(#x);
@@ -148,7 +149,7 @@ extern "C" int gdb_if_init(void)
 
   // start gdb CDC/ACM
   usbGdb =new BufferGdb(0);
-  uartCdc=new lnUsbCDC(1);
+  serialInit();
   usb->start();
   return 0;
 }

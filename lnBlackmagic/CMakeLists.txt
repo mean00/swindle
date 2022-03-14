@@ -17,7 +17,7 @@ SET(BOARDS  ${T}/lpc_common.c   ${T}/stm32f1.c ${T}/stm32g0.c  ${T}/lpc11xx.c)
 # dont need cortexa ${T}/cortexa.c
 
 SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_gdb.cpp ${B}/bmp_stubs.cpp ${B}/bmp_swdTap.cpp
-                ${B}/bmp_jtagstubs.cpp ${B}/bmp_disabledBoard.cpp ${B}/bmp_freertos.cpp)
+                ${B}/bmp_jtagstubs.cpp ${B}/bmp_disabledBoard.cpp ${B}/bmp_freertos.cpp ${B}/bmp_serial.cpp)
 SET(BM_SRC ${S}/command.c ${S}/crc32.c ${S}/exception.c ${S}/gdb_hostio.c ${S}/gdb_main.c ${S}/gdb_packet.c ${S}/hex_utils.c ${S}/morse.c ${S}/remote.c
           ${S}/timing.c)
 SET(BM_TARGET ${T}/adiv5.c ${T}/adiv5_swdp.c ${T}/cortexm.c ${T}/jtag_devs.c   ${T}/lmi.c    ${T}/target.c    ${T}/adiv5_jtagdp.c  ${T}/jtag_scan.c)
