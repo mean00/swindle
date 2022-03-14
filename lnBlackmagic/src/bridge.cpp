@@ -13,6 +13,7 @@
 #include "gdb_packet.h"
 #include "morse.h"
 #include "general.h"
+#include "target_internal.h"
 
 }
 
@@ -132,4 +133,95 @@ void abort()
   deadEnd(0x33);
 }
 } // extern "C"
+
+int maxWrappedString=0;
+class stringWrapper
+{
+public:
+  stringWrapper()
+  {
+      _limit=256;
+      _st=new char[_limit];
+      _st[0]=0;
+  }
+  ~stringWrapper()
+  {
+    // we dont free _st here NOT A MISTAKE!
+  }
+  void doubleLimit()
+  {
+    _limit*=2;
+    if(_limit>maxWrappedString) maxWrappedString=_limit;
+    char *st2=new char[_limit];
+    strcpy(st2,_st);
+    free(_st);
+    _st=st2;
+  }
+  void append(const char *a)
+  {
+    int l=strlen(a);
+    if( (strlen(_st)+l+1)>=_limit)
+    {  // increase
+      doubleLimit();
+    }
+    strcat(_st,a);
+  }
+
+  void appendHex32(const uint32_t value)
+  {
+    int l=strlen(_st)+1;
+    if( (strlen(_st)+8+1)>=_limit)
+    {  // increase
+      doubleLimit();
+    }
+    char hex32[9];
+    sprintf(hex32, "%08" PRIx32, value);
+    strcat(_st,hex32);
+  }
+
+  const char *string() {return _st;}
+  char *_st;
+  int _limit;
+};
+
+
+static void map_ram(stringWrapper &wrapper, struct target_ram *ram)
+{
+  wrapper.append("<memory type=\"ram\" start=\"0x");
+  wrapper.appendHex32(ram->start);
+  wrapper.append("\" length=\"0x");
+  wrapper.appendHex32((uint32_t)ram->length);
+  wrapper.append("\"/>");
+}
+
+static void map_flash(stringWrapper &wrapper, struct target_flash *f)
+{
+  wrapper.append("<memory type=\"flash\" start=\"0x");
+  wrapper.appendHex32( f->start);
+  wrapper.append("\" length=\"0x");
+  wrapper.appendHex32((uint32_t)f->length);
+  wrapper.append("\">");
+
+  wrapper.append("<property name=\"blocksize\">0x");
+  wrapper.appendHex32( (uint32_t)f->blocksize );
+  wrapper.append("</property></memory>");
+}
+
+ extern "C" const char *ztarget_mem_map(target *t)
+{
+  stringWrapper wrapper;
+  wrapper.append("<memory-map>");
+
+	/* Map each defined RAM */
+	for (struct target_ram *r = t->ram; r; r = r->next)
+		  map_ram(wrapper, r);
+	/* Map each defined Flash */
+	for (struct target_flash *f = t->flash; f; f = f->next)
+		  map_flash(wrapper, f);
+  wrapper.append("</memory-map>");
+  const char *out=wrapper.string();
+  return out;
+}
+
+
 // EOF
