@@ -55,7 +55,7 @@ public:
       _cdc->setEventHandler(gdbCdcEventHandler,this);
     }
     bool connected() {return _connected;}
-    static void gdbCdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event)
+    static void gdbCdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event, uint32_t payload)
     {
       BufferGdb *bg=(BufferGdb *)cookie;
       xAssert(interface==bg->_instance);
@@ -65,9 +65,8 @@ public:
     {
         switch (event)
         {
+          case lnUsbCDC::CDC_SET_SPEED:
           case lnUsbCDC::CDC_DATA_AVAILABLE:
-            {
-            }
               break;
           case lnUsbCDC::CDC_SESSION_START:
               Logger("CDC SESSION START\n");
@@ -88,7 +87,11 @@ public:
     {
         while(1)
         {
-          if(!_connected) return 0x4;// ??
+          if(!_connected)
+          {
+            lnDelayMs(100);
+            return 0x4;// ??
+          }
           if(_tail==_head) // empty
           {
             _tail=_head=0;
