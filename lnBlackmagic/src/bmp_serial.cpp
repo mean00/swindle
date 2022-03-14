@@ -37,6 +37,7 @@ public:
     _serial->setSpeed(115200);
     _serial->setCallback(_serialCallback, this);
     _serial->enableRx(true);
+    _usb->setEventHandler(gdbCdcEventHandler,this);
     while(1)
     {
       int ev=_evGroup->waitEvents(SERIAL_EVENT+USB_EVENT);
@@ -53,7 +54,11 @@ public:
             break;
           }
           if(_connected & USB_EVENT)
+          {
               _usb->write(_buffer,n);
+#warning OPTIMIZE              
+              _usb->flush(); // optimize
+          }
 
         }
       }
@@ -88,20 +93,22 @@ public:
 
       }
   }
-  static void gdbCdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event)
+  static void gdbCdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event,uint32_t payload)
   {
     BMPSerial *bg=(BMPSerial *)cookie;
     xAssert(interface==bg->_usbInstance);
-    bg->cdcEventHandler(event);
+    bg->cdcEventHandler(event,payload);
   }
-  void cdcEventHandler(lnUsbCDC::lnUsbCDCEvents event)
+  void cdcEventHandler(lnUsbCDC::lnUsbCDCEvents event,uint32_t payload)
   {
       switch (event)
       {
+        case lnUsbCDC::CDC_SET_SPEED:
+            Logger("CDC SET SPEED\n");
+            _serial->setSpeed(payload);
+            break;
         case lnUsbCDC::CDC_DATA_AVAILABLE:
-          {
              _evGroup->setEvents(USB_EVENT);
-          }
             break;
         case lnUsbCDC::CDC_SESSION_START:
             Logger("CDC SESSION START\n");
@@ -131,5 +138,4 @@ protected:
 void serialInit()
 {
   BMPSerial *serial=new BMPSerial(1,2); // CDC ACM1 to Serial port 2
-
 }
