@@ -162,7 +162,7 @@ extern "C"  unsigned char gdb_if_getchar_to(int timeout){   return usbGdb->getCh
 extern "C"  void          gdb_if_putchar(unsigned char c, int flush){  usbGdb->putChar(c,flush);}
 
 /* This is a transplanted main() from main.c */
-void main_task(void *parameters)
+void gdb_task(void *parameters)
 {
 	(void) parameters;
   Logger("Gdb task starting... \n");

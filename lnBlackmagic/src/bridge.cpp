@@ -20,7 +20,7 @@ lnStopWatch stopWatch(1);
 
 extern "C" int gdb_if_init(void);
 
-void main_task(void *parameters);
+void gdb_task(void *parameters);
 extern void bmp_gpio_init();
 extern "C"
 {
@@ -64,7 +64,7 @@ void platform_delay(uint32_t ms)
 */
 void user_init(void)
 {
-	xTaskCreate(&main_task, "main", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY, NULL);
+	xTaskCreate(&gdb_task, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY, NULL);
 }
 
 /**
