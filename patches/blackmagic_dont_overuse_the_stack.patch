@@ -1,0 +1,62 @@
+diff --git a/src/gdb_main.c b/src/gdb_main.c
+index bdff229..f2f5a04 100644
+--- a/src/gdb_main.c
++++ b/src/gdb_main.c
+@@ -392,9 +392,16 @@ handle_q_packet(char *packet, int len)
+ 			gdb_putpacketz("E01");
+ 			return;
+ 		}
++
++#if 0 // MEANX, dont hammer the stack
+ 		char buf[1024];
+ 		target_mem_map(cur_target, buf, sizeof(buf)); /* Fixme: Check size!*/
+ 		handle_q_string_reply(buf, packet + 23);
++#else
++    char *out=ztarget_mem_map(cur_target);
++    handle_q_string_reply(out, packet + 23);
++    free(out);
++#endif
+ 
+ 	} else if (strncmp (packet, "qXfer:features:read:target.xml:", 31) == 0) {
+ 		/* Read target description */
+diff --git a/src/include/target.h b/src/include/target.h
+index 5cf04ac..68467df 100644
+--- a/src/include/target.h
++++ b/src/include/target.h
+@@ -55,7 +55,9 @@ unsigned int target_designer(target *t);
+ unsigned int target_idcode(target *t);
+ 
+ /* Memory access functions */
++#if 0
+ bool target_mem_map(target *t, char *buf, size_t len);
++#endif
+ int target_mem_read(target *t, void *dest, target_addr src, size_t len);
+ int target_mem_write(target *t, target_addr dest, const void *src, size_t len);
+ /* Flash memory access functions */
+@@ -179,4 +181,3 @@ struct target_controller {
+ };
+ 
+ #endif
+-
+diff --git a/src/target/target.c b/src/target/target.c
+index c8a10a5..ac10c56 100644
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -193,7 +193,7 @@ void target_add_flash(target *t, struct target_flash *f)
+ 	f->next = t->flash;
+ 	t->flash = f;
+ }
+-
++#if 0
+ static ssize_t map_ram(char *buf, size_t len, struct target_ram *ram)
+ {
+ 	return snprintf(buf, len, "<memory type=\"ram\" start=\"0x%08"PRIx32
+@@ -229,7 +229,7 @@ bool target_mem_map(target *t, char *tmp, size_t len)
+ 		return false;
+ 	return true;
+ }
+-
++#endif
+ static struct target_flash *flash_for_addr(target *t, uint32_t addr)
+ {
+ 	for (struct target_flash *f = t->flash; f; f = f->next)
