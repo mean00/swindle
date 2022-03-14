@@ -3,6 +3,7 @@
  */
  #include "lnArduino.h"
  #include "lnStopWatch.h"
+ #include "lnBmpTask.h"
  extern "C"
  {
 #include "version.h"
@@ -59,12 +60,11 @@ void platform_delay(uint32_t ms)
 }
 
 
-
 /**
 */
 void user_init(void)
 {
-	xTaskCreate(&main_task, "main", 2048, NULL, 5, NULL);
+	xTaskCreate(&main_task, "main", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY, NULL);
 }
 
 /**
@@ -126,6 +126,10 @@ void platform_target_set_power(bool power)
 void platform_request_boot(void)
 {
 
+}
+void abort()
+{
+  deadEnd(0x33);
 }
 } // extern "C"
 // EOF

@@ -29,6 +29,7 @@
 #define SET_ERROR_STATE(state)
 
 extern void Logger(const char *fmt,...);
+extern void deadEnd(int err);
 
 #include "timing.h"
 #include "embedded_printf/printf.h"

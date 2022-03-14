@@ -1,11 +1,10 @@
 /*
 
  */
- #include "lnArduino.h"
-
- #include "include/lnUsbStack.h"
- #include "include/lnUsbCDC.h"
- #include "lnBMP_usb_descriptor.h"
+#include "lnArduino.h"
+#include "include/lnUsbStack.h"
+#include "include/lnUsbCDC.h"
+#include "lnBMP_usb_descriptor.h"
 
 
  extern "C"

@@ -7,8 +7,8 @@
 #include "include/lnUsbStack.h"
 #include "include/lnUsbCDC.h"
 #include "lnSerial.h"
-
-#define BufferSize 512
+#include "lnBmpTask.h"
+#define BMP_SERIAL_BUFFER_SIZE 256
 /**
 
 */
@@ -19,12 +19,12 @@
 class BMPSerial : public xTask
 {
 public:
-  BMPSerial(int usbInst,int serialInstance) : xTask("usbserial")
+  BMPSerial(int usbInst,int serialInstance) : xTask("usbserial",TASK_BMP_SERIAL_PRIORITY, TASK_BMP_SERIAL_STACK_SIZE)
   {
     _usbInstance=usbInst;
     _serialInstance=serialInstance;
     _evGroup=new xFastEventGroup;
-     _usb=new lnUsbCDC(_usbInstance);
+    _usb=new lnUsbCDC(_usbInstance);
     _serial=new lnSerial(_serialInstance);
     _connected=0;
     start();
@@ -46,7 +46,7 @@ public:
         int n=1;
         while(n)
         {
-          n=_serial->read(BufferSize,_buffer);
+          n=_serial->read(BMP_SERIAL_BUFFER_SIZE,_buffer);
           if(!n) continue;
           if(n<0)
           {
@@ -56,7 +56,7 @@ public:
           if(_connected & USB_EVENT)
           {
               _usb->write(_buffer,n);
-#warning OPTIMIZE              
+#warning OPTIMIZE
               _usb->flush(); // optimize
           }
 
@@ -67,7 +67,7 @@ public:
           int n=1;
           while(n)
           {
-            n=_usb->read(_buffer,BufferSize);
+            n=_usb->read(_buffer,BMP_SERIAL_BUFFER_SIZE);
             if(n<0)
             {
               Logger("Usb error\n");
@@ -127,7 +127,7 @@ public:
 protected:
     int         _connected;
     int         _usbInstance,_serialInstance;
-    uint8_t     _buffer[BufferSize];
+    uint8_t     _buffer[BMP_SERIAL_BUFFER_SIZE];
     lnSerial    *_serial;
     xFastEventGroup *_evGroup;
     lnUsbCDC    *_usb;
@@ -137,5 +137,5 @@ protected:
 
 void serialInit()
 {
-  BMPSerial *serial=new BMPSerial(1,2); // CDC ACM1 to Serial port 2
+  BMPSerial *serial=new BMPSerial(1,2); // bridge CDC ACM1 to Serial port 2
 }
