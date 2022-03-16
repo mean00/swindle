@@ -22,9 +22,11 @@ enable_language(C CXX ASM) # this is important too!
 #
 
 include(applyPatch)
-APPLY_PATCH_IF_NEEDED(patched  blackmagic_add_ch32_support.patch    blackmagic           "add ch32f103 support")
-APPLY_PATCH_IF_NEEDED(patched2 blackmagic_catch_other_commands.patch blackmagic           "catch our commands ")
-APPLY_PATCH_IF_NEEDED(patched3 blackmagic_dont_overuse_the_stack.patch blackmagic           "dont overuse the stack ")
+APPLY_PATCH_IF_NEEDED(patched1 blackmagic_add_ch32_support.patch       blackmagic         "add ch32f103 support")
+APPLY_PATCH_IF_NEEDED(patched2 blackmagic_dont_overuse_the_stack.patch blackmagic         "dont overuse the stack ")
+APPLY_PATCH_IF_NEEDED(patched3 blackmagic_dontcopy_partial_reply.patch blackmagic         "avoid copy  ")
+APPLY_PATCH_IF_NEEDED(patched4 blackmagic_reuse_exception.patch        blackmagic         "reuse exception to lower stack usage ")
+APPLY_PATCH_IF_NEEDED(patched5 blackmagic_add_gdb_putpacket2.patch     blackmagic         "add gdb_putpacket2 to send a packet made of two chunks")
 
 #
 
