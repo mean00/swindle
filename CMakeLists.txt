@@ -27,7 +27,7 @@ APPLY_PATCH_IF_NEEDED(patched2 blackmagic_dont_overuse_the_stack.patch blackmagi
 APPLY_PATCH_IF_NEEDED(patched3 blackmagic_dontcopy_partial_reply.patch blackmagic         "avoid copy  ")
 APPLY_PATCH_IF_NEEDED(patched4 blackmagic_reuse_exception.patch        blackmagic         "reuse exception to lower stack usage ")
 APPLY_PATCH_IF_NEEDED(patched5 blackmagic_add_gdb_putpacket2.patch     blackmagic         "add gdb_putpacket2 to send a packet made of two chunks")
-
+APPLY_PATCH_IF_NEEDED(patched6 blackmagic_small_exception.patch        blackmagic         "use smaller setjmp/long jmp on smaller arm")
 #
 
 include_directories(${CMAKE_SOURCE_DIR})

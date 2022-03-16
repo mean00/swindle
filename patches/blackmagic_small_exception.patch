@@ -1,0 +1,34 @@
+diff --git a/src/include/exception.h b/src/include/exception.h
+index 180398d..0997cc8 100644
+--- a/src/include/exception.h
++++ b/src/include/exception.h
+@@ -49,12 +49,23 @@
+ #define EXCEPTION_TIMEOUT 0x02
+ #define EXCEPTION_ALL     -1
+ 
++// For cortex m0,m0+,m3,m4 without fpu we only have thumb2 (10 registers)
++// the compiler will allocate 23 registers which wastes a lof of stack
++#ifdef __arm__
++    #if defined( __thumb2__ ) && defined(__SOFTFP__) && (__ARM_ARCH==7 || __ARM_ARCH ==6)
++      typedef  int BM_JMP[12] ; // it is 10 actually
++    #else
++      #define BM_JMP jmp_buf
++    #endif
++#else
++  #define BM_JMP jmp_buf
++#endif
+ struct exception {
+ 	uint32_t type;
+ 	const char *msg;
+ 	/* private */
+ 	uint32_t mask;
+-	jmp_buf jmpbuf;
++	BM_JMP jmpbuf;
+ 	struct exception *outer;
+ };
+ 
+@@ -71,4 +82,3 @@ extern struct exception *innermost_exception;
+ void raise_exception(uint32_t type, const char *msg);
+ 
+ #endif
+-
