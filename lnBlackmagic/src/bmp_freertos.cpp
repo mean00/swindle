@@ -12,6 +12,32 @@
 // qSymbol::
 // qfThreadInfo
 
+extern "C" void gdb_putpacket(const char *packet, int size);
+
+extern "C" void execqOffsets(const char *packet, int len)
+{
+  gdb_putpacket("Text=0;Data=0;Bss=0", 19); // 7 7 5=>19
+}
+//
+extern "C" void execqSymbol(const char *packet, int len)
+{
+  Logger("*** execqSymbol:%s\n",packet);
+  gdb_putpacket("OK", 2);
+}
+//
+extern "C" void execqThreadInfo(const char *packet, int len)
+{
+  Logger("*** execqThreadInfo:%s\n",packet);
+  gdb_putpacket("", 0);
+}
+//--
+extern "C" void execqfThreadInfo(const char *packet, int len)
+{
+  Logger("*** qfThreadinfo:%s\n",packet);
+  gdb_putpacket("m", 1);
+}
+
+
 /**
 
 */
