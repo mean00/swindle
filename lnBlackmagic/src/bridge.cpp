@@ -179,7 +179,7 @@ public:
     strcat(_st,hex32);
   }
 
-  const char *string() {return _st;}
+  char *string() {return _st;}
   char *_st;
   int _limit;
 };
@@ -207,7 +207,7 @@ static void map_flash(stringWrapper &wrapper, struct target_flash *f)
   wrapper.append("</property></memory>");
 }
 
- extern "C" const char *ztarget_mem_map(target *t)
+ extern "C" char *ztarget_mem_map(const target *t)
 {
   stringWrapper wrapper;
   wrapper.append("<memory-map>");
@@ -219,7 +219,7 @@ static void map_flash(stringWrapper &wrapper, struct target_flash *f)
 	for (struct target_flash *f = t->flash; f; f = f->next)
 		  map_flash(wrapper, f);
   wrapper.append("</memory-map>");
-  const char *out=wrapper.string();
+  char *out=wrapper.string();
   return out;
 }
 

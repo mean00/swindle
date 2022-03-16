@@ -33,14 +33,15 @@ public:
   void run()
   {
     _evGroup->takeOwnership();
+    lnDelayMs(50); // let the gdb part start first
     _serial->init();
     _serial->setSpeed(115200);
     _serial->setCallback(_serialCallback, this);
     _serial->enableRx(true);
     _usb->setEventHandler(gdbCdcEventHandler,this);
+    int ev=SERIAL_EVENT+USB_EVENT;
     while(1)
     {
-      int ev=_evGroup->waitEvents(SERIAL_EVENT+USB_EVENT);
       if(ev & SERIAL_EVENT)
       {
         int n=1;
@@ -55,8 +56,9 @@ public:
           }
           if(_connected & USB_EVENT)
           {
-              _usb->write(_buffer,n);
 #warning OPTIMIZE
+              _usb->write(_buffer,n);
+
               _usb->flush(); // optimize
           }
 
@@ -77,6 +79,7 @@ public:
             _serial->transmit(n,_buffer);
           }
       }
+      ev=_evGroup->waitEvents(SERIAL_EVENT+USB_EVENT);
     }
   }
   static void _serialCallback(void *cookie, lnSerial::Event event)
