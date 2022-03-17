@@ -4,6 +4,7 @@
  #include "lnArduino.h"
  #include "lnStopWatch.h"
  #include "lnBmpTask.h"
+ #include "bmp_string.h"
  extern "C"
  {
 #include "version.h"
@@ -133,56 +134,6 @@ void abort()
   deadEnd(0x33);
 }
 } // extern "C"
-
-int maxWrappedString=0;
-class stringWrapper
-{
-public:
-  stringWrapper()
-  {
-      _limit=256;
-      _st=new char[_limit];
-      _st[0]=0;
-  }
-  ~stringWrapper()
-  {
-    // we dont free _st here NOT A MISTAKE!
-  }
-  void doubleLimit()
-  {
-    _limit*=2;
-    if(_limit>maxWrappedString) maxWrappedString=_limit;
-    char *st2=new char[_limit];
-    strcpy(st2,_st);
-    free(_st);
-    _st=st2;
-  }
-  void append(const char *a)
-  {
-    int l=strlen(a);
-    if( (strlen(_st)+l+1)>=_limit)
-    {  // increase
-      doubleLimit();
-    }
-    strcat(_st,a);
-  }
-
-  void appendHex32(const uint32_t value)
-  {
-    int l=strlen(_st)+1;
-    if( (strlen(_st)+8+1)>=_limit)
-    {  // increase
-      doubleLimit();
-    }
-    char hex32[9];
-    sprintf(hex32, "%08" PRIx32, value);
-    strcat(_st,hex32);
-  }
-
-  char *string() {return _st;}
-  char *_st;
-  int _limit;
-};
 
 
 static void map_ram(stringWrapper &wrapper, struct target_ram *ram)

@@ -160,7 +160,7 @@ extern "C" int gdb_if_init(void)
 extern "C"  unsigned char gdb_if_getchar(void){             return usbGdb->getChar(-1);}
 extern "C"  unsigned char gdb_if_getchar_to(int timeout){   return usbGdb->getChar(timeout);}
 extern "C"  void          gdb_if_putchar(unsigned char c, int flush){  usbGdb->putChar(c,flush);}
-
+extern void initFreeRTOS();
 /* This is a transplanted main() from main.c */
 void gdb_task(void *parameters)
 {
@@ -169,6 +169,7 @@ void gdb_task(void *parameters)
 	platform_init();
   pins_init();
   gdb_if_init();
+  initFreeRTOS();
   Logger("Here we go... \n");
 	while (true)
   {
