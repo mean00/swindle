@@ -16,7 +16,7 @@ include(./mcuSelect.cmake)
 SET(CMAKE_TOOLCHAIN_FILE ${AF_FOLDER}/lnArduino.cmake)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
-PROJECT(lnUsb NONE) # the NONE is very important !
+PROJECT(lnBMP NONE) # the NONE is very important !
 
 enable_language(C CXX ASM) # this is important too!
 #
