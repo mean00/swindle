@@ -63,14 +63,58 @@ extern "C" void execqThreadInfo(const char *packet, int len)
 
 
 //--https://sourceware.org/gdb/onlinedocs/gdb/Packets.html#thread_002did-syntax
-// this is thread RTOS ; let's assume the # of threads is not ridiculouslu big and fits
+// this is # of freertos threads; let's assume it is not ridiculouslu big and fits
 // into one frame
 #define LIST_SIZE 20
+
+
+// The TCB structure has the following layout
+// 0 *pxTopOfStack <= current stack
+//      (MPU) we ignore that for now
+// 4 List xStateListItem
+// 8 List xEventListItem
+// uxPriority
+// pxStack <=original stack
+// name[]
+// ...
+// uxTCBNumber <= uniq task number
+
+bool parseListAnon(uint32_t listStart)
+{
+    uint32_t nbItem=target_mem_read32(cur_target,listStart); // Nb of items
+    uint32_t index=target_mem_read32(cur_target,listStart+4);// List starting point
+    uint32_t cur=target_mem_read32(cur_target,index+4);// First real entry
+    uint32_t start=cur;
+    Logger("scan start %x\n",start);
+    do
+    {
+        // Read Owner is actually the TCB
+        uint32_t  owner=target_mem_read32(cur_target,cur+12);
+        uint32_t id=target_mem_read32(cur_target,owner+allSymbols._debugInfo.OFFSET_TASK_NUM);
+        Logger(" Found task <%d> TCB=0x%x\n",id,owner);
+        cur=target_mem_read32(cur_target,cur+4); // next
+        Logger("now at  start %x\n",cur);
+    }while(cur!=start);
+    return true;
+}
+
+bool parseList(stringWrapper &w,FreeRTOSSymbols symbol)
+{
+  uint32_t *pAdr=allSymbols.getSymbol(symbol );
+  if(!pAdr)
+  {
+    cannotParse();
+  }
+  uint32_t adr=*pAdr;
+  parseListAnon(adr);
+
+  return true;
+}
+
+
 bool parseReadyThreads(stringWrapper &w)
 {
-
-  // we assume is is followed by uxCurrentNumberOfTasks
-  uint32_t *pAdr=allSymbols.getSymbol(pxReadyTasksLists);
+  uint32_t *pAdr=allSymbols.getSymbol(spxReadyTasksLists);
   if(!pAdr)
   {
     cannotParse();
@@ -82,20 +126,15 @@ bool parseReadyThreads(stringWrapper &w)
   {
     cannotParse();
   }
+  // it's a list of list
+  
   for(int prio=0;prio<nbPrio;prio++)
   {
       uint32_t nbItem=target_mem_read32(cur_target,adr); // Nb of items
       uint32_t listAdr=adr+4; // list head
-      Logger("%d items ready at priority %d\n",nbItem,prio);
-      for( int i=0;i<nbItem;i++)
-      {
-
-
-      }
+      parseListAnon(listAdr);
       adr+=LIST_SIZE;
   }
-
-  w.append("l");
   return true;
 }
 
@@ -118,11 +157,9 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
     return;
   }
   stringWrapper wrapper;
-  if(!parseReadyThreads(wrapper))
-  {
-    gdb_putpacketz("");
-    return;
-  }
+  //parseReadyThreads(wrapper);
+  parseList(wrapper,spxDelayedTaskList);
+  parseList(wrapper,sxSuspendedTaskList);
   // Grab all the threads in one big array
   gdb_putpacket("m 0", 3);
 }

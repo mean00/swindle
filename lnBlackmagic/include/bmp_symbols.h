@@ -18,12 +18,12 @@ static const char *neededSymbols[]=
 };
 enum FreeRTOSSymbols
 {
-    pxCurrentTCB=0,
-    xSuspendedTaskList=1,
-    xDelayedTaskList=2,
-    pxReadyTasksLists=3,
-    uxCurrentNumberOfTasks=4,
-    freeRTOSDebug=5
+    spxCurrentTCB=0,
+    sxSuspendedTaskList=1,
+    spxDelayedTaskList=2,
+    spxReadyTasksLists=3,
+    suxCurrentNumberOfTasks=4,
+    sfreeRTOSDebug=5
 };
 
 /**
@@ -56,7 +56,7 @@ public:
       return false;
     }
     // do we have the debug block ?
-    uint32_t *debugBlock=getSymbol(freeRTOSDebug);
+    uint32_t *debugBlock=getSymbol(sfreeRTOSDebug);
     if(!debugBlock)
     {
       gdb_putpacketz("");
@@ -74,6 +74,7 @@ public:
     READ_FIELD(NB_OF_PRIORITIES)
     READ_FIELD(MPU_ENABLED)
     READ_FIELD(MAX_TASK_NAME_LEN)
+    READ_FIELD(OFFSET_TASK_NUM)
     if(_debugInfo.MAGIC==LN_FREERTOS_MAGIC)
       return true;
     return false;
