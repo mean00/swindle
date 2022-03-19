@@ -1,0 +1,2 @@
+SUBSYSTEM=="tty", ATTRS{interface}=="lnBMP GDB Server", SYMLINK+="ttyBmpGdb2"
+SUBSYSTEM=="tty", ATTRS{interface}=="lnBMP GDB Uart",SYMLINK+="ttyBmpUart2"  
