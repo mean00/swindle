@@ -15,7 +15,8 @@
    "lnBlackMagic",                     // 1: Manufacturer
    "Custom implementation of BMP",              // 2: Product
    "45678",                      // 3: Serials, should use chip ID
-   "USB CDC",                 // 4: CDC Interface
+   "lnBMP GDB Server",                 // 4: CDC Interface
+   "lnBMP GDB Uart",                 // 5: CDC Interface
  };
 
 
@@ -75,7 +76,7 @@
    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
 
    // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
+   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
  };
 
 

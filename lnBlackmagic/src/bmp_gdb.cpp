@@ -145,7 +145,7 @@ extern "C" int gdb_if_init(void)
 {
   Logger("Starting CDC \n");
   lnUsbStack *usb = new lnUsbStack;
-  usb->init(5, descriptor);
+  usb->init(6, descriptor);
   usb->setConfiguration(desc_hs_configuration, desc_fs_configuration, &desc_device, &desc_device_qualifier);
   usb->setEventHandler(NULL, helloUsbEvent);
 
