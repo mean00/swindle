@@ -1,5 +1,5 @@
 diff --git a/src/include/exception.h b/src/include/exception.h
-index 180398d..0997cc8 100644
+index 180398d..b36e88c 100644
 --- a/src/include/exception.h
 +++ b/src/include/exception.h
 @@ -49,12 +49,23 @@
@@ -27,7 +27,15 @@ index 180398d..0997cc8 100644
  	struct exception *outer;
  };
  
-@@ -71,4 +82,3 @@ extern struct exception *innermost_exception;
+@@ -64,11 +75,10 @@ extern struct exception *innermost_exception;
+ 	(e).type = 0; \
+ 	(e).mask = (type_mask); \
+ 	(e).outer = innermost_exception; \
+-	innermost_exception = (void*)&(e); \
++	innermost_exception = (struct exception*)&(e); \
+ 	if (setjmp(innermost_exception->jmpbuf) == 0) \
+ 		for (;innermost_exception == &(e); innermost_exception = (e).outer)
+ 
  void raise_exception(uint32_t type, const char *msg);
  
  #endif

@@ -1,8 +1,17 @@
 diff --git a/src/gdb_main.c b/src/gdb_main.c
-index e11fce0..2b71827 100644
+index e11fce0..8a6d7d3 100644
 --- a/src/gdb_main.c
 +++ b/src/gdb_main.c
-@@ -451,6 +451,15 @@ static void exec_qCRC(const char *packet, int len)
+@@ -58,7 +58,7 @@ typedef struct
+ 
+ static char pbuf[BUF_SIZE+1];
+ 
+-static target *cur_target;
++target *cur_target;
+ static target *last_target;
+ 
+ static void handle_q_packet(char *packet, int len);
+@@ -451,6 +458,15 @@ static void exec_qCRC(const char *packet, int len)
  			gdb_putpacket_f("C%lx", crc);
  	}
  }
@@ -18,7 +27,7 @@ index e11fce0..2b71827 100644
  static const cmd_executer q_commands[]=
  {
  	{"qRcmd,",                         exec_qRcmd},
-@@ -458,6 +467,13 @@ static const cmd_executer q_commands[]=
+@@ -458,6 +474,13 @@ static const cmd_executer q_commands[]=
  	{"qXfer:memory-map:read::",        exec_qMemoryMap},
  	{"qXfer:features:read:target.xml:",exec_qFeatureRead},
  	{"qCRC:",                          exec_qCRC},
