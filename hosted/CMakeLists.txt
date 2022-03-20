@@ -1,8 +1,12 @@
-cmake_minimum_required(VERSION 3.00)
-PROJECT(lnBMPHosted NONE) # the NONE is very important !
+#___________________________________________________________
+# This builds lnBMP in hosted mode
+# same as normal BMP in hosted mode + freeRTOS support
+#___________________________________________________________
 
-enable_language(C CXX ASM) # this is important too!
-SET(LN_BMP_HOSTED True)
+cmake_minimum_required(VERSION 3.00)
+PROJECT(lnBMPHosted C CXX)
+
+
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
 SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../lnArduino)
 
@@ -15,13 +19,17 @@ include_directories(${BMP}/src/platforms/pc)
 include_directories(${BMP}/src/platforms/hosted)
 include_directories(${BMP}/src/target)
 include_directories(${BMP}/../lnBlackmagic/include )
-SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 #
 #
-ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
+SET(LN_BMP_HOSTED True)
 ADD_DEFINITIONS("-DPC_HOSTED=1")
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
+ADD_DEFINITIONS("-g3")
+ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
 
-SET(SRC src/main.cpp src/lnDebug.cpp src/stubs.cpp ../lnArduino/embedded_printf/printf.c)
+SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
+SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp src/stubs.cpp )
+
 ADD_EXECUTABLE(lnBMP_hosted ${SRC})
-target_link_libraries(lnBMP_hosted lnBlackmagic embeddedPrintf usb-1.0 ftdi1 )
+target_link_libraries(lnBMP_hosted lnBlackmagic embeddedPrintf usb-1.0 )
