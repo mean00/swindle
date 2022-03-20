@@ -1,5 +1,7 @@
 #include "lnArduino.h"
 #include "bmp_string.h"
+#include "stdint.h"
+#include "inttypes.h"
 extern "C"
 {
   #include "hex_utils.h"
