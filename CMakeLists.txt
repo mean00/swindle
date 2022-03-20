@@ -1,7 +1,7 @@
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.13)
 MESSAGE(STATUS "======================")
 MESSAGE(STATUS "Starting usb test")
 MESSAGE(STATUS "======================")
@@ -45,6 +45,9 @@ USE_LIBRARY(tinyUsb)
 
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
+SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
+
 GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
+
 ADD_SUBDIRECTORY(lnBlackmagic)
 target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)
