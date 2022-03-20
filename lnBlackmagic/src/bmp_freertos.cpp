@@ -60,6 +60,7 @@ extern "C" void execqThreadInfo(const char *packet, int len)
   gdb_putpacket("", 0);
 }
 #define cannotParse() { return false;}
+#define cannotParseVoid() { Logger("error \n");return;}
 
 
 //--https://sourceware.org/gdb/onlinedocs/gdb/Packets.html#thread_002did-syntax
@@ -79,39 +80,73 @@ extern "C" void execqThreadInfo(const char *packet, int len)
 // ...
 // uxTCBNumber <= uniq task number
 
-bool parseListAnon(uint32_t listStart)
+bool parseList(uint32_t listStart)
 {
     uint32_t nbItem=target_mem_read32(cur_target,listStart); // Nb of items
+    Logger("starting list a  %x \n",listStart);
+    Logger("Found %d items\n",nbItem);
+    if(!nbItem) return true; // empty
     uint32_t index=target_mem_read32(cur_target,listStart+4);// List starting point
+    Logger("index  %x \n",index);
+    uint32_t head=index;
+    // go one step away, the first one is dummy
     uint32_t cur=target_mem_read32(cur_target,index+4);// First real entry
     uint32_t start=cur;
-    Logger("scan start %x\n",start);
+    Logger("scan2 start %x, %d items\n",start,nbItem);
     do
     {
+        Logger("Now at 0x%x\n",cur);
         // Read Owner is actually the TCB
-        uint32_t  owner=target_mem_read32(cur_target,cur+12);
-        uint32_t id=target_mem_read32(cur_target,owner+allSymbols._debugInfo.OFFSET_TASK_NUM);
-        Logger(" Found task <%d> TCB=0x%x\n",id,owner);
+        uint32_t owner=target_mem_read32(cur_target,cur+12);
+        if(owner)
+        {
+          uint32_t id=target_mem_read32(cur_target,owner+allSymbols._debugInfo.OFFSET_TASK_NUM);
+          Logger(" Found2 task <%d> TCB=0x%x\n",id,owner);
+        }
+        uint32_t old=cur;
         cur=target_mem_read32(cur_target,cur+4); // next
-        Logger("now at  start %x\n",cur);
-    }while(cur!=start);
+        Logger("Next at 0x%x\n",cur);
+        if(cur==old) cur=head;
+    }while(cur!=head);
+    return true;
+}
+//--
+bool parseList2(uint32_t listStart)
+{
+    uint32_t nbItem=target_mem_read32(cur_target,listStart); // Nb of items
+    Logger("starting list a  %x \n",listStart);
+    Logger("Found %d items\n",nbItem);
+    if(!nbItem) return true; // empty
+    uint32_t index=target_mem_read32(cur_target,listStart+4);// List starting point
+    Logger("index  %x \n",index);
+    uint32_t cur=index;
+    Logger("scan3 start %x, %d items\n",listStart,nbItem);
+    for(int i=0;i<nbItem;i++)
+    {
+        Logger("Now at 0x%x\n",cur);
+        // Read Owner is actually the TCB
+        uint32_t owner=target_mem_read32(cur_target,cur+12);
+        if(owner)
+        {
+          uint32_t id=target_mem_read32(cur_target,owner+allSymbols._debugInfo.OFFSET_TASK_NUM);
+          Logger(" Found3 task <%d> TCB=0x%x\n",id,owner);
+        }
+        uint32_t old=cur;
+        cur=target_mem_read32(cur_target,cur+4); // next
+        Logger("Next at 0x%x\n",cur);
+        if(cur==old) i=nbItem;
+    };
     return true;
 }
 
-bool parseList(stringWrapper &w,FreeRTOSSymbols symbol)
+bool parseSymbolList(stringWrapper &w,uint32_t listStart)
 {
-  uint32_t *pAdr=allSymbols.getSymbol(symbol );
-  if(!pAdr)
-  {
-    cannotParse();
-  }
-  uint32_t adr=*pAdr;
-  parseListAnon(adr);
-
-  return true;
+  return parseList(listStart);
 }
 
-
+//  List of ready tsk prio 0
+//....
+//  List of ready tsk prio 15
 bool parseReadyThreads(stringWrapper &w)
 {
   uint32_t *pAdr=allSymbols.getSymbol(spxReadyTasksLists);
@@ -126,13 +161,13 @@ bool parseReadyThreads(stringWrapper &w)
   {
     cannotParse();
   }
-  // it's a list of list
-  
   for(int prio=0;prio<nbPrio;prio++)
   {
       uint32_t nbItem=target_mem_read32(cur_target,adr); // Nb of items
-      uint32_t listAdr=adr+4; // list head
-      parseListAnon(listAdr);
+      if(nbItem)
+      {
+        parseList2(adr);
+      }
       adr+=LIST_SIZE;
   }
   return true;
@@ -140,6 +175,8 @@ bool parseReadyThreads(stringWrapper &w)
 
 extern "C" void execqfThreadInfo(const char *packet, int len)
 {
+  uint32_t *pAdr;
+  uint32_t adr;
   Logger("::: qfThreadinfo:%s\n",packet);
   if(!cur_target)
   {
@@ -157,9 +194,29 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
     return;
   }
   stringWrapper wrapper;
-  //parseReadyThreads(wrapper);
-  parseList(wrapper,spxDelayedTaskList);
-  parseList(wrapper,sxSuspendedTaskList);
+  Logger("------------------ ready --\n");
+
+  parseReadyThreads(wrapper);
+  Logger("------------------- delayed --\n");
+  pAdr=allSymbols.getSymbol(spxDelayedTaskList );
+  if(!pAdr)
+  {
+    cannotParseVoid();
+  }
+  adr=*pAdr;
+  // Read it
+  uint32_t delayed=target_mem_read32(cur_target,adr);
+
+  parseSymbolList(wrapper,delayed);
+  Logger("-- syspended --\n");
+  Logger("------------------- suspended --\n");
+  pAdr=allSymbols.getSymbol(sxSuspendedTaskList );
+  if(!pAdr)
+  {
+    cannotParseVoid();
+  }
+  adr=*pAdr;
+  parseSymbolList(wrapper,adr);
   // Grab all the threads in one big array
   gdb_putpacket("m 0", 3);
 }
