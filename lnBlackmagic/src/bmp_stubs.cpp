@@ -1,7 +1,6 @@
 /*
 
  */
- #include "lnArduino.h"
  extern "C"
  {
 #include "version.h"
