@@ -3,9 +3,10 @@
 # same as normal BMP in hosted mode + freeRTOS support
 #___________________________________________________________
 
-cmake_minimum_required(VERSION 3.00)
+cmake_minimum_required(VERSION 3.13)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 PROJECT(lnBMPHosted C CXX)
-
+SET(LN_BMP_HOSTED True CACHE INTERNAL "")
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
 SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../lnArduino)
@@ -22,7 +23,7 @@ include_directories(${BMP}/../lnBlackmagic/include )
 
 #
 #
-SET(LN_BMP_HOSTED True)
+
 ADD_DEFINITIONS("-DPC_HOSTED=1")
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-g3")
