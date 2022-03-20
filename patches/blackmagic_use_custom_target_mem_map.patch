@@ -1,0 +1,28 @@
+diff --git a/src/gdb_main.c b/src/gdb_main.c
+index e11fce0..7c7741a 100644
+--- a/src/gdb_main.c
++++ b/src/gdb_main.c
+@@ -399,6 +399,7 @@ static void exec_qSupported(const char *packet, int len)
+ 	(void)len;
+ 	gdb_putpacket_f("PacketSize=%X;qXfer:memory-map:read+;qXfer:features:read+", BUF_SIZE);
+ }
++extern  char *ztarget_mem_map(const target *t);
+ 
+ static void exec_qMemoryMap(const char *packet,int len)
+ {
+@@ -414,9 +415,15 @@ static void exec_qMemoryMap(const char *packet,int len)
+ 		gdb_putpacketz("E01");
+ 		return;
+ 	}
++#if 0
+ 	char buf[1024];
+ 	target_mem_map(cur_target, buf, sizeof(buf)); /* Fixme: Check size!*/
+ 	handle_q_string_reply(buf, packet);
++#else
++    char *out=ztarget_mem_map(cur_target);
++    handle_q_string_reply(out,packet);
++    free(out);
++#endif
+ }
+ 
+ static void exec_qFeatureRead(const char *packet, int len)

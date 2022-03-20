@@ -1,0 +1,34 @@
+diff --git a/src/gdb_main.c b/src/gdb_main.c
+index e11fce0..2b71827 100644
+--- a/src/gdb_main.c
++++ b/src/gdb_main.c
+@@ -451,6 +451,15 @@ static void exec_qCRC(const char *packet, int len)
+ 			gdb_putpacket_f("C%lx", crc);
+ 	}
+ }
++//----
++extern void execqOffsets(const char *packet, int len);
++extern void execqSymbol(const char *packet, int len);
++extern void execqThreadInfo(const char *packet, int len);
++extern void execqfThreadInfo(const char *packet, int len);
++extern void execqsThreadInfo(const char *packet, int len);
++
++
++
+ static const cmd_executer q_commands[]=
+ {
+ 	{"qRcmd,",                         exec_qRcmd},
+@@ -458,6 +467,13 @@ static const cmd_executer q_commands[]=
+ 	{"qXfer:memory-map:read::",        exec_qMemoryMap},
+ 	{"qXfer:features:read:target.xml:",exec_qFeatureRead},
+ 	{"qCRC:",                          exec_qCRC},
++  //--
++    {"qOffsets"                       ,execqOffsets},
++    {"qSymbol:"                       ,execqSymbol},
++    {"qThreadInfo"                    ,execqThreadInfo},
++    {"qfThreadInfo"                   ,execqfThreadInfo},
++    {"qsThreadInfo"                   ,execqsThreadInfo},
++
+ 
+ 	{NULL,NULL},
+ };
