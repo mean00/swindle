@@ -49,6 +49,18 @@ void stringWrapper::append(const char *a)
   }
   strcat(_st,a);
 }
+
+void stringWrapper::appendU32(uint32_t val)
+{
+  char st[12];
+  sprintf(st,"%u",val);
+  if( (strlen(_st)+strlen(st)+1)>=_limit)
+  {  // increase
+    doubleLimit();
+  }
+  strcat(_st,st);
+}
+
 /**
 */
 void stringWrapper::appendHexified(const char *a)
@@ -75,3 +87,20 @@ void stringWrapper::appendHex32(const uint32_t value)
   sprintf(hex32, "%08" PRIx32, value);
   strcat(_st,hex32);
 }
+
+/**
+
+*/
+void stringWrapper::appendHex64(const uint64_t value)
+{
+  int l=strlen(_st)+1;
+  if( (strlen(_st)+17+1)>=_limit)
+  {  // increase
+    doubleLimit();
+  }
+  char hex64[17];
+  sprintf(hex64, "%016" PRIx64, value);
+  strcat(_st,hex64);
+}
+
+//
