@@ -18,48 +18,15 @@ extern "C" void gdb_putpacket(const char *packet, int size);
 #define fdebug Logger
 #include "bmp_symbols.h"
 AllSymbols allSymbols;
+#include "bmp_freertos_tcb.h"
 /**
 
 */
 void initFreeRTOS()
 {
-
   allSymbols.clear();
 }
-//
-extern "C" void execqOffsets(const char *packet, int len)
-{
-  // it's xip...
-  gdb_putpacket("Text=0;Data=0;Bss=0", 19); // 7 7 5=>19
-}
-/*
-    Grab FreeRTOS symbols
-*/
-extern "C" void execqSymbol(const char *packet, int len)
-{
-  Logger("<execqSymbol>:<%s>\n",packet);
-  if(len==1 && packet[0]==':') // :: : ready to serve https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
-  {
-    allSymbols.clear();
-    allSymbols.queryNextSymbol();
-    return;
-  }
-  if(len>1)
-  {
-      allSymbols.decodeSymbol(len,packet);
-      return;
-  }
-  gdb_putpacket("OK", 2);
-}
-/**
 
-*/
-extern "C" void execqThreadInfo(const char *packet, int len)
-{
-  Logger("*** execqThreadInfo:%s\n",packet);
-  gdb_putpacketz("");
-}
-#include "bmp_freertos_tcb.h"
 // The TCB structure has the following layout
 // 0 *pxTopOfStack <= current stack
 //      (MPU) we ignore that for now
@@ -83,7 +50,7 @@ public:
     {
       _w=w;
     }
-    void execList(uint32_t tcbAdr)
+    void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
         uint32_t id=target_mem_read32(cur_target,tcbAdr+allSymbols._debugInfo.OFFSET_TASK_NUM);
         if(strlen(_w->string()))
@@ -91,32 +58,212 @@ public:
         _w->appendHex64(id);
     }
 protected:
-  stringWrapper *_w;
+    stringWrapper *_w;
 };
 
-extern "C" void execqfThreadInfo(const char *packet, int len)
+/**
+
+*/
+
+class findThread : public ThreadParserBase
 {
-  uint32_t *pAdr;
-  uint32_t adr;
-  Logger("::: qfThreadinfo:%s\n",packet);
-  if(!cur_target)
+public:
+    findThread(uint32_t  threadId)
+    {
+      _threadId=threadId;
+      _tcbAddress=0;
+    }
+    void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
+    {
+        uint32_t id=target_mem_read32(cur_target,tcbAdr+allSymbols._debugInfo.OFFSET_TASK_NUM);
+        if(id==_threadId)
+        {
+          _tcbAddress=tcbAdr;
+          _symbol=state;
+        }
+    }
+    uint32_t        tcb()     {return _tcbAddress;}
+    FreeRTOSSymbols symbol()  {return _symbol;};
+protected:
+  uint32_t  _threadId;
+  uint32_t  _tcbAddress;
+  FreeRTOSSymbols _symbol;
+};
+
+/**
+
+*/
+class Gdb
+{
+public:
+  //
+  static bool readSymbol(FreeRTOSSymbols symbol,uint32_t &val)
   {
-    gdb_putpacketz("");
-    return;
+    uint32_t *pSym=allSymbols.getSymbol(symbol);
+    if(!pSym)
+    {
+      return false;
+    }
+    val=target_mem_read32(cur_target,*pSym); // TODO : exception
+    return true;
   }
-  if(!allSymbols.readDebugBlock())
+  static bool startGatheringSymbol()
   {
-    gdb_putpacketz("");
-    return;
-  }
-  if(allSymbols._debugInfo.MAGIC!=LN_FREERTOS_MAGIC)
-  {
-    gdb_putpacketz("");
-    return;
+    allSymbols.clear();
+    allSymbols.queryNextSymbol();
+    return true;
   }
 
+  // Ask the current thread
+  static void Qc()
+  {
+    uint32_t pxCurrentTcb;
+    if(!readSymbol(spxCurrentTCB,pxCurrentTcb))
+    {
+      gdb_putpacketz("");
+      return;
+    }
+    uint32_t tid_adr=pxCurrentTcb+68;
+    Logger("Current TID ADR=%x\n",tid_adr);
+    uint32_t threadId=target_mem_read32(cur_target,tid_adr);
+    Logger("Current TID =%x\n",threadId);
+
+    char tst[10+3];
+
+    if(!threadId) threadId=2;
+    sprintf(tst,"QC%x",threadId);
+    gdb_putpacket(tst,strlen(tst));
+    Logger(tst);
+
+  }
+  //
+  static void threadInfo(uint32_t  threadId)
+  {
+    findThread fnd(threadId);
+    fnd.run();
+    uint32_t tcb=fnd.tcb();
+    FreeRTOSSymbols sym=fnd.symbol();
+    if(!tcb) // assuming zero is not a valid address
+    {
+          gdb_putpacketz("E01");
+          return;
+    }
+    //
+    stringWrapper wrapper;
+
+    int maxLen=allSymbols._debugInfo.MAX_TASK_NAME_LEN;
+    uint32_t name=tcb+52;
+    char taskName[maxLen+1];
+    target_mem_read(cur_target,taskName,name,maxLen);
+    taskName[maxLen]=0;
+    wrapper.append(taskName);
+
+    const char *st;
+    switch(sym) // The queue it has been pulled from, gives the task state
+    {
+      case spxCurrentTCB:           st="R";break;
+      case sxSuspendedTaskList:     st="S";break;
+      case spxDelayedTaskList:      st="D";break;
+      case spxReadyTasksLists:      st="r";break;
+      default: st="?";break;
+    }
+    // Get task name now
+    wrapper.append("[");
+    wrapper.append(st);
+    wrapper.append("]");
+
+    wrapper.append("TCB: 0x");
+    wrapper.appendHex32(tcb);
+
+
+    char *in=wrapper.string();;
+    int l=strlen(in);
+    char out[2*l+1];
+    hexify(out,in,l);
+    Logger(out);
+    gdb_putpacket(out, 2*l);
+  }
+  //
+  static bool decodeSymbol(int len, const char *packet)
+  {
+    allSymbols.decodeSymbol(len, packet);
+    return true;
+  }
+
+};
+
+
+#define PRE_CHECK_DEBUG_TARGET(sym)  { if(!allSymbols.readDebugBlock ()) \
+                                      {    gdb_putpacketz("");  \
+                                          return;  } }
+
+#define STUBFUNCTION_END(x)  extern "C" void x(const char *packet, int len) \
+{ \
+  Logger("::: %s:%s\n",x,packet); \
+  gdb_putpacket("l", 1); \
+}
+#define STUBFUNCTION_EMPTY(x)  extern "C" void x(const char *packet, int len) \
+{ \
+  Logger("::: %s:%s\n",x,packet); \
+  gdb_putpacketz(""); \
+}
+/**
+
+*/
+extern "C" void exect_qC(const char *packet, int len)
+{
+  Logger("::: exect_qC:%s\n",packet);
+  PRE_CHECK_DEBUG_TARGET();
+  Gdb::Qc();
+}
+
+/*
+    Grab FreeRTOS symbols
+*/
+extern "C" void execqSymbol(const char *packet, int len)
+{
+  Logger("<execqSymbol>:<%s>\n",packet);
+  if(len==1 && packet[0]==':') // :: : ready to serve https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+  {
+    Gdb::startGatheringSymbol();
+    return;
+  }
+  if(len>1)
+  {
+      Gdb::decodeSymbol(len,packet);
+      return;
+  }
+  gdb_putpacket("OK", 2);
+}
+/**
+
+*/
+extern "C" bool lnProcessCommand(int size, const char *data)
+{
+    Logger("Received packet %s\n",data);
+    return false;
+}
+//
+extern "C" void execqOffsets(const char *packet, int len)
+{
+  // it's xip...
+  gdb_putpacket("Text=0;Data=0;Bss=0", 19); // 7 7 5=>19
+}
+
+
+STUBFUNCTION_END(execqsThreadInfo)
+
+STUBFUNCTION_EMPTY(execqThreadInfo)
+/**
+
+*/
+extern "C" void execqfThreadInfo(const char *packet, int len)
+{
+  Logger("::: qfThreadinfo:%s\n",packet);
+  PRE_CHECK_DEBUG_TARGET();
+
   stringWrapper wrapper;
-  listThread list(&wrapper);
+  listThread list(&wrapper); // list all the threads
   list.run();
   char *out=wrapper.string();
   if(strlen(out))
@@ -131,63 +278,21 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
     gdb_putpacket("m0", 2);
   }
 }
-extern "C" void execqsThreadInfo(const char *packet, int len)
-{
-  Logger("::: qsThreadinfo:%s\n",packet);
-  gdb_putpacket("l", 1);
-}
-
-extern "C" void exect_qThreadExtraInfo(const char *packet, int len)
-{
-  Logger("::: exect_qThreadExtraInfo:%s\n",packet);
-  const char *hey="Hey you!";
-  int l=strlen(hey);
-  char out[2*l+1];
-  hexify(out,hey,l);
-  Logger(out);
-  gdb_putpacket(out, 2*l);
-
-
-}
-
-extern "C" void exect_qC(const char *packet, int len)
-{
-  Logger("::: exect_qC:%s\n",packet);
-  if(allSymbols._debugInfo.MAGIC!=LN_FREERTOS_MAGIC)
-  {
-    gdb_putpacketz("");
-    return;
-  }
-  uint32_t *pxCurrentTcb=allSymbols.getSymbol(spxCurrentTCB);
-  if(!pxCurrentTcb)
-  {
-    gdb_putpacketz("");
-    return;
-  }
-  uint32_t tcb=target_mem_read32(cur_target,*pxCurrentTcb);
-  Logger("Current TCB=%x\n",tcb);
-
-  uint32_t tid_adr=tcb+68;
-  Logger("Current TID ADR=%x\n",tid_adr);
-  uint32_t threadId=target_mem_read32(cur_target,tid_adr);
-  Logger("Current TID =%x\n",threadId);
-
-  stringWrapper wrapper;
-  if(!threadId) threadId=2;
-  wrapper.appendHex32(threadId);
-  char *out=wrapper.string();
-  gdb_putpacket2("QC",2,out,strlen(out));
-  Logger(out);
-  free(out);
-}
 
 /**
 
 */
-extern "C" bool lnProcessCommand(int size, const char *data)
+extern "C" void exect_qThreadExtraInfo(const char *packet, int len)
 {
-    Logger("Received packet %s\n",data);
-    return false;
+  Logger("::: exect_qThreadExtraInfo:%s\n",packet);
+  PRE_CHECK_DEBUG_TARGET();
+  uint32_t tid;
+  if(1!=sscanf(packet,",%x",&tid))
+  {
+     Logger("Invalid thread info\n");
+	   gdb_putpacketz("E01");
+     return;
+  }
+  Gdb::threadInfo(tid);
 }
-
 //

@@ -24,6 +24,7 @@ enum FreeRTOSSymbols
     spxReadyTasksLists=3,
     suxCurrentNumberOfTasks=4,
     sfreeRTOSDebug=5
+
 };
 
 /**
@@ -134,7 +135,7 @@ public:
     // the format is adress: hexified symbol
     uint32_t addr;
 
-    if(sscanf(packet, "%lx:", &addr)!=1)
+    if(sscanf(packet, "%x:", &addr)!=1)
     {
       // ok we dont have an address, do we have a name ?
       if(len<3 || packet[0]!=':')

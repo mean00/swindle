@@ -16,6 +16,7 @@
 class ThreadParserBase
 {
 public:
+
       ThreadParserBase()
       {
 
@@ -26,7 +27,7 @@ public:
       }
 
       //--
-      bool parseList2(uint32_t listStart)
+      bool parseList2( uint32_t listStart)
       {
           uint32_t nbItem=target_mem_read32(cur_target,listStart); // Nb of items
           TCB_LOG("starting list a  %x \n",listStart);
@@ -43,7 +44,7 @@ public:
               uint32_t owner=target_mem_read32(cur_target,cur+12);
               if(owner)
               {
-                execList(owner);
+                execList(spxReadyTasksLists, owner);
               }
               uint32_t old=cur;
               cur=target_mem_read32(cur_target,cur+4); // next
@@ -53,7 +54,7 @@ public:
           return true;
       }
 
-      bool parseList(uint32_t listStart)
+      bool parseList(FreeRTOSSymbols symb, uint32_t listStart)
       {
           uint32_t nbItem=target_mem_read32(cur_target,listStart); // Nb of items
           TCB_LOG("starting list a  %x \n",listStart);
@@ -73,7 +74,7 @@ public:
               uint32_t owner=target_mem_read32(cur_target,cur+12);
               if(owner)
               {
-                execList(owner);
+                execList(symb,owner);
               }
               uint32_t old=cur;
               cur=target_mem_read32(cur_target,cur+4); // next
@@ -94,7 +95,7 @@ public:
         if(isPointer)
             adr=target_mem_read32(cur_target,adr);
         // Read it
-        return parseList(adr);
+        return parseList(symb,adr);
       }
       bool parseReadyThreads()
       {
@@ -130,6 +131,6 @@ public:
         TCB_LOG("------------------- suspended --\n");
         parseSymbol(sxSuspendedTaskList,false);
       }
-      virtual void execList(uint32_t tcbAddress)=0;
+      virtual void execList(FreeRTOSSymbols symb, uint32_t tcbAddress)=0;
 };
 //
