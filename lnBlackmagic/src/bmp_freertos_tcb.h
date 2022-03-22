@@ -3,9 +3,6 @@
 
 
 //--https://sourceware.org/gdb/onlinedocs/gdb/Packets.html#thread_002did-syntax
-// this is # of freertos threads; let's assume it is not ridiculouslu big and fits
-// into one frame
-#define LIST_SIZE 20
 
 #define TCB_LOG(...)  {}
 
@@ -89,12 +86,11 @@ public:
 
       bool parseSymbol(FreeRTOSSymbols symb,bool isPointer)
       {
-        uint32_t *pAdr=allSymbols.getSymbol(symb );
-        if(!pAdr)
+        uint32_t adr;
+        if(!allSymbols.readSymbol(symb,adr))
         {
-          cannotParse();
+          return false;
         }
-        uint32_t adr=*pAdr;
         if(isPointer)
             adr=readMem32(adr,0);
         // Read it
@@ -102,15 +98,14 @@ public:
       }
       bool parseReadyThreads()
       {
-        #warning READSYMBOL
-        uint32_t *pAdr=allSymbols.getSymbol(spxReadyTasksLists);
-        if(!pAdr)
+        uint32_t adr;
+        if(!allSymbols.readSymbol(spxReadyTasksLists,adr))
         {
-          cannotParse();
+          return false;
         }
-        uint32_t adr=*pAdr;
         // Read the number of tasks
         int nbPrio=O(NB_OF_PRIORITIES);
+        int listSize=O(LIST_SIZE);
         if(!nbPrio)
         {
           cannotParse();
@@ -122,7 +117,7 @@ public:
             {
               parseReadyList(adr);
             }
-            adr+=LIST_SIZE;
+            adr+=listSize;
         }
         return true;
       }

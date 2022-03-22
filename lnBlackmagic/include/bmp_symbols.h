@@ -45,6 +45,16 @@ public:
       memset(&_debugInfo,0,sizeof(_debugInfo));
       for(int i=0;i< MAX_FOS_SYMBOLS;i++) _address[i]=-1;
   }
+  bool readSymbol(FreeRTOSSymbols symbol,uint32_t &val)
+  {
+    uint32_t *pSym=getSymbol(symbol);
+    if(!pSym)
+    {
+      return false;
+    }
+    val=readMem32(*pSym,0); // TODO : exception
+    return true;
+  }
   /**
 
   */
@@ -57,20 +67,15 @@ public:
       return false;
     }
     // do we have the debug block ?
-    uint32_t *debugBlock=getSymbol(sfreeRTOSDebug);
-    if(!debugBlock)
-    {
-      gdb_putpacketz("");
-      return false;
-    }
-    if(!*debugBlock)
+    uint32_t debugBlock;
+    if(!readSymbol(sfreeRTOSDebug,debugBlock))
     {
       gdb_putpacketz("");
       return false;
     }
     // read info block
 
-  #define READ_FIELD(field)   _debugInfo.field=readMem32(*debugBlock,offsetof(lnFreeRTOSDebug,field));
+  #define READ_FIELD(field)   _debugInfo.field=readMem32(debugBlock,offsetof(lnFreeRTOSDebug,field));
     READ_FIELD(MAGIC)
     READ_FIELD(NB_OF_PRIORITIES)
     READ_FIELD(MPU_ENABLED)

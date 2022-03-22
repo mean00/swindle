@@ -121,16 +121,7 @@ class Gdb
 {
 public:
   //
-  static bool readSymbol(FreeRTOSSymbols symbol,uint32_t &val)
-  {
-    uint32_t *pSym=allSymbols.getSymbol(symbol);
-    if(!pSym)
-    {
-      return false;
-    }
-    val=readMem32(*pSym,0); // TODO : exception
-    return true;
-  }
+
   static bool startGatheringSymbol()
   {
     allSymbols.clear();
@@ -142,7 +133,7 @@ public:
   static void Qc()
   {
     uint32_t pxCurrentTcb;
-    if(!readSymbol(spxCurrentTCB,pxCurrentTcb))
+    if(!allSymbols.readSymbol(spxCurrentTCB,pxCurrentTcb))
     {
       gdb_putpacketz("");
       return;
