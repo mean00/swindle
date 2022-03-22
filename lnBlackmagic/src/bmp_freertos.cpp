@@ -1,5 +1,20 @@
 /*
 https://ftp.gnu.org/old-gnu/Manuals/gdb/html_chapter/gdb_15.html
+http://web.mit.edu/rhel-doc/3/rhel-gdb-en-3/general-query-packets.html
+
+qTStatus
+qAttached
+OFFSET_LIST_ITEM_NEXT = 4,
+OFFSET_LIST_ITEM_OWNER = 12,
+OFFSET_LIST_NUMBER_OF_ITEM = 0,
+OFFSET_LIST_INDEX = 4,
+NB_OF_PRIORITIES = 16,
+MPU_ENABLED = 0,
+MAX_TASK_NAME_LEN = 16,
+OFFSET_TASK_NAME = 52,
+OFFSET_TASK_NUM = 68}
+
+
  */
  #include "lnArduino.h"
  #include "bmp_string.h"
@@ -16,6 +31,15 @@ extern "C" void gdb_putpacket(const char *packet, int size);
 
 #define fdebug2(...) {}
 #define fdebug Logger
+/**
+
+*/
+#define O(x) allSymbols._debugInfo.x
+uint32_t readMem32(uint32_t base, uint32_t offset)
+{
+  return target_mem_read32(cur_target,base+offset);
+}
+
 #include "bmp_symbols.h"
 AllSymbols allSymbols;
 #include "bmp_freertos_tcb.h"
@@ -52,7 +76,7 @@ public:
     }
     void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
-        uint32_t id=target_mem_read32(cur_target,tcbAdr+allSymbols._debugInfo.OFFSET_TASK_NUM);
+        uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
         if(strlen(_w->string()))
           _w->append(",");
         _w->appendHex64(id);
@@ -75,7 +99,7 @@ public:
     }
     void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
-        uint32_t id=target_mem_read32(cur_target,tcbAdr+allSymbols._debugInfo.OFFSET_TASK_NUM);
+        uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
         if(id==_threadId)
         {
           _tcbAddress=tcbAdr;
@@ -104,7 +128,7 @@ public:
     {
       return false;
     }
-    val=target_mem_read32(cur_target,*pSym); // TODO : exception
+    val=readMem32(*pSym,0); // TODO : exception
     return true;
   }
   static bool startGatheringSymbol()
@@ -123,9 +147,9 @@ public:
       gdb_putpacketz("");
       return;
     }
-    uint32_t tid_adr=pxCurrentTcb+68;
+    uint32_t tid_adr=pxCurrentTcb;
     Logger("Current TID ADR=%x\n",tid_adr);
-    uint32_t threadId=target_mem_read32(cur_target,tid_adr);
+    uint32_t threadId=readMem32(tid_adr,O(OFFSET_TASK_NUM)); //68
     Logger("Current TID =%x\n",threadId);
 
     char tst[10+3];
@@ -151,7 +175,7 @@ public:
     //
     stringWrapper wrapper;
 
-    int maxLen=allSymbols._debugInfo.MAX_TASK_NAME_LEN;
+    int maxLen=O(MAX_TASK_NAME_LEN);
     uint32_t name=tcb+52;
     char taskName[maxLen+1];
     target_mem_read(cur_target,taskName,name,maxLen);
@@ -172,7 +196,7 @@ public:
     wrapper.append(st);
     wrapper.append("]");
 
-    wrapper.append("TCB: 0x");
+    wrapper.append("  TCB: 0x");
     wrapper.appendHex32(tcb);
 
 

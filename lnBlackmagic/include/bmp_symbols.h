@@ -70,12 +70,20 @@ public:
     }
     // read info block
 
-  #define READ_FIELD(field)   _debugInfo.field=target_mem_read32(cur_target,*debugBlock+offsetof(lnFreeRTOSDebug,field));
+  #define READ_FIELD(field)   _debugInfo.field=readMem32(*debugBlock,offsetof(lnFreeRTOSDebug,field));
     READ_FIELD(MAGIC)
     READ_FIELD(NB_OF_PRIORITIES)
     READ_FIELD(MPU_ENABLED)
     READ_FIELD(MAX_TASK_NAME_LEN)
     READ_FIELD(OFFSET_TASK_NUM)
+
+    READ_FIELD(OFFSET_LIST_ITEM_NEXT);
+    READ_FIELD(OFFSET_LIST_ITEM_OWNER);
+
+    READ_FIELD(OFFSET_LIST_NUMBER_OF_ITEM);
+    READ_FIELD(OFFSET_LIST_INDEX);
+
+
     if(_debugInfo.MAGIC==LN_FREERTOS_MAGIC)
       return true;
     return false;
