@@ -52,6 +52,16 @@ public:
     {
       return false;
     }
+    val=*pSym;
+    return true;
+  }
+  bool readSymbolValue(FreeRTOSSymbols symbol,uint32_t &val)
+  {
+    uint32_t *pSym=getSymbol(symbol);
+    if(!pSym)
+    {
+      return false;
+    }
     val=readMem32(*pSym,0); // TODO : exception
     return true;
   }
@@ -68,11 +78,13 @@ public:
     }
     // do we have the debug block ?
     uint32_t debugBlock;
-    if(!readSymbol(sfreeRTOSDebug,debugBlock))
+    uint32_t *pSym=getSymbol(sfreeRTOSDebug);
+    if(!pSym)
     {
       gdb_putpacketz("");
       return false;
     }
+    debugBlock=*pSym;
     // read info block
 
   #define READ_FIELD(field)   _debugInfo.field=readMem32(debugBlock,offsetof(lnFreeRTOSDebug,field));

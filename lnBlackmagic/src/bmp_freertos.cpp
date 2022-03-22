@@ -4,6 +4,9 @@ http://web.mit.edu/rhel-doc/3/rhel-gdb-en-3/general-query-packets.html
 
 qTStatus
 qAttached
+qP0000001f0000000000007fff
+qL120000000000
+
 OFFSET_LIST_ITEM_NEXT = 4,
 OFFSET_LIST_ITEM_OWNER = 12,
 OFFSET_LIST_NUMBER_OF_ITEM = 0,
@@ -133,7 +136,7 @@ public:
   static void Qc()
   {
     uint32_t pxCurrentTcb;
-    if(!allSymbols.readSymbol(spxCurrentTCB,pxCurrentTcb))
+    if(!allSymbols.readSymbolValue(spxCurrentTCB,pxCurrentTcb))
     {
       gdb_putpacketz("");
       return;

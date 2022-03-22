@@ -28,6 +28,7 @@ public:
       //--
       bool parseReadyList( uint32_t listStart)
       {
+        return true;
           uint32_t nbItem=readMem32(listStart,O(OFFSET_LIST_NUMBER_OF_ITEM)); // 0 Nb of items
           TCB_LOG("starting list a  %x \n",listStart);
           TCB_LOG("Found %d items\n",nbItem);
@@ -87,13 +88,18 @@ public:
       bool parseSymbol(FreeRTOSSymbols symb,bool isPointer)
       {
         uint32_t adr;
-        if(!allSymbols.readSymbol(symb,adr))
+        bool r;
+        if(!isPointer)
+        {
+            r=allSymbols.readSymbol(symb,adr);
+        }else
+        {
+            r=allSymbols.readSymbolValue(symb,adr);
+        }
+        if(!r)
         {
           return false;
         }
-        if(isPointer)
-            adr=readMem32(adr,0);
-        // Read it
         return parseList(symb,adr);
       }
       bool parseReadyThreads()
