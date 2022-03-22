@@ -1,5 +1,5 @@
 diff --git a/src/gdb_main.c b/src/gdb_main.c
-index e11fce0..8a6d7d3 100644
+index 7901f21..76f14fb 100644
 --- a/src/gdb_main.c
 +++ b/src/gdb_main.c
 @@ -58,7 +58,7 @@ typedef struct
@@ -11,7 +11,7 @@ index e11fce0..8a6d7d3 100644
  static target *last_target;
  
  static void handle_q_packet(char *packet, int len);
-@@ -451,6 +458,15 @@ static void exec_qCRC(const char *packet, int len)
+@@ -451,6 +451,13 @@ static void exec_q_crc(const char *packet, int len)
  			gdb_putpacket_f("C%lx", crc);
  	}
  }
@@ -22,22 +22,22 @@ index e11fce0..8a6d7d3 100644
 +extern void execqfThreadInfo(const char *packet, int len);
 +extern void execqsThreadInfo(const char *packet, int len);
 +
-+
-+
  static const cmd_executer q_commands[]=
  {
- 	{"qRcmd,",                         exec_qRcmd},
-@@ -458,6 +474,13 @@ static const cmd_executer q_commands[]=
- 	{"qXfer:memory-map:read::",        exec_qMemoryMap},
- 	{"qXfer:features:read:target.xml:",exec_qFeatureRead},
- 	{"qCRC:",                          exec_qCRC},
-+  //--
-+    {"qOffsets"                       ,execqOffsets},
-+    {"qSymbol:"                       ,execqSymbol},
-+    {"qThreadInfo"                    ,execqThreadInfo},
-+    {"qfThreadInfo"                   ,execqfThreadInfo},
-+    {"qsThreadInfo"                   ,execqsThreadInfo},
+ 	{"qRcmd,",                         exec_q_rcmd},
+@@ -458,7 +465,14 @@ static const cmd_executer q_commands[]=
+ 	{"qXfer:memory-map:read::",        exec_q_memory_map},
+ 	{"qXfer:features:read:target.xml:",exec_q_feature_read},
+ 	{"qCRC:",                          exec_q_crc},
+-
++//--
++	{"qOffsets"                       ,execqOffsets},
++	{"qSymbol:"                       ,execqSymbol},
++	{"qThreadInfo"                    ,execqThreadInfo},
++	{"qfThreadInfo"                   ,execqfThreadInfo},
++	{"qsThreadInfo"                   ,execqsThreadInfo},
 +
- 
++//--
  	{NULL,NULL},
  };
+ 
