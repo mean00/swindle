@@ -288,13 +288,13 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
   {
     gdb_putpacket2("m",1,out,strlen(out));
     Logger(out);
-    free(out);
   }else
   {
     // Grab all the threads in one big array
     Logger("m 0");
     gdb_putpacket("m0", 2);
   }
+  free(out);
 }
 
 /**

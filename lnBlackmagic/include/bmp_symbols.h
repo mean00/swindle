@@ -89,6 +89,7 @@ public:
 
   #define READ_FIELD(field)   _debugInfo.field=readMem32(debugBlock,offsetof(lnFreeRTOSDebug,field));
     READ_FIELD(MAGIC)
+    READ_FIELD(LIST_SIZE);
     READ_FIELD(NB_OF_PRIORITIES)
     READ_FIELD(MPU_ENABLED)
     READ_FIELD(MAX_TASK_NAME_LEN)

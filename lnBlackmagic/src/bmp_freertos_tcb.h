@@ -28,7 +28,6 @@ public:
       //--
       bool parseReadyList( uint32_t listStart)
       {
-        return true;
           uint32_t nbItem=readMem32(listStart,O(OFFSET_LIST_NUMBER_OF_ITEM)); // 0 Nb of items
           TCB_LOG("starting list a  %x \n",listStart);
           TCB_LOG("Found %d items\n",nbItem);
@@ -85,7 +84,7 @@ public:
           return true;
       }
 
-      bool parseSymbol(FreeRTOSSymbols symb,bool isPointer)
+      bool parseSymbolList(FreeRTOSSymbols symb,bool isPointer)
       {
         uint32_t adr;
         bool r;
@@ -132,9 +131,9 @@ public:
         TCB_LOG("------------------ ready --\n");
         parseReadyThreads();
         TCB_LOG("------------------- delayed --\n");
-        parseSymbol(spxDelayedTaskList,true);
+        parseSymbolList(spxDelayedTaskList,true);
         TCB_LOG("------------------- suspended --\n");
-        parseSymbol(sxSuspendedTaskList,false);
+        parseSymbolList(sxSuspendedTaskList,false);
       }
       virtual void execList(FreeRTOSSymbols symb, uint32_t tcbAddress)=0;
 };
