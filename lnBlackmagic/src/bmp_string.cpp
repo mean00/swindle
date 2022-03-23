@@ -15,7 +15,7 @@ int maxWrappedString=0;
 stringWrapper::stringWrapper()
 {
     _limit=256;
-    _st=new char[_limit];
+    _st=(char *)malloc(_limit);
     _st[0]=0;
 }
 /**

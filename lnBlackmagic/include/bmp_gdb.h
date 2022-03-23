@@ -89,6 +89,8 @@ public:
     allSymbols.decodeSymbol(len, packet);
     return true;
   }
+  /**
+  */
   static bool switchThread(uint32_t  threadId)
   {
     uint32_t currentTcb;
@@ -103,41 +105,56 @@ public:
         gdb_putpacketz("OK");
         return true;
     }
-    // ok, first let's save on the current thread...
-    cortexRegs regs;
-    regs.loadRegisters();
-    uint32_t sp=regs.read(13);
-    sp-=4*16;
-    regs.storeRegistersToMemory(sp);
-    writeMem32(currentTcb,0,sp); // store sp on the TCB for current stack
-
-    // ----------find other thread... --------------
+    // look up the new thread
     uint32_t tcb=0;
     {
       findThread fnd(threadId);
       fnd.run();
-      uint32_t tcb=fnd.tcb();
+      tcb=fnd.tcb();
     }
     if(!tcb) // assuming zero is not a valid address
     {
           Logger("Cannot find thread...\n");
           return false;
     }
-    // grab sp...
-    sp=readMem32(tcb,0);
-    regs.loadRegistersFromMemory(sp);
-    sp+=4*16;
-    regs.write(13,sp);
-    regs.setRegisters();
 
+    // ok, first let's save on the current thread...
+    cortexRegs *regs=new cortexRegs;
+    regs->loadRegisters();
+    uint32_t sp=regs->read(13);
+    sp-=4*16;
+    regs->storeRegistersToMemory(sp);
+    writeMem32(currentTcb,0,sp); // store sp on the TCB for current stack
+
+    // grab sp from new thread...
+    sp=readMem32(tcb,0);
+    regs->loadRegistersFromMemory(sp);
+    sp+=4*16;
+    regs->write(13,sp);
+    regs->setRegisters();
+    delete regs;
+    regs=NULL;
     // update current TCB
     writeMem32(currentTcb,0,tcb);
-
     gdb_putpacketz("OK");
-
-
-
     return true;
   }
 
+
+static bool isThreadAlive(uint32_t  threadId)
+{
+  uint32_t tcb=0;
+  {
+    findThread fnd(threadId);
+    fnd.run();
+    tcb=fnd.tcb();
+  }
+  if(!tcb) // assuming zero is not a valid address
+  {
+        Logger("Cannot find thread...\n");
+        return false;
+  }
+  return true;
+}
 };
+// EOF

@@ -40,10 +40,20 @@ extern "C" void gdb_putpacket(const char *packet, int size);
 #define O(x) allSymbols._debugInfo.x
 uint32_t readMem32(uint32_t base, uint32_t offset)
 {
+  if(!target_validate_address_flash_or_ram(cur_target,base))
+  {
+    Logger("Invalid ram read %x+%x\n",base,offset);
+    return 0;
+  }
   return target_mem_read32(cur_target,base+offset);
 }
 void writeMem32(uint32_t base, uint32_t offset,uint32_t value)
 {
+  if(!target_validate_address_flash_or_ram(cur_target,base))
+  {
+    Logger("Invalid ram read %x+%x\n",base,offset);
+    return ;
+  }
   target_mem_write32(cur_target,base+offset,value);
 }
 
@@ -91,7 +101,9 @@ public:
     }
     void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
+        //Logger("     TCB %x \n",tcbAdr);
         uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
+        //Logger("        id %d \n",id);
         if(id==_threadId)
         {
           _tcbAddress=tcbAdr;
@@ -234,6 +246,35 @@ extern "C" void exec_H_cmd(const char *packet, int len)
     if(!Gdb::switchThread(tid))
     {
       gdb_putpacketz("E01");
+      return;
+    }
+}
+
+extern "C" void exec_T_cmd(const char *packet, int len)
+{
+    Logger("::: exec_T_cmd:<%s>\n",packet);
+    PRE_CHECK_DEBUG_TARGET();
+    int tid;
+    if(1!=sscanf(packet,"%d",&tid))
+    {
+       Logger("Invalid thread id\n");
+       gdb_putpacketz("E01");
+       return;
+    }
+    if(0==tid)
+    {
+      Logger("Invalid thread id\n");
+      gdb_putpacketz("E01");
+      return;
+    }
+    Logger("Thread : %d\n",tid);
+    if(!Gdb::isThreadAlive(tid))
+    {
+      gdb_putpacketz("E01");
+      return;
+    }else
+    {
+      gdb_putpacketz("OK");
       return;
     }
 }

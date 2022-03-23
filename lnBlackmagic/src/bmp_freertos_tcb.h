@@ -65,22 +65,25 @@ public:
           // go one step away, the first one is dummy
 #warning FIXME
           uint32_t cur=readMem32(index,O(OFFSET_LIST_ITEM_NEXT));// 4First real entry
-          uint32_t start=cur;
-          TCB_LOG("scan2 start %x, %d items\n",start,nbItem);
-          do
+          if(cur)
           {
-              TCB_LOG("Now at 0x%x\n",cur);
-              // Read Owner is actually the TCB
-              uint32_t owner=readMem32(cur,O(OFFSET_LIST_ITEM_OWNER)); // 12
-              if(owner)
-              {
-                execList(symb,owner);
-              }
-              uint32_t old=cur;
-              cur=readMem32(cur,O(OFFSET_LIST_ITEM_NEXT)); // 4 next
-              TCB_LOG("Next at 0x%x\n",cur);
-              if(cur==old) cur=head;
-          }while(cur!=head);
+            uint32_t start=cur;
+            TCB_LOG("scan2 start %x, %d items\n",start,nbItem);
+            do
+            {
+                TCB_LOG("Now at 0x%x\n",cur);
+                // Read Owner is actually the TCB
+                uint32_t owner=readMem32(cur,O(OFFSET_LIST_ITEM_OWNER)); // 12
+                if(owner)
+                {
+                  execList(symb,owner);
+                }
+                uint32_t old=cur;
+                cur=readMem32(cur,O(OFFSET_LIST_ITEM_NEXT)); // 4 next
+                TCB_LOG("Next at 0x%x\n",cur);
+                if(cur==old) cur=head;                          
+              }while(cur!=head && cur);
+          }
           return true;
       }
 

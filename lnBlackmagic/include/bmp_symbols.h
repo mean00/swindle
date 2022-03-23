@@ -14,6 +14,7 @@ static const char *neededSymbols[]=
     "pxReadyTasksLists",
     "uxCurrentNumberOfTasks",
     "freeRTOSDebug",
+    "xSchedulerRunning",
     NULL
 };
 enum FreeRTOSSymbols
@@ -23,8 +24,8 @@ enum FreeRTOSSymbols
     spxDelayedTaskList=2,
     spxReadyTasksLists=3,
     suxCurrentNumberOfTasks=4,
-    sfreeRTOSDebug=5
-
+    sfreeRTOSDebug=5,
+    sxSchedulerRunning=6
 };
 
 /**
