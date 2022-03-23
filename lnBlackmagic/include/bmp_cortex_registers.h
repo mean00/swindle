@@ -3,7 +3,7 @@
 class cortexRegs
 {
 public:
-    void storeRegistersToMemory(uint32_t adr)
+    void storeRegistersButSpToMemory(uint32_t adr)
     {
       for(int i=0;i<8;i++) // r4..r11
         writeMem32(adr,i*4,_regs[4+i]);
@@ -16,7 +16,7 @@ public:
       writeMem32(adr,2*4,_regs[15]);
       writeMem32(adr,3*4,_regs[16]); // psr
     }
-    void loadRegistersFromMemory(uint32_t adr)
+    void loadRegistersButSpFromMemory(uint32_t adr)
     {
       for(int i=0;i<8;i++) // r4..r11
         _regs[4+i]=readMem32(adr,i*4);
@@ -37,8 +37,14 @@ public:
     {
         target_regs_write(cur_target,_regs);
     }
-    uint32_t  read(int reg) {return _regs[reg];}
-    void      write(int reg,uint32_t val) { _regs[reg]=val;}
+    uint32_t  read(int reg)
+    {
+        return _regs[reg];
+    }
+    void      write(int reg,uint32_t val)
+    {
+        _regs[reg]=val;
+     }
 
 protected:
   uint32_t _regs[17]; //{16} is psr

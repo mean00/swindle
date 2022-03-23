@@ -118,24 +118,34 @@ public:
           return false;
     }
 
-    // ok, first let's save on the current thread...
+    // Save current thread
+    //-----------------------
+
     cortexRegs *regs=new cortexRegs;
     regs->loadRegisters();
     uint32_t sp=regs->read(13);
     sp-=4*16;
-    regs->storeRegistersToMemory(sp);
+    regs->storeRegistersButSpToMemory(sp);
+//
+    uint32_t pcurrentTcb;
+    if(!allSymbols.readSymbol(spxCurrentTCB,pcurrentTcb))
+    {
+      return false;
+    }
     writeMem32(currentTcb,0,sp); // store sp on the TCB for current stack
 
-    // grab sp from new thread...
-    sp=readMem32(tcb,0);
-    regs->loadRegistersFromMemory(sp);
+    // restore the other thread
+    //----------------------------
+    sp=readMem32(tcb,0); // top of stack
+    regs->loadRegistersButSpFromMemory(sp);
     sp+=4*16;
-    regs->write(13,sp);
-    regs->setRegisters();
+    regs->write(13,sp);   // update sp
+    regs->setRegisters(); // set actual registers from regs
+
     delete regs;
     regs=NULL;
     // update current TCB
-    writeMem32(currentTcb,0,tcb);
+    writeMem32(pcurrentTcb,0,tcb);
     gdb_putpacketz("OK");
     return true;
   }
