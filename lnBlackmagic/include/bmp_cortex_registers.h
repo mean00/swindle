@@ -37,6 +37,8 @@ public:
     {
         target_regs_write(cur_target,_regs);
     }
+    uint32_t  read(int reg) {return _regs[reg];}
+    void      write(int reg,uint32_t val) { _regs[reg]=val;}
 
 protected:
   uint32_t _regs[17]; //{16} is psr
