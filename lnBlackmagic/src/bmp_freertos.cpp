@@ -241,8 +241,7 @@ extern "C" void exec_H_cmd(const char *packet, int len)
       Logger("Invalid thread id\n");
       gdb_putpacketz("E01");
       return;
-    }
-    Logger("Thread : %d\n",tid);
+    }    
     if(!Gdb::switchThread(tid))
     {
       gdb_putpacketz("E01");

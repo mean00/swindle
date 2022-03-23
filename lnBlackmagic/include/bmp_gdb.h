@@ -86,7 +86,7 @@ public:
     int l=strlen(in);
     char out[2*l+1];
     hexify(out,in,l);
-    Logger(out);
+    GDB_LOGGER(out);
     gdb_putpacket(out, 2*l);
   }
   //
@@ -107,7 +107,7 @@ public:
     uint32_t currentThreadId=readMem32(currentTcb,O(OFFSET_TASK_NUM)); //68
     if(currentThreadId==threadId)
     {
-        Logger("Already on the right thread..\n");
+        GDB_LOGGER("Already on the right thread..\n");
         gdb_putpacketz("OK");
         return true;
     }
