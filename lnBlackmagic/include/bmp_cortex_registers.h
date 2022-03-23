@@ -1,5 +1,15 @@
 #pragma once
 
+/*
+  Careful : this is a thumb2 representation of registers
+  0..12 = R0..R12
+  13 = (p)sp
+  14 = LR
+  15 = PC
+  16 = PSR
+  It is NOT a 1:1 mapping with blackmagic registers
+*/
+
 class cortexRegs
 {
 public:
@@ -32,9 +42,11 @@ public:
     void loadRegisters()
     {
         target_regs_read(cur_target,_regs);
+        _regs[13]=_regs[18];
     }
     void setRegisters()
     {
+        _regs[18]=_regs[13];
         target_regs_write(cur_target,_regs);
     }
     uint32_t  read(int reg)
@@ -47,6 +59,6 @@ public:
      }
 
 protected:
-  uint32_t _regs[17]; //{16} is psr
+    uint32_t _regs[20]; // Arm mode no dp
 };
 //

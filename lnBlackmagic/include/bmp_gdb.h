@@ -2,6 +2,12 @@
 /**
 
 */
+#if 1
+  #define GDB_LOGGER(...) {}
+#else
+  #define GDB_LOGGER Logger
+#endif
+
 class Gdb
 {
 public:
@@ -24,16 +30,16 @@ public:
       return;
     }
     uint32_t tid_adr=pxCurrentTcb;
-    Logger("Current TID ADR=%x\n",tid_adr);
+    GDB_LOGGER("Current TID ADR=%x\n",tid_adr);
     uint32_t threadId=readMem32(tid_adr,O(OFFSET_TASK_NUM)); //68
-    Logger("Current TID =%x\n",threadId);
+    GDB_LOGGER("Current TID =%x\n",threadId);
 
     char tst[10+3];
 
     if(!threadId) threadId=2;
     sprintf(tst,"QC%x",threadId);
     gdb_putpacket(tst,strlen(tst));
-    Logger(tst);
+    GDB_LOGGER(tst);
 
   }
   //
@@ -114,7 +120,7 @@ public:
     }
     if(!tcb) // assuming zero is not a valid address
     {
-          Logger("Cannot find thread...\n");
+          GDB_LOGGER("Cannot find thread...\n");
           return false;
     }
 
@@ -124,19 +130,17 @@ public:
     cortexRegs *regs=new cortexRegs;
     regs->loadRegisters();
     uint32_t sp=regs->read(13);
+
+    GDB_LOGGER("Current Thread ID=%d, current TCB=%x sp=%x\n",currentThreadId,currentTcb,sp);
+
     sp-=4*16;
     regs->storeRegistersButSpToMemory(sp);
-//
-    uint32_t pcurrentTcb;
-    if(!allSymbols.readSymbol(spxCurrentTCB,pcurrentTcb))
-    {
-      return false;
-    }
     writeMem32(currentTcb,0,sp); // store sp on the TCB for current stack
-
+    //
     // restore the other thread
     //----------------------------
     sp=readMem32(tcb,0); // top of stack
+    GDB_LOGGER("New Thread ID=%d, thread TCB=%x sp=%x\n",threadId,tcb,sp);
     regs->loadRegistersButSpFromMemory(sp);
     sp+=4*16;
     regs->write(13,sp);   // update sp
@@ -144,7 +148,13 @@ public:
 
     delete regs;
     regs=NULL;
-    // update current TCB
+    // update pxcurrentTCB
+    uint32_t pcurrentTcb;
+    if(!allSymbols.readSymbol(spxCurrentTCB,pcurrentTcb))
+    {
+      return false;
+    }
+    GDB_LOGGER("updating pxCurrent TCB at %x with %x\n",pcurrentTcb,tcb);
     writeMem32(pcurrentTcb,0,tcb);
     gdb_putpacketz("OK");
     return true;
