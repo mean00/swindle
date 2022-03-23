@@ -42,6 +42,10 @@ uint32_t readMem32(uint32_t base, uint32_t offset)
 {
   return target_mem_read32(cur_target,base+offset);
 }
+void writeMem32(uint32_t base, uint32_t offset,uint32_t value)
+{
+  target_mem_write32(cur_target,base+offset,value);
+}
 
 #include "bmp_symbols.h"
 AllSymbols allSymbols;
@@ -54,21 +58,6 @@ void initFreeRTOS()
   allSymbols.clear();
 }
 
-// The TCB structure has the following layout
-// 0 *pxTopOfStack <= current stack
-//      (MPU) we ignore that for now
-// 4 List xStateListItem
-// 8 List xEventListItem
-// uxPriority
-// pxStack <=original stack
-// name[]
-// ...
-// uxTCBNumber <= uniq task number
-
-
-//  List of ready tsk prio 0
-//....
-//  List of ready tsk prio 15
 
 class listThread : public ThreadParserBase
 {
@@ -115,6 +104,49 @@ protected:
   uint32_t  _threadId;
   uint32_t  _tcbAddress;
   FreeRTOSSymbols _symbol;
+};
+
+
+class cortexRegs
+{
+public:
+    void storeRegistersToMemory(uint32_t adr)
+    {
+      for(int i=0;i<8;i++) // r4..r11
+        writeMem32(adr,i*4,_regs[4+i]);
+      adr+=8*4;
+      for(int i=0;i<4;i++) // r0..r3
+        writeMem32(adr,i*4,_regs[i]);
+      adr+=4*4;
+      writeMem32(adr,0*4,_regs[12]);
+      writeMem32(adr,1*4,_regs[14]);
+      writeMem32(adr,2*4,_regs[15]);
+      writeMem32(adr,3*4,_regs[16]); // psr
+    }
+    void loadRegistersFromMemory(uint32_t adr)
+    {
+      for(int i=0;i<8;i++) // r4..r11
+        _regs[4+i]=readMem32(adr,i*4);
+      adr+=8*4;
+      for(int i=0;i<4;i++) // r0..r3
+        _regs[i]=readMem32(adr,i*4);
+      adr+=4*4;
+      _regs[12]=readMem32(adr,0*4);
+      _regs[14]=readMem32(adr,1*4);
+      _regs[15]=readMem32(adr,2*4);
+      _regs[16]=readMem32(adr,3*4); // psr
+    }
+    void loadRegisters()
+    {
+        target_regs_read(cur_target,_regs);
+    }
+    void setRegisters()
+    {
+        target_regs_write(cur_target,_regs);
+    }
+
+protected:
+  uint32_t _regs[17]; //{16} is psr
 };
 
 /**
@@ -206,6 +238,28 @@ public:
   {
     allSymbols.decodeSymbol(len, packet);
     return true;
+  }
+  static bool switchThread(uint32_t  threadId)
+  {
+    uint32_t currentTcb;
+    if(!allSymbols.readSymbolValue(spxCurrentTCB,currentTcb))
+    {
+      return false;
+    }
+    uint32_t currentThreadId=readMem32(currentTcb,O(OFFSET_TASK_NUM)); //68
+    if(currentThreadId==threadId)
+    {
+        Logger("Already on the right thread..\n");
+        gdb_putpacketz("OK");
+        return true;
+    }
+    // ok, first let's save on the current thread...
+
+    // restore other thread
+
+    gdb_putpacketz("OK");
+    return true;
+
   }
 
 };
@@ -313,4 +367,30 @@ extern "C" void exect_qThreadExtraInfo(const char *packet, int len)
   }
   Gdb::threadInfo(tid);
 }
+
+extern "C" void exec_H_cmd(const char *packet, int len)
+{
+    Logger("::: exec_H_cmd:<%s>\n",packet);
+    PRE_CHECK_DEBUG_TARGET();
+    int tid;
+    if(1!=sscanf(packet,"%d",&tid))
+    {
+       Logger("Invalid thread id\n");
+       gdb_putpacketz("E01");
+       return;
+    }
+    if(0==tid)
+    {
+      Logger("Invalid thread id\n");
+      gdb_putpacketz("E01");
+      return;
+    }
+    Logger("Thread : %d\n",tid);
+    if(!Gdb::switchThread(tid))
+    {
+      gdb_putpacketz("E01");
+      return;
+    }
+}
+
 //
