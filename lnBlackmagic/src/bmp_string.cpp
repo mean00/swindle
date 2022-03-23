@@ -98,8 +98,16 @@ void stringWrapper::appendHex64(const uint64_t value)
   {  // increase
     doubleLimit();
   }
+  // avoid using printf(%64bits) embedded printf is not configured to use that
   char hex64[17];
-  sprintf(hex64, "%016" PRIx64, value);
+  if(value>=(1ULL<<32))
+  {
+      sprintf(hex64, "%08" PRIx32, value>>32);
+      sprintf(hex64+strlen(hex64), "%08" PRIx32, value&0xFFFFFFFFULL);
+  }else
+  {
+    sprintf(hex64, "00000000%08" PRIx32, value);
+  }
   strcat(_st,hex64);
 }
 
