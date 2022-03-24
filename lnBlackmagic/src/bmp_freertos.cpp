@@ -78,10 +78,14 @@ public:
     }
     void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
+        Logger("listThread : exec list %s\n",tcbAdr);
         uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
         if(strlen(_w->string()))
           _w->append(",");
-        _w->appendHex64(id);
+        Logger("\tid :%d\n",id);
+
+        _w->appendHex32(0); // output is hex64
+        _w->appendHex32(id);
     }
 protected:
     stringWrapper *_w;
@@ -197,12 +201,13 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
   char *out=wrapper.string();
   if(strlen(out))
   {
+    Logger("thread found:<%s>\n",out);
     gdb_putpacket2("m",1,out,strlen(out));
     Logger(out);
   }else
   {
     // Grab all the threads in one big array
-    Logger("m 0");
+    Logger("m 0\n, no thread found\n");
     gdb_putpacket("m0", 2);
   }
   free(out);
@@ -241,7 +246,7 @@ extern "C" void exec_H_cmd(const char *packet, int len)
       Logger("Invalid thread id\n");
       gdb_putpacketz("E01");
       return;
-    }    
+    }
     if(!Gdb::switchThread(tid))
     {
       gdb_putpacketz("E01");
