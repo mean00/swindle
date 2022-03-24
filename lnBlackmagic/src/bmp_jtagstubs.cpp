@@ -33,6 +33,7 @@ Original license header
 #include "timing.h"
 #include "adiv5.h"
 #include "jtagtap.h"
+#include "exception.h"
 
 
 extern jtag_proc_t jtag_proc={NULL,NULL,NULL,NULL,NULL};
@@ -40,4 +41,27 @@ extern jtag_proc_t jtag_proc={NULL,NULL,NULL,NULL,NULL};
 {
   return 0;
 }
+int jtag_scan(const uint8_t *irlens)
+{
+  return -1;
+}
+void adiv5_jtagdp_abort(ADIv5_DP_t *dp, uint32_t abort)
+{
+
+}
+uint32_t fw_adiv5_jtagdp_read(ADIv5_DP_t *dp, uint16_t addr)
+{
+  return 0;
+}
+//uint32_t fw_adiv5_jtagdp_read(ADIv5_DP_t *dp, uint16_t addr)
+//{
+//  return 0;
+//}
+uint32_t fw_adiv5_jtagdp_low_access(ADIv5_DP_t *dp, uint8_t RnW,
+                     uint16_t addr, uint32_t value)
+ {
+    raise_exception(EXCEPTION_ERROR, "JTAG-DP disabled");
+   return 0; //
+ }
+
 }
