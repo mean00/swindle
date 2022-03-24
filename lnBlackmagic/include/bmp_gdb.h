@@ -86,6 +86,7 @@ public:
     int l=strlen(in);
     char out[2*l+1];
     hexify(out,in,l);
+    free(in);
     GDB_LOGGER(out);
     gdb_putpacket(out, 2*l);
   }

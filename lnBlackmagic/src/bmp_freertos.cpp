@@ -33,7 +33,7 @@ extern target *cur_target;
 extern "C" void gdb_putpacket(const char *packet, int size);
 
 #define fdebug2(...) {}
-#define fdebug Logger
+#define fdebug(...) {}
 /**
 
 */
@@ -76,16 +76,17 @@ public:
     {
       _w=w;
     }
-    void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
+    bool execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
-        Logger("listThread : exec list %s\n",tcbAdr);
+        fdebug("listThread : exec list @0x%x\n",tcbAdr);
         uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
         if(strlen(_w->string()))
           _w->append(",");
-        Logger("\tid :%d\n",id);
+        fdebug("    id :%d\n",id);
 
         _w->appendHex32(0); // output is hex64
         _w->appendHex32(id);
+        return true;
     }
 protected:
     stringWrapper *_w;
@@ -103,7 +104,7 @@ public:
       _threadId=threadId;
       _tcbAddress=0;
     }
-    void execList(FreeRTOSSymbols state,uint32_t tcbAdr)
+    bool execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
         //Logger("     TCB %x \n",tcbAdr);
         uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
@@ -112,7 +113,9 @@ public:
         {
           _tcbAddress=tcbAdr;
           _symbol=state;
+          return false;
         }
+        return true;
     }
     uint32_t        tcb()     {return _tcbAddress;}
     FreeRTOSSymbols symbol()  {return _symbol;};
@@ -132,12 +135,12 @@ protected:
 
 #define STUBFUNCTION_END(x)  extern "C" void x(const char *packet, int len) \
 { \
-  Logger("::: %s:%s\n",x,packet); \
+  Logger("::: %s:%s\n",#x,packet); \
   gdb_putpacket("l", 1); \
 }
 #define STUBFUNCTION_EMPTY(x)  extern "C" void x(const char *packet, int len) \
 { \
-  Logger("::: %s:%s\n",x,packet); \
+  Logger("::: %s:%s\n",#x,packet); \
   gdb_putpacketz(""); \
 }
 /**
@@ -155,7 +158,7 @@ extern "C" void exect_qC(const char *packet, int len)
 */
 extern "C" void execqSymbol(const char *packet, int len)
 {
-  Logger("<execqSymbol>:<%s>\n",packet);
+  Logger(":::<execqSymbol>:<%s>\n",packet);
   if(len==1 && packet[0]==':') // :: : ready to serve https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
   {
     Gdb::startGatheringSymbol();
@@ -179,6 +182,7 @@ extern "C" bool lnProcessCommand(int size, const char *data)
 //
 extern "C" void execqOffsets(const char *packet, int len)
 {
+  Logger("::: execqOffsets:%s\n",packet);
   // it's xip...
   gdb_putpacket("Text=0;Data=0;Bss=0", 19); // 7 7 5=>19
 }
@@ -201,12 +205,12 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
   char *out=wrapper.string();
   if(strlen(out))
   {
-    Logger("thread found:<%s>\n",out);
+   // Grab all the threads in one big array
+    //fdebug2("thread found:<%s>\n",out);
     gdb_putpacket2("m",1,out,strlen(out));
-    Logger(out);
   }else
   {
-    // Grab all the threads in one big array
+
     Logger("m 0\n, no thread found\n");
     gdb_putpacket("m0", 2);
   }
@@ -271,7 +275,7 @@ extern "C" void exec_T_cmd(const char *packet, int len)
       gdb_putpacketz("E01");
       return;
     }
-    Logger("Thread : %d\n",tid);
+    fdebug2("Thread : %d\n",tid);
     if(!Gdb::isThreadAlive(tid))
     {
       gdb_putpacketz("E01");

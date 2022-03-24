@@ -43,7 +43,7 @@ public:
               uint32_t owner=readMem32(cur,O(OFFSET_LIST_ITEM_OWNER)); //12
               if(owner)
               {
-                execList(spxReadyTasksLists, owner);
+                if(!execList(spxReadyTasksLists, owner)) return true;
               }
               uint32_t old=cur;
               cur=readMem32(cur,O(OFFSET_LIST_ITEM_NEXT)); // 4 next
@@ -76,12 +76,12 @@ public:
                 uint32_t owner=readMem32(cur,O(OFFSET_LIST_ITEM_OWNER)); // 12
                 if(owner)
                 {
-                  execList(symb,owner);
+                  if(!execList(symb,owner)) return false;
                 }
                 uint32_t old=cur;
                 cur=readMem32(cur,O(OFFSET_LIST_ITEM_NEXT)); // 4 next
                 TCB_LOG("Next at 0x%x\n",cur);
-                if(cur==old) cur=head;                          
+                if(cur==old) cur=head;
               }while(cur!=head && cur);
           }
           return true;
@@ -100,7 +100,7 @@ public:
         }
         if(!r)
         {
-          return false;
+          return true;
         }
         return parseList(symb,adr);
       }
@@ -109,7 +109,7 @@ public:
         uint32_t adr;
         if(!allSymbols.readSymbol(spxReadyTasksLists,adr))
         {
-          return false;
+          return true;
         }
         // Read the number of tasks
         int nbPrio=O(NB_OF_PRIORITIES);
@@ -123,7 +123,7 @@ public:
             uint32_t nbItem=readMem32(adr,O(OFFSET_LIST_NUMBER_OF_ITEM)); // Nb of items
             if(nbItem)
             {
-              parseReadyList(adr);
+              if(!parseReadyList(adr)) return false;
             }
             adr+=listSize;
         }
@@ -132,12 +132,13 @@ public:
       void run()
       {
         TCB_LOG("------------------ ready --\n");
-        parseReadyThreads();
+        if(!parseReadyThreads()) return;
         TCB_LOG("------------------- delayed --\n");
-        parseSymbolList(spxDelayedTaskList,true);
+        if(!parseSymbolList(spxDelayedTaskList,true)) return;
         TCB_LOG("------------------- suspended --\n");
-        parseSymbolList(sxSuspendedTaskList,false);
+        if(!parseSymbolList(sxSuspendedTaskList,false)) return;
       }
-      virtual void execList(FreeRTOSSymbols symb, uint32_t tcbAddress)=0;
+      // return false if we stop here
+      virtual bool execList(FreeRTOSSymbols symb, uint32_t tcbAddress)=0;
 };
 //
