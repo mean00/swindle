@@ -19,6 +19,17 @@ OFFSET_TASK_NUM = 68}
 
 
  */
+
+ /**
+   The following is assumed
+   - Everything starts with a qfthread info
+   - The number of threads is not too high
+   - We cache the TCB and thread # between 2 calls
+
+
+ */
+
+
  #include "lnArduino.h"
  #include "bmp_string.h"
  extern "C"
@@ -34,6 +45,9 @@ extern "C" void gdb_putpacket(const char *packet, int size);
 
 #define fdebug2(...) {}
 #define fdebug(...) {}
+
+
+
 /**
 
 */
@@ -60,11 +74,15 @@ void writeMem32(uint32_t base, uint32_t offset,uint32_t value)
 #include "bmp_symbols.h"
 AllSymbols allSymbols;
 #include "bmp_freertos_tcb.h"
+#include "bmp_info_cache.h"
+lnThreadInfoCache *threadCache=NULL;
+
 /**
 
 */
 void initFreeRTOS()
 {
+  threadCache=new lnThreadInfoCache;
   allSymbols.clear();
 }
 
@@ -72,58 +90,17 @@ void initFreeRTOS()
 class listThread : public ThreadParserBase
 {
 public:
-    listThread(stringWrapper *w)
+    listThread()
     {
-      _w=w;
     }
     bool execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
-        fdebug("listThread : exec list @0x%x\n",tcbAdr);
         uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
-        if(strlen(_w->string()))
-          _w->append(",");
-        fdebug("    id :%d\n",id);
-
-        _w->appendHex32(0); // output is hex64
-        _w->appendHex32(id);
+        threadCache->add(id,tcbAdr,state);
         return true;
     }
-protected:
-    stringWrapper *_w;
 };
 
-/**
-
-*/
-
-class findThread : public ThreadParserBase
-{
-public:
-    findThread(uint32_t  threadId)
-    {
-      _threadId=threadId;
-      _tcbAddress=0;
-    }
-    bool execList(FreeRTOSSymbols state,uint32_t tcbAdr)
-    {
-        //Logger("     TCB %x \n",tcbAdr);
-        uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
-        //Logger("        id %d \n",id);
-        if(id==_threadId)
-        {
-          _tcbAddress=tcbAdr;
-          _symbol=state;
-          return false;
-        }
-        return true;
-    }
-    uint32_t        tcb()     {return _tcbAddress;}
-    FreeRTOSSymbols symbol()  {return _symbol;};
-protected:
-  uint32_t  _threadId;
-  uint32_t  _tcbAddress;
-  FreeRTOSSymbols _symbol;
-};
 
 #include "bmp_cortex_registers.h"
 
@@ -198,21 +175,19 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
 {
   Logger("::: qfThreadinfo:%s\n",packet);
   PRE_CHECK_DEBUG_TARGET();
-
+  threadCache->clear();
   stringWrapper wrapper;
-  listThread list(&wrapper); // list all the threads
+  listThread list; // list all the threads
   list.run();
+
+  threadCache->collectIdAsWrapperString(wrapper);
   char *out=wrapper.string();
   if(strlen(out))
   {
-   // Grab all the threads in one big array
-    //fdebug2("thread found:<%s>\n",out);
-    gdb_putpacket2("m",1,out,strlen(out));
+      gdb_putpacket2("m",1,out,strlen(out));
   }else
   {
-
-    Logger("m 0\n, no thread found\n");
-    gdb_putpacket("m0", 2);
+      gdb_putpacket("m0", 2);
   }
   free(out);
 }
