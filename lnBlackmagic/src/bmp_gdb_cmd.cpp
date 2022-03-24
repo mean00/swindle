@@ -8,7 +8,7 @@ extern "C"
 #include "gdb_packet.h"
 #include "lnFreeRTOSDebug.h"
 }
-#include "bmp_gdb.h"
+#include "bmp_gdb_cmd.h"
 uint32_t readMem32(uint32_t base, uint32_t offset);
 void writeMem32(uint32_t base, uint32_t offset,uint32_t value);
 extern target *cur_target;
@@ -80,8 +80,7 @@ extern "C" void gdb_putpacket(const char *packet, int size);
     stringWrapper wrapper;
 
     int maxLen=O(MAX_TASK_NAME_LEN);
-#warning FIXME HARDCODED OFFSET
-    uint32_t name=tcb+52;
+    uint32_t name=tcb+O(OFFSET_TASK_NAME);
     char taskName[maxLen+1];
     target_mem_read(cur_target,taskName,name,maxLen);
     taskName[maxLen]=0;

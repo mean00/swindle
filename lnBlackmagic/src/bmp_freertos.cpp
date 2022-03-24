@@ -104,7 +104,7 @@ public:
 
 #include "bmp_cortex_registers.h"
 
-#include "bmp_gdb.h"
+#include "bmp_gdb_cmd.h"
 
 #define PRE_CHECK_DEBUG_TARGET(sym)  { if(!allSymbols.readDebugBlock ()) \
                                       {    gdb_putpacketz("");  \
