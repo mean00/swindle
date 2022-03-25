@@ -22,7 +22,7 @@ OFFSET_TASK_NUM = 68}
 
  /**
    The following is assumed
-   - Everything starts with a qfthread info
+   - Everything starts with a qfthread info or qC
    - The number of threads is not too high
    - We cache the TCB and thread # between 2 calls
 
@@ -76,8 +76,11 @@ lnThreadInfoCache *threadCache=NULL;
 */
 void initFreeRTOS()
 {
-  threadCache=new lnThreadInfoCache;
-  allSymbols.clear();
+  if(!threadCache)
+  {
+    threadCache=new lnThreadInfoCache;
+    allSymbols.clear();
+  }
 }
 
 
@@ -114,12 +117,24 @@ public:
   Logger("::: %s:%s\n",#x,packet); \
   gdb_putpacketz(""); \
 }
+
+
+
+void updateCache()
+{
+  threadCache->clear();
+  listThread list; // list all the threads
+  list.run();
+}
+
 /**
 
 */
 extern "C" void exect_qC(const char *packet, int len)
 {
   Logger("::: exect_qC:%s\n",packet);
+  initFreeRTOS(); // host mode
+  updateCache();
   PRE_CHECK_DEBUG_TARGET();
   Gdb::Qc();
 }
@@ -162,6 +177,8 @@ extern "C" void execqOffsets(const char *packet, int len)
 STUBFUNCTION_END(execqsThreadInfo)
 
 STUBFUNCTION_EMPTY(execqThreadInfo)
+
+
 /**
 
 */
@@ -169,11 +186,9 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
 {
   Logger("::: qfThreadinfo:%s\n",packet);
   PRE_CHECK_DEBUG_TARGET();
-  threadCache->clear();
-  stringWrapper wrapper;
-  listThread list; // list all the threads
-  list.run();
 
+  updateCache();
+  stringWrapper wrapper;
   threadCache->collectIdAsWrapperString(wrapper);
   char *out=wrapper.string();
   if(strlen(out))
