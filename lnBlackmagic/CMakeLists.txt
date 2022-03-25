@@ -68,7 +68,7 @@ SET(BM_TARGET       ${T}/adiv5.c    ${T}/adiv5_swdp.c   ${T}/cortexm.c
                         ) #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
 
 SET(BM_PLATFORM_COMMON   ${B}/bmp_freertos.cpp ${B}/bmp_string.cpp ${B}/bmp_utils.cpp 
-                         ${B}/bmp_gdb_cmd.cpp
+                         ${B}/bmp_gdb_cmd.cpp ${B}/bmp_thread_cache.cpp
                         )
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BM_TARGET} ${BM_HOSTED} ${BM_PLATFORM_COMMON} ${BOARDS})

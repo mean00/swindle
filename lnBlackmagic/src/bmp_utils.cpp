@@ -1,23 +1,11 @@
 /*
 
  */
- #include "lnArduino.h"
- #include "lnStopWatch.h"
- #include "lnBmpTask.h"
- #include "bmp_string.h"
- extern "C"
- {
-#include "version.h"
-#include "gdb_packet.h"
-#include "gdb_main.h"
-#include "target.h"
-#include "gdb_packet.h"
-#include "morse.h"
-//#include "general.h"
-#include "target_internal.h"
-
-}
-
+#include "lnArduino.h"
+#include "lnStopWatch.h"
+#include "lnBmpTask.h"
+#include "bmp_string.h"
+#include "bmp_util.h"
 
 static void map_ram(stringWrapper &wrapper, struct target_ram *ram)
 {
@@ -75,4 +63,27 @@ extern "C" bool target_validate_address_flash_or_ram(target *t,uint32_t address)
   return false;
 }
 
+
+/**
+
+*/
+
+uint32_t readMem32(uint32_t base, uint32_t offset)
+{
+  if(!target_validate_address_flash_or_ram(cur_target,base))
+  {
+    Logger("Invalid ram read %x+%x\n",base,offset);
+    return 0;
+  }
+  return target_mem_read32(cur_target,base+offset);
+}
+void writeMem32(uint32_t base, uint32_t offset,uint32_t value)
+{
+  if(!target_validate_address_flash_or_ram(cur_target,base))
+  {
+    Logger("Invalid ram read %x+%x\n",base,offset);
+    return ;
+  }
+  target_mem_write32(cur_target,base+offset,value);
+}
 // EOF

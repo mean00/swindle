@@ -44,29 +44,6 @@ OFFSET_TASK_NUM = 68}
 
 
 
-/**
-
-*/
-
-uint32_t readMem32(uint32_t base, uint32_t offset)
-{
-  if(!target_validate_address_flash_or_ram(cur_target,base))
-  {
-    Logger("Invalid ram read %x+%x\n",base,offset);
-    return 0;
-  }
-  return target_mem_read32(cur_target,base+offset);
-}
-void writeMem32(uint32_t base, uint32_t offset,uint32_t value)
-{
-  if(!target_validate_address_flash_or_ram(cur_target,base))
-  {
-    Logger("Invalid ram read %x+%x\n",base,offset);
-    return ;
-  }
-  target_mem_write32(cur_target,base+offset,value);
-}
-
 
 AllSymbols allSymbols;
 lnThreadInfoCache *threadCache=NULL;
@@ -242,6 +219,13 @@ extern "C" void exec_H_cmd(const char *packet, int len)
     }
 }
 
+extern "C" void exec_H_cmd2(const char *packet, int len)
+{
+    Logger("::: exec_H_cmd2:<%s>\n",packet);
+    PRE_CHECK_DEBUG_TARGET();
+    gdb_putpacketz("OK");
+
+}
 extern "C" void exec_T_cmd(const char *packet, int len)
 {
     Logger("::: exec_T_cmd:<%s>\n",packet);

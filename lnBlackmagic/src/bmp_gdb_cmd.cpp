@@ -1,19 +1,19 @@
-#include "lnArduino.h"
-#include "bmp_string.h"
-extern "C"
-{
-#include "hex_utils.h"
-#include "target.h"
-#include "target_internal.h"
-#include "gdb_packet.h"
-#include "lnFreeRTOSDebug.h"
+
+ #include "lnArduino.h"
+ #include "bmp_string.h"
+ extern "C"
+ {
+ #include "hex_utils.h"
+ #include "target.h"
+ #include "target_internal.h"
+ #include "gdb_packet.h"
+ #include "lnFreeRTOSDebug.h"
 }
 #include "bmp_util.h"
-#include "bmp_gdb_cmd.h"
 #include "bmp_cortex_registers.h"
-#include "bmp_info_cache.h"
+#include "bmp_gdb_cmd.h"
 
-#if 1
+#if 0
   #define GDB_LOGGER(...) {}
 #else
   #define GDB_LOGGER Logger
@@ -27,27 +27,27 @@ extern "C"
     return true;
   }
 
-  // Ask the current thread
-  void Gdb::Qc()
+  uint32_t Gdb::getCurrentThreadId()
   {
     uint32_t pxCurrentTcb;
     if(!allSymbols.readSymbolValue(spxCurrentTCB,pxCurrentTcb))
     {
-      gdb_putpacketz("");
-      return;
+      return 0;
     }
-    uint32_t tid_adr=pxCurrentTcb;
-    GDB_LOGGER("Current TID ADR=%x\n",tid_adr);
-    uint32_t threadId=readMem32(tid_adr,O(OFFSET_TASK_NUM)); //68
-    GDB_LOGGER("Current TID =%x\n",threadId);
-
+    uint32_t threadId=readMem32(pxCurrentTcb,O(OFFSET_TASK_NUM)); //68
+    return threadId;
+  }
+  // Ask the current thread
+  void Gdb::Qc()
+  {
+    uint32_t threadId=getCurrentThreadId();
     char tst[10+3];
 
-    if(!threadId) threadId=2;
+    //if(!threadId) /threadId=2;
     sprintf(tst,"QC%x",threadId);
     gdb_putpacket(tst,strlen(tst));
+    Logger(tst);
     GDB_LOGGER(tst);
-
   }
   //
   void Gdb::threadInfo(uint32_t  threadId)
@@ -111,6 +111,7 @@ extern "C"
   */
   bool Gdb::switchThread(uint32_t  threadId)
   {
+    //return false;
     uint32_t currentTcb;
     if(!allSymbols.readSymbolValue(spxCurrentTCB,currentTcb))
     {
@@ -143,7 +144,7 @@ extern "C"
     uint32_t sp=regs->read(13);
 
     GDB_LOGGER("Current Thread ID=%d, current TCB=%x sp=%x\n",currentThreadId,currentTcb,sp);
-
+    GDB_LOGGER("PC=%x, SP=%x\n",regs->read(14),sp);
     sp-=4*16;
     regs->storeRegistersButSpToMemory(sp);
     writeMem32(currentTcb,0,sp); // store sp on the TCB for current stack
@@ -154,6 +155,7 @@ extern "C"
     GDB_LOGGER("New Thread ID=%d, thread TCB=%x sp=%x\n",threadId,tcb,sp);
     regs->loadRegistersButSpFromMemory(sp);
     sp+=4*16;
+    GDB_LOGGER("PC=%x, SP=%x\n",regs->read(14),sp);
     regs->write(13,sp);   // update sp
     regs->setRegisters(); // set actual registers from regs
 

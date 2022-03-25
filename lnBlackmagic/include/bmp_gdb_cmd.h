@@ -17,5 +17,6 @@ public:
   static bool decodeSymbol(int len, const char *packet);
   static bool switchThread(uint32_t  threadId);
   static bool isThreadAlive(uint32_t  threadId);
+  static uint32_t getCurrentThreadId();
 };
 // EOF
