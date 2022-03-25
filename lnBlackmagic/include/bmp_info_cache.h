@@ -5,6 +5,12 @@
 struct lnThreadInfo
 {
 public:
+      lnThreadInfo(uint32_t nid, uint32_t ntcb)
+      {
+        id=nid;
+        tcb=ntcb;
+        next=NULL;
+      }
       uint32_t id;
       uint32_t tcb;
       lnThreadInfo *next;
@@ -37,9 +43,7 @@ public:
       }
       void add(uint32_t tid,uint32_t tcb)
       {
-        lnThreadInfo *e=new lnThreadInfo();
-        e->id=tid;
-        e->tcb=tcb;
+        lnThreadInfo *e=new lnThreadInfo(tid,tcb);
         e->next=_q;
         _q=e;
       }
