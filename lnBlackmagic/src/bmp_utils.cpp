@@ -57,5 +57,22 @@ static void map_flash(stringWrapper &wrapper, struct target_flash *f)
   return out;
 }
 
+// check the given address is in flash or ram
+extern "C" bool target_validate_address_flash_or_ram(target *t,uint32_t address)
+{
+  struct target_ram *r=t->ram;
+  while(r)
+  {
+    if(address>=r->start && address<=(r->start+r->length)) return true;
+    r=r->next;
+  }
+  struct target_flash *p=t->flash;
+  while(p)
+  {
+    if(address>=p->start && address<=(p->start+p->length)) return true;
+    p=p->next;
+  }
+  return false;
+}
 
 // EOF

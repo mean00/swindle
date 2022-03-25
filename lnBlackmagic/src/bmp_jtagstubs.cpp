@@ -63,5 +63,8 @@ uint32_t fw_adiv5_jtagdp_low_access(ADIv5_DP_t *dp, uint8_t RnW,
     raise_exception(EXCEPTION_ERROR, "JTAG-DP disabled");
    return 0; //
  }
+void jtag_add_device(const int dev_index, const jtag_dev_t *jtag_dev)
+{
 
+}
 }
