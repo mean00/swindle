@@ -13,7 +13,7 @@
 #include "bmp_cortex_registers.h"
 #include "bmp_gdb_cmd.h"
 
-#if 0
+#if 1
   #define GDB_LOGGER(...) {}
 #else
   #define GDB_LOGGER Logger
@@ -199,7 +199,12 @@ cortexRegs *createCortexWrite(target *t)
       {
           default: Logger("Cannot identify core\n");
           case 0: return new cortexRegsM3;break;
-          case 1: return new cortexRegsM4;break;
+          case 1:
+                if(O(MPU_ENABLED)==1)
+                  return new cortexRegsM4;
+                else
+                  return new cortexRegsM3; // it is a M4 core in m3 mode
+                break;
       }
     }
     c++;
