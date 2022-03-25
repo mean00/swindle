@@ -15,7 +15,7 @@ Quick FAQ
 * Can i run it on xyz board ? : No, only STM32F103, GD32F103 and GD32F303 are supported (GD32VF103 lacks a usb driver atm)
 * Can i use a DFU update on a regular BMP software ? : No you have to flash it through SWD
 * Is Jtag supported ? : No, only SWD
-* What's the point then ? : Study how it works, easy to make some changes i need
+* What's the point then ? : It has basic freeRTOS thread support through the normal info thread, thread, etc.. gdb commands
 
 How to build
 ------------
