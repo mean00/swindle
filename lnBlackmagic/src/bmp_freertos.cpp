@@ -61,19 +61,6 @@ void initFreeRTOS()
 }
 
 
-class listThread : public ThreadParserBase
-{
-public:
-    listThread()
-    {
-    }
-    bool execList(FreeRTOSSymbols state,uint32_t tcbAdr)
-    {
-        uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
-        threadCache->add(id,tcbAdr); //,state);
-        return true;
-    }
-};
 
 
 #include "bmp_cortex_registers.h"
@@ -97,12 +84,6 @@ public:
 
 
 
-void updateCache()
-{
-  threadCache->clear();
-  listThread list; // list all the threads
-  list.run();
-}
 
 /**
 
@@ -111,7 +92,7 @@ extern "C" void exect_qC(const char *packet, int len)
 {
   Logger("::: exect_qC:%s\n",packet);
   initFreeRTOS(); // host mode
-  updateCache();
+  threadCache->updateCache();
   PRE_CHECK_DEBUG_TARGET();
   Gdb::Qc();
 }
@@ -164,7 +145,7 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
   Logger("::: qfThreadinfo:%s\n",packet);
   PRE_CHECK_DEBUG_TARGET();
 
-  updateCache();
+  threadCache->updateCache();
   stringWrapper wrapper;
   threadCache->collectIdAsWrapperString(wrapper);
   char *out=wrapper.string();

@@ -63,7 +63,7 @@ public:
           TCB_LOG("index  %x \n",index);
           uint32_t head=index;
           // go one step away, the first one is dummy
-#warning FIXME
+#warning FIXME : This does not work in hosted mode ???? wtf
           uint32_t cur=readMem32(index,O(OFFSET_LIST_ITEM_NEXT));// 4First real entry
           if(cur)
           {

@@ -30,6 +30,7 @@ public:
         clear();
       }
       void      clear();
+      void      updateCache();
       void      add(uint32_t tid,uint32_t tcb);
       lnThreadInfo *searchForTid(uint32_t id);
       uint32_t  searchForTcb(uint32_t tcb);

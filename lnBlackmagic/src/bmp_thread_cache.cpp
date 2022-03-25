@@ -4,6 +4,22 @@
 #include "bmp_util.h"
 #include "bmp_thread_cache.h"
 #include "bmp_gdb_cmd.h"
+
+
+class listThread : public ThreadParserBase
+{
+public:
+    listThread()
+    {
+    }
+    bool execList(FreeRTOSSymbols state,uint32_t tcbAdr)
+    {
+        uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
+        threadCache->add(id,tcbAdr); //,state);
+        return true;
+    }
+};
+
 void lnThreadInfoCache::clear()
 {
     lnThreadInfo *h=_q;
@@ -62,4 +78,13 @@ void     lnThreadInfoCache::collectIdAsWrapperString(stringWrapper &w)
     e=e->next;
   }
 }
+
+
+void lnThreadInfoCache::updateCache()
+{
+  clear();
+  listThread list; // list all the threads
+  list.run();
+}
+
 // EOF
