@@ -8,19 +8,8 @@ extern "C"
 #include "gdb_packet.h"
 #include "lnFreeRTOSDebug.h"
 }
+#include "bmp_util.h"
 #include "bmp_gdb_cmd.h"
-uint32_t readMem32(uint32_t base, uint32_t offset);
-void writeMem32(uint32_t base, uint32_t offset,uint32_t value);
-extern target *cur_target;
-#define fdebug2(...) {}
-#define fdebug(...) {}
-#define O(x) allSymbols._debugInfo.x
-#include "bmp_symbols.h"
-extern AllSymbols allSymbols;
-extern target *cur_target;
-extern "C" void gdb_putpacket(const char *packet, int size);
-
-extern "C" void gdb_putpacket(const char *packet, int size);
 #include "bmp_cortex_registers.h"
 #include "bmp_info_cache.h"
 
@@ -70,7 +59,6 @@ extern "C" void gdb_putpacket(const char *packet, int size);
       return;
     }
     uint32_t tcb=info->tcb;
-    FreeRTOSSymbols sym=info->source;
     if(!tcb) // assuming zero is not a valid address
     {
           gdb_putpacketz("E01");
@@ -78,7 +66,6 @@ extern "C" void gdb_putpacket(const char *packet, int size);
     }
     //
     stringWrapper wrapper;
-
     int maxLen=O(MAX_TASK_NAME_LEN);
     uint32_t name=tcb+O(OFFSET_TASK_NAME);
     char taskName[maxLen+1];
@@ -86,6 +73,7 @@ extern "C" void gdb_putpacket(const char *packet, int size);
     taskName[maxLen]=0;
     wrapper.append(taskName);
 
+#if 0
     const char *st;
     switch(sym) // The queue it has been pulled from, gives the task state
     {
@@ -99,7 +87,7 @@ extern "C" void gdb_putpacket(const char *packet, int size);
     wrapper.append("[");
     wrapper.append(st);
     wrapper.append("]");
-
+#endif
     wrapper.append("  TCB: 0x");
     wrapper.appendHex32(tcb);
 
@@ -139,14 +127,12 @@ extern "C" void gdb_putpacket(const char *packet, int size);
     lnThreadInfo *info=threadCache->searchForTid(threadId);
     if(!info)
     {
-
       return false;
     }
     uint32_t tcb=info->tcb;
     if(!tcb) // assuming zero is not a valid address
     {
-          GDB_LOGGER("Cannot find thread...\n");
-          return false;
+      return false;
     }
 
     // Save current thread

@@ -1,16 +1,17 @@
-
 /*
-
+  Small cache to store TCB address, thread ID and which queue it belongs to.
 */
+#pragma once
 struct lnThreadInfo
 {
 public:
       uint32_t id;
       uint32_t tcb;
-      FreeRTOSSymbols source;
       lnThreadInfo *next;
 };
+/**
 
+*/
 class lnThreadInfoCache
 {
 public:
@@ -25,6 +26,7 @@ public:
       void clear()
       {
           lnThreadInfo *h=_q;
+          _q=NULL;
           while(h)
           {
               lnThreadInfo *me=h;
@@ -32,14 +34,12 @@ public:
               delete me;
               me=NULL;
           }
-          _q=NULL;
       }
-      void add(uint32_t tid,uint32_t tcb,FreeRTOSSymbols s)
+      void add(uint32_t tid,uint32_t tcb)
       {
         lnThreadInfo *e=new lnThreadInfo();
         e->id=tid;
         e->tcb=tcb;
-        e->source=s;
         e->next=_q;
         _q=e;
       }
@@ -69,5 +69,3 @@ public:
 protected:
     lnThreadInfo *_q;
 };
-
-extern lnThreadInfoCache *threadCache;

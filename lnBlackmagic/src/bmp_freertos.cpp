@@ -40,18 +40,14 @@ OFFSET_TASK_NUM = 68}
  #include "gdb_packet.h"
  #include "lnFreeRTOSDebug.h"
 }
-extern target *cur_target;
-extern "C" void gdb_putpacket(const char *packet, int size);
-
-#define fdebug2(...) {}
-#define fdebug(...) {}
+#include "bmp_util.h"
 
 
 
 /**
 
 */
-#define O(x) allSymbols._debugInfo.x
+
 uint32_t readMem32(uint32_t base, uint32_t offset)
 {
   if(!target_validate_address_flash_or_ram(cur_target,base))
@@ -71,10 +67,8 @@ void writeMem32(uint32_t base, uint32_t offset,uint32_t value)
   target_mem_write32(cur_target,base+offset,value);
 }
 
-#include "bmp_symbols.h"
+
 AllSymbols allSymbols;
-#include "bmp_freertos_tcb.h"
-#include "bmp_info_cache.h"
 lnThreadInfoCache *threadCache=NULL;
 
 /**
@@ -96,7 +90,7 @@ public:
     bool execList(FreeRTOSSymbols state,uint32_t tcbAdr)
     {
         uint32_t id=readMem32(tcbAdr,O(OFFSET_TASK_NUM));
-        threadCache->add(id,tcbAdr,state);
+        threadCache->add(id,tcbAdr); //,state);
         return true;
     }
 };

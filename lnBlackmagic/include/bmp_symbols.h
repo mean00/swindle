@@ -1,6 +1,10 @@
 
 #pragma once
 
+#define fdebug2(...) {}
+#define fdebug(...) {}
+
+
 /**
 
 */
@@ -95,6 +99,7 @@ public:
     READ_FIELD(MPU_ENABLED)
     READ_FIELD(MAX_TASK_NAME_LEN)
     READ_FIELD(OFFSET_TASK_NUM)
+    READ_FIELD(OFFSET_TASK_NAME)
 
     READ_FIELD(OFFSET_LIST_ITEM_NEXT);
     READ_FIELD(OFFSET_LIST_ITEM_OWNER);
