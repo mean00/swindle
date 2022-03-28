@@ -91,6 +91,9 @@ protected:
 #define BM_FP_OFFSET 20
 #define FP_IN_USE(lr) (!(lr & 0x10))
 
+/**
+  This is  incorrect regarding LR handling
+*/
 class cortexRegsM4 : public cortexRegs
 {
 public:
