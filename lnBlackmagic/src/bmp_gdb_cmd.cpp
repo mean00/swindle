@@ -1,14 +1,5 @@
 
- #include "lnArduino.h"
- #include "bmp_string.h"
- extern "C"
- {
- #include "hex_utils.h"
- #include "target.h"
- #include "target_internal.h"
- #include "gdb_packet.h"
- #include "lnFreeRTOSDebug.h"
-}
+#include "lnArduino.h"
 #include "bmp_util.h"
 #include "bmp_cortex_registers.h"
 #include "bmp_gdb_cmd.h"
@@ -145,7 +136,7 @@ void Gdb::threadInfo(uint32_t  threadId)
 
     GDB_LOGGER("Current Thread ID=%d, current TCB=%x sp=%x\n",currentThreadId,currentTcb,sp);
     GDB_LOGGER("PC=%x, SP=%x\n",regs->read(14),sp);
-    sp-=regs->stackNeeded();
+    sp-=regs->stackNeeded(regs->read(14));
     regs->storeRegistersButSpToMemory(sp);
     writeMem32(currentTcb,0,sp); // store sp on the TCB for current stack
     //

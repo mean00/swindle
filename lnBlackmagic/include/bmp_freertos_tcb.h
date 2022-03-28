@@ -29,6 +29,11 @@ public:
       bool parseReadyList( uint32_t listStart)
       {
           uint32_t nbItem=readMem32(listStart,O(OFFSET_LIST_NUMBER_OF_ITEM)); // 0 Nb of items
+          if(nbItem>256)
+          {
+            Logger("Absurd item count in list\n");
+            return false;
+          }
           TCB_LOG("starting list a  %x \n",listStart);
           TCB_LOG("Found %d items\n",nbItem);
           if(!nbItem) return true; // empty

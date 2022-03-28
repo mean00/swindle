@@ -15,7 +15,7 @@ class cortexRegs
 public:
         virtual uint32_t  storeRegistersButSpToMemory(uint32_t adr)=0;
         virtual uint32_t  loadRegistersButSpFromMemory(uint32_t adr)=0;
-        virtual uint32_t  stackNeeded()=0;
+        virtual uint32_t  stackNeeded(uint32_t lr)=0;
         virtual void      loadRegisters()=0;
         virtual void      setRegisters()=0;
         virtual uint32_t  read(int reg)=0;
@@ -27,7 +27,7 @@ public:
 class cortexRegsM3 : public cortexRegs
 {
 public:
-    uint32_t  stackNeeded()
+    uint32_t  stackNeeded(uint32_t lr)
     {
       return 4*(8+4+4);
     }
@@ -88,20 +88,37 @@ protected:
 /**
 
 */
+#define BM_FP_OFFSET 20
+#define FP_IN_USE(lr) (!(lr & 0x10))
+
 class cortexRegsM4 : public cortexRegs
 {
 public:
-    uint32_t  stackNeeded()
+    uint32_t  stackNeeded(uint32_t lr)
     {
-      return 4*(8+1+4+4);
+      uint32_t base= 4*(8+1+4+4);
+      if(lr) base+=4*(33);
+      return base;
     }
     uint32_t storeRegistersButSpToMemory(uint32_t adr)
     {
       for(int i=0;i<8;i++) // r4..r11
           writeMem32(adr,i*4,_regs[4+i]);
       adr+=8*4;
-      writeMem32(adr,8*4,_regs[14]);
+      uint32_t lr=_regs[14];
+      writeMem32(adr,8*4,lr);
       adr+=4;
+
+      // fpu ?
+      if(FP_IN_USE(lr))
+      {
+        // store FP 16..31
+        int start=BM_FP_OFFSET+1+16;
+        for(int i=0;i<16;i++)
+            writeMem32(adr,i*4,_regs[start+i]);
+        adr+=16*4;
+      }
+
       for(int i=0;i<4;i++) // r0..r3
         writeMem32(adr,i*4,_regs[i]);
       adr+=4*4;
@@ -109,8 +126,19 @@ public:
       writeMem32(adr,1*4,_regs[14]);
       writeMem32(adr,2*4,_regs[15]);
       writeMem32(adr,3*4,_regs[16]); // psr
-      #warning add FPU regs here
+
       adr+=4*4;
+      if(FP_IN_USE(lr))
+      {
+        int start=BM_FP_OFFSET;
+        for(int i=0;i<16;i++)
+            writeMem32(adr,i*4,_regs[start+1+i]); // S0..s15
+        adr+=16*4;
+        writeMem32(adr,0*4,_regs[start]); // fpsr
+        adr+=1*4;
+        adr+=1*4; // reserved
+
+      }
       return adr;
     }
     uint32_t loadRegistersButSpFromMemory(uint32_t adr)
@@ -119,18 +147,20 @@ public:
       for(int i=0;i<8;i++) // r4..r11
           _regs[4+i]=readMem32(adr,i*4);
       adr+=8*4;
-      _regs[14]=readMem32(adr,0);
+      uint32_t lr;
+      lr=readMem32(adr,0);
+      _regs[14]=lr;
       adr+=1*4;
       // are the FPU registers there ?
-      if(!(_regs[14] & 0x10))
+      if(FP_IN_USE(lr))
       {
          // fpu !
          fpu=true;
-         for(int i=0;i<16;i++)
-         {
-#warning add FPU regs here
-         }
-         adr+=16*4;
+        // store FP 16..31
+        int start=BM_FP_OFFSET+1+16;
+        for(int i=0;i<16;i++)
+            _regs[start+i]=readMem32(adr,i*4);
+        adr+=16*4;
       }
       for(int i=0;i<4;i++) // r0..r3
         _regs[i]=readMem32(adr,i*4);
@@ -141,9 +171,15 @@ public:
       _regs[16]=readMem32(adr,3*4); // psr
       adr+=4*4;
 
-      if(fpu)
+      if(FP_IN_USE(lr))
       {
-        adr+=18*4; // fpspr + reserver
+        int start=BM_FP_OFFSET;
+        for(int i=0;i<16;i++)
+            _regs[start+1+i]=readMem32(adr,i*4); // S0..s15
+        adr+=16*4;
+        _regs[start]=readMem32(adr,0*4); // fpsr
+        adr+=1*4;
+        adr+=1*4; // reserved
       }
       return adr;
     }

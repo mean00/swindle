@@ -1,3 +1,5 @@
+// Cheap stdstring using heap
+
 #include "lnArduino.h"
 #include "bmp_string.h"
 #include "stdint.h"

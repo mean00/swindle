@@ -34,6 +34,11 @@ void lnThreadInfoCache::clear()
 }
 void lnThreadInfoCache::add(uint32_t tid,uint32_t tcb)
 {
+  if(!tid || !tcb)
+  {
+    Logger("Warning invalid TID and TCB\n");
+    return;
+  }
   lnThreadInfo *e=new lnThreadInfo(tid,tcb);
   e->next=_q;
   _q=e;

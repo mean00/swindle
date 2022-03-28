@@ -17,10 +17,6 @@ MAX_TASK_NAME_LEN = 16,
 OFFSET_TASK_NAME = 52,
 OFFSET_TASK_NUM = 68}
 
-
- */
-
- /**
    The following is assumed
    - Everything starts with a qfthread info or qC
    - The number of threads is not too high
@@ -42,9 +38,6 @@ OFFSET_TASK_NUM = 68}
 }
 #include "bmp_util.h"
 
-
-
-
 AllSymbols allSymbols;
 lnThreadInfoCache *threadCache=NULL;
 
@@ -59,11 +52,6 @@ void initFreeRTOS()
     allSymbols.clear();
   }
 }
-
-
-
-
-#include "bmp_cortex_registers.h"
 
 #include "bmp_gdb_cmd.h"
 
@@ -133,13 +121,10 @@ extern "C" void execqOffsets(const char *packet, int len)
 
 
 STUBFUNCTION_END(execqsThreadInfo)
-
 STUBFUNCTION_EMPTY(execqThreadInfo)
 
 
-/**
-
-*/
+// get a list of threads
 extern "C" void execqfThreadInfo(const char *packet, int len)
 {
   Logger("::: qfThreadinfo:%s\n",packet);
@@ -159,9 +144,7 @@ extern "C" void execqfThreadInfo(const char *packet, int len)
   free(out);
 }
 
-/**
-
-*/
+// Get extra info as a hex string
 extern "C" void exect_qThreadExtraInfo(const char *packet, int len)
 {
   Logger("::: exect_qThreadExtraInfo:%s\n",packet);
@@ -175,7 +158,7 @@ extern "C" void exect_qThreadExtraInfo(const char *packet, int len)
   }
   Gdb::threadInfo(tid);
 }
-
+// Hg : Switch thread
 extern "C" void exec_H_cmd(const char *packet, int len)
 {
     Logger("::: exec_H_cmd:<%s>\n",packet);
@@ -200,6 +183,7 @@ extern "C" void exec_H_cmd(const char *packet, int len)
     }
 }
 
+// Stub for thread switching Hxx, does nothing
 extern "C" void exec_H_cmd2(const char *packet, int len)
 {
     Logger("::: exec_H_cmd2:<%s>\n",packet);
@@ -207,6 +191,8 @@ extern "C" void exec_H_cmd2(const char *packet, int len)
     gdb_putpacketz("OK");
 
 }
+
+// Ask if the thread is alive
 extern "C" void exec_T_cmd(const char *packet, int len)
 {
     Logger("::: exec_T_cmd:<%s>\n",packet);
