@@ -1,12 +1,21 @@
 #pragma once
 
 /*
+/!\ Cortex M0/0+/M3 support should work well
+The cortex M4/M7 support of FPU is incomplete & will cause problems
+The issue is the FreeRTOS scheduler is aware of the use of FPU through the EXC_RETURN / LR bit 4
+we do the same here , bit it's wrong. We should look at the system register.
+
+/!\
   Careful : this is a thumb2 representation of registers
   0..12 = R0..R12
   13 = (p)sp
   14 = LR
   15 = PC
   16 = PSR
+---
+20..32 FPU register
+32 FPU PSR
   It is NOT a 1:1 mapping with blackmagic registers
 */
 
