@@ -1,4 +1,10 @@
 
+/**
+  \file bmp_symbols
+  \brief Grab the symbols we need from gdb (+ our own helper freeRTOS symbol)
+
+*/
+
 #pragma once
 
 #define fdebug2(...) {}
@@ -201,6 +207,7 @@ protected:
   // We allocate it here statically to avoid stressing the heap on the fly
   char      _decodedName[MAX_SYMBOL_LENGTH];
 public:
+  // Additionnal debug info provided by the target
   lnFreeRTOSDebug _debugInfo;
 };
 
