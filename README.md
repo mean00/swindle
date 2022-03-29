@@ -37,7 +37,7 @@ Copy  the following files to your project :
   - lnArduino/include/lnFreeRTOSDebug.h
   - lnArduino/src/lnFreeRTOSDebug.cpp 
 
-The latest is actually mostly C code, you can just rename it to C and slightly modify it if need be.
+The latest is actually mostly C code, you can just rename it to C and slightly modify if need be.
 
 Make absolutely sure the symbol freeRTOSDebug is present in your final executable.
 You can do that by doing a dummy call to lnGetFreeRTOSDebug() to pull a reference to that.
