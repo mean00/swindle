@@ -21,7 +21,7 @@ How to build
 ------------
 
 * Edit platformConfig.cmake to point to your toolchain
-* Edit mcuSelect.cmake to pick your MCU (default it is GD32F303)
+* Edit mcuSelect.cmake to pick your MCU (default it is STM32F103 with 128kB of flash, ~ bluepill)
 
 Then, the usual cmake thing
 > mkdir build
