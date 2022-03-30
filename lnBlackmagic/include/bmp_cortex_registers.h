@@ -29,6 +29,9 @@ public:
         virtual void      setRegisters()=0;
         virtual uint32_t  read(int reg)=0;
         virtual void      write(int reg,uint32_t val)=0;
+protected:
+        uint32_t _regs[20+33]; // Arm regs + FPU, only M0,M3,M4!
+
 };
 /**
 
@@ -89,9 +92,6 @@ public:
     {
         _regs[reg]=val;
      }
-
-protected:
-    uint32_t _regs[20]; // Arm mode no dp, dont try to shrink that !
 };
 
 /**
@@ -214,8 +214,6 @@ public:
         _regs[reg]=val;
      }
 
-protected:
-    uint32_t _regs[20+33]; // Arm regs + FPU
 };
 
 typedef struct CoreMatching
