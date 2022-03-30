@@ -4,45 +4,65 @@
  */
 
 #include "stdio.h"
+#include "stdint.h"
 #include "stdarg.h"
 #include "stdarg.h"
+#include "string.h"
 
+#include <unistd.h>
+#include <time.h>
 
-extern "C" void Logger_C(const char *fmt,...)
-{
-  static char buffer[128];
+#define PREFIX_BUFFER_SIZE 20
+#define OUTER_BUFFER_SIZE 127
 
-  va_list va;
-  va_start(va,fmt);
-  vsnprintf(buffer,127,fmt,va);
+static uint32_t originalTick=0;
 
-  buffer[127]=0;
-  printf("> %s\n",buffer);
-  va_end(va);
+uint32_t getTick() {
+    struct timespec ts;
+    unsigned theTick = 0U;
+    clock_gettime( CLOCK_REALTIME, &ts );
+    theTick  = ts.tv_nsec / 1000000;
+    theTick += ts.tv_sec * 1000;
+    return theTick;
 }
 
-
 /**
- *
- * @param fmt
- */
-extern "C" void Logger(const char *fmt...)
+
+*/
+static void LoggerInternal(const char *fmt, va_list &args)
 {
-    static char buffer[128];
+      if(!originalTick) originalTick=getTick();
+      uint32_t tick=getTick()-originalTick;
+      static char buffer[PREFIX_BUFFER_SIZE+OUTER_BUFFER_SIZE+1];
 
-    if(fmt[0]==0) return;
+      sprintf(buffer,"[%d]",tick);
+      int ln=strlen(buffer);
 
-    va_list va;
-    va_start(va,fmt);
-    vsnprintf(buffer,127,fmt,va);
+      vsnprintf(buffer+ln,OUTER_BUFFER_SIZE,fmt,args);
+      buffer[OUTER_BUFFER_SIZE+PREFIX_BUFFER_SIZE]=0;
+      printf("%s",buffer);
 
-    buffer[127]=0;
-    printf("> %s\n",buffer);
-    va_end(va);
+}
+extern "C" void Logger_C(const char *fmt,...)
+{
+  if(!fmt[0]) return;
+  va_list va;
+  va_start(va,fmt);
+  LoggerInternal(fmt,va);
+  va_end(va);
+}
+extern "C" void Logger(const char *fmt,...)
+{
+  if(!fmt[0]) return;
+  va_list va;
+  va_start(va,fmt);
+  LoggerInternal(fmt,va);
+  va_end(va);
 }
 /**
  *
  */
 void LoggerInit()
 {
+  originalTick=getTick();
 }
