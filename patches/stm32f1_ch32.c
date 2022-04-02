@@ -13,11 +13,10 @@
     #define DEBUG_CH DEBUG_INFO
     #define ERROR_CH DEBUG_WARN
 #else
-    #define DEBUG_CH Logger //DEBUG_INFO
-    #define ERROR_CH Logger //DEBUG_WARN
+    #define DEBUG_CH(...) {}
+    #define ERROR_CH DEBUG_WARN //DEBUG_WARN
 #endif
 
-extern void gdb_out(const char *buf);
 
  static int ch32f1_flash_erase(struct target_flash *f,
                                 target_addr addr, size_t len);
@@ -207,50 +206,41 @@ int ch32f1_flash_erase (struct target_flash *f,  target_addr addr, size_t len)
 }
 
 /**
+    \fn waitFlashReady
+    \brief poll the beginning of a block till it is fffff, meaning we can proceeed
+*/
+
+static bool waitFlashReady(target *t,uint32_t adr)
+{
+  // Ok for it to work, we have to read a couple times the beginning until it is ffffff
+  // The Busy flag does not help
+  int trying=3;
+  bool ready=false;
+  while(trying && !ready)
+  {
+      uint32_t ff=target_mem_read32(t,adr);
+      if(ff==0xffffffffUL)
+      {
+          ready=true;
+      }
+  }
+  if(!ready)
+  {
+      ERROR_CH("ch32f1 Not erased properly at %x or flash access issue\n",adr);
+      return false;
+  }
+  return true;
+}
+/**
   \fn ch32f1_flash_write
   \brief fast flash for ch32. Load 128 bytes chunk and then flash them
 */
-// Copy stuff to internal buffer
 
 static int upload(target *t, uint32_t dest, uint32_t src, uint32_t offset)
 {
     uint32_t *ss=(uint32_t *)(src+offset);
     uint32_t dd=dest+offset;
 
-    // Ok for it to work, we have to read a couple times the beginning until it is ffffff
-    int trying=3;
-    bool ready=false;
-    while(trying && !ready)
-    {
-        uint32_t ff=target_mem_read32(t,dest);
-        if(ff==0xffffffffUL)
-        {
-            ready=true;
-        }
-    }
-    if(!ready)
-    {
-        ERROR_CH("ch32f1 Not erased properly at %x or flash access issue\n",dest);
-        return -1;
-    }
-#if 0
-    for(int i=0;i<128/4;i++)
-    {
-        uint32_t ff=target_mem_read32(t,dest+i*4);
-        if(ff!=0xffffffffUL)
-        {
-            ERROR_CH("ch32f1 Not erased properly %x+%x: %x\n",dest,i*4,ff);
-        }
-    }
-  for(int i=0;i<128/4;i++)
-  {
-      uint32_t ff=target_mem_read32(t,dest+i*4);
-      if(ff!=0xffffffffUL)
-      {
-          ERROR_CH("XXch32f1 Not erased properly %x+%x: %x\n",dest,i*4,ff);
-      }
-  }
-#endif
     SET_CR(FLASH_CR_FTPG_CH32);
     target_mem_write32(t, dd+0,ss[0]);
     target_mem_write32(t, dd+4,ss[1]);
@@ -264,7 +254,8 @@ static int upload(target *t, uint32_t dest, uint32_t src, uint32_t offset)
     return 0;
 }
 /**
-
+    \fn ch32_buffer_clear
+    \brief clear the write buffer
 */
 int ch32_buffer_clear(target *t)
 {
@@ -275,7 +266,7 @@ int ch32_buffer_clear(target *t)
   CLEAR_CR(FLASH_CR_FTPG_CH32); // Fast page program 4-
   return 0;
 }
-#define CH32_VERIFY
+//#define CH32_VERIFY
 
 
 static int ch32f1_flash_write(struct target_flash *f,
@@ -289,8 +280,6 @@ static int ch32f1_flash_write(struct target_flash *f,
 #endif
     DEBUG_CH("CH32: flash write 0x%x ,size=%d\n",dest,len);
 
-
-
     while(length>0)
     {
         if(ch32f1_flash_unlock(t))
@@ -303,14 +292,17 @@ static int ch32f1_flash_write(struct target_flash *f,
         // Buffer reset...
         ch32_buffer_clear(t);
         // Load 128 bytes to buffer
-        upload(t,dest,src, 0x00);
-        upload(t,dest,src, 0x10);
-        upload(t,dest,src, 0x20);
-        upload(t,dest,src, 0x30);
-        upload(t,dest,src, 0x40);
-        upload(t,dest,src, 0x50);
-        upload(t,dest,src, 0x60);
-        upload(t,dest,src, 0x70);
+        if(!waitFlashReady(t,dest))
+        {
+            return -1;
+        }
+        for(int i=0;i<8;i++)
+        {
+            if(upload(t,dest,src, 16*i))
+            {
+              ERROR_CH("Cannot upload to buffer\n");
+            }
+        }
 
         // write buffer
         SET_CR(FLASH_CR_FTPG_CH32);
