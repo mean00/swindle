@@ -74,7 +74,7 @@ void initFreeRTOS()
 
 
 /**
-
+ *  qC  : Get current thread
 */
 bool exect_qC(const char *packet, int len)
 {
@@ -87,7 +87,7 @@ bool exect_qC(const char *packet, int len)
 }
 
 /*
-    Grab FreeRTOS symbols
+    qSymbol Grab FreeRTOS symbols
 */
 bool execqSymbol(const char *packet, int len)
 {
@@ -97,7 +97,7 @@ bool execqSymbol(const char *packet, int len)
     Gdb::startGatheringSymbol();
     return true;
   }
-  if(len>1)
+  if(len>1) // actual data
   {
       Gdb::decodeSymbol(len,packet);
       return true;
@@ -106,13 +106,13 @@ bool execqSymbol(const char *packet, int len)
   return true;
 }
 /**
-
+ *  qOffset: grab symbol offset (there is none)
 */
-//
+
 bool execqOffsets(const char *packet, int len)
 {
   Logger("::: execqOffsets:%s\n",packet);
-  // it's xip...
+  // it's xip, no offset...
   gdb_putpacket("Text=0;Data=0;Bss=0", 19); // 7 7 5=>19
   return true;
 }
@@ -121,8 +121,10 @@ bool execqOffsets(const char *packet, int len)
 STUBFUNCTION_END(execqsThreadInfo)
 STUBFUNCTION_EMPTY(execqThreadInfo)
 
+/**
+ *  execqfThreadInfo get a list of threads
+ * */
 
-// get a list of threads
 bool execqfThreadInfo(const char *packet, int len)
 {
   Logger("::: qfThreadinfo:%s\n",packet);
@@ -142,8 +144,10 @@ bool execqfThreadInfo(const char *packet, int len)
   free(out);
   return true;
 }
-
-// Get extra info as a hex string
+/**
+ *  \fn exect_qThreadExtraInfo
+ *  \brief Get extra info as a hex string
+ */
 bool exect_qThreadExtraInfo(const char *packet, int len)
 {
   Logger("::: exect_qThreadExtraInfo:%s\n",packet);
@@ -158,7 +162,10 @@ bool exect_qThreadExtraInfo(const char *packet, int len)
   Gdb::threadInfo(tid);
   return true;
 }
-// Hg : Switch thread
+/**
+ *  \fn exec_H_cmd
+ *  \brief switch thread
+ * */
 bool exec_H_cmd(const char *packet, int len)
 {
     Logger("::: exec_H_cmd:<%s>\n",packet);
@@ -184,17 +191,22 @@ bool exec_H_cmd(const char *packet, int len)
     return true;
 }
 
-// Stub for thread switching Hxx, does nothing
+/**
+ * \fn exec_H_cmd2
+ * \brief stub for some Hxx commands, does nothing
+ * */
 bool exec_H_cmd2(const char *packet, int len)
 {
     Logger("::: exec_H_cmd2:<%s>\n",packet);
     PRE_CHECK_DEBUG_TARGET();
     gdb_putpacketz("OK");
     return true;
-
 }
 
-// Ask if the thread is alive
+/**
+ *  \fn exec_T_cmd
+ *  \brief  Ask if the thread is alive
+ * */
 bool exec_T_cmd(const char *packet, int len)
 {
     Logger("::: exec_T_cmd:<%s>\n",packet);
@@ -224,8 +236,9 @@ bool exec_T_cmd(const char *packet, int len)
     }
 }
 
-//--
-
+//
+//  Callback structures
+//
 typedef struct
 {
 	const char *cmd_prefix;
@@ -240,6 +253,9 @@ typedef struct
 
 extern bool exec_H_cmd(const char *packet, int len);
 extern bool exec_T_cmd(const char *packet, int len);
+/**
+ * 
+ * */
 static const ln_cmd_executer H_commands[]=
 {
     {"Hg",                         exec_H_cmd},
@@ -254,7 +270,9 @@ static const ln_cmd_executer T_commands[]=
 	{"T",                         exec_T_cmd},
 	{NULL,NULL},
 };
-
+/**
+ *  \brief per letter table
+ * */
 PrefixedCommands prefixedCommands[]=
 {
     {'H',H_commands},
