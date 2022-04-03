@@ -162,6 +162,10 @@ public:
     if(_nbSymbols==_nbNeededSymbols) // got them all
     {
         gdb_putpacket("OK",2);
+        if(!_ready)
+        {
+          _ready=readDebugBlock();
+        }
         return false;
     }
     stringWrapper wr;

@@ -59,15 +59,17 @@ void initFreeRTOS()
 
 
 
-#define STUBFUNCTION_END(x)  extern "C" void x(const char *packet, int len) \
+#define STUBFUNCTION_END(x) bool x (const char *packet, int len) \
 { \
   Logger("::: %s:%s\n",#x,packet); \
   gdb_putpacket("l", 1); \
+  return true; \
 }
-#define STUBFUNCTION_EMPTY(x)  extern "C" void x(const char *packet, int len) \
+#define STUBFUNCTION_EMPTY(x) bool x(const char *packet, int len) \
 { \
   Logger("::: %s:%s\n",#x,packet); \
   gdb_putpacketz(""); \
+  return true; \
 }
 
 
@@ -137,6 +139,7 @@ bool execqfThreadInfo(const char *packet, int len)
   if(strlen(out))
   {
       gdb_putpacket2("m",1,out,strlen(out));
+      Logger(out);
   }else
   {
       gdb_putpacket("m0", 2);
@@ -270,11 +273,26 @@ static const ln_cmd_executer T_commands[]=
 	{"T",                         exec_T_cmd},
 	{NULL,NULL},
 };
+
+ static const ln_cmd_executer q_commands[]=
+ {
+    {"qOffsets"                       ,execqOffsets},
+    {"qSymbol:"                       ,execqSymbol},
+    {"qThreadInfo"                    ,execqThreadInfo},
+    {"qfThreadInfo"                   ,execqfThreadInfo},
+    {"qsThreadInfo"                   ,execqsThreadInfo},
+    {"qThreadExtraInfo"               ,exect_qThreadExtraInfo},
+    {"qC"                             ,exect_qC},
+ 	  {NULL,NULL},
+ };
+
+
 /**
  *  \brief per letter table
  * */
 PrefixedCommands prefixedCommands[]=
 {
+    {'q',q_commands},
     {'H',H_commands},
     {'T',T_commands},
     {0,NULL}
