@@ -49,8 +49,13 @@ public:
   {
       clear();
   }
+  bool ready()
+  {
+    return _ready;
+  }
   void clear()
   {
+      _ready=false;
       _nbSymbols=0;
       _nbNeededSymbols=(sizeof(neededSymbols)/sizeof(const char *))-1;
       memset(&_debugInfo,0,sizeof(_debugInfo));
@@ -116,6 +121,7 @@ public:
 
     if(_debugInfo.MAGIC==LN_FREERTOS_MAGIC)
       return true;
+    _ready=true;
     return false;
   }
   /*
@@ -206,6 +212,7 @@ protected:
   int       _nbNeededSymbols;
   // We allocate it here statically to avoid stressing the heap on the fly
   char      _decodedName[MAX_SYMBOL_LENGTH];
+  bool      _ready;
 public:
   // Additionnal debug info provided by the target
   lnFreeRTOSDebug _debugInfo;

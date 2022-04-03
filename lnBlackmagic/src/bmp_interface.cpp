@@ -41,6 +41,8 @@ OFFSET_TASK_NUM = 68}
 AllSymbols allSymbols;
 lnThreadInfoCache *threadCache=NULL;
 
+#define TARGET_READY() if(!(allSymbols.ready() && cur_target)) {gdb_putpacketz(""); return true;}
+
 /**
 
 */
@@ -55,9 +57,7 @@ void initFreeRTOS()
 
 #include "bmp_gdb_cmd.h"
 
-#define PRE_CHECK_DEBUG_TARGET(sym)  { if(!allSymbols.readDebugBlock ()) \
-                                      {    gdb_putpacketz("");  \
-                                          return false;  } }
+
 
 #define STUBFUNCTION_END(x)  extern "C" void x(const char *packet, int len) \
 { \
@@ -71,7 +71,7 @@ void initFreeRTOS()
 }
 
 
-
+#define PRE_CHECK_DEBUG_TARGET() if(!cur_target) 
 
 /**
  *  qC  : Get current thread
@@ -175,18 +175,18 @@ bool exec_H_cmd(const char *packet, int len)
     {
        Logger("Invalid thread id\n");
        gdb_putpacketz("E01");
-       return true;
+       return false;
     }
     if(0==tid)
     {
       Logger("Invalid thread id\n");
-      gdb_putpacketz("E01");
-      return true;
+      gdb_putpacketz("OK");
+      return false;
     }
     if(!Gdb::switchThread(tid))
     {
       gdb_putpacketz("E01");
-      return true;
+      return false;
     }
     return true;
 }
@@ -290,10 +290,11 @@ PrefixedCommands prefixedCommands[]=
 		if(!strncmp(packet,exec->cmd_prefix,l)) 
     {
 			if(exec->func(packet+l,len-l))
+      {
 			    return true;
+      }
       else
       {
-        gdb_putpacketz("E01");
         Logger("*** malformed command %s\n", packet);
         return true;
       }
@@ -310,6 +311,7 @@ extern "C" bool lnInterceptCommand( const char *packet)
 
   uint8_t c=packet[0];
   PrefixedCommands *cmd=prefixedCommands;
+  Logger(">> cmd [%c]\n",packet[0]);
   while(cmd->c)
   {
     if(cmd->c==c)
