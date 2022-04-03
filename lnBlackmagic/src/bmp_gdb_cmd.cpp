@@ -129,26 +129,29 @@ void Gdb::threadInfo(uint32_t  threadId)
 
     // Save current thread
     //-----------------------
-
+    Logger("Save\n");
     cortexRegs *regs=createCortexWrite(cur_target);
     regs->loadRegisters();
     uint32_t sp=regs->read(13);
-
+    Logger("Save0\n");
     GDB_LOGGER("Current Thread ID=%d, current TCB=%x sp=%x\n",currentThreadId,currentTcb,sp);
     GDB_LOGGER("PC=%x, SP=%x\n",regs->read(14),sp);
     sp-=regs->stackNeeded(regs->read(14));
     regs->storeRegistersButSpToMemory(sp);
+    Logger("Save1\n");
     writeMem32(currentTcb,0,sp); // store sp on the TCB for current stack
     //
     // restore the other thread
     //----------------------------
+    Logger("Restore\n");
     sp=readMem32(tcb,0); // top of stack
     GDB_LOGGER("New Thread ID=%d, thread TCB=%x sp=%x\n",threadId,tcb,sp);
     sp=regs->loadRegistersButSpFromMemory(sp);
+    Logger("Restore0\n");
     GDB_LOGGER("PC=%x, SP=%x\n",regs->read(14),sp);
     regs->write(13,sp);   // update sp
     regs->setRegisters(); // set actual registers from regs
-
+    Logger("Restore1\n");
     delete regs;
     regs=NULL;
     // update pxcurrentTCB
