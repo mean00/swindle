@@ -3,7 +3,7 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 cmake_minimum_required(VERSION 3.13)
 MESSAGE(STATUS "======================")
-MESSAGE(STATUS "Starting usb test")
+MESSAGE(STATUS "Starting lnBMP ")
 MESSAGE(STATUS "======================")
 
 SET(LN_ENABLE_USBD True CACHE INTERNAL "")
@@ -23,13 +23,16 @@ enable_language(C CXX ASM) # this is important too!
 
 include(applyPatch)
 #APPLY_PATCH_IF_NEEDED(patched1 blackmagic_add_ch32_support.patch       blackmagic        "add ch32f103 support")
+APPLY_PATCH_IF_NEEDED(patched6 blackmagic_small_exception.patch           blackmagic         "use smaller setjmp/long jmp on smaller arm")
+APPLY_PATCH_IF_NEEDED(patched7 blackmagic_use_custom_target_mem_map.patch blackmagic      "use heap based mem map")
+APPLY_PATCH_IF_NEEDED(patched9 blackmagic_intercept_commands.patch        blackmagic      "intercept gdb commands ")
+
+# -- Obsolete
+#APPLY_PATCH_IF_NEEDED(patched8 blackmagic_add_thread_function.patch    blackmagic         "add thread related functions")
 #APPLY_PATCH_IF_NEEDED(patched2 blackmagic_dont_overuse_the_stack.patch blackmagic         "dont overuse the stack ")
 #APPLY_PATCH_IF_NEEDED(patched3 blackmagic_dontcopy_partial_reply.patch blackmagic        "avoid copy  ")
 #APPLY_PATCH_IF_NEEDED(patched4 blackmagic_reuse_exception.patch        blackmagic        "reuse exception to lower stack usage ")
 #APPLY_PATCH_IF_NEEDED(patched5 blackmagic_add_gdb_putpacket2.patch     blackmagic        "add gdb_putpacket2 to send a packet made of two chunks")
-APPLY_PATCH_IF_NEEDED(patched6 blackmagic_small_exception.patch        blackmagic         "use smaller setjmp/long jmp on smaller arm")
-APPLY_PATCH_IF_NEEDED(patched7 blackmagic_use_custom_target_mem_map.patch blackmagic      "use heap based mem map")
-APPLY_PATCH_IF_NEEDED(patched8 blackmagic_add_thread_function.patch    blackmagic         "add thread related functions")
 #
 
 include_directories(${CMAKE_SOURCE_DIR})
