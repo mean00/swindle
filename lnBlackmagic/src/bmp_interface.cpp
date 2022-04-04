@@ -41,7 +41,7 @@ OFFSET_TASK_NUM = 68}
 AllSymbols allSymbols;
 lnThreadInfoCache *threadCache=NULL;
 
-#define TARGET_READY() if(!(allSymbols.ready() && cur_target)) {gdb_putpacketz(""); return true;}
+#define TARGET_READY() {if(!(allSymbols.ready() && cur_target)) {gdb_putpacketz(""); return true;}}
 
 /**
 
@@ -73,7 +73,7 @@ void initFreeRTOS()
 }
 
 
-#define PRE_CHECK_DEBUG_TARGET() if(!cur_target) 
+
 
 /**
  *  qC  : Get current thread
@@ -82,8 +82,8 @@ bool exect_qC(const char *packet, int len)
 {
   Logger("::: exect_qC:%s\n",packet);
   initFreeRTOS(); // host mode
-  threadCache->updateCache();
-  PRE_CHECK_DEBUG_TARGET();
+  TARGET_READY();
+  threadCache->updateCache();  
   Gdb::Qc();
   return true;
 }
@@ -130,7 +130,7 @@ STUBFUNCTION_EMPTY(execqThreadInfo)
 bool execqfThreadInfo(const char *packet, int len)
 {
   Logger("::: qfThreadinfo:%s\n",packet);
-  PRE_CHECK_DEBUG_TARGET();
+  TARGET_READY();
 
   threadCache->updateCache();
   stringWrapper wrapper;
@@ -154,7 +154,7 @@ bool execqfThreadInfo(const char *packet, int len)
 bool exect_qThreadExtraInfo(const char *packet, int len)
 {
   Logger("::: exect_qThreadExtraInfo:%s\n",packet);
-  PRE_CHECK_DEBUG_TARGET();
+  TARGET_READY();
   uint32_t tid;
   if(1!=sscanf(packet,",%x",&tid))
   {
@@ -172,7 +172,7 @@ bool exect_qThreadExtraInfo(const char *packet, int len)
 bool exec_H_cmd(const char *packet, int len)
 {
     Logger("::: exec_H_cmd:<%s>\n",packet);
-    PRE_CHECK_DEBUG_TARGET();
+    TARGET_READY();
     int tid;
     if(1!=sscanf(packet,"%d",&tid))
     {
@@ -201,7 +201,7 @@ bool exec_H_cmd(const char *packet, int len)
 bool exec_H_cmd2(const char *packet, int len)
 {
     Logger("::: exec_H_cmd2:<%s>\n",packet);
-    PRE_CHECK_DEBUG_TARGET();
+    TARGET_READY();
     gdb_putpacketz("OK");
     return true;
 }
@@ -213,7 +213,7 @@ bool exec_H_cmd2(const char *packet, int len)
 bool exec_T_cmd(const char *packet, int len)
 {
     Logger("::: exec_T_cmd:<%s>\n",packet);
-    PRE_CHECK_DEBUG_TARGET();
+    TARGET_READY();
     int tid;
     if(1!=sscanf(packet,"%d",&tid))
     {
@@ -246,6 +246,7 @@ typedef struct
 {
 	const char *cmd_prefix;
 	bool  (*func)(const char *packet,int len);
+  const bool exactMatch;
 }ln_cmd_executer;
 
 typedef struct
@@ -261,28 +262,28 @@ extern bool exec_T_cmd(const char *packet, int len);
  * */
 static const ln_cmd_executer H_commands[]=
 {
-    {"Hg",                         exec_H_cmd},
-    {"Hm",                         exec_H_cmd},
-    {"HM",                         exec_H_cmd},
-    {"Hc",                         exec_H_cmd},
+    {"Hg",                         exec_H_cmd,false},
+    {"Hm",                         exec_H_cmd,false},
+    {"HM",                         exec_H_cmd,false},
+    {"Hc",                         exec_H_cmd,false},
 	{NULL,NULL},
 };
 
 static const ln_cmd_executer T_commands[]=
 {
-	{"T",                         exec_T_cmd},
+	{"T",                         exec_T_cmd,false},
 	{NULL,NULL},
 };
 
  static const ln_cmd_executer q_commands[]=
  {
-    {"qOffsets"                       ,execqOffsets},
-    {"qSymbol:"                       ,execqSymbol},
-    {"qThreadInfo"                    ,execqThreadInfo},
-    {"qfThreadInfo"                   ,execqfThreadInfo},
-    {"qsThreadInfo"                   ,execqsThreadInfo},
-    {"qThreadExtraInfo"               ,exect_qThreadExtraInfo},
-    {"qC"                             ,exect_qC},
+    {"qOffsets"                       ,execqOffsets,false},
+    {"qSymbol:"                       ,execqSymbol,false},
+    {"qThreadInfo"                    ,execqThreadInfo,false},
+    {"qfThreadInfo"                   ,execqfThreadInfo,false},
+    {"qsThreadInfo"                   ,execqsThreadInfo,false},
+    {"qThreadExtraInfo"               ,exect_qThreadExtraInfo,false},
+    {"qC"                             ,exect_qC,true}, // needs to be a an exact match else it is confused with qCRC
  	  {NULL,NULL},
  };
 
@@ -297,29 +298,51 @@ PrefixedCommands prefixedCommands[]=
     {'T',T_commands},
     {0,NULL}
 };
+
+enum lnExecResult
+{
+    lnExecUnsupported=0,
+    lnExecOk=1,
+    lnExecError=2,
+};
+
 /**
  * 
  * */
- bool ln_exec_command(const char *packet, int len, const ln_cmd_executer *exec)
+ lnExecResult ln_exec_command(const char *packet, int len, const ln_cmd_executer *exec)
 {
 	while(exec->cmd_prefix) 
   {
 		int l=strlen(exec->cmd_prefix);
 		if(!strncmp(packet,exec->cmd_prefix,l)) 
     {
-			if(exec->func(packet+l,len-l))
+      bool toRun=true;
+      if(exec->exactMatch)
       {
-			    return true;
+          if(len!=strlen(exec->cmd_prefix))
+          {
+            toRun=false;
+          }
       }
-      else
+      if(toRun)
       {
-        Logger("*** malformed command %s\n", packet);
-        return true;
+        if(exec->func(packet+l,len-l))
+        {
+            return lnExecOk;
+        }
+        else
+        {
+          Logger("*** malformed command %s\n", packet);
+          return lnExecError;
+        }
+      }else
+      {
+         return lnExecUnsupported;
       }
 		}
 		exec++;
 	}
-  return false;
+  return lnExecUnsupported;
 }
 /**
  * 
@@ -334,7 +357,18 @@ extern "C" bool lnInterceptCommand( const char *packet)
   {
     if(cmd->c==c)
     {
-        return ln_exec_command(packet,strlen(packet),cmd->cmds);
+        lnExecResult er=ln_exec_command(packet,strlen(packet),cmd->cmds);
+        switch(er)
+        { 
+          case lnExecOk:
+          case lnExecError:
+              return true;
+              break;
+          case lnExecUnsupported:
+          default:
+              return false;
+              break;
+        }
     }
     c++;
   }
