@@ -120,9 +120,14 @@ public:
 
 
     if(_debugInfo.MAGIC==LN_FREERTOS_MAGIC)
-      return true;
-    _ready=true;
-    return false;
+    {
+      _ready=true;
+    }          
+    else
+    {
+      _ready=false;
+    }
+    return _ready;
   }
   /*
   */

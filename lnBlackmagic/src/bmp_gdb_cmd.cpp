@@ -4,7 +4,7 @@
 #include "bmp_cortex_registers.h"
 #include "bmp_gdb_cmd.h"
 
-#if 1
+#if 0
   #define GDB_LOGGER(...) {}
 #else
   #define GDB_LOGGER Logger
@@ -36,9 +36,8 @@ void Gdb::Qc()
 
   //if(!threadId) /threadId=2;
   sprintf(tst,"QC%x",threadId);
-  gdb_putpacket(tst,strlen(tst));
-  Logger(tst);
-  GDB_LOGGER(tst);
+  gdb_putpacket(tst,strlen(tst));  
+  GDB_LOGGER(tst);GDB_LOGGER("\n");
 }
 //
 void Gdb::threadInfo(uint32_t  threadId)

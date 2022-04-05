@@ -262,28 +262,28 @@ extern bool exec_T_cmd(const char *packet, int len);
  * */
 static const ln_cmd_executer H_commands[]=
 {
-    {"Hg",                         exec_H_cmd,false},
-    {"Hm",                         exec_H_cmd,false},
-    {"HM",                         exec_H_cmd,false},
-    {"Hc",                         exec_H_cmd,false},
+    {"Hg",                exec_H_cmd,       false},
+    {"Hm",                exec_H_cmd,       false},
+    {"HM",                exec_H_cmd,       false},
+    {"Hc",                exec_H_cmd,       false},
 	{NULL,NULL},
 };
 
 static const ln_cmd_executer T_commands[]=
 {
-	{"T",                         exec_T_cmd,false},
+	{"T",                   exec_T_cmd,       false},
 	{NULL,NULL},
 };
 
  static const ln_cmd_executer q_commands[]=
  {
-    {"qOffsets"                       ,execqOffsets,false},
-    {"qSymbol:"                       ,execqSymbol,false},
-    {"qThreadInfo"                    ,execqThreadInfo,false},
-    {"qfThreadInfo"                   ,execqfThreadInfo,false},
-    {"qsThreadInfo"                   ,execqsThreadInfo,false},
-    {"qThreadExtraInfo"               ,exect_qThreadExtraInfo,false},
-    {"qC"                             ,exect_qC,true}, // needs to be a an exact match else it is confused with qCRC
+    {"qOffsets",          execqOffsets,     false},
+    {"qSymbol:",          execqSymbol,      false},
+    {"qThreadInfo",       execqThreadInfo,  false},
+    {"qfThreadInfo",      execqfThreadInfo, false},
+    {"qsThreadInfo",      execqsThreadInfo, false},
+    {"qThreadExtraInfo",  exect_qThreadExtraInfo,false},
+    {"qC",                exect_qC,          true}, // needs to be a an exact match else it is confused with qCRC
  	  {NULL,NULL},
  };
 
@@ -301,9 +301,9 @@ PrefixedCommands prefixedCommands[]=
 
 enum lnExecResult
 {
-    lnExecUnsupported=0,
-    lnExecOk=1,
-    lnExecError=2,
+  lnExecUnsupported=0,
+  lnExecOk=1,
+  lnExecError=2,
 };
 
 /**
@@ -352,7 +352,7 @@ extern "C" bool lnInterceptCommand( const char *packet)
 
   uint8_t c=packet[0];
   PrefixedCommands *cmd=prefixedCommands;
-  Logger(">> cmd [%c]\n",packet[0]);
+  Logger(">> cmd [%c][%c]\n",packet[0],packet[1]);
   while(cmd->c)
   {
     if(cmd->c==c)
@@ -370,7 +370,7 @@ extern "C" bool lnInterceptCommand( const char *packet)
               break;
         }
     }
-    c++;
+    cmd++;
   }
   return false;
 }
