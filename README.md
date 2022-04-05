@@ -51,3 +51,12 @@ Why do i need the lnFreeRTOSDebug ?
 Depending on the way freeRTOS is compiled (including FreeRTOSConfig.h options), the structure representing the internals of freeRTOS will change slightly. That file exports the executable configuration to lnBMP so it works without guesswork.
 
 
+Pinout
+-------
+  SWDIO : PB4
+  SWDCLK: PB3
+  RESET : PB6
+
+Uart : PB10/PB11
+   
+

@@ -48,6 +48,8 @@ SET(LN_USB_NB_HID 0) # No HID
 include(${AF_FOLDER}/setup.cmake)
 USE_LIBRARY(tinyUsb)
 
+SET(LN_CUSTOM_LD_SCRIPT ${CMAKE_SOURCE_DIR}/custom_ldscript.ld)
+
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
 SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
