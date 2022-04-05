@@ -53,10 +53,13 @@ Depending on the way freeRTOS is compiled (including FreeRTOSConfig.h options), 
 
 Pinout
 -------
-  SWDIO : PB4
-  SWDCLK: PB3
-  RESET : PB6
+- SWDIO : PB4
+- SWDCLK: PB3
+- RESET : PB6
 
-Uart : PB10/PB11
+Uart : 
+------
+- PB10
+- PB11
    
 
