@@ -45,6 +45,7 @@ add_subdirectory(${AF_FOLDER})
 # tiny USB configuration
 SET(LN_USB_NB_CDC 2) # 2 CDC interfaces
 SET(LN_USB_NB_HID 0) # No HID
+SET(LN_USB_DFU_RUNTIME 1 CACHE INTERNAL "")
 include(${AF_FOLDER}/setup.cmake)
 USE_LIBRARY(tinyUsb)
 
