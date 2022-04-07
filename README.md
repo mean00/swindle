@@ -14,7 +14,7 @@ Quick FAQ
 * Is it better than vanilla Black Magic Probe ? : No. It supports less targets and is less robust.
 * Can i run it on xyz board ? : No, only STM32F103, GD32F103 and GD32F303 are supported (GD32VF103 lacks a usb driver atm)
 * Can i debug all the boards : No, only some are enabled, but you can easily change that.
-* Can i use a DFU update on a regular BMP software ? : No you have to flash it through SWD
+* Can i use a DFU update on a regular BMP software ? : Yes but /!\ be careful of the pinout used /!\
 * Is Jtag supported ? : No, only SWD
 
 How to build
@@ -30,14 +30,14 @@ Then, the usual cmake thing
 
 and then flash build/lnBMP.elf
 
-How to enable FreeRTOS support 
--------------------------------
+How to enable FreeRTOS support in your project
+-----------------------------------------------
 Make sure you have configUSE_TRACE_FACILITY enabled in FreeRTOSconfig.h
 Copy  the following files to your project :
   - lnArduino/include/lnFreeRTOSDebug.h
   - lnArduino/src/lnFreeRTOSDebug.cpp 
 
-The latest is actually mostly C code, you can just rename it to C and slightly modify if need be.
+The latest is actually mostly C code, you can just rename it to C and slightly modify it if need be.
 
 Make absolutely sure the symbol freeRTOSDebug is present in your final executable.
 You can do that by doing a dummy call to lnGetFreeRTOSDebug() to pull a reference to that.
@@ -51,14 +51,14 @@ Why do i need the lnFreeRTOSDebug ?
 Depending on the way freeRTOS is compiled (including FreeRTOSConfig.h options), the structure representing the internals of freeRTOS will change slightly. That file exports the executable configuration to lnBMP so it works without guesswork.
 
 
-Pinout
--------
+Default SWD Pinout
+-------------------
 - SWDIO : PB4
 - SWDCLK: PB3
 - RESET : PB6
 
-Uart : 
-------
+Default Uart Pinout : 
+-----------------------
 - PB10
 - PB11
    
