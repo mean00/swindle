@@ -41,6 +41,9 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 #SET(LN_ENABLE_RUST ON CACHED "")
+IF(USE_STLINK_PINOUT)
+    SET(LN_DEBUG_UART 1 CACHE INTERNAL "")
+ENDIF()
 
 add_subdirectory(${AF_FOLDER})
 
