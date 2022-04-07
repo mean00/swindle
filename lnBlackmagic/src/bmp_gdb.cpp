@@ -5,6 +5,7 @@
 #include "include/lnUsbStack.h"
 #include "include/lnUsbCDC.h"
 #include "lnBMP_usb_descriptor.h"
+#include "include/lnUsbDFUrt.h"
 
 
  extern "C"
@@ -138,6 +139,22 @@ protected:
 
 //
 BufferGdb *usbGdb=NULL;
+/**
+ * 
+ */
+extern void lnSoftSystemReset(void);
+void goDfu()
+{
+  Logger("Rebooting to DFU...\n");
+  // pull DP to low
+  lnDigitalWrite(PA12,0);
+  lnPinMode(PA12,lnOUTPUT);
+  lnDelayMs(50);
+  // and reboot
+  // Gpio marker to enter bootloader mode
+  lnPinMode(PA1,lnALTERNATE_PP);
+  lnSoftSystemReset();
+}
 
 /**
 */
@@ -152,6 +169,8 @@ extern "C" int gdb_if_init(void)
   // start gdb CDC/ACM
   usbGdb =new BufferGdb(0);
   serialInit();
+  // init DFU
+  lnUsbDFURT::addDFURTCb(goDfu);
   usb->start();
   return 0;
 }
