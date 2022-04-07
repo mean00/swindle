@@ -6,6 +6,8 @@ MESSAGE(STATUS "======================")
 MESSAGE(STATUS "Starting lnBMP ")
 MESSAGE(STATUS "======================")
 
+OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
+
 SET(LN_ENABLE_USBD True CACHE INTERNAL "")
 SET(LN_ENABLE_I2C  FALSE CACHE INTERNAL "")
 SET(LN_ENABLE_SPI  FALSE CACHE INTERNAL "")
@@ -59,3 +61,15 @@ GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 
 ADD_SUBDIRECTORY(lnBlackmagic)
 target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)
+
+MESSAGE(STATUS "Summary")
+MESSAGE(STATUS "=======")
+IF(USE_STLINK_PINOUT)
+    MESSAGE(STATUS "STLink style pinout (PA13/PA14)")
+    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_stlink_pinout)
+ELSE(USE_STLINK_PINOUT)
+    MESSAGE(STATUS "lnBMP pinout (PB3/PB4)")
+    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_default_pinout)
+ENDIF()
+
+

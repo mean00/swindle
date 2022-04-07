@@ -72,6 +72,8 @@ SET(BM_PLATFORM_COMMON   ${B}/bmp_interface.cpp ${B}/bmp_string.cpp ${B}/bmp_uti
                         )
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BM_TARGET} ${BM_HOSTED} ${BM_PLATFORM_COMMON} ${BOARDS})
-
+IF(USE_STLINK_PINOUT)
+        target_compile_definitions(lnBlackmagic PRIVATE USE_STLINK_PINOUT)
+ENDIF(USE_STLINK_PINOUT)
 target_include_directories(lnBlackmagic PRIVATE  ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
 target_include_directories(lnBlackmagic PRIVATE  ${myB}/private_include)

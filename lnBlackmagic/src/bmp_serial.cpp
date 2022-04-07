@@ -140,5 +140,14 @@ protected:
 
 void serialInit()
 {
-  BMPSerial *serial=new BMPSerial(1,2); // bridge CDC ACM1 to Serial port 2
+#ifdef USE_STLINK_PINOUT  
+  BMPSerial *serial=new BMPSerial(1,0); // bridge CDC ACM1 to Serial port 0 PB6/PB7
+  // Remap the uart pins
+  lnPinMode(PA9,lnOUTPUT);
+  lnPinMode(PA10,lnOUTPUT);
+  lnPinMode(PB6,lnALTERNATE_PP);
+  lnPinMode(PB7,lnALTERNATE_PP);
+#else
+  BMPSerial *serial=new BMPSerial(1,2); // bridge CDC ACM1 to Serial port 2 PB10/PB11
+#endif
 }
