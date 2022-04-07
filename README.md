@@ -9,7 +9,7 @@ The main goal is that , since it is inside a higher level framework, it is  easi
 The Blackmagic original code is pulled "as-is" through a git submodule, and slightly patched by the build process.  
 
 Quick FAQ
----------
+==================
 
 * Is it better than vanilla Black Magic Probe ? : No. It supports less targets and is less robust.
 * Can i run it on xyz board ? : No, only STM32F103, GD32F103 and GD32F303 are supported (GD32VF103 lacks a usb driver atm)
@@ -50,9 +50,11 @@ Why do i need the lnFreeRTOSDebug ?
 -----------------------------------
 Depending on the way freeRTOS is compiled (including FreeRTOSConfig.h options), the structure representing the internals of freeRTOS will change slightly. That file exports the executable configuration to lnBMP so it works without guesswork.
 
+Pinout
+==================
 
 Default SWD Pinout
--------------------
+-----------------------
 - SWDIO : PB4
 - SWDCLK: PB3
 - RESET : PB6
@@ -62,4 +64,21 @@ Default Uart Pinout :
 - PB10
 - PB11
    
+You can also use the STLink pintout by calling cmake with -DUSE_STLINK_PINOUT=1 i.e.
+> mkdir build
+> cd build
+> cmake -DUSE_STLINK_PINOUT=1 .. && make
 
+In that case, the pinout is :
+
+STLink SWD Pinout
+-------------------
+- SWDIO : PA13
+- SWDCLK: PA14
+- RESET : PB4
+
+STLink Uart Pinout : 
+-----------------------
+- PA8
+- PA9
+   
