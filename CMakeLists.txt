@@ -29,13 +29,6 @@ APPLY_PATCH_IF_NEEDED(patched6 blackmagic_small_exception.patch           blackm
 APPLY_PATCH_IF_NEEDED(patched7 blackmagic_use_custom_target_mem_map.patch blackmagic      "use heap based mem map")
 APPLY_PATCH_IF_NEEDED(patched9 blackmagic_intercept_commands.patch        blackmagic      "intercept gdb commands ")
 
-# -- Obsolete
-#APPLY_PATCH_IF_NEEDED(patched8 blackmagic_add_thread_function.patch    blackmagic         "add thread related functions")
-#APPLY_PATCH_IF_NEEDED(patched2 blackmagic_dont_overuse_the_stack.patch blackmagic         "dont overuse the stack ")
-#APPLY_PATCH_IF_NEEDED(patched3 blackmagic_dontcopy_partial_reply.patch blackmagic        "avoid copy  ")
-#APPLY_PATCH_IF_NEEDED(patched4 blackmagic_reuse_exception.patch        blackmagic        "reuse exception to lower stack usage ")
-#APPLY_PATCH_IF_NEEDED(patched5 blackmagic_add_gdb_putpacket2.patch     blackmagic        "add gdb_putpacket2 to send a packet made of two chunks")
-#
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
