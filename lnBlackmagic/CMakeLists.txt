@@ -11,14 +11,15 @@ SET(B ${myB}/src )
 OPTION(LN_BMP_HOSTED  "Enable Hosted mode" OFF)
 
 
-# hre are the boards that are removed, dont forget to edit bmp_disabledBoard if you change that list
-# ${T}/lpc15xx.c ${T}/lpc43xx.c   ${T}/lpc_common.c ${T}/nrf51.c ${T}/rp.c ${T}/sam4l.c ${T}/samx5x.c  ${T}/kinetis.c${T}/samd.c
-# ${T}/stm32f1.c ${T}/stm32g0.c   ${T}/stm32l0.c
-# ${T}/stm32f4.c ${T}/stm32h7.c ${T}/stm32l4.c  ${T}/efm32.c   ${T}/lpc11xx.c ${T}/lpc17xx.c ${T}/lpc546xx.c ${T}/msp432.c
+# Here are the boards that are removed, dont forget to edit bmp_disabledBoard if you change that list
+# ${T}/lpc43xx.c   ${T}/nrf51.c ${T}/rp.c ${T}/sam4l.c ${T}/samx5x.c  ${T}/kinetis.c${T}/samd.c
+#  ${T}/efm32.c   ${T}/msp432.c ${T}/stm32h7.c   ${T}/lpc546xx.c ${T}/lpc17xx.c     ${T}/lpc15xx.c  
 # ${T}/nxpke04.c ${T}/sam3x.c
 # dont need cortexa ${T}/cortexa.c
 # The one i use...
-SET(BOARDS  ${T}/lpc_common.c   ${T}/stm32f1.c ${T}/stm32g0.c  ${T}/lpc11xx.c ${B}/bmp_disabledBoard.cpp)
+SET(BOARDS      ${T}/lpc_common.c       ${T}/stm32f1.c ${T}/stm32g0.c   ${T}/ch32f1.c ${T}/lpc11xx.c     ${B}/bmp_disabledBoard.cpp
+                ${T}/stm32l0.c          ${T}/stm32f4.c  ${T}/stm32l4.c      
+        )
 
 include_directories(${CMAKE_SOURCE_DIR}/blackmagic/libopencm3/include)
 

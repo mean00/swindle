@@ -22,7 +22,7 @@
 MEMORY
 {
   ram (rwx) :       ORIGIN = 0x20000000, LENGTH = 20K
-  rom (rx)  :       ORIGIN = 0x08002000, LENGTH = 120K-4K-8K
+  rom (rx)  :       ORIGIN = 0x08002000, LENGTH = 128K-4K-8K
   e2prom (rx)  :    ORIGIN = 0x08000000+128K-4K, LENGTH = 4K
 }
 /**

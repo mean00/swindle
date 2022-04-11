@@ -27,10 +27,7 @@ BOARD_STUB(sam3x_probe);
 BOARD_STUB(sam4l_probe);
 BOARD_STUB(samd_probe);
 BOARD_STUB(samx5x_probe);
-BOARD_STUB(stm32f4_probe);
 BOARD_STUB(stm32h7_probe);
-BOARD_STUB(stm32l0_probe);
-BOARD_STUB(stm32l4_probe);
 
 
 bool cortexa_probe()
