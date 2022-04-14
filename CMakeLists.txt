@@ -11,7 +11,7 @@ OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 SET(LN_ENABLE_USBD True CACHE INTERNAL "")
 SET(LN_ENABLE_I2C  FALSE CACHE INTERNAL "")
 SET(LN_ENABLE_SPI  FALSE CACHE INTERNAL "")
-
+SET(LN_BOOTLOADER_SIZE 8 CACHE INTERNAL "")
 SET(AF_FOLDER  ${CMAKE_SOURCE_DIR}/lnArduino/)
 include(./mcuSelect.cmake)
 # Update paths
@@ -46,7 +46,7 @@ SET(LN_USB_DFU_RUNTIME 1 CACHE INTERNAL "")
 include(${AF_FOLDER}/setup.cmake)
 USE_LIBRARY(tinyUsb)
 
-SET(LN_CUSTOM_LD_SCRIPT ${CMAKE_SOURCE_DIR}/custom_ldscript.ld)
+#SET(LN_CUSTOM_LD_SCRIPT ${CMAKE_SOURCE_DIR}/custom_ldscript.ld)
 
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
