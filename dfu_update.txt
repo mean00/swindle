@@ -1,0 +1,2 @@
+sudo  dfu-util -d 1d50:6020  -s 0x08002000:leave -D  lnBMP_default_pinout.elf.bin
+
