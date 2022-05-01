@@ -8,6 +8,7 @@ IF(1) # ARM
         SET(LN_MCU_STATIC_RAM   6     CACHE INTERNAL "")
         SET(LN_MCU_EEPROM_SIZE  2     CACHE INTERNAL "")
         SET(LN_SPEC             "picolibc"   CACHE INTERNAL "") # if not set we use nano
+        SET(LN_BOOTLOADER_SIZE 8 CACHE INTERNAL "")
     ELSE()
         SET(LN_ARCH             "ARM" CACHE INTERNAL "")
         SET(LN_MCU              "M4"  CACHE INTERNAL "")
@@ -15,6 +16,7 @@ IF(1) # ARM
         SET(LN_MCU_RAM_SIZE     46    CACHE INTERNAL "")
         SET(LN_MCU_SPEED        72000000    CACHE INTERNAL "") #=> ok
         SET(LN_MCU_STATIC_RAM   8     CACHE INTERNAL "")
+        SET(LN_BOOTLOADER_SIZE 8 CACHE INTERNAL "")
         #SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
         #SET(LN_MCU_SPEED 104000000  CACHE INTERNAL "")
         #SET(LN_MCU_SPEED 96000000  CACHE INTERNAL "")
