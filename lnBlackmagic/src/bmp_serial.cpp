@@ -15,9 +15,13 @@
 
 #define SERIAL_EVENT 1
 #define USB_EVENT    2
-
+/**
+ * 
+ * 
+ */
 class BMPSerial : public xTask
 {
+  
 public:
   BMPSerial(int usbInst,int serialInstance) : xTask("usbserial",TASK_BMP_SERIAL_PRIORITY, TASK_BMP_SERIAL_STACK_SIZE)
   {
@@ -25,11 +29,13 @@ public:
     _serialInstance=serialInstance;
     _evGroup=new xFastEventGroup;
     _usb=new lnUsbCDC(_usbInstance);
-    _serial=new lnSerial(_serialInstance);
+    _serial=new lnSerial(_serialInstance,512);
     _connected=0;
     start();
   }
-
+/**
+ * 
+ */
   void run()
   {
     _evGroup->takeOwnership();
@@ -41,52 +47,54 @@ public:
     _usb->setEventHandler(gdbCdcEventHandler,this);
     int ev=SERIAL_EVENT+USB_EVENT;
     while(1)
-    {
+    {    
+
+      // 1- fill in serial  buffer
       if(ev & SERIAL_EVENT)
+      {        
+        int n;
+        uint8_t *to;
+        while(n=_serial->getReadPointer(&to))
+        {
+            if(n<=0) break;
+            int consumed=_usb->write(to,n);
+            _serial->consume(n);
+            //_usb->flush();
+        }
+      }
+
+      // 3- usb -> serial
+      if(ev & USB_EVENT)
       {
         int n=1;
         while(n)
         {
-          n=_serial->read(BMP_SERIAL_BUFFER_SIZE,_buffer);
-          if(!n) continue;
+          n=_usb->read(_usbBuffer,BMP_SERIAL_BUFFER_SIZE);
           if(n<0)
           {
-            Logger("Serial error\n");
+            Logger("Usb error\n");
             break;
           }
-          if(_connected & USB_EVENT)
-          {
-#warning OPTIMIZE
-              _usb->write(_buffer,n);
-
-              _usb->flush(); // optimize
-          }
-
+          if(!n) break;
+          _serial->transmit(n,_usbBuffer);
         }
       }
-      if(ev & USB_EVENT)
-      {
-          int n=1;
-          while(n)
-          {
-            n=_usb->read(_buffer,BMP_SERIAL_BUFFER_SIZE);
-            if(n<0)
-            {
-              Logger("Usb error\n");
-              break;
-            }
-            if(!n) continue;
-            _serial->transmit(n,_buffer);
-          }
-      }
-      ev=_evGroup->waitEvents(SERIAL_EVENT+USB_EVENT);
+      ev=_evGroup->waitEvents(SERIAL_EVENT+USB_EVENT);      
     }
   }
+  /**
+   * 
+   * 
+   */
   static void _serialCallback(void *cookie, lnSerial::Event event)
   {
     BMPSerial *me=(BMPSerial *)cookie;
     me->serialCallback(event);
   }
+  /**
+   * 
+   * 
+   */
   void serialCallback(lnSerial::Event event)
   {
       switch(event)
@@ -102,6 +110,10 @@ public:
     xAssert(interface==bg->_usbInstance);
     bg->cdcEventHandler(event,payload);
   }
+  /**
+   * 
+   * 
+   */
   void cdcEventHandler(lnUsbCDC::lnUsbCDCEvents event,uint32_t payload)
   {
       switch (event)
@@ -130,11 +142,10 @@ public:
 protected:
     int         _connected;
     int         _usbInstance,_serialInstance;
-    uint8_t     _buffer[BMP_SERIAL_BUFFER_SIZE];
+    uint8_t     _usbBuffer[BMP_SERIAL_BUFFER_SIZE];
     lnSerial    *_serial;
     xFastEventGroup *_evGroup;
     lnUsbCDC    *_usb;
-
 };
 
 
