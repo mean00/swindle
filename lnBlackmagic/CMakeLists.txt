@@ -18,7 +18,7 @@ OPTION(LN_BMP_HOSTED  "Enable Hosted mode" OFF)
 # dont need cortexa ${T}/cortexa.c
 # The one i use...
 SET(BOARDS      ${T}/lpc_common.c       ${T}/stm32f1.c ${T}/stm32g0.c   ${T}/ch32f1.c ${T}/lpc11xx.c     ${B}/bmp_disabledBoard.cpp
-                ${T}/stm32l0.c          ${T}/stm32f4.c  ${T}/stm32l4.c      
+                ${T}/stm32l0.c          ${T}/stm32f4.c  ${T}/stm32l4.c       ${T}/rp.c
         )
 
 include_directories(${CMAKE_SOURCE_DIR}/blackmagic/libopencm3/include)
