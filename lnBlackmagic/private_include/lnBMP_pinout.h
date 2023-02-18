@@ -26,8 +26,8 @@ const lnPin _mapping[8]=
     PA0, // 3 TCK_PIN
     PA0, // 4 TRACESWO_PIN
 
-    PB4,  // 5 SWDIO_PIN
-    PB3,  // 6 SWCLK_PIN
+    PB8,  // 5 SWDIO_PIN
+    PB9,  // 6 SWCLK_PIN
 
     PB6,  // 7 RST
 };
