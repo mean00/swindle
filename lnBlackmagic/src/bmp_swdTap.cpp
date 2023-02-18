@@ -41,10 +41,10 @@ uint32_t swd_delay_cnt=1;
 
 #include "lnBMP_swdio.h"
 
-static uint32_t SwdRead(int ticks) ;
-static bool SwdRead_parity(uint32_t *ret, int ticks);
-static void SwdWrite(uint32_t MS, int ticks);
-static void SwdWrite_parity(uint32_t MS, int ticks);
+static uint32_t SwdRead(size_t ticks) ;
+static bool SwdRead_parity(uint32_t *ret, size_t ticks);
+static void SwdWrite(uint32_t MS, size_t ticks);
+static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
 static void swdioSetAsOutput(bool output);
 
@@ -68,7 +68,7 @@ void bmp_gpio_init()
 
 /**
 */
-static uint32_t SwdRead(int len)
+static uint32_t SwdRead(size_t len)
 {
 	uint32_t index = 1;
 	uint32_t ret = 0;
@@ -87,7 +87,7 @@ static uint32_t SwdRead(int len)
 }
 /**
 */
-static bool SwdRead_parity(uint32_t *ret, int len)
+static bool SwdRead_parity(uint32_t *ret, size_t len)
 {
 	uint32_t res = 0;
   res= SwdRead( len);
@@ -102,7 +102,7 @@ static bool SwdRead_parity(uint32_t *ret, int len)
 /**
 
 */
-static void SwdWrite(uint32_t MS, int ticks)
+static void SwdWrite(uint32_t MS, size_t ticks)
 {
   int cnt;
 	swdioSetAsOutput(true);
@@ -117,7 +117,7 @@ static void SwdWrite(uint32_t MS, int ticks)
 }
 /**
 */
-static void SwdWrite_parity(uint32_t MS, int ticks)
+static void SwdWrite_parity(uint32_t MS, size_t ticks)
 {
 	int parity = __builtin_popcount(MS) & 1;
   SwdWrite(MS,ticks);
@@ -184,16 +184,17 @@ extern "C" bool platform_srst_get_val(void)
   return pReset.read();
 }
 
+swd_proc_s swd_proc;
 /**
 
 */
-extern "C" int swdptap_init(ADIv5_DP_t *dp)
+extern "C" void  swdptap_init()
 {
-	dp->seq_in         = SwdRead;
-	dp->seq_in_parity  = SwdRead_parity;
-	dp->seq_out        = SwdWrite;
-	dp->seq_out_parity = SwdWrite_parity;
-	return 0;
+	swd_proc.seq_in         = SwdRead;
+	swd_proc.seq_in_parity  = SwdRead_parity;
+	swd_proc.seq_out        = SwdWrite;
+	swd_proc.seq_out_parity = SwdWrite_parity;
+
 }
 
 // EOF

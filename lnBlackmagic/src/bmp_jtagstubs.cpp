@@ -36,20 +36,20 @@ Original license header
 #include "exception.h"
 
 
-extern jtag_proc_t jtag_proc={NULL,NULL,NULL,NULL,NULL};
- int jtagtap_init()
+extern jtag_proc_s jtag_proc={NULL,NULL,NULL,NULL,NULL};
+ void jtagtap_init()
 {
-  return 0;
+  return ;
 }
-int jtag_scan(const uint8_t *irlens)
+uint32_t jtag_scan(const uint8_t *irlens)
 {
   return -1;
 }
-void adiv5_jtagdp_abort(ADIv5_DP_t *dp, uint32_t abort)
+void adiv5_jtagdp_abort(adiv5_debug_port_s *dp, uint32_t abort)
 {
 
 }
-uint32_t fw_adiv5_jtagdp_read(ADIv5_DP_t *dp, uint16_t addr)
+uint32_t fw_adiv5_jtagdp_read( adiv5_debug_port_s *dp, uint16_t addr)
 {
   return 0;
 }
@@ -57,13 +57,13 @@ uint32_t fw_adiv5_jtagdp_read(ADIv5_DP_t *dp, uint16_t addr)
 //{
 //  return 0;
 //}
-uint32_t fw_adiv5_jtagdp_low_access(ADIv5_DP_t *dp, uint8_t RnW,
+uint32_t fw_adiv5_jtagdp_low_access(adiv5_debug_port_s *dp, uint8_t RnW,
                      uint16_t addr, uint32_t value)
  {
     raise_exception(EXCEPTION_ERROR, "JTAG-DP disabled");
    return 0; //
  }
-void jtag_add_device(const int dev_index, const jtag_dev_t *jtag_dev)
+void jtag_add_device(const uint32_t dev_index, const jtag_dev_s *jtag_dev)
 {
 
 }

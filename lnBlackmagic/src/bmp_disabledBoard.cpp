@@ -29,6 +29,8 @@ BOARD_STUB(samd_probe);
 BOARD_STUB(samx5x_probe);
 BOARD_STUB(stm32h7_probe);
 
+BOARD_STUB(samx7x_probe);
+BOARD_STUB(renesas_probe);
 
 bool cortexa_probe()
 {

@@ -5,6 +5,7 @@
 extern "C"
 {
   #include "target.h"
+  #include "general.h"
   #include "target_internal.h"
   #include "gdb_packet.h"
   #include "lnFreeRTOSDebug.h"
@@ -14,7 +15,7 @@ extern "C"
 uint32_t readMem32(uint32_t base, uint32_t offset);
 void writeMem32(uint32_t base, uint32_t offset,   uint32_t value);
 extern target *cur_target;
-extern "C" void gdb_putpacket(const char *packet, int size);
+extern "C" void gdb_putpacket(const char *packet, size_t size);
 
 #define O(x) allSymbols._debugInfo.x
 

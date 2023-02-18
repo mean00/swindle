@@ -16,6 +16,7 @@
 #include "target.h"
 #include "gdb_packet.h"
 #include "general.h"
+#include "exception.h"
 
 }
 extern "C" void pins_init();
@@ -180,23 +181,75 @@ extern "C"  unsigned char gdb_if_getchar(void){             return usbGdb->getCh
 extern "C"  unsigned char gdb_if_getchar_to(int timeout){   return usbGdb->getChar(timeout);}
 extern "C"  void          gdb_if_putchar(unsigned char c, int flush){  usbGdb->putChar(c,flush);}
 extern void initFreeRTOS();
+//
+#define BUF_SIZE 1024U
+static char pbuf[BUF_SIZE + 1U];
+
+static void bmp_poll_loop(void)
+{
+	SET_IDLE_STATE(false);
+	while (gdb_target_running && cur_target) {
+		gdb_poll_target();
+
+		// Check again, as `gdb_poll_target()` may
+		// alter these variables.
+		if (!gdb_target_running || !cur_target)
+			break;
+		char c = gdb_if_getchar_to(0);
+		if (c == '\x03' || c == '\x04')
+			target_halt_request(cur_target);
+		platform_pace_poll();
+#ifdef ENABLE_RTT
+		if (rtt_enabled)
+			poll_rtt(cur_target);
+#endif
+	}
+
+	SET_IDLE_STATE(true);
+	size_t size = gdb_getpacket(pbuf, BUF_SIZE);
+	// If port closed and target detached, stay idle
+	if (pbuf[0] != '\x04' || cur_target)
+		SET_IDLE_STATE(false);
+	gdb_main(pbuf, sizeof(pbuf), size);
+}
+
 /* This is a transplanted main() from main.c */
 void gdb_task(void *parameters)
 {
 	(void) parameters;
   Logger("Gdb task starting... \n");
-	platform_init();
+  platform_init();
   pins_init();
   gdb_if_init();
   initFreeRTOS();
   Logger("Here we go... \n");
-	while (true)
+  while (true)
   {
-			gdb_main();
+      volatile exception_s e;
+          TRY_CATCH (e, EXCEPTION_ALL) 
+          {
+          	bmp_poll_loop();
+          }
+          if (e.type) 
+          {
+          	gdb_putpacketz("EFF");
+          	target_list_free();
+          	gdb_outf("Uncaught exception: %s\n", e.msg);
+                xAssert(0);
+          }
+      ;
       if(!usbGdb->connected())
       {
         lnDelayMs(100);
       }
-	}
+  }
   xAssert(0);
 }
+
+
+ void debug_serial_send_stdout(const uint8_t *const data, const size_t len)
+  {
+    Logger("%s",data); // ???
+  }
+
+

@@ -91,7 +91,7 @@ void platform_timeout_set(platform_timeout *t, uint32_t ms)
 }
 /**
 */
-bool platform_timeout_is_expired(platform_timeout *t)
+bool platform_timeout_is_expired(const platform_timeout_s *t)
 {
 #warning Take care of wrapping !
   uint32_t now=lnGetMs();

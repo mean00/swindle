@@ -32,6 +32,7 @@ OFFSET_TASK_NUM = 68}
  {
  #include "hex_utils.h"
  #include "target.h"
+ #include "general.h"
  #include "target_internal.h"
  #include "gdb_packet.h"
  #include "lnFreeRTOSDebug.h"
