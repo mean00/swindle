@@ -3,6 +3,6 @@
 	url = https://github.com/mean00/lnArduino.git
 [submodule "blackmagic"]
 	path = blackmagic
-    #url = https://github.com/blackmagic-debug/blackmagic.git
-    url = https://github.com/mean00/blackmagic.git
+    url = https://github.com/blackmagic-debug/blackmagic.git
+    #url = https://github.com/mean00/blackmagic.git
     ignore = dirty
