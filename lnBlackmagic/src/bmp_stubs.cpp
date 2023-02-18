@@ -11,7 +11,6 @@
 #include "morse.h"
 #include "general.h"
 
-const unsigned short int *_ctype_b=NULL;
 }
 static char tmpBuffer[128]; // ???
 extern "C" int vasprintf_(char **strp, const char *fmt, va_list ap)

@@ -129,10 +129,5 @@ void platform_request_boot(void)
 {
 
 }
-void abort()
-{
-  deadEnd(0x33);
-  while(1){}
-}
 } // extern "C"
 // EOF
