@@ -4,3 +4,6 @@
 [submodule "blackmagic"]
 	path = blackmagic
 	url = https://github.com/blackmagic-debug/blackmagic.git
+[submodule "rs/gdbstub"]
+	path = rs/gdbstub
+	url = https://github.com/daniel5151/gdbstub.git

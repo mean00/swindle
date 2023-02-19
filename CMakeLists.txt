@@ -10,7 +10,7 @@ OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 
 SET(USE_GD32F3 TRUE CACHE INTERNAL "")
 SET(USE_CLANG TRUE CACHE INTERNAL "")
-#SET(LN_LTO "-flto" CACHE INTERNAL "")
+SET(LN_LTO "-flto" CACHE INTERNAL "")
 
 SET(LN_ENABLE_USBD True CACHE INTERNAL "")
 SET(LN_ENABLE_I2C  FALSE CACHE INTERNAL "")
@@ -61,6 +61,10 @@ GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 ADD_SUBDIRECTORY(lnBlackmagic)
 target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)
 
+target_link_libraries(lnBMP rsbmp)
+
+
+ADD_SUBDIRECTORY(rs)
 MESSAGE(STATUS "Summary")
 MESSAGE(STATUS "=======")
 IF(USE_STLINK_PINOUT)

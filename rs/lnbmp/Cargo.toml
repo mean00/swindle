@@ -1,0 +1,31 @@
+[package]
+name = "rsbmp"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dependencies]
+cty = "0.2.2"
+rnarduino = { path = "../../lnArduino/rust/rnArduino" }
+ufmt = "*"
+heapless = { version = "*", features = ["ufmt-impl"] }
+gdbstub = { path = "../gdbstub", default-features=false , features = ["alloc"] }
+
+[lib]
+name = "rsbmp"
+path = "src/lib.rs"
+crate-type = ["staticlib"] # Creates static lib
+
+[profile.dev]
+codegen-units = 1
+debug = true
+lto = true
+opt-level       = 's'
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true
+opt-level       = 's'
