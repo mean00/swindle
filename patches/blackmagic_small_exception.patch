@@ -1,11 +1,12 @@
 diff --git a/src/include/exception.h b/src/include/exception.h
-index 180398d..b36e88c 100644
+index 1ae3d70d..5589e76a 100644
 --- a/src/include/exception.h
 +++ b/src/include/exception.h
-@@ -49,12 +49,23 @@
- #define EXCEPTION_TIMEOUT 0x02
- #define EXCEPTION_ALL     -1
+@@ -51,12 +51,26 @@
  
+ typedef struct exception exception_s;
+ 
++ 
 +// For cortex m0,m0+,m3,m4 without fpu we only have thumb2 (10 registers)
 +// the compiler will allocate 23 registers which wastes a lof of stack
 +#ifdef __arm__
@@ -17,6 +18,8 @@ index 180398d..b36e88c 100644
 +#else
 +  #define BM_JMP jmp_buf
 +#endif
++
++
  struct exception {
  	uint32_t type;
  	const char *msg;
@@ -24,19 +27,15 @@ index 180398d..b36e88c 100644
  	uint32_t mask;
 -	jmp_buf jmpbuf;
 +	BM_JMP jmpbuf;
- 	struct exception *outer;
+ 	exception_s *outer;
  };
  
-@@ -64,11 +75,10 @@ extern struct exception *innermost_exception;
- 	(e).type = 0; \
- 	(e).mask = (type_mask); \
- 	(e).outer = innermost_exception; \
--	innermost_exception = (void*)&(e); \
-+	innermost_exception = (struct exception*)&(e); \
+@@ -66,7 +80,7 @@ extern exception_s *innermost_exception;
+ 	(e).type = 0;                                 \
+ 	(e).mask = (type_mask);                       \
+ 	(e).outer = innermost_exception;              \
+-	innermost_exception = (void *)&(e);           \
++	innermost_exception = (struct exception *)&(e);           \
  	if (setjmp(innermost_exception->jmpbuf) == 0) \
- 		for (;innermost_exception == &(e); innermost_exception = (e).outer)
+ 		for (; innermost_exception == &(e); innermost_exception = (e).outer)
  
- void raise_exception(uint32_t type, const char *msg);
- 
- #endif
--
