@@ -33,6 +33,7 @@ extern void deadEnd(int err);
 
 #include "timing.h"
 #include "embedded_printf/printf.h"
+int vasprintf_(char **strp, const char *fmt, va_list ap);
 #define vasprintf vasprintf_
 #define fflush(x) {}
 
