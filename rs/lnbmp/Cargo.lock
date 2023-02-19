@@ -66,6 +66,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gdbstub_arch"
+version = "0.2.4"
+dependencies = [
+ "gdbstub",
+ "num-traits",
+]
+
+[[package]]
 name = "hash32"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -162,6 +170,7 @@ version = "0.1.0"
 dependencies = [
  "cty",
  "gdbstub",
+ "gdbstub_arch",
  "heapless",
  "rnarduino",
  "ufmt",

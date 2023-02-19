@@ -5,6 +5,8 @@
 
 extern "C" void user_init();
 
+extern "C" void rnLoop();
+
 /**
  */
 void setup()
@@ -16,6 +18,7 @@ void loop()
 {
     Logger("Starting lnBMP Test\n");
     user_init();
+    rnLoop();
     while (1)
     {
         // Logger("*\n");

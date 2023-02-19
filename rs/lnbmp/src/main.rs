@@ -1,15 +1,12 @@
-#![no_std]
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-#![allow(dead_code)]
+//! A basic `no_std` example that's used to ballpark estimate how large
+//! `gdbstub`'s binary footprint is resource-restricted environments.
 
+#![no_std]
+#![no_main]
 
 use gdbstub::stub::state_machine::GdbStubStateMachine;
 use gdbstub::stub::MultiThreadStopReason;
 use gdbstub::stub::{DisconnectReason, GdbStubBuilder, GdbStubError};
-
-use gdbstub::conn::ConnectionExt;
 
 mod conn;
 mod gdb;
@@ -17,17 +14,17 @@ mod print_str;
 
 use crate::print_str::print_str;
 
-use rnarduino::rn_os_helper::{rn_create_task,rnTaskEntry,delay_ms};
-use conn::cdc_connection;
-//
-//
-//
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
+    loop {}
+}
+
 fn rust_main() -> Result<(), i32> {
     print_str("Running example_no_std...");
 
     let mut target = gdb::DummyTarget::new();
 
-    let conn = match cdc_connection::new() {
+    let conn = match conn::TcpConnection::new_localhost(9001) {
         Ok(c) => c,
         Err(e) => {
             print_str("could not start TCP server:");
@@ -88,13 +85,12 @@ fn rust_main() -> Result<(), i32> {
 
     Ok(())
 }
-//
-//
-//
-#[no_mangle]
-extern "C" fn rnLoop() 
-{
-    rust_main();
-}
 
-// EOF
+#[no_mangle]
+extern "C" fn main(_argc: isize, _argv: *const *const u8) -> isize {
+    if let Err(e) = rust_main() {
+        return e as isize;
+    }
+
+    0
+}

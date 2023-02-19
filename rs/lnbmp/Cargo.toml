@@ -12,7 +12,7 @@ rnarduino = { path = "../../lnArduino/rust/rnArduino" }
 ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
 gdbstub = { path = "../gdbstub", default-features=false , features = ["alloc"] }
-
+gdbstub_arch = { path = "../gdbstub/gdbstub_arch", default-features = false  }
 [lib]
 name = "rsbmp"
 path = "src/lib.rs"
