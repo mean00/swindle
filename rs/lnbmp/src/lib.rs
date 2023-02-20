@@ -15,7 +15,7 @@ use rnarduino::rn_usb::*;
 use rnarduino::rn_usb::rnUSB;
 use rnarduino::rn_usb_cdc::*;
 use rnarduino::rn_usb_cdc::rnCDC;
-use rnarduino::rn_os_helper::{log,log1};
+use rnarduino::rn_os_helper::{log};
 
 mod conn;
 mod gdb;
@@ -23,7 +23,8 @@ mod print_str;
 
 use crate::print_str::print_str;
 
-use rnarduino::rn_os_helper::{rn_create_task,rnTaskEntry,delay_ms};
+//use rnarduino::rn_os_helper::{rn_create_task,rnTaskEntry,delay_ms};
+use rnarduino::rn_os_helper::{delay_ms};
 use conn::cdc_connection;
 //
 //
@@ -54,7 +55,7 @@ impl cdc_event_handler for cdc_h
 //
 //
 fn rust_main() -> Result<(), i32> {
-    print_str("Running example_no_std...");
+    print_str("----Running example_no_std...-----\n");
 
     
     let mut usbh  : usb_h = usb_h {};
@@ -62,10 +63,14 @@ fn rust_main() -> Result<(), i32> {
     // init usb
     let mut usb = rnUSB::new(0, &mut usbh);
     usb.set_configuration();
-    let mut cdc = rnCDC::new(0, &mut cdch);
+    let _cdc = rnCDC::new(0, &mut cdch);
+    print_str("Starting usb  \n");
     usb.start();
     //----
-
+    loop
+    {
+        delay_ms(10);
+    }
 
     let mut target = gdb::DummyTarget::new();
 
@@ -136,7 +141,11 @@ fn rust_main() -> Result<(), i32> {
 #[no_mangle]
 extern "C" fn rnLoop() 
 {
-    rust_main();
+    match rust_main()
+    {
+        Ok(_x) => (),
+        Err(_y) => (),
+    }
 }
 
 // EOF

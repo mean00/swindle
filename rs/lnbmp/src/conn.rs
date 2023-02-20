@@ -6,15 +6,15 @@
 //-------------------------------------------
 use gdbstub::conn::Connection;
 use gdbstub::conn::ConnectionExt;
-use rnarduino as rn;
+//use rnarduino as rn;
 //use rn::rn_usb_cdc::rnCDC;
 //use rn::rn_usb_cdc::rnCDCEventHandler;
-use rn::rn_os_helper::log;
+//use rn::rn_os_helper::log;
 //use rnarduino::rnarduino::lnUsbCDC_lnUsbCDCEvents;
-use cty::c_int;
+//use cty::c_int;
 //
 extern crate alloc;
-use alloc::boxed::Box;
+//use alloc::boxed::Box;
 //
 pub struct cdc_connection
 {
@@ -47,7 +47,7 @@ impl Connection for cdc_connection
 {    
     type Error = &'static str;
     /// Write a single byte.
-    fn write(&mut self, byte: u8) -> Result<(), Self::Error>
+    fn write(&mut self, _byte: u8) -> Result<(), Self::Error>
     {
         return Err("write");
     }

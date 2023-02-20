@@ -12,7 +12,7 @@ OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 
 SET(USE_GD32F3 TRUE CACHE INTERNAL "")
 SET(USE_CLANG TRUE CACHE INTERNAL "")
-SET(LN_LTO "-flto" CACHE INTERNAL "")
+#SET(LN_LTO "-flto" CACHE INTERNAL "")
 
 SET(LN_ENABLE_USBD True CACHE INTERNAL "")
 SET(LN_ENABLE_I2C  FALSE CACHE INTERNAL "")
@@ -46,9 +46,9 @@ ENDIF()
 add_subdirectory(${AF_FOLDER})
 
 # tiny USB configuration
-SET(LN_USB_NB_CDC 2) # 2 CDC interfaces
+SET(LN_USB_NB_CDC 1) # 2 CDC interfaces
 SET(LN_USB_NB_HID 0) # No HID
-SET(LN_USB_DFU_RUNTIME 1 CACHE INTERNAL "")
+SET(LN_USB_DFU_RUNTIME 0 CACHE INTERNAL "")
 include(${AF_FOLDER}/setup.cmake)
 USE_LIBRARY(tinyUsb)
 
@@ -61,7 +61,9 @@ GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 
 ADD_SUBDIRECTORY(lnBlackmagic)
 target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)
-target_link_libraries(lnBMP rsbmp lnarduino_c_bindings )
+target_link_libraries(lnBMP  lnarduino_c_bindings )
+target_link_libraries(lnBMP  rsbmp )
+
 
 
 ADD_SUBDIRECTORY(rs)
