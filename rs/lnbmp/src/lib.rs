@@ -11,6 +11,12 @@ use gdbstub::stub::{DisconnectReason, GdbStubBuilder, GdbStubError};
 
 use gdbstub::conn::ConnectionExt;
 
+use rnarduino::rn_usb::*;
+use rnarduino::rn_usb::rnUSB;
+use rnarduino::rn_usb_cdc::*;
+use rnarduino::rn_usb_cdc::rnCDC;
+use rnarduino::rn_os_helper::{log,log1};
+
 mod conn;
 mod gdb;
 mod print_str;
@@ -22,8 +28,44 @@ use conn::cdc_connection;
 //
 //
 //
+struct usb_h
+{
+
+}
+impl usb_event_handler for usb_h
+{
+    fn  handler(  &mut self,  _event : usb_events )
+    {        
+        log("Got usb event ");
+    }
+}
+struct cdc_h
+{
+
+}
+impl cdc_event_handler for cdc_h
+{
+    fn  handler(  &mut self, _interface : usize, _event : cdc_events ,  _payload : u32)
+    {        
+        log("Got cdc event ");
+    }
+}
+//
+//
+//
 fn rust_main() -> Result<(), i32> {
     print_str("Running example_no_std...");
+
+    
+    let mut usbh  : usb_h = usb_h {};
+    let mut cdch  : cdc_h = cdc_h {};
+    // init usb
+    let mut usb = rnUSB::new(0, &mut usbh);
+    usb.set_configuration();
+    let mut cdc = rnCDC::new(0, &mut cdch);
+    usb.start();
+    //----
+
 
     let mut target = gdb::DummyTarget::new();
 

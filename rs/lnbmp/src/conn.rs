@@ -6,19 +6,40 @@
 //-------------------------------------------
 use gdbstub::conn::Connection;
 use gdbstub::conn::ConnectionExt;
-
-
+use rnarduino as rn;
+//use rn::rn_usb_cdc::rnCDC;
+//use rn::rn_usb_cdc::rnCDCEventHandler;
+use rn::rn_os_helper::log;
+//use rnarduino::rnarduino::lnUsbCDC_lnUsbCDCEvents;
+use cty::c_int;
+//
+extern crate alloc;
+use alloc::boxed::Box;
 //
 pub struct cdc_connection
 {
-
+   // cdc : Box<rnCDC>,
 }
+//-----------------------------------
+/*
+impl rnCDCEventHandler for cdc_connection
+{
+    fn  eventHandler( &self, interface: c_int ,  event : lnUsbCDC_lnUsbCDCEvents, payload: u32)
+    {
+        log("Event !");
+    }
+
+}*/
 //--
 impl cdc_connection
 {
     pub fn new() -> Result<Self, &'static str >
     {
-        Ok(cdc_connection {})
+        Ok(cdc_connection 
+            {
+               // cdc : rnCDC::new(0,None),
+            }
+        )
     }
 }
 //--

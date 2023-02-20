@@ -4,7 +4,7 @@
 #include "lnArduino.h"
 #include "include/lnUsbStack.h"
 #include "include/lnUsbCDC.h"
-#include "lnBMP_usb_descriptor.h"
+//#include "lnBMP_usb_descriptor.h"
 #include "include/lnUsbDFUrt.h"
 
 
@@ -21,7 +21,7 @@
 }
 extern "C" void pins_init();
 extern void serialInit();
-
+#if 0
 #define MEVENT(x)                                                                                                      \
     case lnUsbStack::USB_##x: Logger(#x);
 void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
@@ -140,6 +140,7 @@ protected:
 
 //
 BufferGdb *usbGdb=NULL;
+#endif
 /**
  * 
  */
@@ -156,7 +157,7 @@ void goDfu()
   lnPinMode(PA1,lnALTERNATE_PP);
   lnSoftSystemReset();
 }
-
+#if 0
 /**
 */
 extern "C" int gdb_if_init(void)
@@ -175,11 +176,13 @@ extern "C" int gdb_if_init(void)
   usb->start();
   return 0;
 }
+ 
 /**
 */
 extern "C"  unsigned char gdb_if_getchar(void){             return usbGdb->getChar(-1);}
 extern "C"  unsigned char gdb_if_getchar_to(int timeout){   return usbGdb->getChar(timeout);}
 extern "C"  void          gdb_if_putchar(unsigned char c, int flush){  usbGdb->putChar(c,flush);}
+
 extern void initFreeRTOS();
 //
 #define BUF_SIZE 1024U
@@ -246,7 +249,7 @@ void gdb_task(void *parameters)
   xAssert(0);
 }
 
-
+#endif
  void debug_serial_send_stdout(const uint8_t *const data, const size_t len)
   {
     Logger("%s",data); // ???

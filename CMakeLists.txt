@@ -1,6 +1,8 @@
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 cmake_minimum_required(VERSION 3.13)
 MESSAGE(STATUS "======================")
 MESSAGE(STATUS "Starting lnBMP ")
@@ -36,7 +38,7 @@ APPLY_PATCH_IF_NEEDED(patched7 blackmagic_use_custom_target_mem_map.patch blackm
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-#SET(LN_ENABLE_RUST ON CACHED "")
+SET(LN_ENABLE_RUST ON CACHED "")
 IF(USE_STLINK_PINOUT)
     SET(LN_DEBUG_UART 1 CACHE INTERNAL "")
 ENDIF()
@@ -55,13 +57,11 @@ USE_LIBRARY(tinyUsb)
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
 SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
-
 GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 
 ADD_SUBDIRECTORY(lnBlackmagic)
 target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)
-
-target_link_libraries(lnBMP rsbmp)
+target_link_libraries(lnBMP rsbmp lnarduino_c_bindings )
 
 
 ADD_SUBDIRECTORY(rs)
