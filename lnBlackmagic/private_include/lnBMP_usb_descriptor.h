@@ -3,7 +3,7 @@
 #define _PID_MAP(itf, n)  ( (CFG_TUD_##itf) << (n) )
 
 #define USB_VID   0x1d50
-#define USB_PID   0x6020
+#define USB_PID   0x6030
 
 #define USB_BCD   0x0200
 
