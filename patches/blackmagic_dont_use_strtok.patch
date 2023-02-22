@@ -1,0 +1,15 @@
+diff --git a/src/command.c b/src/command.c
+index 46709697..0b70033c 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -49,6 +49,10 @@
+ #include <alloca.h>
+ #endif
+ 
++// strtok is problematic due to TLS
++char * m_strtok (  char *__restrict s, const char *__restrict delim);
++#define strtok m_strtok
++
+ static bool cmd_version(target_s *t, int argc, const char **argv);
+ static bool cmd_help(target_s *t, int argc, const char **argv);
+ 
