@@ -57,7 +57,7 @@ ELSE()  # "Normal" /Standalone mode
   #  add lnBlackmagic target code and host connection stuff
   SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp  ${B}/bmp_stubs.cpp
           ${B}/bmp_swdTap.cpp   ${B}/bmp_serial.cpp  ${B}/bmp_gdb.cpp
-          ${B}/bmp_jtagstubs.cpp 
+          ${B}/bmp_jtagstubs.cpp  ${B}/stubs.cpp
           )
   include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
 ENDIF()
