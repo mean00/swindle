@@ -1,5 +1,6 @@
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 cmake_minimum_required(VERSION 3.13)
 MESSAGE(STATUS "======================")
