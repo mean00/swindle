@@ -1,6 +1,6 @@
 [submodule "lnArduino"]
 	path = lnArduino
-	url = https://github.com/mean00/lnArduino.git
+	url = ../lnArduino.git
 [submodule "blackmagic"]
 	path = blackmagic
 	url = https://github.com/blackmagic-debug/blackmagic.git
