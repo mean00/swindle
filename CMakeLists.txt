@@ -11,7 +11,7 @@ OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 
 SET(USE_GD32F3 TRUE CACHE INTERNAL "")
 SET(USE_CLANG TRUE CACHE INTERNAL "")
-#SET(LN_LTO "-flto" CACHE INTERNAL "")
+SET(LN_LTO "-flto" CACHE INTERNAL "")
 
 SET(LN_ENABLE_USBD True CACHE INTERNAL "")
 SET(LN_ENABLE_I2C  FALSE CACHE INTERNAL "")
@@ -29,10 +29,11 @@ enable_language(C CXX ASM) # this is important too!
 #
 
 include(applyPatch)
-APPLY_PATCH_IF_NEEDED(patched6 blackmagic_small_exception.patch        blackmagic         "use smaller setjmp/long jmp on smaller arm")
-APPLY_PATCH_IF_NEEDED(patched8 blackmagic_no_debug_bmp.patch           blackmagic         "undefined bmp_debug removal")
-APPLY_PATCH_IF_NEEDED(patched7 blackmagic_use_custom_target_mem_map.patch blackmagic      "use heap based mem map")
-APPLY_PATCH_IF_NEEDED(patched9 blackmagic_no_libopencm3.patch           blackmagic      "use heap based mem map")
+APPLY_PATCH_IF_NEEDED(patched6 blackmagic_small_exception.patch             blackmagic         "use smaller setjmp/long jmp on smaller arm")
+APPLY_PATCH_IF_NEEDED(patched8 blackmagic_no_debug_bmp.patch                blackmagic         "undefined bmp_debug removal")
+APPLY_PATCH_IF_NEEDED(patched7 blackmagic_use_custom_target_mem_map.patch   blackmagic      "use heap based mem map")
+APPLY_PATCH_IF_NEEDED(patched9 blackmagic_no_libopencm3.patch               blackmagic      "use heap based mem map")
+APPLY_PATCH_IF_NEEDED(patched10 blackmagic_dont_use_strtok.patch            blackmagic      "use heap based mem map")
 #APPLY_PATCH_IF_NEEDED(patched9 blackmagic_intercept_commands.patch        blackmagic      "intercept gdb commands ")
 
 include_directories(${CMAKE_SOURCE_DIR})
