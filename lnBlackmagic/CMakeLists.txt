@@ -40,14 +40,17 @@ IF (LN_BMP_HOSTED) # Hosted mode
     include_directories(../lnArduino/legacy/boards/bluepill)
 
     SET(HOSTED ${BMP}/src/platforms/hosted )
-    SET(PC ${BMP}/src/platforms/pc )
+    SET(PC ${BMP}/src/platforms/hosted )
 
     include_directories( ${HOSTED})
     SET(BM_HOSTED
             ${HOSTED}/bmp_remote.c ${HOSTED}/bmp_serial.c      ${HOSTED}/dap.c
             ${HOSTED}/platform.c   ${HOSTED}/remote_jtagtap.c  ${HOSTED}/remote_swdptap.c
-            ${PC}/cl_utils.c   ${PC}/gdb_if.c    ${PC}/serial_unix.c  ${PC}/utils.c
+            #${PC}/cl_utils.c   
+            ${PC}/gdb_if.c    ${PC}/serial_unix.c  ${PC}/utils.c
+            ${PC}/cli.c       ${PC}/probe_info.c
             ${T}/jtag_scan.c  ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c
+            ${B}/stubs.cpp
             )
 ELSE()  # "Normal" /Standalone mode
   MESSAGE(STATUS "Building for embedded mode (${LN_BMP_HOSTED})")

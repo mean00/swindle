@@ -7,10 +7,13 @@ cmake_minimum_required(VERSION 3.13)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 PROJECT(lnBMPHosted C CXX)
 SET(LN_BMP_HOSTED True CACHE INTERNAL "")
+SET(LN_ARCH            "ARM" CACHE INTERNAL "")
+SET(LN_MCU             "M4" CACHE INTERNAL "")
+SET(LN_TOOLCHAIN_EXT   "arm_gd32fx_clang" CACHE INTERNAL "")
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
 SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../lnArduino)
-
+ADD_DEFINITIONS("-DLN_LINUX=1")
 include( ${ARDUINO_GD32_FREERTOS}/embeddedPrintf.cmake)
 
 include_directories(include)
