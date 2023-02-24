@@ -22,6 +22,8 @@
 extern "C" void pins_init();
 extern void serialInit();
 
+#define GDB_CDC_DATA_AVAILABLE (1<<0)
+
 #define MEVENT(x)                                                                                                      \
     case lnUsbStack::USB_##x: Logger(#x);
 void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
@@ -54,6 +56,7 @@ public:
       _cdc=NULL;
       _cdc=new lnUsbCDC(_instance);
       _cdc->setEventHandler(gdbCdcEventHandler,this);
+      _eventGroup=NULL;
     }
     bool connected() {return _connected;}
     static void gdbCdcEventHandler(void *cookie, int interface,lnUsbCDC::lnUsbCDCEvents event, uint32_t payload)
@@ -67,7 +70,10 @@ public:
         switch (event)
         {
           case lnUsbCDC::CDC_SET_SPEED:
+              break;
           case lnUsbCDC::CDC_DATA_AVAILABLE:
+              xAssert(_eventGroup);
+              _eventGroup->setEvents(GDB_CDC_DATA_AVAILABLE);
               break;
           case lnUsbCDC::CDC_SESSION_START:
               Logger("CDC SESSION START\n");
@@ -86,6 +92,11 @@ public:
     */
     unsigned char getChar(int timeout)
     {
+      if(!_eventGroup)
+      {
+        _eventGroup = new lnFastEventGroup();
+        _eventGroup->takeOwnership();
+      }
         while(1)
         {
           if(!_connected)
@@ -99,13 +110,14 @@ public:
             int n=_cdc->read(_buffer,GDB_BUFFER_SIZE);
             if(n<0) return -1;
             if(n==0)
-            {
-              lnDelayMs(1);
+            {              
               switch(timeout)
               {
                 case 0: return -1; break;
                 case -1: break;
-                default: timeout--; break;
+                default: 
+                      uint32_t ev = _eventGroup->waitEvents(GDB_CDC_DATA_AVAILABLE,50);
+                      timeout--; break;
               }
               continue;
             }
@@ -135,6 +147,7 @@ protected:
   uint8_t _buffer[GDB_BUFFER_SIZE];
   lnUsbCDC *_cdc;
   bool      _connected;
+  lnFastEventGroup *_eventGroup;
 };
 
 

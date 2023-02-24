@@ -54,13 +54,17 @@ public:
       {        
         int n;
         uint8_t *to;
-        while(n=_serial->getReadPointer(&to))
+        int total=0;
+        while((n=_serial->getReadPointer(&to)))
         {
             if(n<=0) break;
             int consumed=_usb->write(to,n);
-            _serial->consume(n);
-            //_usb->flush();
+            total+=consumed;
+            _serial->consume(consumed);
+            
         }
+        if(total)
+          _usb->flush();
       }
 
       // 3- usb -> serial
