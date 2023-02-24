@@ -107,6 +107,7 @@ public:
           if(_tail==_head) // empty
           {
             _tail=_head=0;
+            _eventGroup->readEvents(GDB_CDC_DATA_AVAILABLE); // clear event...
             int n=_cdc->read(_buffer,GDB_BUFFER_SIZE);
             if(n<0) return -1;
             if(n==0)
