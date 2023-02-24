@@ -38,7 +38,7 @@ APPLY_PATCH_IF_NEEDED(patched10 blackmagic_dont_use_strtok.patch            blac
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-#SET(LN_ENABLE_RUST ON CACHED "")
+SET(LN_ENABLE_RUST ON CACHED "")
 IF(USE_STLINK_PINOUT)
     SET(LN_DEBUG_UART 1 CACHE INTERNAL "")
 ENDIF()
@@ -61,7 +61,9 @@ SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
 GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 
 ADD_SUBDIRECTORY(lnBlackmagic)
+ADD_SUBDIRECTORY(rs)
 target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)
+target_link_libraries(lnBMP rsbmp)
 
 MESSAGE(STATUS "Summary")
 MESSAGE(STATUS "=======")
