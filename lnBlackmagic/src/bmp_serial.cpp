@@ -63,10 +63,17 @@ public:
           while((n=_serial->getReadPointer(&to)))
           {
               if(n<=0) break;
-              int consumed=_usb->write(to,n);
-              total+=consumed;
-              _serial->consume(consumed);
-              
+              int consumed=0;
+              if(_connected&USB_EVENT)  // only pump data if we are connected
+              {
+                consumed=_usb->write(to,n);
+                total+=consumed;
+              }else
+              {
+                consumed=n;
+              }
+              if(total)
+                _serial->consume(consumed);              
           }
           if(total)
             _usb->flush();
