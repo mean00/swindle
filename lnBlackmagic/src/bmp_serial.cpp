@@ -83,7 +83,7 @@ public:
           _serial->transmit(n,_usbBuffer);
         }
       }
-      _usb->flush();
+  //    _usb->flush();
       ev=_evGroup->waitEvents(SERIAL_EVENT+USB_EVENT);      
     }
   }
