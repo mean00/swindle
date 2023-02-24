@@ -51,20 +51,26 @@ public:
 
       // 1- fill in serial  buffer
       if(ev & SERIAL_EVENT)
-      {        
-        int n;
-        uint8_t *to;
-        int total=0;
-        while((n=_serial->getReadPointer(&to)))
+      {      
+        if(!(_connected&USB_EVENT)) // not connected
         {
-            if(n<=0) break;
-            int consumed=_usb->write(to,n);
-            total+=consumed;
-            _serial->consume(consumed);
-            
+            _serial->purgeRx();
+        }else // connected
+        {
+          int n;
+          uint8_t *to;
+          int total=0;
+          while((n=_serial->getReadPointer(&to)))
+          {
+              if(n<=0) break;
+              int consumed=_usb->write(to,n);
+              total+=consumed;
+              _serial->consume(consumed);
+              
+          }
+          if(total)
+            _usb->flush();
         }
-        if(total)
-          _usb->flush();
       }
 
       // 3- usb -> serial
