@@ -13,6 +13,7 @@ extern crate alloc;
 extern crate std;
 use std::print;
 use alloc::vec::Vec;
+use automaton::RESULT_AUTOMATON;
 //
 #[no_mangle]
 
@@ -40,35 +41,55 @@ extern "C" fn rngdbstub_shutdown()
         autoauto = None;
     }
 }
-
+pub fn rngdb_exec_command(tokns : Vec<&str>)
+{
+    print!("{:?}\n",tokns);
+}
+/**
+ * 
+ * 
+ */
 #[no_mangle]
 extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar ) 
 {
     unsafe {
-    let data_as_slice : &[u8] = core::slice::from_raw_parts(d,l);    
+    let data_as_slice : &[u8] = core::slice::from_raw_parts(d,l);
     match autoauto
     {
         Some(ref mut x) => 
                     {
-                        let _consumed : usize;
-                        let state : crate::automaton::RESULT_AUTOMATON;
-                        let empty : &str = "";
-                        (_consumed, state) =  x.parse(data_as_slice);
-                        if state == crate::automaton::RESULT_AUTOMATON::Ready
+                        let mut l = l;
+                        while l> 0
                         {
-                            // ok we have a full string...
-                            let s = x.get_result();
-                            let flat_string  = match core::str::from_utf8(s)
+                            let consumed : usize;
+                            let state : RESULT_AUTOMATON;
+                            let empty : &str = "";
+                            (consumed, state) =  x.parse(data_as_slice);
+                            match state
                             {
-                                Ok(x)       => x,
-                                Err(y) => empty,
-                            };
-                            let tokns : Vec <&str>= flat_string.split_whitespace().collect();
-                            print!("{:?}\n",flat_string);                        
-                            print!("{:?}\n",tokns);    
-                        
+                                RESULT_AUTOMATON::Ready => 
+                                    {
+                                        // ok we have a full string...
+                                        let s = x.get_result();
+                                        let flat_string  = match core::str::from_utf8(s)
+                                        {
+                                            Ok(x)       => x,
+                                            Err(_y) => empty,
+                                        };
+                                        if flat_string.len()!=0
+                                        {
+                                            let tokens : Vec <&str>= flat_string.split_whitespace().collect();
+                                            if tokens.len()!=0
+                                            {
+                                                rngdb_exec_command(tokens);
+                                            }
+                                        }
+                                    },
+                                RESULT_AUTOMATON::Continue => (),
+                                RESULT_AUTOMATON::Reset => (),
+                            }
+                            l-=consumed;
                         }
-
                     },
         None => panic!("noauto"),
     };

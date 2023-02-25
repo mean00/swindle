@@ -1,3 +1,8 @@
+/*
+    Small automaton to parse gdb mii string protocol
+
+ */
+
 #![no_std]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
@@ -23,7 +28,7 @@ pub enum RESULT_AUTOMATON
 {
     Continue,
     Ready,
-    Error,
+    Reset,
 }
 const INPUT_BUFFER_SIZE : usize = 256;
 
@@ -70,33 +75,32 @@ impl input_stream
             self.automaton  = match self.automaton 
             {
                 PARSER_AUTOMATOMON::Init => 
-                                                match c
-                                                {
-                                                    CHAR_RESET_04 => PARSER_AUTOMATOMON::Idle,
-                                                    _    => PARSER_AUTOMATOMON::Init,
-                                                }
+                                            match c
+                                            {
+                                                CHAR_RESET_04   => PARSER_AUTOMATOMON::Idle,
+                                                _               => PARSER_AUTOMATOMON::Init,
+                                            }
                                             ,
                 PARSER_AUTOMATOMON::Idle => 
-                                                match c
-                                                {
-                                                    CHAR_START /*'$'*/ => {self.indx = 0;PARSER_AUTOMATOMON::Body}, 
-                                                    CHAR_RESET_04 => PARSER_AUTOMATOMON::Idle,
-                                                    _    => PARSER_AUTOMATOMON::Idle,
-                                                }
-                                            ,                  
+                                            match c
+                                            {
+                                                CHAR_START /*'$'*/  => {self.indx = 0;PARSER_AUTOMATOMON::Body}, 
+                                                CHAR_RESET_04       => PARSER_AUTOMATOMON::Idle,
+                                                _                   => PARSER_AUTOMATOMON::Idle,
+                                            }
+                                            ,
                 PARSER_AUTOMATOMON::Body => 
                                             match c
                                             {
-                                                CHAR_END /*'#'*/  => PARSER_AUTOMATOMON::End1, 
-                                                CHAR_ESCAPE /*'}'*/  => PARSER_AUTOMATOMON::Escape, 
+                                                CHAR_END /*'#'*/        => PARSER_AUTOMATOMON::End1, 
+                                                CHAR_ESCAPE /*'}'*/     => PARSER_AUTOMATOMON::Escape, 
                                                 CHAR_RESET_04 => PARSER_AUTOMATOMON::Idle,
-                                                _    => {
-                                                            self.input_buffer[self.indx]=c;
-                                                            self.indx+=1;
-                                                            PARSER_AUTOMATOMON::Body
-                                                        },
-                                            }
-                                        ,                                                                                              
+                                                _                       => {
+                                                                        self.input_buffer[self.indx]=c;
+                                                                        self.indx+=1;
+                                                                        PARSER_AUTOMATOMON::Body
+                                                                    },
+                                            }, 
                 PARSER_AUTOMATOMON::Escape => 
                                         {
                                             self.input_buffer[self.indx]=c^20;
@@ -106,11 +110,11 @@ impl input_stream
                 PARSER_AUTOMATOMON::End1 => 
                                         {
                                             PARSER_AUTOMATOMON::End2
-                                        },                                        
+                                        },
                 PARSER_AUTOMATOMON::End2 => 
                                         {
                                             PARSER_AUTOMATOMON::Done
-                                        },  
+                                        },
                 PARSER_AUTOMATOMON::Done => panic!("automaton"), //; PARSER_AUTOMATOMON::Done},
             };
             if self.automaton ==  PARSER_AUTOMATOMON::Done
