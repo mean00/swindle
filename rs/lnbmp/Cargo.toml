@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 cty = "0.2.2"
-rnarduino = { path = "../../lnArduino/rust/rnArduino", features = ["cdc"] }
+#rnarduino = { path = "../../lnArduino/rust/rnArduino", features = ["cdc"] }
 ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
 

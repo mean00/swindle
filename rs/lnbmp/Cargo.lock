@@ -36,12 +36,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
-name = "embedded-hal"
-version = "1.0.0-alpha.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "129b101ddfee640565f7c07b301a31d95aa21e5acef21a491c307139f5fa4c91"
-
-[[package]]
 name = "hash32"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -93,22 +87,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "rnarduino"
-version = "0.0.0"
-dependencies = [
- "cty",
- "embedded-hal",
- "heapless",
- "ufmt",
-]
-
-[[package]]
 name = "rsbmp"
 version = "0.1.0"
 dependencies = [
  "cty",
  "heapless",
- "rnarduino",
  "ufmt",
 ]
 
