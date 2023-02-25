@@ -3,6 +3,10 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
+
+mod util;
+mod linear_ring;
+
 use rnarduino::rn_usb::*;
 use rnarduino::rn_usb::rnUSB;
 use rnarduino::rn_usb_cdc::*;
@@ -10,7 +14,6 @@ use rnarduino::rn_usb_cdc::rnCDC;
 use rnarduino::rn_fast_event_group::rnFastEventGroup;
 //use rnarduino::rn_os_helper::{rn_create_task,rnTaskEntry,delay_ms};
 use rnarduino::rn_os_helper::{delay_ms,log};
-
 extern crate alloc;
 
 
