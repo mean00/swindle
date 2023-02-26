@@ -13,7 +13,7 @@ use std::print;
 #[cfg(feature = "hosted")]
 pub fn glog (s : &str)
 {
-    print!("{}",s);
+    print!("<<{:?}\n",s);
 }
 #[cfg(feature = "native")]
 use rnarduino::rn_os_helper::log;

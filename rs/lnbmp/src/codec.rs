@@ -47,7 +47,7 @@ const CHAR_START : u8 = b'$';
 const CHAR_END : u8 = b'#';
 const CHAR_ESCAPE : u8 = b'}';
 //
-pub struct input_stream <const INPUT_BUFFER_SIZE: usize>
+pub struct gdb_stream <const INPUT_BUFFER_SIZE: usize>
 {    
     automaton       : PARSER_AUTOMATON,
     input_buffer    : [u8;INPUT_BUFFER_SIZE],
@@ -55,11 +55,11 @@ pub struct input_stream <const INPUT_BUFFER_SIZE: usize>
     checksum        : usize,
     checksum_received : [u8;2],
 }
-impl <const INPUT_BUFFER_SIZE: usize>input_stream <INPUT_BUFFER_SIZE>
+impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
 {
     pub fn new() -> Self
     {
-        input_stream
+        gdb_stream
         {
             
             automaton       : PARSER_AUTOMATON::Idle,
@@ -84,6 +84,7 @@ impl <const INPUT_BUFFER_SIZE: usize>input_stream <INPUT_BUFFER_SIZE>
         self.automaton = PARSER_AUTOMATON::Idle;        
         &self.input_buffer[0..self.indx]
     }
+
     /**
      * 
      */

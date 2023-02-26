@@ -6,21 +6,14 @@
 #![allow(unused_imports)]
 
 mod util;
-mod automaton;
+mod codec;
 mod commands;
 
-use crate::automaton::input_stream;
+use crate::codec::gdb_stream;
 extern crate alloc;
 
-//#[cfg(feature = "hosted")]
-//extern crate std;
-//#[cfg(feature = "hosted")]
-//use std::print;
-
-//#[cfg(feature = "native")]
-
 use alloc::vec::Vec;
-use automaton::RESULT_AUTOMATON;
+use codec::RESULT_AUTOMATON;
 //
 const INPUT_BUFFER_SIZE: usize = 512;
 const ACK : &str = "+";
@@ -28,7 +21,7 @@ const NACK : &str = "-";
 
 #[no_mangle]
 
-static mut autoauto : Option<input_stream::<INPUT_BUFFER_SIZE>> = None;
+static mut autoauto : Option<gdb_stream::<INPUT_BUFFER_SIZE>> = None;
 
 #[no_mangle]
 extern "C" fn rngdbstub_init()
@@ -38,7 +31,7 @@ extern "C" fn rngdbstub_init()
     {
         panic!("notnull");
     }
-    autoauto = Some(input_stream::<INPUT_BUFFER_SIZE>::new());
+    autoauto = Some(gdb_stream::<INPUT_BUFFER_SIZE>::new());
     }
 }
 #[no_mangle]
@@ -58,9 +51,16 @@ extern "C" fn rngdbstub_shutdown()
 extern "C" 
 {
     fn          rngdb_send_data_c( sz : u32, ptr : *const cty::c_uchar);
-    fn          rngdb_output_flush();
+    fn          rngdb_output_flush_c();
 }
-
+/*
+ */
+fn          rngdb_output_flush()
+{
+    unsafe {
+        rngdb_output_flush_c();
+        }
+}
 fn          rngdb_send_data( data : &str)
 {
     unsafe {
@@ -107,7 +107,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                             {
                                                 rngdb_send_data(ACK ); 
                                                 rngdb_output_flush( );
-                                                commands::exec(tokens);
+                                                commands::exec(&tokens);
                                             }
                                         }
                                     },
