@@ -7,6 +7,8 @@
 
 mod util;
 mod automaton;
+mod commands;
+
 use crate::automaton::input_stream;
 extern crate alloc;
 
@@ -40,10 +42,6 @@ extern "C" fn rngdbstub_shutdown()
         }
         autoauto = None;
     }
-}
-pub fn rngdb_exec_command(tokns : Vec<&str>)
-{
-    print!("{:?}\n",tokns);
 }
 /**
  * 
@@ -81,7 +79,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                             let tokens : Vec <&str>= flat_string.split_whitespace().collect();
                                             if tokens.len()!=0
                                             {
-                                                rngdb_exec_command(tokens);
+                                                commands::exec(tokens);
                                             }
                                         }
                                     },

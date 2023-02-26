@@ -2,6 +2,33 @@ use alloc::alloc::Layout as Layout;
 use alloc::alloc::alloc as alloc;
 use cty::size_t;
 
+use std::print;
+/**
+ * 
+ */
+pub fn log (s : &str)
+{
+    print!("{}",s);
+}
+/**
+ * 
+ */
+fn _hex( digit : u8 ) -> u8
+{
+    return match digit
+    {
+        b'0'..=b'9' =>  digit -b'0',
+        b'a'..=b'f' =>  digit +10 -b'a',
+        b'A'..=b'F' =>  digit +10 -b'A',
+        _ => 0, // WTF ?
+    }
+}
+pub fn ascii_to_hex( left : u8, right : u8 ) -> u8
+{
+
+    (_hex(left)<<4)+_hex(right)
+}
+
 pub fn xabs(x: isize) -> isize
 {
     if x < 0         {return -x;}
