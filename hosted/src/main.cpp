@@ -46,7 +46,10 @@ extern "C"
 }
 //-----
 #define PORT 2000
-
+BMPTcp *current_connection = NULL;
+bool running = true;
+//
+//
 BmpTcpServer::BmpTcpServer(QObject *parent )
 {
 	_server = new QTcpServer(this);
@@ -57,7 +60,7 @@ BmpTcpServer::BmpTcpServer(QObject *parent )
     }
     else
     {
-        qInfo() << "Tcp Server started!";
+        qInfo() << "Tcp Server started on port " << PORT;
     }
 }
     
@@ -75,6 +78,7 @@ BMPTcp::BMPTcp(QTcpSocket *sock)
 	_socket = sock;
 	connect(_socket, SIGNAL(disconnected()),  this, SLOT(disconnected()));
 	connect(_socket, SIGNAL(readyRead()),  this, SLOT(readyRead()));
+	current_connection=this;
 	rngdbstub_init();
 }
 //
@@ -83,8 +87,10 @@ BMPTcp::BMPTcp(QTcpSocket *sock)
 void BMPTcp::disconnected()
 {
 	qInfo() << "Client disconnected";
+	current_connection=NULL;
 	rngdbstub_shutdown();
 	this->deleteLater();
+	running=false;
 }
 //
 //
@@ -99,35 +105,41 @@ void BMPTcp::readyRead()
 		if(nb>QBUFFER_SIZE) nb=QBUFFER_SIZE;		
 		int actual = _socket->read((char *)_buffer, nb);
 		rngdbstub_run(actual,_buffer);
-
 	}
+}
+//
+//
+void BMPTcp::write( uint32_t sz, const uint8_t *ptr)
+{
+	_socket->write( (const char *)ptr,sz);
+}
+//
+//
+void BMPTcp::flush()
+{
+	_socket->flush();
 }
 
 
-//-
-
-
-#define BUF_SIZE 1024U
-static char pbuf[BUF_SIZE + 1U];
 
 extern "C"
 {
  void         rngdb_send_data_c( uint32_t sz, const uint8_t *ptr)
  {
-	for(int i=0;i<sz;i++)
+	qInfo() << "Reply :" << QString( (const QChar *)ptr,sz);
+	if(current_connection)
 	{
-		gdb_if_putchar(ptr[i], 1);
+		current_connection->write(sz,ptr);
 	}
  }
 void rngdb_output_flush()
 {
+	if(current_connection)
+	{
+		current_connection->flush();
+	}
 
 }
-}
-static void bmp_poll_loop(void)
-{
-	uint8_t c=gdb_if_getchar();
-	rngdbstub_run(1,&c);
 }
 //
 //
@@ -140,22 +152,10 @@ int main(int argc, char **argv)
 
 	platform_init(argc, argv);	
 	BmpTcpServer *server = new BmpTcpServer;
-	while(1)
+	while(running)
 	{
 		QCoreApplication::processEvents();
-	}
-	SET_IDLE_STATE(true);
-	while (true) {
-		volatile struct exception e;
-		TRY_CATCH(e, EXCEPTION_ALL) {
-			bmp_poll_loop();
-		}
-		if (e.type) {
-			gdb_putpacketz("EFF");
-			target_list_free();
-			morse("TARGET LOST.", 1);
-		}
-	}
+	}	
 	delete server;
 	server=NULL;
 	/* Should never get here */

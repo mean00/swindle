@@ -33,6 +33,8 @@ public :
 public slots:
     void disconnected();
     void readyRead();
+    void write( uint32_t sz, const uint8_t *ptr);
+    void flush();
 private:
     QTcpSocket *_socket;   
     uint8_t     _buffer[QBUFFER_SIZE];
