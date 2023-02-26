@@ -21,6 +21,10 @@
 /* Provides main entry point.  Initialise subsystems and enter GDB
  * protocol loop.
  */
+#include <QObject>
+#include <QCoreApplication>
+#include "qtcp.h"
+
 extern "C"
 {
 #include "general.h"
@@ -31,9 +35,7 @@ extern "C"
 #include "gdb_packet.h"
 #include "morse.h"
 }
-
-#define BUF_SIZE 1024U
-static char pbuf[BUF_SIZE + 1U];
+//--
 
 // Rust part
 extern "C" 
@@ -42,49 +44,107 @@ extern "C"
 	void rngdbstub_shutdown() ;
 	void rngdbstub_run(uint32_t s, const uint8_t *d);
 }
+//-----
+#define PORT 2000
 
-
-static void bmp_poll_loop(void)
+BmpTcpServer::BmpTcpServer(QObject *parent )
 {
-	SET_IDLE_STATE(false);
-	while (gdb_target_running && cur_target) {
-		gdb_poll_target();
+	_server = new QTcpServer(this);
+	connect(_server, SIGNAL(newConnection()),  this, SLOT(newConnection()));
+	if(!_server->listen(QHostAddress::Any, PORT))
+    {
+        qInfo() << "Tcp Server could not start";
+    }
+    else
+    {
+        qInfo() << "Tcp Server started!";
+    }
+}
+    
+void BmpTcpServer::newConnection()
+{
+	qInfo() << "New connection";
+ 	BMPTcp *tcp  = new BMPTcp(_server->nextPendingConnection());
+}
+//
+//
+//
 
-		// Check again, as `gdb_poll_target()` may
-		// alter these variables.
-		if (!gdb_target_running || !cur_target)
-			break;
-		char c = gdb_if_getchar_to(0);
-		if (c == '\x03' || c == '\x04')
-			target_halt_request(cur_target);
-		platform_pace_poll();
-#ifdef ENABLE_RTT
-		if (rtt_enabled)
-			poll_rtt(cur_target);
-#endif
-	}
-
-	uint8_t c=gdb_if_getchar();
-//	printf("[%d] 0x%x <%c>\n",c,c,c);
-	rngdbstub_run(1,&c);
-#if 0
-	SET_IDLE_STATE(true);
-	size_t size = gdb_getpacket(pbuf, BUF_SIZE);
-	// If port closed and target detached, stay idle
-	if (pbuf[0] != '\x04' || cur_target)
-		SET_IDLE_STATE(false);
-	gdb_main(pbuf, sizeof(pbuf), size);
-	for(int i=0;i<size;i++)
+BMPTcp::BMPTcp(QTcpSocket *sock)
+{
+	_socket = sock;
+	connect(_socket, SIGNAL(disconnected()),  this, SLOT(disconnected()));
+	connect(_socket, SIGNAL(readyRead()),  this, SLOT(readyRead()));
+	rngdbstub_init();
+}
+//
+//
+//
+void BMPTcp::disconnected()
+{
+	qInfo() << "Client disconnected";
+	rngdbstub_shutdown();
+	this->deleteLater();
+}
+//
+//
+//
+void BMPTcp::readyRead()
+{
+	while(true)
 	{
-		printf("[%d] 0x%x <%c>\n",i,pbuf[i],pbuf[i]);
+		int nb= _socket->bytesAvailable();
+		if (nb<=0)
+			return;		
+		if(nb>QBUFFER_SIZE) nb=QBUFFER_SIZE;		
+		int actual = _socket->read((char *)_buffer, nb);
+		rngdbstub_run(actual,_buffer);
+
 	}
-#endif	
 }
 
+
+//-
+
+
+#define BUF_SIZE 1024U
+static char pbuf[BUF_SIZE + 1U];
+
+extern "C"
+{
+ void         rngdb_send_data_c( uint32_t sz, const uint8_t *ptr)
+ {
+	for(int i=0;i<sz;i++)
+	{
+		gdb_if_putchar(ptr[i], 1);
+	}
+ }
+void rngdb_output_flush()
+{
+
+}
+}
+static void bmp_poll_loop(void)
+{
+	uint8_t c=gdb_if_getchar();
+	rngdbstub_run(1,&c);
+}
+//
+//
+//
+//
 int main(int argc, char **argv)
 {
-	platform_init(argc, argv);
-	rngdbstub_init();
+	qInfo() << "Qt BMP started";
+	QCoreApplication a(argc, argv);
+
+	platform_init(argc, argv);	
+	BmpTcpServer *server = new BmpTcpServer;
+	while(1)
+	{
+		QCoreApplication::processEvents();
+	}
+	SET_IDLE_STATE(true);
 	while (true) {
 		volatile struct exception e;
 		TRY_CATCH(e, EXCEPTION_ALL) {
@@ -96,7 +156,8 @@ int main(int argc, char **argv)
 			morse("TARGET LOST.", 1);
 		}
 	}
-
+	delete server;
+	server=NULL;
 	/* Should never get here */
 	return 0;
 }

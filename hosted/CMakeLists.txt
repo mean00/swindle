@@ -21,6 +21,18 @@ SET(CMAKE_CXX_COMPILER /usr/bin/clang++ CACHE INTERNAL "")
 SET(CMAKE_CXX_AR /usr/bin/llvm-ar  CACHE INTERNAL "")
 SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
 
+# Qt5
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+
+find_package(Qt5 COMPONENTS Network REQUIRED)
+
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
 SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../lnArduino)
@@ -53,8 +65,9 @@ corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 
 
 SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
-SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp src/stubs.cpp )
+SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/qtcp.h)
 
 ADD_EXECUTABLE(lnBMP_hosted ${SRC})
 target_link_libraries(lnBMP_hosted lnBlackmagic embeddedPrintf usb-1.0 )
 target_link_libraries(lnBMP_hosted rsbmp)
+target_link_libraries(lnBMP_hosted Qt5::Network)
