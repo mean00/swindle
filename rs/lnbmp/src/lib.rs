@@ -52,17 +52,22 @@ extern "C" fn rngdbstub_shutdown()
         autoauto = None;
     }
 }
-/**
+/*
  * 
  */
+extern "C" 
+{
+    fn          rngdb_send_data_c( sz : u32, ptr : *const cty::c_uchar);
+    fn          rngdb_output_flush();
+}
+
 fn          rngdb_send_data( data : &str)
 {
-    ()
+    unsafe {
+    rngdb_send_data_c(data.len() as u32, data.as_ptr() );
+    }
 }
-fn          rngdb_output_flush()
-{
-    ()
-}
+
 
 /**
  * 
