@@ -57,6 +57,8 @@ BmpTcpServer::BmpTcpServer(QObject *parent )
 	if(!_server->listen(QHostAddress::Any, PORT))
     {
         qInfo() << "Tcp Server could not start";
+		running=false;
+		QCoreApplication::quit();
     }
     else
     {
@@ -126,13 +128,13 @@ extern "C"
 {
  void         rngdb_send_data_c( uint32_t sz, const uint8_t *ptr)
  {
-	qInfo() << "Reply :" << QString( (const QChar *)ptr,sz);
+	qInfo() << "Reply :" << QString::fromLatin1((const char *)ptr,sz);
 	if(current_connection)
 	{
 		current_connection->write(sz,ptr);
 	}
  }
-void rngdb_output_flush()
+void rngdb_output_flush_c()
 {
 	if(current_connection)
 	{
