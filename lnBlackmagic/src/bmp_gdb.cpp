@@ -24,6 +24,15 @@ extern void serialInit();
 
 #define GDB_CDC_DATA_AVAILABLE (1<<0)
 
+// Rust part
+extern "C" 
+{
+	void rngdbstub_init();
+	void rngdbstub_shutdown() ;
+	void rngdbstub_run(uint32_t s, const uint8_t *d);
+}
+
+
 #define MEVENT(x)                                                                                                      \
     case lnUsbStack::USB_##x: Logger(#x);
 void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
@@ -78,10 +87,12 @@ public:
           case lnUsbCDC::CDC_SESSION_START:
               Logger("CDC SESSION START\n");
               _connected=true;
+              rngdbstub_init();
               break;
           case lnUsbCDC::CDC_SESSION_END:
               _connected=false;
               Logger("CDC SESSION END\n");
+              rngdbstub_shutdown();
               break;
           default:
               xAssert(0);

@@ -35,6 +35,15 @@ extern "C"
 #define BUF_SIZE 1024U
 static char pbuf[BUF_SIZE + 1U];
 
+// Rust part
+extern "C" 
+{
+	void rngdbstub_init();
+	void rngdbstub_shutdown() ;
+	void rngdbstub_run(uint32_t s, const uint8_t *d);
+}
+
+
 static void bmp_poll_loop(void)
 {
 	SET_IDLE_STATE(false);
@@ -55,18 +64,27 @@ static void bmp_poll_loop(void)
 #endif
 	}
 
+	uint8_t c=gdb_if_getchar();
+//	printf("[%d] 0x%x <%c>\n",c,c,c);
+	rngdbstub_run(1,&c);
+#if 0
 	SET_IDLE_STATE(true);
 	size_t size = gdb_getpacket(pbuf, BUF_SIZE);
 	// If port closed and target detached, stay idle
 	if (pbuf[0] != '\x04' || cur_target)
 		SET_IDLE_STATE(false);
 	gdb_main(pbuf, sizeof(pbuf), size);
+	for(int i=0;i<size;i++)
+	{
+		printf("[%d] 0x%x <%c>\n",i,pbuf[i],pbuf[i]);
+	}
+#endif	
 }
 
 int main(int argc, char **argv)
 {
 	platform_init(argc, argv);
-
+	rngdbstub_init();
 	while (true) {
 		volatile struct exception e;
 		TRY_CATCH(e, EXCEPTION_ALL) {
