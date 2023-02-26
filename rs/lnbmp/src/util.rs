@@ -2,14 +2,27 @@ use alloc::alloc::Layout as Layout;
 use alloc::alloc::alloc as alloc;
 use cty::size_t;
 
-use std::print;
+
 /**
  * 
  */
-pub fn log (s : &str)
+#[cfg(feature = "hosted")]
+extern crate std;
+#[cfg(feature = "hosted")]
+use std::print;
+#[cfg(feature = "hosted")]
+pub fn glog (s : &str)
 {
     print!("{}",s);
 }
+#[cfg(feature = "native")]
+use rnarduino::rn_os_helper::log;
+#[cfg(feature = "native")]
+pub fn glog (s : &str)
+{
+    log(s);
+}
+
 /**
  * 
  */

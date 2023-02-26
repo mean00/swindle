@@ -11,11 +11,11 @@
 #![allow(unused_imports)]
 
 use crate::util::ascii_to_hex;
-use crate::util::log;
+use crate::util::glog;
 //
 //
 #[derive(PartialEq)]
-enum PARSER_AUTOMATOMON
+enum PARSER_AUTOMATON
 {
     Init,
     Idle,
@@ -25,6 +25,7 @@ enum PARSER_AUTOMATOMON
     End2,  
     Done, 
     Reset, 
+    Error,
 }
 /**
  * This returns the state of the internal automaton
@@ -38,34 +39,34 @@ pub enum RESULT_AUTOMATON
     Continue,
     Ready,
     Reset,
+    Error,
 }
-const INPUT_BUFFER_SIZE : usize = 256;
 
 const CHAR_RESET_04 : u8 = 0x04;
 const CHAR_START : u8 = b'$';
 const CHAR_END : u8 = b'#';
 const CHAR_ESCAPE : u8 = b'}';
 //
-pub struct input_stream
+pub struct input_stream <const INPUT_BUFFER_SIZE: usize>
 {    
-    automaton       : PARSER_AUTOMATOMON,
+    automaton       : PARSER_AUTOMATON,
     input_buffer    : [u8;INPUT_BUFFER_SIZE],
     indx            : usize,
     checksum        : usize,
     checksum_received : [u8;2],
 }
-impl input_stream
+impl <const INPUT_BUFFER_SIZE: usize>input_stream <INPUT_BUFFER_SIZE>
 {
     pub fn new() -> Self
     {
         input_stream
         {
             
-            automaton       : PARSER_AUTOMATOMON::Idle,
+            automaton       : PARSER_AUTOMATON::Idle,
             input_buffer    : [0;INPUT_BUFFER_SIZE],
             indx            : 0,
             checksum        : 0, // only 1 byte is actually used
-            checksum_received : [0,0], // only 1 byte is actually used
+            checksum_received : [0,0], // 2 Hex digits
         }
     }
     /**
@@ -73,14 +74,14 @@ impl input_stream
      */
     pub fn reset(&mut self)
     {
-        self.automaton       = PARSER_AUTOMATOMON::Idle;
+        self.automaton       = PARSER_AUTOMATON::Idle;
     }
     /**
      * 
      */
     pub fn get_result(&mut self) -> &[u8]
     {
-        self.automaton = PARSER_AUTOMATOMON::Idle;        
+        self.automaton = PARSER_AUTOMATON::Idle;        
         &self.input_buffer[0..self.indx]
     }
     /**
@@ -91,6 +92,13 @@ impl input_stream
         let mut dex =0;
         let mut sz = data.len();
         let mut consumed = 0;
+
+        // auto clear errors
+        if  self.automaton  ==    PARSER_AUTOMATON::Error
+        {
+            self.automaton = PARSER_AUTOMATON::Idle;
+        }     
+
         while sz>0
         {
             
@@ -100,27 +108,27 @@ impl input_stream
             dex+=1;
             self.automaton  = match self.automaton 
             {
-                PARSER_AUTOMATOMON::Init => 
+                PARSER_AUTOMATON::Init => 
                                             match c
                                             {
-                                                CHAR_RESET_04   => PARSER_AUTOMATOMON::Reset,
-                                                _               => PARSER_AUTOMATOMON::Init,
+                                                CHAR_RESET_04   => PARSER_AUTOMATON::Reset,
+                                                _               => PARSER_AUTOMATON::Init,
                                             }
                                             ,
-                PARSER_AUTOMATOMON::Idle => 
+                PARSER_AUTOMATON::Idle => 
                                             match c
                                             {
-                                                CHAR_START /*'$'*/  => {self.indx = 0;self.checksum=0;PARSER_AUTOMATOMON::Body}, 
-                                                CHAR_RESET_04       => PARSER_AUTOMATOMON::Reset,
-                                                _                   => PARSER_AUTOMATOMON::Idle,
+                                                CHAR_START /*'$'*/  => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
+                                                CHAR_RESET_04       => PARSER_AUTOMATON::Reset,
+                                                _                   => PARSER_AUTOMATON::Idle,
                                             }
                                             ,
-                PARSER_AUTOMATOMON::Body => 
+                PARSER_AUTOMATON::Body => 
                                             match c
                                             {
-                                                CHAR_END /*'#'*/        => PARSER_AUTOMATOMON::End1, 
-                                                CHAR_ESCAPE /*'}'*/     => PARSER_AUTOMATOMON::Escape, 
-                                                CHAR_RESET_04           => PARSER_AUTOMATOMON::Reset,
+                                                CHAR_END /*'#'*/        => PARSER_AUTOMATON::End1, 
+                                                CHAR_ESCAPE /*'}'*/     => PARSER_AUTOMATON::Escape, 
+                                                CHAR_RESET_04           => PARSER_AUTOMATON::Reset,
                                                 _                       => {
                                                                         self.checksum+=c as usize;
                                                                         if c==b'\t'
@@ -131,43 +139,46 @@ impl input_stream
                                                                             self.input_buffer[self.indx]=c;
                                                                         }
                                                                         self.indx+=1;
-                                                                        PARSER_AUTOMATOMON::Body
+                                                                        PARSER_AUTOMATON::Body
                                                                     },
                                             }, 
-                PARSER_AUTOMATOMON::Escape => 
+                PARSER_AUTOMATON::Escape => 
                                         {
                                             self.checksum+= CHAR_ESCAPE as usize;
                                             self.checksum+=c as usize;
                                             self.input_buffer[self.indx]=c^20;
                                             self.indx+=1;
-                                            PARSER_AUTOMATOMON::Body
+                                            PARSER_AUTOMATON::Body
                                         },
-                PARSER_AUTOMATOMON::End1 => 
+                PARSER_AUTOMATON::End1 => 
                                         {
                                             self.checksum_received[0]=c;
-                                            PARSER_AUTOMATOMON::End2
+                                            PARSER_AUTOMATON::End2
                                         },
-                PARSER_AUTOMATOMON::End2 => 
+                PARSER_AUTOMATON::End2 => 
                                         {
                                             self.checksum_received[1]=c;
                                             // Verify checksum 
                                             let chk=ascii_to_hex(self.checksum_received[0],self.checksum_received[1]);
                                             if chk == (self.checksum & 0xff) as u8
                                             {
-                                                PARSER_AUTOMATOMON::Done
+                                                PARSER_AUTOMATON::Done
                                             }else
                                             {
-                                                log("Wrong checksum\n");
-                                                PARSER_AUTOMATOMON::Idle
+                                                glog("Wrong checksum\n");
+                                                PARSER_AUTOMATON::Error
                                             }
                                         },
-                PARSER_AUTOMATOMON::Reset =>   panic!("automatonReset"), 
-                PARSER_AUTOMATOMON::Done => panic!("automatonDone"), //; PARSER_AUTOMATOMON::Done},
+                PARSER_AUTOMATON::Reset =>   panic!("automatonReset"), 
+                PARSER_AUTOMATON::Done => panic!("automatonDone"), //; PARSER_AUTOMATON::Done},
+                PARSER_AUTOMATON::Error => panic!("automatonError"), //; PARSER_AUTOMATON::Done},
             };
+            // should exit the loop even if we have data left ?
             match self.automaton
             {
-                PARSER_AUTOMATOMON::Done  =>   return (consumed, RESULT_AUTOMATON::Ready),
-                PARSER_AUTOMATOMON::Reset =>   {self.automaton=PARSER_AUTOMATOMON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
+                PARSER_AUTOMATON::Error => {self.automaton=PARSER_AUTOMATON::Idle; return (consumed, RESULT_AUTOMATON::Error);},
+                PARSER_AUTOMATON::Done  =>   return (consumed, RESULT_AUTOMATON::Ready),
+                PARSER_AUTOMATON::Reset =>   {self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
                 _                         => (),
             }
         }

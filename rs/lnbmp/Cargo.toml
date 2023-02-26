@@ -5,10 +5,15 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+
+default = ["native"]
+native = ["rnarduino"]
+hosted = []
 
 [dependencies]
 cty = "0.2.2"
-#rnarduino = { path = "../../lnArduino/rust/rnArduino", features = ["cdc"] }
+rnarduino = { path = "../../lnArduino/rust/rnArduino", features = ["cdc"] , optional = true}
 ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
 
