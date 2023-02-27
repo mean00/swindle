@@ -23,6 +23,7 @@
  */
 #include <QObject>
 #include <QCoreApplication>
+#include <QtGlobal>
 #include "qtcp.h"
 
 extern "C"
@@ -48,6 +49,18 @@ extern "C"
 #define PORT 2000
 BMPTcp *current_connection = NULL;
 bool running = true;
+//
+//
+
+void customHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    QByteArray localMsg = msg.toLocal8Bit();
+	fprintf(stderr, "%s", localMsg.constData());    
+}
+
+
+
+
 //
 //
 BmpTcpServer::BmpTcpServer(QObject *parent )
@@ -122,13 +135,18 @@ void BMPTcp::flush()
 	_socket->flush();
 }
 
-
+static bool eol=true;
 
 extern "C"
 {
  void         rngdb_send_data_c( uint32_t sz, const uint8_t *ptr)
  {
-	qInfo() << "Reply :" << QString::fromLatin1((const char *)ptr,sz);
+	if(eol)
+	{
+		eol=false;
+		qInfo() << "Reply :";
+	}
+	qInfo().noquote() << QString::fromLatin1((const char *)ptr,sz);
 	if(current_connection)
 	{
 		current_connection->write(sz,ptr);
@@ -140,6 +158,8 @@ void rngdb_output_flush_c()
 	{
 		current_connection->flush();
 	}
+	qInfo() << "\n";
+	eol=true;
 
 }
 }
@@ -151,7 +171,7 @@ int main(int argc, char **argv)
 {
 	qInfo() << "Qt BMP started";
 	QCoreApplication a(argc, argv);
-
+	qInstallMessageHandler(customHandler);
 	platform_init(argc, argv);	
 	BmpTcpServer *server = new BmpTcpServer;
 	while(running)
