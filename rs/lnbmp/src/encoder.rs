@@ -36,6 +36,10 @@ impl encoder
     pub fn add(&mut self, data :  &str)
     {
         let byt = data.as_bytes();
+        if false
+        {
+            let do_the_escaping_and_hex_encoding=todo!();
+        }
         // 
         for i in 0..byt.len()
         {
