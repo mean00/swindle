@@ -3,11 +3,14 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 use crate::util::glog;
 use alloc::vec::Vec;
-use crate::{rngdb_send_data,rngdb_output_flush};
 use crate::encoder::encoder;
 
+use q::_q;
 
 type Callback = fn(tokns : &Vec<&str>)->bool;
+
+mod q;
+mod mon;
 struct CommandTree
 {
     command : &'static str,
@@ -16,17 +19,15 @@ struct CommandTree
 }
 
 
-const main_command_tree: [CommandTree;4] = 
+const main_command_tree: [CommandTree;7] = 
 [
-    CommandTree{ command: "!",args: 0,          cb: _extendedMode },
-    CommandTree{ command: "Hg",args: 0,         cb: _Hg },    
-    CommandTree{ command: "vMustReply",args: 0, cb: _vMustReply },
-    CommandTree{ command: "q",args: 0,          cb: _q },
-];
-const q_command_tree: [CommandTree;2] = 
-[
-    CommandTree{ command: "qSupported",args: 0, cb: _qSupported },
-    CommandTree{ command: "qSupported",args: 0, cb: _qSupported },
+    CommandTree{ command: "!",args: 0,          cb: _extendedMode },// enable extended mode
+    CommandTree{ command: "Hg",args: 0,         cb: _Hg },          // select thread
+    CommandTree{ command: "Hc",args: 0,         cb: _Hc },          // 
+    CommandTree{ command: "vMustReply",args: 0, cb: _vMustReply },  // test
+    CommandTree{ command: "q",args: 0,          cb: _q },           // see q commands in commands/q.rs
+    CommandTree{ command: "g",args: 0,          cb: _g },           // read registers
+    CommandTree{ command: "?",args: 0,          cb: _mark },        // reason for halt
 ];
 
 
@@ -51,49 +52,52 @@ pub fn exec(tokns : &Vec<&str>)
 {
     if !exec_one(&main_command_tree,tokns)
     {
-
+        {
+            encoder::simple_send("");            // unsupported
+        }        
     }
-}
-//
-//
-//
-
-pub fn _q(tokns : &Vec<&str>) -> bool
-{
-    return exec_one(&q_command_tree,tokns);
 }
 //
 //
 fn _vMustReply(_tokns : &Vec<&str>) -> bool
 {
     encoder::simple_send("");    
-    return true;
+    true
 }
 //
 //
-fn _qSupported(_tokns : &Vec<&str>) -> bool
-{
-    let mut e = encoder::new();
-    e.begin();
-    e.add("PacketSize=");
-    e.add("200");    
-    e.add(";qXfer:memory-map:read+;qXfer:features:read+");
-    e.end();
-    return true;
-}
 fn _extendedMode(_tokns : &Vec<&str>) -> bool
 {
     encoder::simple_send("OK");    
-    return true;
+    true
 }
 // select thread
 fn _Hg(_tokns : &Vec<&str>) -> bool
 {
     encoder::simple_send("OK");    
-    return true;
+    true
 }
-fn _qXferXml(_tokns : &Vec<&str>) -> bool
+// select thread
+fn _Hc(_tokns : &Vec<&str>) -> bool
 {
-
-    return true;
+    encoder::simple_send("OK");    
+    true
 }
+
+// Read registers
+fn _g(_tokns : &Vec<&str>) -> bool
+{    
+    //NOTARGET
+    encoder::simple_send("EFF");
+    true
+}
+//
+// Request reason for halt
+fn _mark(_tokns : &Vec<&str>) -> bool
+{
+    //NOTARGET
+    encoder::simple_send("W00");
+    true
+}
+
+// EOF

@@ -1,5 +1,6 @@
 use alloc::alloc::Layout as Layout;
 use alloc::alloc::alloc as alloc;
+use alloc::vec::Vec;
 use cty::size_t;
 
 
@@ -21,6 +22,18 @@ use rnarduino::rn_os_helper::log;
 pub fn glog (s : &str)
 {
     log(s);
+}
+//--
+pub fn hex_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Result<&'b [u8],i32>
+{
+    let datain = sin.as_bytes();    
+
+    let s= datain.len()/2;    
+    for i in 0..s
+    {
+        sout[i]=ascii_to_hex( datain[i*2],datain[i*2+1]);
+    }
+    return Ok(&sout[..s]);
 }
 
 /**
