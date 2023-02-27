@@ -6,14 +6,16 @@
 #![allow(unused_imports)]
 
 mod util;
-mod codec;
+mod packet_symbols;
+mod decoder;
+mod encoder;
 mod commands;
 
-use crate::codec::gdb_stream;
+use crate::decoder::gdb_stream;
 extern crate alloc;
 
 use alloc::vec::Vec;
-use codec::RESULT_AUTOMATON;
+use decoder::RESULT_AUTOMATON;
 //
 const INPUT_BUFFER_SIZE: usize = 512;
 const ACK : &str = "+";
@@ -61,7 +63,17 @@ fn          rngdb_output_flush()
         rngdb_output_flush_c();
         }
 }
+/*
+ */
 fn          rngdb_send_data( data : &str)
+{
+    unsafe {
+    rngdb_send_data_c(data.len() as u32, data.as_ptr() );
+    }
+}
+/*
+ */
+fn          rngdb_send_data_u8( data : &[u8])
 {
     unsafe {
     rngdb_send_data_c(data.len() as u32, data.as_ptr() );

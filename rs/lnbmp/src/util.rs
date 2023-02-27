@@ -36,10 +36,29 @@ fn _hex( digit : u8 ) -> u8
         _ => 0, // WTF ?
     }
 }
+//---
 pub fn ascii_to_hex( left : u8, right : u8 ) -> u8
 {
 
     (_hex(left)<<4)+_hex(right)
+}
+//---
+pub fn _tohex( v: u8) -> u8
+{
+    if v>=10
+    {
+        return b'A' +v -10;
+    }
+    return b'0'+v;
+}
+//---
+pub fn u8_to_ascii( value : u8 ) -> [u8;2]
+{
+    let mut out : [u8;2 ]= [0,0];
+    out[0]=_tohex(value>>4);
+    out[1]=_tohex(value&0xf);
+    out
+    
 }
 
 pub fn xabs(x: isize) -> isize

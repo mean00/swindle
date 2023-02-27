@@ -3,7 +3,7 @@
 
  */
 
-#![no_std]
+
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
@@ -12,6 +12,7 @@
 
 use crate::util::ascii_to_hex;
 use crate::util::glog;
+use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE};
 //
 //
 #[derive(PartialEq)]
@@ -42,10 +43,6 @@ pub enum RESULT_AUTOMATON
     Error,
 }
 
-const CHAR_RESET_04 : u8 = 0x04;
-const CHAR_START : u8 = b'$';
-const CHAR_END : u8 = b'#';
-const CHAR_ESCAPE : u8 = b'}';
 //
 pub struct gdb_stream <const INPUT_BUFFER_SIZE: usize>
 {    
