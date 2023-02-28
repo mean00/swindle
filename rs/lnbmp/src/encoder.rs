@@ -53,7 +53,6 @@ impl encoder
         // send end
         rngdb_send_data_u8(&[packet_symbols::CHAR_END]);
         // Send checksum
-
         rngdb_send_data_u8(&u8_to_ascii((self.checksum & 0xff) as u8));
         rngdb_output_flush();
     }
@@ -72,5 +71,18 @@ impl encoder
     {
         rngdb_send_data_u8(data);
     }
-
+    /*
+    void gdb_out(const char *const buf)
+    {
+        const size_t buf_len = strlen(buf);
+        char *hexdata = calloc(1, 2U * buf_len + 1U);
+        if (!hexdata)
+            return;
+    
+        hexify(hexdata, buf, buf_len);
+        gdb_putpacket2("O", 1, hexdata, 2U * buf_len);
+        free(hexdata);
+    }
+    */
+    
 }

@@ -5,12 +5,16 @@ use crate::util::glog;
 use alloc::vec::Vec;
 use crate::encoder::encoder;
 
+mod q;
+mod v;
+mod mon;
+
+
 use q::_q;
+use v::_v;
 
 type Callback = fn(tokns : &Vec<&str>)->bool;
 
-mod q;
-mod mon;
 struct CommandTree
 {
     command : &'static str,
@@ -24,7 +28,7 @@ const main_command_tree: [CommandTree;7] =
     CommandTree{ command: "!",args: 0,          cb: _extendedMode },// enable extended mode
     CommandTree{ command: "Hg",args: 0,         cb: _Hg },          // select thread
     CommandTree{ command: "Hc",args: 0,         cb: _Hc },          // 
-    CommandTree{ command: "vMustReply",args: 0, cb: _vMustReply },  // test
+    CommandTree{ command: "v",args: 0,          cb: _v },  // test
     CommandTree{ command: "q",args: 0,          cb: _q },           // see q commands in commands/q.rs
     CommandTree{ command: "g",args: 0,          cb: _g },           // read registers
     CommandTree{ command: "?",args: 0,          cb: _mark },        // reason for halt
@@ -56,13 +60,6 @@ pub fn exec(tokns : &Vec<&str>)
             encoder::simple_send("");            // unsupported
         }        
     }
-}
-//
-//
-fn _vMustReply(_tokns : &Vec<&str>) -> bool
-{
-    encoder::simple_send("");    
-    true
 }
 //
 //

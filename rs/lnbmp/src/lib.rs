@@ -10,6 +10,8 @@ mod packet_symbols;
 mod decoder;
 mod encoder;
 mod commands;
+mod rn_bmp_cmd_c;
+mod bmp;
 
 use crate::decoder::gdb_stream;
 extern crate alloc;
