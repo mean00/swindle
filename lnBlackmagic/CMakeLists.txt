@@ -47,7 +47,8 @@ IF (LN_BMP_HOSTED) # Hosted mode
             ${HOSTED}/bmp_remote.c ${HOSTED}/bmp_serial.c      ${HOSTED}/dap.c
             ${HOSTED}/platform.c   ${HOSTED}/remote_jtagtap.c  ${HOSTED}/remote_swdptap.c
             #${PC}/cl_utils.c   
-            ${PC}/gdb_if.c    ${PC}/serial_unix.c  ${PC}/utils.c
+            #${PC}/gdb_if.c    
+            ${PC}/serial_unix.c  ${PC}/utils.c
             ${PC}/cli.c       ${PC}/probe_info.c
             ${T}/jtag_scan.c  ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c
             ${B}/stubs.cpp
@@ -66,15 +67,17 @@ ELSE()  # "Normal" /Standalone mode
           )
   include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
 ENDIF()
-SET(BM_SRC          ${S}/command.c  ${S}/crc32.c        ${S}/exception.c  ${S}/gdb_hostio.c   ${S}/gdb_main.c ${S}/gdb_packet.c
+SET(BM_SRC          ${S}/command.c  ${S}/crc32.c        ${S}/exception.c  ${S}/gdb_hostio.c   #${S}/gdb_main.c ${S}/gdb_packet.c
                     ${S}/hex_utils.c ${S}/morse.c ${S}/remote.c ${S}/timing.c)
-            SET(BM_TARGET       ${T}/adiv5.c    ${T}/adiv5_swdp.c   ${T}/cortexm.c    ${T}/target_flash.c ${T}/gdb_reg.c
+SET(BM_TARGET       ${T}/adiv5.c    ${T}/adiv5_swdp.c   ${T}/cortexm.c    ${T}/target_flash.c ${T}/gdb_reg.c
                     ${T}/lmi.c      
                     ${T}/target.c ${T}/sfdp.c
+
                         ) #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
 
 SET(BM_PLATFORM_COMMON   ${B}/bmp_interface.cpp ${B}/bmp_string.cpp ${B}/bmp_utils.cpp 
                          ${B}/bmp_gdb_cmd.cpp ${B}/bmp_thread_cache.cpp
+                         #${BMP}/../rs/lnbmp/c_interface/bmp_interface_c.cpp
                         )
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BM_TARGET} ${BM_HOSTED} ${BM_PLATFORM_COMMON} ${BOARDS})
@@ -83,3 +86,5 @@ IF(USE_STLINK_PINOUT)
 ENDIF(USE_STLINK_PINOUT)
 target_include_directories(lnBlackmagic PRIVATE  ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
 target_include_directories(lnBlackmagic PRIVATE  ${myB}/private_include)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rs/lnbmp/c_interface bmp_c_interface)

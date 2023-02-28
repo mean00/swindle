@@ -59,15 +59,16 @@ ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
 #
 include(rnCmake)
 corrosion_import_crate(MANIFEST_PATH ../rs/lnbmp/Cargo.toml    NO_DEFAULT_FEATURES      CFLAGS ${LN_LTO_RUST_FLAGS} )
-#ADD_SUBDIRECTORY(../rs rust_bmp)
 corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
-#corrosion_add_target_rustflags( rsbmp --cfg --no-default-features)
-
 
 SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/qtcp.h)
 
 ADD_EXECUTABLE(lnBMP_hosted ${SRC})
-target_link_libraries(lnBMP_hosted lnBlackmagic embeddedPrintf usb-1.0 )
 target_link_libraries(lnBMP_hosted rsbmp)
+target_link_libraries(lnBMP_hosted lnBMP_interface)
+target_link_libraries(lnBMP_hosted lnBlackmagic  )
+target_link_libraries(lnBMP_hosted lnBMP_interface)
+target_link_libraries(lnBMP_hosted lnBlackmagic  )
+target_link_libraries(lnBMP_hosted embeddedPrintf usb-1.0 )
 target_link_libraries(lnBMP_hosted Qt5::Network)

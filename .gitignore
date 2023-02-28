@@ -21,3 +21,4 @@ compile_commands.json
 updat*.*
 *.backup
 rs/lnbmp/target
+*.tmp
