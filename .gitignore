@@ -22,3 +22,4 @@ updat*.*
 *.backup
 rs/lnbmp/target
 *.tmp
+tags
