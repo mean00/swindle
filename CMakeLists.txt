@@ -62,7 +62,9 @@ GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 
 ADD_SUBDIRECTORY(lnBlackmagic)
 ADD_SUBDIRECTORY(rs)
-target_link_libraries(lnBMP lnBlackmagic gd32_usb_usbd)
+target_link_libraries(lnBMP lnBlackmagic )
+target_link_libraries(lnBMP gd32_usb_usbd )
+target_link_libraries(lnBMP lnBMP_interface )
 target_link_libraries(lnBMP rsbmp)
 
 MESSAGE(STATUS "Summary")

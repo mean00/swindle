@@ -60,26 +60,26 @@ pub const __int_fast16_t_defined: u32 = 1;
 pub const __int_fast32_t_defined: u32 = 1;
 pub const __int_fast64_t_defined: u32 = 1;
 pub const WINT_MIN: u32 = 0;
-pub type __int8_t = cty::c_schar;
-pub type __uint8_t = cty::c_uchar;
-pub type __int16_t = cty::c_short;
-pub type __uint16_t = cty::c_ushort;
-pub type __int32_t = cty::c_int;
-pub type __uint32_t = cty::c_uint;
-pub type __int64_t = cty::c_longlong;
-pub type __uint64_t = cty::c_ulonglong;
-pub type __int_least8_t = cty::c_schar;
-pub type __uint_least8_t = cty::c_uchar;
-pub type __int_least16_t = cty::c_short;
-pub type __uint_least16_t = cty::c_ushort;
-pub type __int_least32_t = cty::c_int;
-pub type __uint_least32_t = cty::c_uint;
-pub type __int_least64_t = cty::c_longlong;
-pub type __uint_least64_t = cty::c_ulonglong;
-pub type __intmax_t = cty::c_longlong;
-pub type __uintmax_t = cty::c_ulonglong;
-pub type __intptr_t = cty::c_int;
-pub type __uintptr_t = cty::c_uint;
+pub type __int8_t = core::ffi::c_schar;
+pub type __uint8_t = core::ffi::c_uchar;
+pub type __int16_t = core::ffi::c_short;
+pub type __uint16_t = core::ffi::c_ushort;
+pub type __int32_t = core::ffi::c_int;
+pub type __uint32_t = core::ffi::c_uint;
+pub type __int64_t = core::ffi::c_longlong;
+pub type __uint64_t = core::ffi::c_ulonglong;
+pub type __int_least8_t = core::ffi::c_schar;
+pub type __uint_least8_t = core::ffi::c_uchar;
+pub type __int_least16_t = core::ffi::c_short;
+pub type __uint_least16_t = core::ffi::c_ushort;
+pub type __int_least32_t = core::ffi::c_int;
+pub type __uint_least32_t = core::ffi::c_uint;
+pub type __int_least64_t = core::ffi::c_longlong;
+pub type __uint_least64_t = core::ffi::c_ulonglong;
+pub type __intmax_t = core::ffi::c_longlong;
+pub type __uintmax_t = core::ffi::c_ulonglong;
+pub type __intptr_t = core::ffi::c_int;
+pub type __uintptr_t = core::ffi::c_uint;
 pub type intmax_t = __intmax_t;
 pub type uintmax_t = __uintmax_t;
 pub type int_least8_t = __int_least8_t;
@@ -90,23 +90,23 @@ pub type int_least32_t = __int_least32_t;
 pub type uint_least32_t = __uint_least32_t;
 pub type int_least64_t = __int_least64_t;
 pub type uint_least64_t = __uint_least64_t;
-pub type int_fast8_t = cty::c_schar;
-pub type uint_fast8_t = cty::c_uchar;
-pub type int_fast16_t = cty::c_short;
-pub type uint_fast16_t = cty::c_ushort;
-pub type int_fast32_t = cty::c_int;
-pub type uint_fast32_t = cty::c_uint;
-pub type int_fast64_t = cty::c_longlong;
-pub type uint_fast64_t = cty::c_ulonglong;
-pub type target_s = cty::c_void;
-pub type bool_ = cty::c_int;
+pub type int_fast8_t = core::ffi::c_schar;
+pub type uint_fast8_t = core::ffi::c_uchar;
+pub type int_fast16_t = core::ffi::c_short;
+pub type uint_fast16_t = core::ffi::c_ushort;
+pub type int_fast32_t = core::ffi::c_int;
+pub type uint_fast32_t = core::ffi::c_uint;
+pub type int_fast64_t = core::ffi::c_longlong;
+pub type uint_fast64_t = core::ffi::c_ulonglong;
+pub type target_s = core::ffi::c_void;
+pub type bool_ = core::ffi::c_int;
 extern "C" {
     pub fn cmd_swdp_scan(
         t: *const target_s,
-        argc: cty::c_int,
-        argv: *mut *const cty::c_char,
+        argc: core::ffi::c_int,
+        argv: *mut *const core::ffi::c_char,
     ) -> bool_;
 }
 extern "C" {
-    pub fn bmp_attach(target: cty::c_uint) -> bool_;
+    pub fn bmp_attach(target: core::ffi::c_uint) -> bool_;
 }
