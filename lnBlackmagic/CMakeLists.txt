@@ -87,4 +87,6 @@ ENDIF(USE_STLINK_PINOUT)
 target_include_directories(lnBlackmagic PRIVATE  ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
 target_include_directories(lnBlackmagic PRIVATE  ${myB}/private_include)
 
+include_directories( ${BMP}/src/include)
+include_directories( ${BMP}/src)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rs/lnbmp/c_interface bmp_c_interface)
