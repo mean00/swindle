@@ -9,7 +9,6 @@ use crate::util::{ascii_to_hex,u8_to_ascii,u8_to_ascii_inplace};
 use crate::util::glog;
 use crate::{rngdb_send_data,rngdb_send_data_u8,rngdb_output_flush};
 use crate::packet_symbols;
-use hex;
 
 
 // DF
