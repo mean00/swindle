@@ -67,12 +67,12 @@ ELSE()  # "Normal" /Standalone mode
           )
   include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
 ENDIF()
-SET(BM_SRC          ${S}/command.c  ${S}/crc32.c        ${S}/exception.c  ${S}/gdb_hostio.c   #${S}/gdb_main.c ${S}/gdb_packet.c
+SET(BM_SRC          ${S}/command.c  ${S}/crc32.c        ${S}/exception.c    #${S}/gdb_main.c ${S}/gdb_packet.c
                     ${S}/hex_utils.c ${S}/morse.c ${S}/remote.c ${S}/timing.c)
 SET(BM_TARGET       ${T}/adiv5.c    ${T}/adiv5_swdp.c   ${T}/cortexm.c    ${T}/target_flash.c ${T}/gdb_reg.c
                     ${T}/lmi.c      
                     ${T}/target.c ${T}/sfdp.c
-
+                        # ${S}/gdb_hostio.c 
                         ) #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
 
 SET(BM_PLATFORM_COMMON   ${B}/bmp_interface.cpp ${B}/bmp_string.cpp ${B}/bmp_utils.cpp 
