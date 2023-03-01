@@ -61,13 +61,16 @@ char gdb_if_getchar_to(uint32_t timeout)
 }
 void gdb_outf(const char *fmt, ...)
 {
-    printf(">>> %s (incomplete)\n",fmt);
-    
-}
-// Send data to the host...
-void gdb_out(const char *fmt)
-{
-    printf(">>> %s \n",fmt);
+	va_list ap;
+
+	va_start(ap, fmt);
+	char *buf;
+	if (vasprintf(&buf, fmt, ap) < 0)
+		return;
+
+	gdb_out(buf);
+	free(buf);
+	va_end(ap);    
 }
 int gdb_main_loop(target_controller_s *tc, char *pbuf, size_t pbuf_size, size_t size, bool in_syscall)
 {

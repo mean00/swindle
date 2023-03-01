@@ -12,6 +12,7 @@ mod encoder;
 mod commands;
 mod rn_bmp_cmd_c;
 mod bmp;
+mod glue;
 
 use crate::decoder::gdb_stream;
 extern crate alloc;
