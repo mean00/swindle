@@ -9,6 +9,8 @@ extern "C"
 #include "gdb_packet.h"
 #include "gdb_hostio.h"
 #include "target.h"
+#include "target_internal.h"
+
 
 void gdb_target_destroy_callback(target_controller_s *tc, target_s *t)
 {
@@ -40,9 +42,19 @@ target_controller_s gdb_controller = {
 
 target_s *cur_target;
 bool shutdown_bmda;
+/*
+
+*/
+bool bmp_attached_c()
+{
+	if(!cur_target)
+		return false;
+	
+	return target_attached(cur_target);	
+}
 /**
 */
-bool bmp_attach(uint32_t target)
+bool bmp_attach_c(uint32_t target)
 {
 	    cur_target = target_attach_n(target, &gdb_controller);
 		if (cur_target) 
@@ -66,4 +78,97 @@ void gdb_outf(const char *fmt, ...)
 	gdb_out(tmpBuffer);
 	va_end(ap);    
 }
+
+int bmp_map_count_c(int kind)
+{
+	if(!bmp_attached_c())
+	{
+		return 0; // DF ?
+	}
+	int count=0;
+	switch(kind)
+	{
+		case 0: // flash	
+			{
+				target_flash_s *f = cur_target->flash;
+				while(f)
+				{
+					count++;
+					f=f->next;
+				}
+				return count;		
+			}
+			break;
+		case 1: // ram	
+			{
+				target_ram_s *f = cur_target->ram;
+				while(f)
+				{
+					count++;
+					f=f->next;
+				}
+				return count;		
+			}
+			break;
+		default: 
+			xAssert(0);
+	}
+	return 0;
 }
+
+bool bmp_map_get_c(int kind, int index, uint32_t *start, uint32_t *size, uint32_t *blockSize)
+{
+	if(!bmp_attached_c())
+	{
+		return false; // DF ?
+	}
+	int count=0;
+	switch(kind)
+	{
+		case 0: // flash	
+			{
+				target_flash_s *f = cur_target->flash;
+				while(f && index!=0)
+				{
+					count++;
+					f=f->next;
+					index--;
+				}
+				if(f)
+				{
+					*start=f->start;
+					*size=f->length;
+					*blockSize=f->blocksize;
+					return true;
+				}
+				return false;
+			}
+			break;
+		case 1: // ram	
+			{
+				target_ram_s *f = cur_target->ram;
+				while(f && index!=0)
+				{
+					count++;
+					f=f->next;
+					index--;
+				}
+				if(f)
+				{
+					*start=f->start;
+					*size=f->length;
+					*blockSize=0;
+					return true;
+				}
+				return false;
+			}
+			break;
+		default: 
+			xAssert(0);
+	}
+	return 0;
+}
+
+
+}
+

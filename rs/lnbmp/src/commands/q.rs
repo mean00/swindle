@@ -11,7 +11,8 @@ use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
-use super::mon::_swdp_scan;
+use super::mon::{_swdp_scan};
+use crate::bmp::bmp_attached;
 use numtoa::NumToA;
 
 const q_command_tree: [CommandTree;9] = 
@@ -47,7 +48,7 @@ pub fn _q(tokns : &Vec<&str>) -> bool
 //
 fn _qSupported(_tokns : &Vec<&str>) -> bool
 {
-    let mut buffer: [u8;8] = [0; 8]; // should be big enough!    
+    let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
 
     let mut e = encoder::new();
     e.begin();
@@ -60,9 +61,21 @@ fn _qSupported(_tokns : &Vec<&str>) -> bool
 //
 // Read memory map
 //
+// the full command is qXfer:features:read:target.xml:0,50d
+// we assume it fits (?)
 fn _qXfer(_tokns : &Vec<&str>) -> bool
 {
-    encoder::simple_send("E01");    
+    if !crate::bmp::bmp_attached()
+    {
+        encoder::simple_send("E01");    
+        return true;
+    }
+    let mut e = encoder::new();
+    e.begin();
+    e.add("<memory-map>");
+
+    e.add("</memory-map>");
+    e.end();
     return true;
 }
 //
