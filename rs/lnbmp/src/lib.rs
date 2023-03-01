@@ -14,15 +14,13 @@ mod rn_bmp_cmd_c;
 mod bmp;
 mod glue;
 
+use packet_symbols::{CHAR_ACK,CHAR_NACK,INPUT_BUFFER_SIZE};
 use crate::decoder::gdb_stream;
 extern crate alloc;
 
 use alloc::vec::Vec;
 use decoder::RESULT_AUTOMATON;
 //
-const INPUT_BUFFER_SIZE: usize = 512;
-const ACK : &str = "+";
-const NACK : &str = "-";
 
 #[no_mangle]
 
@@ -120,13 +118,13 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                             let tokens : Vec <&str>= flat_string.split_whitespace().collect();
                                             if tokens.len()!=0
                                             {
-                                                rngdb_send_data(ACK ); 
+                                                rngdb_send_data( CHAR_ACK ); 
                                                 rngdb_output_flush( );
                                                 commands::exec(&tokens);
                                             }
                                         }
                                     },
-                                RESULT_AUTOMATON::Error => {rngdb_send_data(NACK ); rngdb_output_flush( );},
+                                RESULT_AUTOMATON::Error => {rngdb_send_data( CHAR_NACK ); rngdb_output_flush( );},
                                 RESULT_AUTOMATON::Continue => (),
                                 RESULT_AUTOMATON::Reset => (),
                             }

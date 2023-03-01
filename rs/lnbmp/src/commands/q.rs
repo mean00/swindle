@@ -9,8 +9,10 @@ use crate::util::hex_to_u8s;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
+use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
 use super::mon::_swdp_scan;
+use numtoa::NumToA;
 
 const q_command_tree: [CommandTree;9] = 
 [
@@ -45,10 +47,12 @@ pub fn _q(tokns : &Vec<&str>) -> bool
 //
 fn _qSupported(_tokns : &Vec<&str>) -> bool
 {
+    let mut buffer: [u8;8] = [0; 8]; // should be big enough!    
+
     let mut e = encoder::new();
     e.begin();
-    e.add("PacketSize=");
-    e.add("200");    
+    e.add("PacketSize=");    
+    e.add(INPUT_BUFFER_SIZE.numtoa_str(10,&mut buffer));     // INPUT_BUFFER_SIZE
     e.add(";qXfer:memory-map:read+;qXfer:features:read+");
     e.end();
     return true;

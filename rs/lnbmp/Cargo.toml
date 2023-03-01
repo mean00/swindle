@@ -15,6 +15,7 @@ cty = "0.2.2"
 rnarduino = { path = "../../lnArduino/rust/rnArduino", features = ["cdc"] , optional = true}
 ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
+numtoa = {version = "0.2.4"}
 
 [lib]
 name = "rsbmp"
