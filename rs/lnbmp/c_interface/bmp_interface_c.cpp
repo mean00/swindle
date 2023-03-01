@@ -40,7 +40,8 @@ target_controller_s gdb_controller = {
 
 target_s *cur_target;
 bool shutdown_bmda;
-
+/**
+*/
 bool bmp_attach(uint32_t target)
 {
 	    cur_target = target_attach_n(target, &gdb_controller);
@@ -51,33 +52,18 @@ bool bmp_attach(uint32_t target)
         return false;
 
 }
-void gdb_if_putchar(char c, int flush)
-{
-    xAssert(0);
-}
-char gdb_if_getchar_to(uint32_t timeout)
-{
-    xAssert(0);
-}
+static char tmpBuffer[128];
+/**
+*/
 void gdb_outf(const char *fmt, ...)
-{
+{    
 	va_list ap;
 
 	va_start(ap, fmt);
 	char *buf;
-	if (vasprintf(&buf, fmt, ap) < 0)
-		return;
-
-	gdb_out(buf);
-	free(buf);
+    // this is suboptimal
+    vsnprintf((char *)tmpBuffer,127,fmt,ap);    
+	gdb_out(tmpBuffer);
 	va_end(ap);    
-}
-int gdb_main_loop(target_controller_s *tc, char *pbuf, size_t pbuf_size, size_t size, bool in_syscall)
-{
-   xAssert(0);
-}
-void gdb_putpacket_f(const char *const fmt, ...)
-{
-    xAssert(0);
 }
 }
