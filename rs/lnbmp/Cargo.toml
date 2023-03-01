@@ -22,13 +22,26 @@ path = "src/lib.rs"
 crate-type = ["staticlib"] # Creates static lib
 
 [profile.dev]
-#codegen-units = 0
+codegen-units = 1
 debug = true
-lto = false
-opt-level       = 0
+lto = true
+opt-level       = 's'
 
 [profile.release]
-#codegen-units = 0
+codegen-units = 1
 debug = true
-lto = false
-opt-level       = 0
+lto = true
+opt-level       = 's'
+
+
+#[profile.dev]
+#codegen-units = 0
+#debug = true
+#lto = false
+#opt-level       = 0
+
+#[profile.release]
+#codegen-units = 1
+#debug = true
+#lto = true
+#opt-level       = 0

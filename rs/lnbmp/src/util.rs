@@ -73,7 +73,7 @@ pub fn u8_to_ascii( value : u8 ) -> [u8;2]
     out
     
 }
-pub fn u8_to_ascii_inplace( value : u8 , out : &mut [u8])
+pub fn u8_to_ascii_to_buffer( value : u8 , out : &mut [u8])
 {
     out[0]=_tohex(value>>4);
     out[1]=_tohex(value&0xf);
