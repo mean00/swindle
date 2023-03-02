@@ -84,8 +84,28 @@ fn _Hc(_tokns : &Vec<&str>) -> bool
 // Read registers
 fn _g(_tokns : &Vec<&str>) -> bool
 {    
-    //NOTARGET
-    encoder::simple_send("EFF");
+    if !crate::bmp::bmp_attached()
+    {
+        encoder::simple_send("E01");    
+        return true;
+    }
+    let regs = crate::bmp::bmp_read_registers();
+    let mut e = encoder::new();
+    e.begin();
+    let mut buffer : [u8;8]=[0;8];
+    let n: usize = regs.len();
+    for i in 0..n
+    {       
+        let mut reg = regs[i];
+        // LE first
+        for j in 0..4
+        {
+            crate::util::u8_to_ascii_to_buffer((reg &0xff) as u8 ,&mut buffer[2*j..]); 
+            reg = reg >> 8;
+        }
+        e.add_u8(&buffer);
+    }
+    e.end();
     true
 }
 //

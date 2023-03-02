@@ -114,14 +114,23 @@ extern "C" {
     pub fn bmp_attached_c() -> bool_;
 }
 extern "C" {
-    pub fn bmp_map_count_c(kind: core::ffi::c_int) -> core::ffi::c_int;
+    pub fn bmp_map_count_c(kind: core::ffi::c_uint) -> core::ffi::c_int;
 }
 extern "C" {
     pub fn bmp_map_get_c(
-        kind: core::ffi::c_int,
-        index: core::ffi::c_int,
+        arg1: core::ffi::c_uint,
+        arg2: core::ffi::c_uint,
         start: *mut core::ffi::c_uint,
         size: *mut core::ffi::c_uint,
         blockSize: *mut core::ffi::c_uint,
     ) -> bool_;
+}
+extern "C" {
+    pub fn bmp_registers_count_c() -> core::ffi::c_uint;
+}
+extern "C" {
+    pub fn bmp_read_register_c(reg: core::ffi::c_uint, val: *mut core::ffi::c_uint) -> bool_;
+}
+extern "C" {
+    pub fn bmp_target_description_c() -> *const core::ffi::c_char;
 }

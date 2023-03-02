@@ -13,6 +13,11 @@ use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
 use super::mon::{_swdp_scan};
 use crate::bmp::bmp_attached;
+use crate::bmp::bmp_get_mapping;
+use crate::bmp::MemoryBlock;
+use crate::bmp::mapping::{ FLASH,RAM};
+
+
 use numtoa::NumToA;
 
 const q_command_tree: [CommandTree;9] = 
@@ -63,17 +68,111 @@ fn _qSupported(_tokns : &Vec<&str>) -> bool
 //
 // the full command is qXfer:features:read:target.xml:0,50d
 // we assume it fits (?)
+const height : &str = "00000000";
+fn hex8(digit : u32, buffer : &mut [u8], e: &mut encoder)
+{
+    let pfix : &str = digit.numtoa_str(16,buffer);
+    if pfix.len() < 8
+    {
+        e.add( &height[0..(8-pfix.len())]);
+    }
+    e.add(pfix);
+}
+//
+//
 fn _qXfer(_tokns : &Vec<&str>) -> bool
+{
+    
+
+    if !crate::bmp::bmp_attached()
+    {
+        encoder::simple_send("E01");    
+        return true;
+    }
+    
+    if _tokns.len() ==0
+    {
+        return false;
+    }
+
+    let args : Vec <&str>= _tokns[0].split(':').collect();
+    if args.len()< 2
+    {
+        return false;
+    }
+    match args[1]
+    {
+        "memory-map" => return _qXfer_memory_map(_tokns),
+        "features"   => return _qXfer_features_regs(_tokns),
+        _            => return false,
+    }    
+}
+//
+//
+fn _qXfer_features_regs(_tokns : &Vec<&str>) -> bool
+{
+    let mut e = encoder::new();
+    e.begin();
+    e.add("m");
+    e.add(crate::bmp::bmp_register_description());
+    e.end();
+    true
+}
+// 
+fn _qXfer_memory_map(_tokns : &Vec<&str>) -> bool
 {
     if !crate::bmp::bmp_attached()
     {
         encoder::simple_send("E01");    
         return true;
     }
-    let mut e = encoder::new();
-    e.begin();
-    e.add("<memory-map>");
+    
+    if _tokns.len() ==0
+    {
+        return false;
+    }
 
+    // this is a weak hack to detect if it is the 2nd query
+    // i.e. the offset is not zero
+    // we assume we replied all in the 1st reply
+    if !(_tokns[0].starts_with("qXfer:features:read:target.xml:0"))
+    {
+        encoder::simple_send("l");   
+        return true;
+    }
+
+
+    let mut e = encoder::new();
+    let mut buffer : [u8;20] = [0;20];
+    
+    e.begin();
+    e.add("m<memory-map>");
+
+    {
+        let ram : Vec<MemoryBlock> = bmp_get_mapping(RAM);
+        for i in 0..ram.len()
+        {
+            e.add("<memory type=\"ram\" start=\"0x");
+            hex8(ram[i].start_address, &mut buffer, &mut e);
+            e.add("\" length=\"0x");
+            hex8(ram[i].length, &mut buffer, &mut e);            
+            e.add("\"/>");
+        }
+    }
+    {
+        let flash : Vec<MemoryBlock> = bmp_get_mapping(FLASH );
+        for i in 0..flash.len()
+        {
+            e.add("<memory type=\"flash\" start=\"0x");
+            hex8(flash[i].start_address, &mut buffer, &mut e);
+            e.add("\" length=\"0x");            
+            hex8(flash[i].length, &mut buffer, &mut e);
+            e.add("\">");
+            e.add("<property name=\"blocksize\">0x");
+            hex8(flash[i].block_size, &mut buffer, &mut e);            
+            e.add("</property></memory>");
+        }
+    }
     e.add("</memory-map>");
     e.end();
     return true;

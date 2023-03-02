@@ -169,6 +169,27 @@ bool bmp_map_get_c(int kind, int index, uint32_t *start, uint32_t *size, uint32_
 	return 0;
 }
 
+unsigned int bmp_registers_count_c()
+{
+	if( !bmp_attached_c())
+	{
+		return 0;
+	}
+	return target_regs_size(cur_target)/4;
+}
+bool bmp_read_register_c(const unsigned int reg, uint32_t *val)
+{
+	if(!target_reg_read(cur_target,reg,val,4)) 
+        return false;
+    return true;
+}
 
+const char * bmp_target_description_c()
+{
+	if(!bmp_attached_c()) return "";
+	const char *c=target_regs_description(cur_target);
+	if(!c) return "";
+	return c;
+}
 }
 
