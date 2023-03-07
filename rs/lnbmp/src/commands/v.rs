@@ -12,10 +12,11 @@ use super::{CommandTree,exec_one};
 
 use crate::bmp::bmp_attach;
 
-const v_command_tree: [CommandTree;2] = 
+const v_command_tree: [CommandTree;3] = 
 [
     CommandTree{ command: "vMustReply", args: 0, cb: _vMustReply },  // test
     CommandTree{ command: "vAttach",    args: 0, cb: _vAttach },  // test
+    CommandTree{ command: "vFlashErase",args: 0, cb: _vFlashErase },  // flash erase
 ];
 
 
@@ -55,8 +56,29 @@ fn _vAttach(_tokns : &Vec<&str>) -> bool
              encoder::simple_send("T05thread:1;");
              return true;
     }
-    encoder::simple_send("E01");
+    encoder::reply_e01();
     true
 }
+//vFlashErase:08000000,00005000
+fn _vFlashErase(_tokns : &Vec<&str>) -> bool
+{
+    if !crate::bmp::bmp_attached()
+    {
+        encoder::reply_e01(); 
+        return true;
+    }
+
+    let args : Vec <&str>= _tokns[1].split(",").collect();
+    if args.len()!=2
+    {
+        glog("vflasherase : wrong param");
+        encoder::reply_e01(); 
+        return true;
+    }
+    let address = crate::util::ascii_to_u32(args[0]);
+    let len = crate::util::ascii_to_u32(args[1]);
+    return false;
+}
+
 
 // EOF

@@ -12,7 +12,7 @@ pub fn _swdp_scan(_tokns : &Vec<&str>) -> bool
     if bmp::swdp_scan()
     {
         glog("success!");
-        encoder::simple_send("OK");
+        encoder::reply_ok();
         return true;
     }
     glog("fail!");

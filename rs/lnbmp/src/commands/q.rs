@@ -83,28 +83,16 @@ fn hex8(digit : u32, buffer : &mut [u8], e: &mut encoder)
 fn _qXfer(_tokns : &Vec<&str>) -> bool
 {
     
-
-    if !crate::bmp::bmp_attached()
+    if _tokns.len() < 4
     {
-        encoder::simple_send("E01");    
+        encoder::reply_e01(); 
         return true;
     }
-    
-    if _tokns.len() ==0
-    {
-        return false;
-    }
 
-    let args : Vec <&str>= _tokns[0].split(':').collect();
-    let nb_params = args.len();
-    if nb_params < 2
+    match _tokns[1]
     {
-        return false;
-    }
-    match args[1]
-    {
-        "memory-map" => return _qXfer_memory_map(&args[2..]),
-        "features"   => return _qXfer_features_regs(&args[2..]),
+        "memory-map" => return _qXfer_memory_map(&_tokns[2..]),
+        "features"   => return _qXfer_features_regs(&_tokns[2..]),
         _            => return false,
     }    
 }
@@ -133,7 +121,7 @@ fn validate_q_query(args : &[&str], header1 : &str, header2 : &str ) -> Option<(
 }
 //
 //  read target.xml [offset,size]
-//
+// 
 fn _qXfer_features_regs(args : &[&str]) -> bool
 {
     let start_address : usize ;
@@ -171,7 +159,7 @@ fn _qXfer_memory_map(args : &[&str]) -> bool
    
     let start_address : usize ;
     let length : usize ;
-    match validate_q_query(args,"memory-map","read")
+    match validate_q_query(args,"read","")
     {
         None        => return false,
         Some((a,b)) => {start_address=a;length = b;},

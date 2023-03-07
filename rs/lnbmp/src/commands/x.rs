@@ -21,9 +21,10 @@ pub fn _X(_tokns : &Vec<&str>) -> bool
 {
     if !crate::bmp::bmp_attached()
     {
-        encoder::simple_send("E01");    
+        
+        encoder::reply_e01(); 
         return true;
     }
-    encoder::simple_send("OK");    
+    encoder::reply_ok();
     return true;
 }
