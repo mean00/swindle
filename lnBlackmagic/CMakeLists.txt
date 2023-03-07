@@ -89,4 +89,5 @@ target_include_directories(lnBlackmagic PRIVATE  ${myB}/private_include)
 
 include_directories( ${BMP}/src/include)
 include_directories( ${BMP}/src)
+include_directories( ${BMP}/src/target)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rs/lnbmp/c_interface bmp_c_interface)
