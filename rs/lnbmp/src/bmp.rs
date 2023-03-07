@@ -21,7 +21,7 @@ pub fn bmp_register_description() -> &'static str
 {
     // 
     unsafe {
-    match( CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c()).to_str() ) 
+    match  CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c()).to_str()  
     {
         Ok(x) => x,
         Err(_y) => "",
