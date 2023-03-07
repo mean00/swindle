@@ -8,10 +8,12 @@ use crate::encoder::encoder;
 mod q;
 mod v;
 mod mon;
+mod x;
 
 
 use q::_q;
 use v::_v;
+use x::_X;
 
 type Callback = fn(tokns : &Vec<&str>)->bool;
 
@@ -23,7 +25,7 @@ struct CommandTree
 }
 
 
-const main_command_tree: [CommandTree;7] = 
+const main_command_tree: [CommandTree;8] = 
 [
     CommandTree{ command: "!",args: 0,          cb: _extendedMode },// enable extended mode
     CommandTree{ command: "Hg",args: 0,         cb: _Hg },          // select thread
@@ -32,6 +34,7 @@ const main_command_tree: [CommandTree;7] =
     CommandTree{ command: "q",args: 0,          cb: _q },           // see q commands in commands/q.rs
     CommandTree{ command: "g",args: 0,          cb: _g },           // read registers
     CommandTree{ command: "?",args: 0,          cb: _mark },        // reason for halt
+    CommandTree{ command: "X",args: 0,          cb: _X },        // write binary    
 ];
 
 
