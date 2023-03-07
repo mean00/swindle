@@ -26,9 +26,9 @@ pub fn glog (s : &str)
 //--
 pub fn hex_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Result<&'b [u8],i32>
 {
-    let datain = sin.as_bytes();    
+    let datain = sin.as_bytes();
 
-    let s= datain.len()/2;    
+    let s= datain.len()/2;
     for i in 0..s
     {
         sout[i]=ascii_to_hex( datain[i*2],datain[i*2+1]);
@@ -65,6 +65,16 @@ pub fn _tohex( v: u8) -> u8
     return b'0'+v;
 }
 //---
+pub fn ascii_to_u32(s : &str) -> u32
+{
+    let datain = s.as_bytes();
+    let mut val  : u32 = 0;
+    for i in 0..datain.len()
+    {
+        val=(val<<4)+_hex(datain[i]) as u32;
+    }
+    val
+}
 pub fn u8_to_ascii( value : u8 ) -> [u8;2]
 {
     let mut out : [u8;2 ]= [0,0];
