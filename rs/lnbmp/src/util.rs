@@ -22,23 +22,19 @@ pub fn glog1<T: core::fmt::Display> (s : &str, v: T)
     print!("<<{:?}:{}\n",s,v);
 }
 #[cfg(feature = "native")]
+use rnarduino::rn_os_helper::{log,log1};
+
+#[cfg(feature = "native")]
 pub fn glog1<T: uDisplay> (s : &str, v: T)
 {
-    print!("<<{:?}:{}\n",s,v);
+    log1(s,v);
 }
 
 use ufmt::uDisplay;
 #[cfg(feature = "native")]
-use rnarduino::rn_os_helper::log;
-#[cfg(feature = "native")]
 pub fn glog (s : &str)
 {
     log(s);
-}
-#[cfg(feature = "native")]
-pub fn glog1<T: uDisplay> (s : &str, v:T)
-{
-    log1(s,v);
 }
 
 //--
