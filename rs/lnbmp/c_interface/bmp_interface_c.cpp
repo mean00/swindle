@@ -191,5 +191,21 @@ const char * bmp_target_description_c()
 	if(!c) return "";
 	return c;
 }
+bool bmp_write_reg_c(const unsigned int reg, const unsigned int val)
+{
+	if(!bmp_attached_c()) return false;
+	if (target_reg_write(cur_target, reg, &val, sizeof(val)) > 0)
+			return true;
+	return false;
 }
+bool bmp_read_reg_c(const unsigned int reg, unsigned int *val)
+{
+	if(!bmp_attached_c()) return false;
+	if (target_reg_read(cur_target, reg, val, sizeof(*val)) > 0)
+			return true;
+	return false;
+}
+
+} // extern C
+// EOF
 

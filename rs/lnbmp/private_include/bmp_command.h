@@ -16,6 +16,10 @@ bool bmp_map_get_c(const uint32_t, const uint32_t, uint32_t *start, uint32_t *si
 unsigned int bmp_registers_count_c();
 bool         bmp_read_register_c(const unsigned int reg, unsigned int *val);
 const char * bmp_target_description_c();
+
+bool bmp_write_reg_c(const unsigned int reg, const unsigned int value);
+bool bmp_read_reg_c (const unsigned int reg, unsigned int *value);
+
 /*
 bool cmd_auto_scan(target_s *t, int argc, const char **argv);
 bool cmd_frequency(target_s *t, int argc, const char **argv);
