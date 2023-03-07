@@ -115,7 +115,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                         };
                                         if flat_string.len()!=0
                                         {
-                                            let tokens : Vec <&str>= flat_string.split_whitespace().collect();
+                                            let tokens : Vec <&str>= flat_string.split(":").collect();
                                             if tokens.len()!=0
                                             {
                                                 rngdb_send_data( CHAR_ACK ); 

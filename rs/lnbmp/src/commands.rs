@@ -9,6 +9,7 @@ mod q;
 mod v;
 mod mon;
 mod x;
+mod registers;
 
 
 use q::_q;
@@ -68,19 +69,19 @@ pub fn exec(tokns : &Vec<&str>)
 //
 fn _extendedMode(_tokns : &Vec<&str>) -> bool
 {
-    encoder::simple_send("OK");    
+    encoder::reply_ok();   
     true
 }
 // select thread
 fn _Hg(_tokns : &Vec<&str>) -> bool
 {
-    encoder::simple_send("OK");    
+    encoder::reply_ok();
     true
 }
 // select thread
 fn _Hc(_tokns : &Vec<&str>) -> bool
 {
-    encoder::simple_send("OK");    
+    encoder::reply_ok();   
     true
 }
 
@@ -89,7 +90,7 @@ fn _g(_tokns : &Vec<&str>) -> bool
 {    
     if !crate::bmp::bmp_attached()
     {
-        encoder::simple_send("E01");    
+        encoder::reply_e01();
         return true;
     }
     let regs = crate::bmp::bmp_read_registers();
