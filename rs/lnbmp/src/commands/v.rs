@@ -10,13 +10,13 @@ use crate::util::hex_to_u8s;
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
-use crate::bmp::bmp_attach;
+use crate::bmp::{bmp_attach,bmp_flash_erase};
 
 const v_command_tree: [CommandTree;3] = 
 [
-    CommandTree{ command: "vMustReply", args: 0, cb: _vMustReply },  // test
-    CommandTree{ command: "vAttach",    args: 0, cb: _vAttach },  // test
-    CommandTree{ command: "vFlashErase",args: 0, cb: _vFlashErase },  // flash erase
+    CommandTree{ command: "vMustReply", args: 0, require_connected: false, cb: _vMustReply },  // test
+    CommandTree{ command: "vAttach",    args: 0, require_connected: false, cb: _vAttach },  // test
+    CommandTree{ command: "vFlashErase",args: 0, require_connected: true, cb: _vFlashErase },  // flash erase
 ];
 
 
@@ -61,23 +61,23 @@ fn _vAttach(_tokns : &Vec<&str>) -> bool
 }
 //vFlashErase:08000000,00005000
 fn _vFlashErase(_tokns : &Vec<&str>) -> bool
-{
-    if !crate::bmp::bmp_attached()
+{    
+    let xin = &_tokns[1];
+    match crate::util::take_adress_length(&xin[1..])
     {
-        encoder::reply_e01(); 
-        return true;
-    }
-
-    let args : Vec <&str>= _tokns[1].split(",").collect();
-    if args.len()!=2
-    {
-        glog("vflasherase : wrong param");
-        encoder::reply_e01(); 
-        return true;
-    }
-    let address = crate::util::ascii_to_u32(args[0]);
-    let len = crate::util::ascii_to_u32(args[1]);
-    return false;
+        None =>   encoder::reply_e01(),
+        Some( (adr,len) ) => 
+            {    
+                if bmp_flash_erase(adr,len)
+                {
+                    encoder::reply_ok();
+                }else
+                {
+                    encoder::reply_e01();
+                }
+            },
+    };
+    return true;
 }
 
 

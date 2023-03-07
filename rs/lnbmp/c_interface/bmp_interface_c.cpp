@@ -205,7 +205,13 @@ bool bmp_read_reg_c(const unsigned int reg, unsigned int *val)
 			return true;
 	return false;
 }
-
+bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length)
+{
+	if(!bmp_attached_c()) return false;
+	if (target_flash_erase(cur_target, addr, length))
+			return true;
+	return false;
+}
 } // extern C
 // EOF
 

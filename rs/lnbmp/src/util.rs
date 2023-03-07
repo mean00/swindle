@@ -173,3 +173,16 @@ pub fn unsafe_box_allocate<T>() ->  *mut T
         ptr
     }
 }
+
+pub fn take_adress_length( xin : &str ) -> Option< (u32, u32) >
+{
+    let args : Vec <&str>= xin.split(",").collect();
+    if args.len()!=2
+    {
+        glog("take_adress_length : wrong param");
+        return None;
+    }
+    let address = crate::util::ascii_to_u32(args[0]);
+    let len = crate::util::ascii_to_u32(args[1]);
+    Some ( (address,len) )
+}

@@ -127,15 +127,26 @@ pub fn bmp_write_register(reg: u32, value: u32) -> bool
         return false;
     }
 }
-pub fn bmp_read_register(reg: u32, value: u32) -> Option<u32>
+pub fn bmp_read_register(reg: u32) -> Option<u32>
 {
     let mut val : u32 = 0;
     unsafe {
         let ptr : *mut u32  = &mut val;
         if rn_bmp_cmd_c::bmp_read_reg_c(reg,ptr)!=0
         {
-            return Some(value);
+            return Some(val);
         }
         return None;
     }
 }
+pub fn bmp_flash_erase(adr: u32, size: u32) -> bool
+{
+    unsafe {
+        if rn_bmp_cmd_c::bmp_flash_erase_c(adr,size)!=0
+        {
+            return true;
+        }
+        return false;
+    }
+}
+

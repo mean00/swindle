@@ -20,6 +20,8 @@ const char * bmp_target_description_c();
 bool bmp_write_reg_c(const unsigned int reg, const unsigned int value);
 bool bmp_read_reg_c (const unsigned int reg, unsigned int *value);
 
+bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length);
+
 /*
 bool cmd_auto_scan(target_s *t, int argc, const char **argv);
 bool cmd_frequency(target_s *t, int argc, const char **argv);

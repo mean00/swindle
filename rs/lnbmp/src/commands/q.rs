@@ -22,15 +22,15 @@ use numtoa::NumToA;
 
 const q_command_tree: [CommandTree;9] = 
 [
-    CommandTree{ command: "qSupported",args: 0, cb: _qSupported },      // supported features
-    CommandTree{ command: "qXfer",args: 0,      cb: _qXfer },           // read memory map
-    CommandTree{ command: "qTStatus",args: 0,   cb: _qTStatus },        // trace status
-    CommandTree{ command: "qRcmd",args: 0,      cb: _qRcmd },           // execute command
-    CommandTree{ command: "qAttached",args: 0,  cb: _qAttached },       // remote thread
-    CommandTree{ command: "qfThreadInfo",args: 0,cb: _qfThreadInfo },   // thread info begin
-    CommandTree{ command: "qsThreadInfo",args: 0,cb: _qsThreadInfo },   // List threads
-    CommandTree{ command: "qC",args: 0,         cb: _qC },             // Current thread Id
-    CommandTree{ command: "qOffsets",args: 0,   cb: _qOffsets },        // set code/data/.. offset
+    CommandTree{ command: "qSupported",args: 0,     require_connected: false, cb: _qSupported },      // supported features
+    CommandTree{ command: "qXfer",args: 0,          require_connected: false, cb: _qXfer },           // read memory map
+    CommandTree{ command: "qTStatus",args: 0,       require_connected: false, cb: _qTStatus },        // trace status
+    CommandTree{ command: "qRcmd",args: 0,          require_connected: false, cb: _qRcmd },           // execute command
+    CommandTree{ command: "qAttached",args: 0,      require_connected: false, cb: _qAttached },       // remote thread
+    CommandTree{ command: "qfThreadInfo",args: 0,   require_connected: false, cb: _qfThreadInfo },   // thread info begin
+    CommandTree{ command: "qsThreadInfo",args: 0,   require_connected: false, cb: _qsThreadInfo },   // List threads
+    CommandTree{ command: "qC",args: 0,             require_connected: false, cb: _qC },             // Current thread Id
+    CommandTree{ command: "qOffsets",args: 0,       require_connected: false, cb: _qOffsets },        // set code/data/.. offset
     
     
 ];
@@ -38,7 +38,7 @@ const q_command_tree: [CommandTree;9] =
 
 const mon_command_tree: [CommandTree;1] = 
 [
-    CommandTree{ command: "swdp_scan",args: 0, cb: _swdp_scan },      // 
+    CommandTree{ command: "swdp_scan",args: 0, require_connected: false , cb: _swdp_scan },      // 
 ];
 //
 //
@@ -128,13 +128,19 @@ fn _qXfer_features_regs(args : &[&str]) -> bool
     let length : usize ;
     match validate_q_query(args,"read","target.xml")
     {
-        None        => return false,
+        None        => {encoder::reply_e01();return true;},
         Some((a,b)) => {start_address=a;length = b;},
     }
 
     // offset & size in hex
     let reply = crate::bmp::bmp_register_description();
     let reply_size = reply.len();
+
+    if reply_size==0
+    {
+        encoder::reply_e01();
+        return true;
+    }
 
     if start_address >= reply_size
     {
