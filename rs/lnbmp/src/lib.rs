@@ -17,7 +17,7 @@ mod glue;
 use packet_symbols::{CHAR_ACK,CHAR_NACK,INPUT_BUFFER_SIZE};
 use crate::decoder::gdb_stream;
 extern crate alloc;
-
+use crate::util::glog1;
 use alloc::vec::Vec;
 use decoder::RESULT_AUTOMATON;
 //
@@ -90,18 +90,18 @@ fn          rngdb_send_data_u8( data : &[u8])
 extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar ) 
 {
     unsafe {
-    let data_as_slice : &[u8] = core::slice::from_raw_parts(d,l);
+    let mut data_as_slice : &[u8] = core::slice::from_raw_parts(d,l);
     match autoauto
     {
         Some(ref mut x) => 
                     {
-                        let mut l = l;
-                        while l> 0
+                        while data_as_slice.len() > 0
                         {
                             let consumed : usize;
                             let state : RESULT_AUTOMATON;
                             let empty : &str = "";
                             (consumed, state) =  x.parse(data_as_slice);
+
                             match state
                             {
                                 RESULT_AUTOMATON::Ready => 
@@ -128,7 +128,8 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                 RESULT_AUTOMATON::Continue => (),
                                 RESULT_AUTOMATON::Reset => (),
                             }
-                            l-=consumed;
+                            data_as_slice=&data_as_slice[consumed..];
+
                         }
                     },
         None => panic!("noauto"),
