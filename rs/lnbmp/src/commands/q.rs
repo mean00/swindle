@@ -96,51 +96,91 @@ fn _qXfer(_tokns : &Vec<&str>) -> bool
     }
 
     let args : Vec <&str>= _tokns[0].split(':').collect();
-    if args.len()< 2
+    let nb_params = args.len();
+    if nb_params < 2
     {
         return false;
     }
     match args[1]
     {
-        "memory-map" => return _qXfer_memory_map(_tokns),
-        "features"   => return _qXfer_features_regs(_tokns),
+        "memory-map" => return _qXfer_memory_map(&args[2..]),
+        "features"   => return _qXfer_features_regs(&args[2..]),
         _            => return false,
     }    
 }
+
 //
 //
-fn _qXfer_features_regs(_tokns : &Vec<&str>) -> bool
+fn validate_q_query(args : &[&str], header1 : &str, header2 : &str ) -> Option<(usize,usize)>
 {
+    if args.len()!=3
+    {
+        return None;
+    }
+    if args[0]!= header1 || args[1]!= header2
+    {
+        return None;
+    }
+    let conf : Vec <&str>= args[2].split(',').collect();
+    if conf.len()!=2
+    {
+        return None;
+    }
+    //
+    let start_address : usize = crate::util::ascii_to_u32(conf[0]) as usize;
+    let length : usize = crate::util::ascii_to_u32(conf[1]) as usize;
+    return Some((start_address, length));
+}
+//
+//  read target.xml [offset,size]
+//
+fn _qXfer_features_regs(args : &[&str]) -> bool
+{
+    let start_address : usize ;
+    let length : usize ;
+    match validate_q_query(args,"read","target.xml")
+    {
+        None        => return false,
+        Some((a,b)) => {start_address=a;length = b;},
+    }
+
+    // offset & size in hex
+    let reply = crate::bmp::bmp_register_description();
+    let reply_size = reply.len();
+
+    if start_address >= reply_size
+    {
+        encoder::simple_send("l");
+        return true;
+    }
+    
+    //
     let mut e = encoder::new();
     e.begin();
     e.add("m");
-    e.add(crate::bmp::bmp_register_description());
+    let end_pos = core::cmp::min(start_address+length,reply_size);
+    e.add(&reply[start_address..end_pos]);
     e.end();
     true
 }
 // 
-fn _qXfer_memory_map(_tokns : &Vec<&str>) -> bool
+//  memory-map:read::0,50d
+//
+fn _qXfer_memory_map(args : &[&str]) -> bool
 {
-    if !crate::bmp::bmp_attached()
+   
+    let start_address : usize ;
+    let length : usize ;
+    match validate_q_query(args,"memory-map","read")
     {
-        encoder::simple_send("E01");    
+        None        => return false,
+        Some((a,b)) => {start_address=a;length = b;},
+    }     
+    if start_address !=0
+    {
+        encoder::simple_send("l");
         return true;
     }
-    
-    if _tokns.len() ==0
-    {
-        return false;
-    }
-
-    // this is a weak hack to detect if it is the 2nd query
-    // i.e. the offset is not zero
-    // we assume we replied all in the 1st reply
-    if !(_tokns[0].starts_with("qXfer:features:read:target.xml:0"))
-    {
-        encoder::simple_send("l");   
-        return true;
-    }
-
 
     let mut e = encoder::new();
     let mut buffer : [u8;20] = [0;20];
