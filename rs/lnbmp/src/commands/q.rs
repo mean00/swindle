@@ -223,20 +223,37 @@ fn _qTStatus(command : &str, args : &Vec<&str>) -> bool
 //
 fn _qRcmd(command : &str, args : &Vec<&str>) -> bool
 {    
-    let args : Vec <&str>= args[0].split(",").collect();
+    let largs : Vec <&str>= command.split(",").collect();
     //NOTARGET
-    let ln = args.len();
+    let ln = largs.len();
     if ln !=2
     {
         return false;
     }
     // The command is hex encoded, decode it
-    let mut out : [u8;16] = [0;16];
-    return match hex_to_u8s(args[1],&mut out)
+    let mut out : [u8;32] = [0;32];    
+    let rcmd = match hex_to_u8s(largs[1],&mut out)
     {
-        Ok(x)    =>      exec_one(&mon_command_tree,command, x)     ,
-        Err(_y)  => false,
+        Ok(x)    =>     x    ,
+        Err(_y)    => {return false;},
     };
+    // split command and args
+    let command : &[u8];
+    let args : &[u8];
+    match crate::util::split_command(&out)
+    {
+        None => {
+                    crate::util::glog("Cannot convert string (rcmd)");
+                    return false;                                                       
+                },
+        Some( (x,y) ) =>
+                {
+                    command = x;
+                    args = y;
+                }
+    }
+    let as_string = unsafe {core::str::from_utf8_unchecked(command)};
+    exec_one(&mon_command_tree,as_string, args)
     
 }
 //

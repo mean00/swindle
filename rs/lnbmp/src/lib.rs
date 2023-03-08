@@ -90,7 +90,7 @@ fn          rngdb_send_data_u8( data : &[u8])
 extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar ) 
 {
     unsafe {
-    let mut data_as_slice : &[u8] = core::slice::from_raw_parts(d,l);
+    let mut data_as_slice : &[u8] =  core::slice::from_raw_parts(d,l);
     let empty1 : [u8;0] = [0;0];
     let empty : &[u8] = &empty1;
     match autoauto
