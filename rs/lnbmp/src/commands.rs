@@ -109,26 +109,26 @@ pub fn exec(command : &str,  args : &[u8])
 }
 //
 //
-fn _extendedMode(command : &str, args : &Vec<&str>) -> bool
+fn _extendedMode(_command : &str, _args : &Vec<&str>) -> bool
 {
     encoder::reply_ok();   
     true
 }
 // select thread
-fn _Hg(command : &str, args : &Vec<&str>) -> bool
+fn _Hg(_command : &str, _args : &Vec<&str>) -> bool
 {
     encoder::reply_ok();
     true
 }
 // select thread
-fn _Hc(command : &str, args : &Vec<&str>) -> bool
+fn _Hc(_command : &str, _args : &Vec<&str>) -> bool
 {
     encoder::reply_ok();   
     true
 }
 
 // Read registers
-fn _g(command : &str, args : &Vec<&str>) -> bool
+fn _g(_command : &str, _args : &Vec<&str>) -> bool
 {       
     // this one may be called while we are not connected
     if !crate::bmp::bmp_attached()
@@ -159,7 +159,7 @@ fn _g(command : &str, args : &Vec<&str>) -> bool
 }
 //
 // Request reason for halt
-fn _mark(command : &str, args : &Vec<&str>) -> bool
+fn _mark(_command : &str, _args : &Vec<&str>) -> bool
 {
     //NOTARGET
     encoder::simple_send("W00");

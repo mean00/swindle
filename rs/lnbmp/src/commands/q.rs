@@ -17,6 +17,7 @@ use crate::bmp::bmp_get_mapping;
 use crate::bmp::MemoryBlock;
 use crate::bmp::mapping::{ FLASH,RAM};
 use crate::commands::CallbackType;
+use crate::commands::mon::_qRcmd;
 
 use numtoa::NumToA;
 
@@ -36,10 +37,6 @@ const q_command_tree: [CommandTree;9] =
 ];
 
 
-const mon_command_tree: [CommandTree;1] = 
-[
-    CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
-];
 //
 //
 //
@@ -51,7 +48,7 @@ pub fn _q(command : &str, args : &[u8]) -> bool
 //
 //
 //
-fn _qSupported(command : &str, args : &Vec<&str>) -> bool
+fn _qSupported(_command : &str, _args : &Vec<&str>) -> bool
 {
     let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
 
@@ -80,7 +77,7 @@ fn hex8(digit : u32, buffer : &mut [u8], e: &mut encoder)
 }
 //
 //
-fn _qXfer(command : &str, args : &Vec<&str>) -> bool
+fn _qXfer(_command : &str, args : &Vec<&str>) -> bool
 {
     
     if args.len() < 3
@@ -164,11 +161,11 @@ fn _qXfer_memory_map(args : &[&str]) -> bool
 {
    
     let start_address : usize ;
-    let length : usize ;
+    let _length : usize ;
     match validate_q_query(args,"read","")
     {
         None        => return false,
-        Some((a,b)) => {start_address=a;length = b;},
+        Some((a,b)) => {start_address=a;_length = b;},
     }     
     if start_address !=0
     {
@@ -214,78 +211,41 @@ fn _qXfer_memory_map(args : &[&str]) -> bool
 //
 // Trace
 //
-fn _qTStatus(command : &str, args : &Vec<&str>) -> bool
+fn _qTStatus(_command : &str, _args : &Vec<&str>) -> bool
 {    
     return false;
 }
+
 //
 // Execute command
 //
-fn _qRcmd(command : &str, args : &Vec<&str>) -> bool
-{    
-    let largs : Vec <&str>= command.split(",").collect();
-    //NOTARGET
-    let ln = largs.len();
-    if ln !=2
-    {
-        return false;
-    }
-    // The command is hex encoded, decode it
-    let mut out : [u8;32] = [0;32];    
-    let rcmd = match hex_to_u8s(largs[1],&mut out)
-    {
-        Ok(x)    =>     x    ,
-        Err(_y)    => {return false;},
-    };
-    // split command and args
-    let command : &[u8];
-    let args : &[u8];
-    match crate::util::split_command(&out)
-    {
-        None => {
-                    crate::util::glog("Cannot convert string (rcmd)");
-                    return false;                                                       
-                },
-        Some( (x,y) ) =>
-                {
-                    command = x;
-                    args = y;
-                }
-    }
-    let as_string = unsafe {core::str::from_utf8_unchecked(command)};
-    exec_one(&mon_command_tree,as_string, args)
-    
-}
-//
-// Execute command
-//
-fn _qAttached(command : &str, args : &Vec<&str>) -> bool
+fn _qAttached(_command : &str, _args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("1");    
     return true;
 }
 //
 //
-fn _qfThreadInfo(command : &str, args : &Vec<&str>) -> bool
+fn _qfThreadInfo(_command : &str, _args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("m1");    
     return true;
 }
 //
 //
-fn _qsThreadInfo(command : &str, args : &Vec<&str>) -> bool
+fn _qsThreadInfo(_command : &str, _args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("1");    
     return true;
 }
 // get current thread I
-fn _qC(command : &str, args : &Vec<&str>) -> bool
+fn _qC(_command : &str, _args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("QC1");    
     return true;
 }
 // get offset
-fn _qOffsets(command : &str, args : &Vec<&str>) -> bool
+fn _qOffsets(_command : &str, _args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("Text=0;Data=0;Bss=0");    
     return true;

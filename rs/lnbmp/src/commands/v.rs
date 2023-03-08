@@ -31,7 +31,7 @@ pub fn _v(command : &str, args : &[u8]) -> bool
 //
 //
 //
-fn _vMustReply(command : &str, args : &Vec<&str>) -> bool
+fn _vMustReply(_command : &str, _args : &Vec<&str>) -> bool
 {
     encoder::simple_send("");    
     true
@@ -39,7 +39,7 @@ fn _vMustReply(command : &str, args : &Vec<&str>) -> bool
 //
 //
 //
-fn _vAttach(command : &str, args : &Vec<&str>) -> bool
+fn _vAttach(_command : &str, _args : &Vec<&str>) -> bool
 {
     if bmp_attach(1)
     {

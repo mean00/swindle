@@ -101,7 +101,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
         {
             
             let c : u8 = data[dex];
-            let d : char = c as char;
+            //let _d : char = c as char;
             //crate::util::glog1("c",d);
             //crate::util::glog1("u",c);
             //crate::util::glog1("S",self.automaton as usize);

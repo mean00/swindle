@@ -13,7 +13,7 @@ use super::{CommandTree,exec_one};
 use crate::bmp::{bmp_attach,bmp_flash_erase};
 use crate::commands::CallbackType;
 
-const v_command_tree: [CommandTree;3] = 
+const vflash_command_tree: [CommandTree;3] = 
 [
     CommandTree{ command: "vFlashErase",args: 0, require_connected: true,  cb: CallbackType::text( _vFlashErase) },  // flash erase
     CommandTree{ command: "vFlashWrite",args: 0, require_connected: true,  cb: CallbackType::raw(  _vFlashWrite) },  // flash write
@@ -27,7 +27,7 @@ const v_command_tree: [CommandTree;3] =
 
 pub fn _flashv(command : &str, args : &[u8]) -> bool
 {
-    return exec_one(&v_command_tree,command,args);
+    return exec_one(&vflash_command_tree,command,args);
 }
 
 //

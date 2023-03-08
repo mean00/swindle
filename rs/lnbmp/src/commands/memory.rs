@@ -13,18 +13,18 @@ use super::{CommandTree,exec_one};
 use crate::bmp::{bmp_attach,bmp_flash_erase};
 
 // memory read m80070f6,4
-pub fn _m(command : &str, args : &Vec<&str>) -> bool
+pub fn _m(command : &str, _args : &Vec<&str>) -> bool
 {
     if !crate::bmp::bmp_attached()
     {
         encoder::reply_e01(); 
         return true;
     }
-    let xin = &args[1];
-    match crate::util::take_adress_length(&xin[1..])
+    
+    match crate::util::take_adress_length(&command[1..])
     {
         None => encoder::reply_e01(),
-        Some( (adr,len) ) => 
+        Some( (_adr,_len) ) => 
             {
                 encoder::reply_e01()
             }

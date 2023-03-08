@@ -17,7 +17,7 @@ use crate::bmp::mapping::{ FLASH,RAM};
 
 use numtoa::NumToA;
 
-pub fn _X(command : &str, args : &Vec<&str>) -> bool
+pub fn _X(_command : &str, _args : &Vec<&str>) -> bool
 {
     if !crate::bmp::bmp_attached()
     {

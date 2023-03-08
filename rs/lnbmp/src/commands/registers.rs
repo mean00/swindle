@@ -41,7 +41,7 @@ fn pp_prefix(_tokns : &Vec<&str>) -> Option<(u32,u32)>
     return Some( (reg,value));
 }
 // Write reg
-pub fn _P(command : &str, args : &Vec<&str>) -> bool
+pub fn _P(_command : &str, args : &Vec<&str>) -> bool
 {
     let reg : u32;
     let val : u32;
@@ -56,11 +56,5 @@ pub fn _P(command : &str, args : &Vec<&str>) -> bool
         false => "E01",
     });
     return true;
-}
-
-
-pub fn _dummy(command : &str, args : &Vec<&str>) -> bool
-{
-    false
 }
 
