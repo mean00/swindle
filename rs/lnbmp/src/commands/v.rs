@@ -9,14 +9,13 @@ use crate::util::hex_to_u8s;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
+use crate::bmp::bmp_attach;
+use crate::commands::CallbackType;
 
-use crate::bmp::{bmp_attach,bmp_flash_erase};
-
-const v_command_tree: [CommandTree;3] = 
+const v_command_tree: [CommandTree;2] = 
 [
-    CommandTree{ command: "vMustReply", args: 0, require_connected: false, cb: _vMustReply },  // test
-    CommandTree{ command: "vAttach",    args: 0, require_connected: false, cb: _vAttach },  // test
-    CommandTree{ command: "vFlashErase",args: 0, require_connected: true, cb: _vFlashErase },  // flash erase
+    CommandTree{ command: "vMustReply", args: 0, require_connected: false, cb: CallbackType::text( _vMustReply )},  // test
+    CommandTree{ command: "vAttach",    args: 0, require_connected: false, cb: CallbackType::text( _vAttach) },  // test    
 ];
 
 
@@ -24,15 +23,15 @@ const v_command_tree: [CommandTree;3] =
 //
 //
 
-pub fn _v(tokns : &Vec<&str>) -> bool
+pub fn _v(command : &str, args : &[u8]) -> bool
 {
-    return exec_one(&v_command_tree,tokns);
+    return exec_one(&v_command_tree,command,args);
 }
 
 //
 //
 //
-fn _vMustReply(_tokns : &Vec<&str>) -> bool
+fn _vMustReply(command : &str, args : &Vec<&str>) -> bool
 {
     encoder::simple_send("");    
     true
@@ -40,7 +39,7 @@ fn _vMustReply(_tokns : &Vec<&str>) -> bool
 //
 //
 //
-fn _vAttach(_tokns : &Vec<&str>) -> bool
+fn _vAttach(command : &str, args : &Vec<&str>) -> bool
 {
     if bmp_attach(1)
     {
@@ -58,26 +57,6 @@ fn _vAttach(_tokns : &Vec<&str>) -> bool
     }
     encoder::reply_e01();
     true
-}
-//vFlashErase:08000000,00005000
-fn _vFlashErase(_tokns : &Vec<&str>) -> bool
-{    
-    let xin = &_tokns[1];
-    match crate::util::take_adress_length(&xin[1..])
-    {
-        None =>   encoder::reply_e01(),
-        Some( (adr,len) ) => 
-            {    
-                if bmp_flash_erase(adr,len)
-                {
-                    encoder::reply_ok();
-                }else
-                {
-                    encoder::reply_e01();
-                }
-            },
-    };
-    return true;
 }
 
 

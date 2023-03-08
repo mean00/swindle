@@ -91,6 +91,8 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
 {
     unsafe {
     let mut data_as_slice : &[u8] = core::slice::from_raw_parts(d,l);
+    let empty1 : [u8;0] = [0;0];
+    let empty : &[u8] = &empty1;
     match autoauto
     {
         Some(ref mut x) => 
@@ -99,7 +101,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                         {
                             let consumed : usize;
                             let state : RESULT_AUTOMATON;
-                            let empty : &str = "";
+                            
                             (consumed, state) =  x.parse(data_as_slice);
 
                             match state
@@ -108,20 +110,30 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                     {
                                         // ok we have a full string...
                                         let s = x.get_result();
-                                        let flat_string  = match core::str::from_utf8(s)
+                                        let command : &[u8];
+                                        let args : &[u8];
+                                        match crate::util::split_command(s)
                                         {
-                                            Ok(x)       => x,
-                                            Err(_y) => empty,
-                                        };
-                                        if flat_string.len()!=0
+                                            None => {
+                                                        crate::util::glog("Cannot convert string");
+                                                        command = empty;
+                                                        args = empty;                                                        
+                                                    },
+                                            Some( (x,y) ) =>
+                                                    {
+                                                        command = x;
+                                                        args = y;
+                                                    }
+                                        }
+                                        if command.len()==0
                                         {
-                                            let tokens : Vec <&str>= flat_string.split(":").collect();
-                                            if tokens.len()!=0
-                                            {
-                                                rngdb_send_data( CHAR_ACK ); 
-                                                rngdb_output_flush( );
-                                                commands::exec(&tokens);
-                                            }
+                                            crate::util::glog("Cannot read string");                                            
+                                        }else
+                                        {                                            
+                                            rngdb_send_data( CHAR_ACK ); 
+                                            rngdb_output_flush( );
+                                            let as_string = core::str::from_utf8_unchecked(command);
+                                            commands::exec(as_string, args);
                                         }
                                     },
                                 RESULT_AUTOMATON::Error => {rngdb_send_data( CHAR_NACK ); rngdb_output_flush( );},

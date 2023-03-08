@@ -16,21 +16,21 @@ use crate::bmp::bmp_attached;
 use crate::bmp::bmp_get_mapping;
 use crate::bmp::MemoryBlock;
 use crate::bmp::mapping::{ FLASH,RAM};
-
+use crate::commands::CallbackType;
 
 use numtoa::NumToA;
 
 const q_command_tree: [CommandTree;9] = 
 [
-    CommandTree{ command: "qSupported",args: 0,     require_connected: false, cb: _qSupported },      // supported features
-    CommandTree{ command: "qXfer",args: 0,          require_connected: false, cb: _qXfer },           // read memory map
-    CommandTree{ command: "qTStatus",args: 0,       require_connected: false, cb: _qTStatus },        // trace status
-    CommandTree{ command: "qRcmd",args: 0,          require_connected: false, cb: _qRcmd },           // execute command
-    CommandTree{ command: "qAttached",args: 0,      require_connected: false, cb: _qAttached },       // remote thread
-    CommandTree{ command: "qfThreadInfo",args: 0,   require_connected: false, cb: _qfThreadInfo },   // thread info begin
-    CommandTree{ command: "qsThreadInfo",args: 0,   require_connected: false, cb: _qsThreadInfo },   // List threads
-    CommandTree{ command: "qC",args: 0,             require_connected: false, cb: _qC },             // Current thread Id
-    CommandTree{ command: "qOffsets",args: 0,       require_connected: false, cb: _qOffsets },        // set code/data/.. offset
+    CommandTree{ command: "qSupported",args: 0,     require_connected: false, cb: CallbackType::text( _qSupported )},      // supported features
+    CommandTree{ command: "qXfer",args: 0,          require_connected: false, cb: CallbackType::text( _qXfer) },           // read memory map
+    CommandTree{ command: "qTStatus",args: 0,       require_connected: false, cb: CallbackType::text( _qTStatus )},        // trace status
+    CommandTree{ command: "qRcmd",args: 0,          require_connected: false, cb: CallbackType::text( _qRcmd) },           // execute command
+    CommandTree{ command: "qAttached",args: 0,      require_connected: false, cb: CallbackType::text( _qAttached )},       // remote thread
+    CommandTree{ command: "qfThreadInfo",args: 0,   require_connected: false, cb: CallbackType::text( _qfThreadInfo) },   // thread info begin
+    CommandTree{ command: "qsThreadInfo",args: 0,   require_connected: false, cb: CallbackType::text( _qsThreadInfo )},   // List threads
+    CommandTree{ command: "qC",args: 0,             require_connected: false, cb: CallbackType::text( _qC) },             // Current thread Id
+    CommandTree{ command: "qOffsets",args: 0,       require_connected: false, cb: CallbackType::text( _qOffsets) },        // set code/data/.. offset
     
     
 ];
@@ -38,27 +38,27 @@ const q_command_tree: [CommandTree;9] =
 
 const mon_command_tree: [CommandTree;1] = 
 [
-    CommandTree{ command: "swdp_scan",args: 0, require_connected: false , cb: _swdp_scan },      // 
+    CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
 ];
 //
 //
 //
 
-pub fn _q(tokns : &Vec<&str>) -> bool
+pub fn _q(command : &str, args : &[u8]) -> bool
 {
-    return exec_one(&q_command_tree,tokns);
+    return exec_one(&q_command_tree,command, args);
 }
 //
 //
 //
-fn _qSupported(_tokns : &Vec<&str>) -> bool
+fn _qSupported(command : &str, args : &Vec<&str>) -> bool
 {
     let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
 
     let mut e = encoder::new();
     e.begin();
     e.add("PacketSize=");    
-    e.add(INPUT_BUFFER_SIZE.numtoa_str(10,&mut buffer));     // INPUT_BUFFER_SIZE
+    e.add(INPUT_BUFFER_SIZE.numtoa_str(16,&mut buffer));     // INPUT_BUFFER_SIZE
     e.add(";qXfer:memory-map:read+;qXfer:features:read+");
     e.end();
     return true;
@@ -80,19 +80,19 @@ fn hex8(digit : u32, buffer : &mut [u8], e: &mut encoder)
 }
 //
 //
-fn _qXfer(_tokns : &Vec<&str>) -> bool
+fn _qXfer(command : &str, args : &Vec<&str>) -> bool
 {
     
-    if _tokns.len() < 4
+    if args.len() < 3
     {
         encoder::reply_e01(); 
         return true;
     }
 
-    match _tokns[1]
+    match args[0]
     {
-        "memory-map" => return _qXfer_memory_map(&_tokns[2..]),
-        "features"   => return _qXfer_features_regs(&_tokns[2..]),
+        "memory-map" => return _qXfer_memory_map(&args[1..]),
+        "features"   => return _qXfer_features_regs(&args[1..]),
         _            => return false,
     }    
 }
@@ -214,16 +214,16 @@ fn _qXfer_memory_map(args : &[&str]) -> bool
 //
 // Trace
 //
-fn _qTStatus(_tokns : &Vec<&str>) -> bool
+fn _qTStatus(command : &str, args : &Vec<&str>) -> bool
 {    
     return false;
 }
 //
 // Execute command
 //
-fn _qRcmd(_tokns : &Vec<&str>) -> bool
+fn _qRcmd(command : &str, args : &Vec<&str>) -> bool
 {    
-    let args : Vec <&str>= _tokns[0].split(",").collect();
+    let args : Vec <&str>= args[0].split(",").collect();
     //NOTARGET
     let ln = args.len();
     if ln !=2
@@ -234,13 +234,7 @@ fn _qRcmd(_tokns : &Vec<&str>) -> bool
     let mut out : [u8;16] = [0;16];
     return match hex_to_u8s(args[1],&mut out)
     {
-        Ok(x)    =>  {
-                        let mut v : Vec<&str>= Vec::new();
-                        unsafe {
-                        v.push( core::str::from_utf8_unchecked(x));
-                        }
-                        exec_one(&mon_command_tree,&v)
-                    },
+        Ok(x)    =>      exec_one(&mon_command_tree,command, x)     ,
         Err(_y)  => false,
     };
     
@@ -248,33 +242,33 @@ fn _qRcmd(_tokns : &Vec<&str>) -> bool
 //
 // Execute command
 //
-fn _qAttached(_tokns : &Vec<&str>) -> bool
+fn _qAttached(command : &str, args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("1");    
     return true;
 }
 //
 //
-fn _qfThreadInfo(_tokns : &Vec<&str>) -> bool
+fn _qfThreadInfo(command : &str, args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("m1");    
     return true;
 }
 //
 //
-fn _qsThreadInfo(_tokns : &Vec<&str>) -> bool
+fn _qsThreadInfo(command : &str, args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("1");    
     return true;
 }
 // get current thread I
-fn _qC(_tokns : &Vec<&str>) -> bool
+fn _qC(command : &str, args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("QC1");    
     return true;
 }
 // get offset
-fn _qOffsets(_tokns : &Vec<&str>) -> bool
+fn _qOffsets(command : &str, args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("Text=0;Data=0;Bss=0");    
     return true;

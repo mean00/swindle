@@ -41,11 +41,11 @@ fn pp_prefix(_tokns : &Vec<&str>) -> Option<(u32,u32)>
     return Some( (reg,value));
 }
 // Write reg
-pub fn _P(_tokns : &Vec<&str>) -> bool
+pub fn _P(command : &str, args : &Vec<&str>) -> bool
 {
     let reg : u32;
     let val : u32;
-    match pp_prefix(_tokns)
+    match pp_prefix(args)
     {
         None =>  { encoder::simple_send("E01");return true },
         Some( (x,y) )=>  {reg=x;val=y;},
@@ -59,7 +59,7 @@ pub fn _P(_tokns : &Vec<&str>) -> bool
 }
 
 
-pub fn _dummy(_tokns : &Vec<&str>) -> bool
+pub fn _dummy(command : &str, args : &Vec<&str>) -> bool
 {
     false
 }

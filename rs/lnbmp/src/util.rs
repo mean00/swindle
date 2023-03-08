@@ -186,3 +186,23 @@ pub fn take_adress_length( xin : &str ) -> Option< (u32, u32) >
     let len = crate::util::ascii_to_u32(args[1]);
     Some ( (address,len) )
 }
+
+pub fn  split_command<'a>( incoming : &'a [u8]) -> Option< (&'a [u8], &'a [u8]) >
+{
+    let size =incoming.len();
+    // look up for the first ':' if any
+    // and split there
+    for i in 0..size
+    {
+        if incoming[i] == b':'
+        {
+            // split here
+            if i==size-1
+            {
+                return Some( (&incoming[..i],&incoming[0..0]) );
+            }
+            return Some( (&incoming[..i],&incoming[(i+1)..] ) );            
+        }
+    }
+    return Some( (incoming,&incoming[0..0]));
+}

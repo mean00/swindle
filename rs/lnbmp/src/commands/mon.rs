@@ -6,7 +6,7 @@ use crate::util::glog;
 use crate::bmp;
 use crate::encoder::encoder;
 
-pub fn _swdp_scan(_tokns : &Vec<&str>) -> bool
+pub fn _swdp_scan(command : &str, args : &Vec<&str>) -> bool
 {
     glog("swdp_scan");
     if bmp::swdp_scan()

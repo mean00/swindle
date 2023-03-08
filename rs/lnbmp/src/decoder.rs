@@ -15,7 +15,7 @@ use crate::util::glog;
 use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE};
 //
 //
-#[derive(PartialEq)]
+#[derive(PartialEq,Clone,Copy)]
 enum PARSER_AUTOMATON
 {
     Init,
@@ -101,6 +101,11 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
         {
             
             let c : u8 = data[dex];
+            let d : char = c as char;
+            //crate::util::glog1("c",d);
+            //crate::util::glog1("u",c);
+            //crate::util::glog1("S",self.automaton as usize);
+            //crate::util::glog1("i",self.indx);
             consumed+=1;
             sz-=1;
             dex+=1;
@@ -109,7 +114,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                 PARSER_AUTOMATON::Init => 
                                             match c
                                             {
-                                                CHAR_RESET_04   => PARSER_AUTOMATON::Reset,
+                                             //   CHAR_RESET_04   => PARSER_AUTOMATON::Reset,
                                                 _               => PARSER_AUTOMATON::Init,
                                             }
                                             ,
@@ -117,16 +122,21 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             match c
                                             {
                                                 CHAR_START /*'$'*/  => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
-                                                CHAR_RESET_04       => PARSER_AUTOMATON::Reset,
+                                            //    CHAR_RESET_04       => PARSER_AUTOMATON::Reset,
                                                 _                   => PARSER_AUTOMATON::Idle,
                                             }
                                             ,
                 PARSER_AUTOMATON::Body => 
                                             match c
                                             {
+                                                CHAR_START /*'$'*/  => {
+                                                            crate::util::glog("RESTARTING DECODER");
+                                                            self.indx = 0;
+                                                            self.checksum=0;
+                                                            PARSER_AUTOMATON::Body}, 
                                                 CHAR_END /*'#'*/        => PARSER_AUTOMATON::End1, 
                                                 CHAR_ESCAPE /*'}'*/     => PARSER_AUTOMATON::Escape, 
-                                                CHAR_RESET_04           => PARSER_AUTOMATON::Reset,
+                                            //    CHAR_RESET_04           => PARSER_AUTOMATON::Reset,
                                                 _                       => {
                                                                         self.checksum+=c as usize;
                                                                         if c==b'\t'
@@ -175,8 +185,8 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
             match self.automaton
             {
                 PARSER_AUTOMATON::Error => {self.automaton=PARSER_AUTOMATON::Idle; return (consumed, RESULT_AUTOMATON::Error);},
-                PARSER_AUTOMATON::Done  =>   return (consumed, RESULT_AUTOMATON::Ready),
-                PARSER_AUTOMATON::Reset =>   {self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
+                PARSER_AUTOMATON::Done  =>   {return (consumed, RESULT_AUTOMATON::Ready);},
+                PARSER_AUTOMATON::Reset =>   {crate::util::glog("RESET");self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
                 _                         => (),
             }
         }

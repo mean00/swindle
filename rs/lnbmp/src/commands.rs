@@ -11,44 +11,55 @@ mod mon;
 mod x;
 mod registers;
 mod memory;
+mod flash;
 
 
 use q::_q;
+use flash::_flashv;
 use v::_v;
 use x::_X;
 use memory::_m;
 
-type Callback = fn(tokns : &Vec<&str>)->bool;
+type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
+type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
+
+
+enum CallbackType
+{
+    text(Callback_text),
+    raw( Callback_raw),
+}
 
 struct CommandTree
 {
-    command : &'static str,
-    args    : usize,
-    require_connected : bool,
-    cb      : Callback,
+    command             : &'static str,
+    args                : usize,
+    require_connected   : bool,
+    cb                  : CallbackType,         // string + strings    
 }
 
 
-const main_command_tree: [CommandTree;9] = 
+const main_command_tree: [CommandTree;10] = 
 [
-    CommandTree{ command: "!",args: 0,  require_connected: false,        cb: _extendedMode },// enable extended mode
-    CommandTree{ command: "Hg",args: 0, require_connected: false,        cb: _Hg },          // select thread
-    CommandTree{ command: "Hc",args: 0, require_connected: false,        cb: _Hc },          // 
-    CommandTree{ command: "v",args: 0,  require_connected: false,        cb: _v },  // test
-    CommandTree{ command: "q",args: 0,  require_connected: false,        cb: _q },           // see q commands in commands/q.rs
-    CommandTree{ command: "g",args: 0,  require_connected: false,        cb: _g },           // read registers
-    CommandTree{ command: "?",args: 0,  require_connected: false,        cb: _mark },        // reason for halt
-    CommandTree{ command: "X",args: 0,  require_connected: true,         cb: _X },        // write binary    
-    CommandTree{ command: "m",args: 0,  require_connected: true,         cb: _m },        // read memory
+    CommandTree{ command: "!", args:    0, require_connected: false,   cb: CallbackType::text(_extendedMode) },// enable extended mode
+    CommandTree{ command: "Hg",args:    0, require_connected: false,   cb: CallbackType::text(_Hg)      },          // select thread
+    CommandTree{ command: "Hc",args:    0, require_connected: false,   cb: CallbackType::text(_Hc)       },          // 
+    CommandTree{ command:"vFlash",args: 0, require_connected: true,    cb: CallbackType::raw(_flashv),  },  // test
+    CommandTree{ command: "v",args:     0, require_connected: false,   cb: CallbackType::raw(_v)       },  // test
+    CommandTree{ command: "q",args:     0, require_connected: false,   cb: CallbackType::raw(_q)      },           // see q commands in commands/q.rs
+    CommandTree{ command: "g",args:     0, require_connected: false,   cb: CallbackType::text(_g)      },           // read registers
+    CommandTree{ command: "?",args:     0, require_connected: false,   cb: CallbackType::text(_mark)  },        // reason for halt
+    CommandTree{ command: "X",args:     0, require_connected: true,    cb: CallbackType::text(_X)      },        // write binary    
+    CommandTree{ command: "m",args:     0, require_connected: true,    cb: CallbackType::text(_m )       },        // read memory
 ];
 
 
 
-fn exec_one(tree : &[CommandTree], tokns : &Vec<&str>) -> bool
+fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
 {
-   let connected : bool = crate::bmp::bmp_attached();
-   let command=tokns[0];    // the first item is the command
+   let connected : bool = crate::bmp::bmp_attached();   
    glog(command);
+   let empty : &str = "";
    for i in 0..tree.len()
    {
         let c = &tree[i]; 
@@ -62,7 +73,23 @@ fn exec_one(tree : &[CommandTree], tokns : &Vec<&str>) -> bool
                 return true;                
             }else
             {
-                return (c.cb)(tokns);
+                // Is it a regular callback or binary callback
+                return match c.cb
+                {
+                    CallbackType::text(y) =>
+                    {
+                            // split args by ":"  
+                            let as_string : &str = match core::str::from_utf8(args)
+                            {
+                                Ok(x) => x,
+                                Err(_x)    => empty,
+                            };
+                            let conf : Vec <&str>= as_string.split(':').collect();
+                            (y)(command, &conf)
+                    },
+                    CallbackType::raw(x) => (x)(command, args),
+                };
+               // return (c.cb)(command, args);
             }
         }
    }    
@@ -70,37 +97,38 @@ fn exec_one(tree : &[CommandTree], tokns : &Vec<&str>) -> bool
 }
 
 
-pub fn exec(tokns : &Vec<&str>)
+pub fn exec(command : &str,  args : &[u8]) 
 {
-    if !exec_one(&main_command_tree,tokns)
+    if !exec_one(&main_command_tree,command, args)
     {
         {
             encoder::simple_send("");            // unsupported
+            crate::util::glog1("Unsupported cmd :",command);
         }        
     }
 }
 //
 //
-fn _extendedMode(_tokns : &Vec<&str>) -> bool
+fn _extendedMode(command : &str, args : &Vec<&str>) -> bool
 {
     encoder::reply_ok();   
     true
 }
 // select thread
-fn _Hg(_tokns : &Vec<&str>) -> bool
+fn _Hg(command : &str, args : &Vec<&str>) -> bool
 {
     encoder::reply_ok();
     true
 }
 // select thread
-fn _Hc(_tokns : &Vec<&str>) -> bool
+fn _Hc(command : &str, args : &Vec<&str>) -> bool
 {
     encoder::reply_ok();   
     true
 }
 
 // Read registers
-fn _g(_tokns : &Vec<&str>) -> bool
+fn _g(command : &str, args : &Vec<&str>) -> bool
 {       
     // this one may be called while we are not connected
     if !crate::bmp::bmp_attached()
@@ -131,7 +159,7 @@ fn _g(_tokns : &Vec<&str>) -> bool
 }
 //
 // Request reason for halt
-fn _mark(_tokns : &Vec<&str>) -> bool
+fn _mark(command : &str, args : &Vec<&str>) -> bool
 {
     //NOTARGET
     encoder::simple_send("W00");
