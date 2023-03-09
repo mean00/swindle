@@ -52,6 +52,16 @@ impl encoder
             escaped  : false,
         }
     }
+    pub fn reply_bool (status : bool)
+    {
+        if status
+        {
+            Self::reply_ok();
+        }else
+        {
+            Self::reply_e01();
+        }
+    }
     pub fn reply_ok()
     {
         Self::raw_send_u8(b"$OK#9A");                
@@ -133,6 +143,16 @@ impl encoder
         // Send checksum
         Self::raw_send_u8(&u8_to_ascii((self.checksum & 0xff) as u8));
         Self::flush();
+    }
+    pub fn error(code : u8)
+    {
+        let mut e = Self::new();
+        let  zero: char  = (b'0'  + code) as char;
+        let mut tmp = [0u8; 4];
+        e.begin();
+        e.add("E");
+        e.add(zero.encode_utf8(&mut tmp));
+        e.end();
     }
     //
     pub fn simple_send(data : &str)

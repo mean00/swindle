@@ -173,4 +173,16 @@ pub fn bmp_flash_complete() -> bool
     }
 }
 
+pub fn bmp_crc32( address : u32, length : u32) -> Option<u32>
+{
+    unsafe {
+        let mut crc : u32 = 0;
+        let mut crc_ptr : *mut u32 = &mut crc;
+        if rn_bmp_cmd_c::bmp_crc32_c(address, length, crc_ptr)!=0
+        {
+            return Some(crc);
+        }
+        return None;
+    }
+}
 // EOF

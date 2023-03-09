@@ -23,14 +23,9 @@ use numtoa::NumToA;
 // Pf=40000008
 //
 
-fn pp_prefix(_tokns : &Vec<&str>) -> Option<(u32,u32)>
-{
-    if !crate::bmp::bmp_attached()
-    {
-        return None;
-    }
-    let arg1 = _tokns[0];
-    let args : Vec <&str>= arg1[1..].split('=').collect();
+fn pp_prefix( command : &str) -> Option<(u32,u32)>
+{       
+    let args : Vec <&str>= command.split('=').collect();
     if args.len()!=2
     {
         glog("Pxxx wrong args");
@@ -41,20 +36,16 @@ fn pp_prefix(_tokns : &Vec<&str>) -> Option<(u32,u32)>
     return Some( (reg,value));
 }
 // Write reg
-pub fn _P(_command : &str, args : &Vec<&str>) -> bool
+pub fn _P(command : &str, _args : &Vec<&str>) -> bool
 {
     let reg : u32;
     let val : u32;
-    match pp_prefix(args)
+    match pp_prefix(&command[1..])
     {
         None =>  { encoder::simple_send("E01");return true },
         Some( (x,y) )=>  {reg=x;val=y;},
     }   
-    encoder::simple_send( match  bmp::bmp_write_register(reg,val) 
-    {
-        true => "OK",
-        false => "E01",
-    });
+    encoder::reply_bool(   bmp::bmp_write_register(reg,val) );
     return true;
 }
 

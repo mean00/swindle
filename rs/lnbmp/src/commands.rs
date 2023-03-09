@@ -19,6 +19,7 @@ use flash::_flashv;
 use v::_v;
 use x::_X;
 use memory::_m;
+use registers::_P;
 
 type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
 type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
@@ -39,7 +40,7 @@ struct CommandTree
 }
 
 
-const main_command_tree: [CommandTree;10] = 
+const main_command_tree: [CommandTree;11] = 
 [
     CommandTree{ command: "!", args:    0, require_connected: false,   cb: CallbackType::text(_extendedMode) },// enable extended mode
     CommandTree{ command: "Hg",args:    0, require_connected: false,   cb: CallbackType::text(_Hg)      },          // select thread
@@ -51,6 +52,7 @@ const main_command_tree: [CommandTree;10] =
     CommandTree{ command: "?",args:     0, require_connected: false,   cb: CallbackType::text(_mark)  },        // reason for halt
     CommandTree{ command: "X",args:     0, require_connected: true,    cb: CallbackType::text(_X)      },        // write binary    
     CommandTree{ command: "m",args:     0, require_connected: true,    cb: CallbackType::text(_m )       },        // read memory
+    CommandTree{ command: "P",args:     0, require_connected: true,    cb: CallbackType::text(_P )       },    
 ];
 
 
@@ -98,7 +100,7 @@ fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
 
 
 pub fn exec(command : &str,  args : &[u8]) 
-{
+{  
     if !exec_one(&main_command_tree,command, args)
     {
         {

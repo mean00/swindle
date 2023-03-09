@@ -153,3 +153,10 @@ extern "C" {
 extern "C" {
     pub fn bmp_flash_complete_c() -> bool_;
 }
+extern "C" {
+    pub fn bmp_crc32_c(
+        address: core::ffi::c_uint,
+        length: core::ffi::c_uint,
+        crc: *mut core::ffi::c_uint,
+    ) -> bool_;
+}

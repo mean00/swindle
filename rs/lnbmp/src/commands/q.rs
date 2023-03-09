@@ -15,13 +15,14 @@ use super::mon::{_swdp_scan};
 use crate::bmp::bmp_attached;
 use crate::bmp::bmp_get_mapping;
 use crate::bmp::MemoryBlock;
+use crate::bmp::bmp_crc32;
 use crate::bmp::mapping::{ FLASH,RAM};
 use crate::commands::CallbackType;
 use crate::commands::mon::_qRcmd;
 
 use numtoa::NumToA;
 
-const q_command_tree: [CommandTree;9] = 
+const q_command_tree: [CommandTree;10] = 
 [
     CommandTree{ command: "qSupported",args: 0,     require_connected: false, cb: CallbackType::text( _qSupported )},      // supported features
     CommandTree{ command: "qXfer",args: 0,          require_connected: false, cb: CallbackType::text( _qXfer) },           // read memory map
@@ -30,10 +31,9 @@ const q_command_tree: [CommandTree;9] =
     CommandTree{ command: "qAttached",args: 0,      require_connected: false, cb: CallbackType::text( _qAttached )},       // remote thread
     CommandTree{ command: "qfThreadInfo",args: 0,   require_connected: false, cb: CallbackType::text( _qfThreadInfo) },   // thread info begin
     CommandTree{ command: "qsThreadInfo",args: 0,   require_connected: false, cb: CallbackType::text( _qsThreadInfo )},   // List threads
+    CommandTree{ command: "qCRC",args: 0,           require_connected: true,  cb: CallbackType::text( _qCRC) },        // set code/data/.. offset        
     CommandTree{ command: "qC",args: 0,             require_connected: false, cb: CallbackType::text( _qC) },             // Current thread Id
-    CommandTree{ command: "qOffsets",args: 0,       require_connected: false, cb: CallbackType::text( _qOffsets) },        // set code/data/.. offset
-    
-    
+    CommandTree{ command: "qOffsets",args: 0,       require_connected: false, cb: CallbackType::text( _qOffsets) },        // set code/data/.. offset        
 ];
 
 
@@ -249,6 +249,43 @@ fn _qOffsets(_command : &str, _args : &Vec<&str>) -> bool
 {    
     encoder::simple_send("Text=0;Data=0;Bss=0");    
     return true;
+}
+// qCRC:addr hex,length hex’
+// return crc32 hex
+
+fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
+{
+
+    if args.len()==0
+    {
+        encoder::reply_e01();
+        return true;
+    }
+
+    let mut address : u32 =0;
+    let mut length : u32 = 0;
+
+    match crate::util::take_adress_length(args[0])
+    {
+        Some( (x,y)) => { address = x;length = y;},
+        None =>   {encoder::reply_e01(); return true;},
+    }
+    let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
+    let crc = bmp_crc32(address,length);
+    match crc 
+    {
+        Some(x) => 
+                    {
+                        let mut e = encoder::new();
+                        e.begin();
+                        e.add("C");
+                        e.add(x.numtoa_str(16,&mut buffer));     // INPUT_BUFFER_SIZE
+                        e.end();
+                    },
+        None => encoder::error(3),
+    }
+    true
+
 }
 
 

@@ -10,6 +10,7 @@ extern "C"
 #include "gdb_hostio.h"
 #include "target.h"
 #include "target_internal.h"
+bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
 
 void gdb_target_destroy_callback(target_controller_s *tc, target_s *t)
@@ -226,6 +227,15 @@ bool bmp_flash_complete_c()
 	if (target_flash_complete(cur_target))
 			return true;
 	return false;
+}
+
+bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc)
+{
+	if(!bmp_attached_c()) return false;
+
+	if (!generic_crc32(cur_target, crc, address, length))
+		return false;
+	return true;
 }
 
 
