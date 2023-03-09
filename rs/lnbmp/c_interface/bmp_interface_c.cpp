@@ -212,6 +212,24 @@ bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length)
 			return true;
 	return false;
 }
+
+bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
+{
+	if(!bmp_attached_c()) return false;
+	if (target_flash_write(cur_target, addr, data,length))
+			return true;
+	return false;
+}
+bool bmp_flash_complete_c()
+{
+	if(!bmp_attached_c()) return false;
+	if (target_flash_complete(cur_target))
+			return true;
+	return false;
+}
+
+
+
 } // extern C
 // EOF
 
