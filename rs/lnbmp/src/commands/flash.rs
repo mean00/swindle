@@ -5,6 +5,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
+use crate::util::glogx;
 use crate::util::hex_to_u8s;
 
 use crate::encoder::encoder;
@@ -36,7 +37,7 @@ pub fn _flashv(command : &str, args : &[u8]) -> bool
 //vFlashErase:08000000,00005000
 fn _vFlashErase(command : &str, args : &Vec<&str>) -> bool
 {   
-    if(DISABLE_FLASH) 
+    if DISABLE_FLASH
     {
         encoder::reply_ok();
         return true;
@@ -48,6 +49,8 @@ fn _vFlashErase(command : &str, args : &Vec<&str>) -> bool
         None =>   encoder::reply_e01(),
         Some( (adr,len) ) => 
             {   
+                glogx("Erase : Adr",adr);
+                glogx("len",len);
                 encoder::reply_bool(bmp_flash_erase(adr,len));
             },
     };
@@ -57,7 +60,7 @@ fn _vFlashErase(command : &str, args : &Vec<&str>) -> bool
 //vFlashWrite:08000000,data
 fn _vFlashWrite(command : &str, args : &[u8]) -> bool
 {    
-    if(DISABLE_FLASH) 
+    if DISABLE_FLASH
     {
         encoder::reply_ok();
         return true;
@@ -95,13 +98,16 @@ fn _vFlashWrite(command : &str, args : &[u8]) -> bool
     let data: &[u8] = &block[(prefix+1)..];
     //crate::util::glog1("adr:",adr);
     //crate::util::glog1("len:",data.len());
+    glogx("write : Adr",adr as u32);
+    glogx("len",len as u32);
+
     encoder::reply_bool( bmp_flash_write(adr, data) );
     true
 }
 //vFlashDone
 fn _vFlashDone(command : &str, args : &Vec<&str>) -> bool
 {    
-    if(DISABLE_FLASH) 
+    if DISABLE_FLASH
     {
         encoder::reply_ok();
         return true;

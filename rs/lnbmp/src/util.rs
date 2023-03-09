@@ -21,6 +21,12 @@ pub fn glog1<T: core::fmt::Display> (s : &str, v: T)
 {
     print!("<<{:?}:{}\n",s,v);
 }
+#[cfg(feature = "hosted")]
+pub fn glogx (s : &str, v: u32)
+{
+    print!("<<{:?}:0x{:#x}\n",s,v);
+}
+
 #[cfg(feature = "native")]
 use rnarduino::rn_os_helper::{log,log1};
 

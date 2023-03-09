@@ -5,6 +5,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
+use crate::util::glogx;
 use crate::util::hex_to_u8s;
 
 use crate::encoder::encoder;
@@ -251,7 +252,7 @@ fn _qOffsets(_command : &str, _args : &Vec<&str>) -> bool
     return true;
 }
 // qCRC:addr hex,length hex’
-// return crc32 hex
+// return Ccrc32 hex
 
 fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
 {
@@ -272,10 +273,15 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
     }
     let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
     let crc = bmp_crc32(address,length);
+    glogx("CRC : Adr",address as u32);
+    glogx("len",length as u32);
+
+
     match crc 
     {
         Some(x) => 
                     {
+                        glogx("crc",x);
                         let mut e = encoder::new();
                         e.begin();
                         e.add("C");
