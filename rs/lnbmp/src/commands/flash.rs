@@ -22,7 +22,13 @@ const vflash_command_tree: [CommandTree;3] =
 ];
 
 
-const DISABLE_FLASH: bool = false;
+const DISABLE_FLASH: bool = true;
+
+
+fn local_log(p : &str, v: u32)
+{
+    //crate::util::glogx(p,v);
+}
 
 //
 //
@@ -35,7 +41,7 @@ pub fn _flashv(command : &str, args : &[u8]) -> bool
 
 //
 //vFlashErase:08000000,00005000
-fn _vFlashErase(command : &str, args : &Vec<&str>) -> bool
+fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
 {   
     if DISABLE_FLASH
     {
@@ -49,8 +55,8 @@ fn _vFlashErase(command : &str, args : &Vec<&str>) -> bool
         None =>   encoder::reply_e01(),
         Some( (adr,len) ) => 
             {   
-                glogx("Erase : Adr",adr);
-                glogx("len",len);
+                local_log("Erase : Adr",adr);
+                local_log("len",len);
                 encoder::reply_bool(bmp_flash_erase(adr,len));
             },
     };
@@ -58,7 +64,7 @@ fn _vFlashErase(command : &str, args : &Vec<&str>) -> bool
 }
 //
 //vFlashWrite:08000000,data
-fn _vFlashWrite(command : &str, args : &[u8]) -> bool
+fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
 {    
     if DISABLE_FLASH
     {
@@ -98,14 +104,14 @@ fn _vFlashWrite(command : &str, args : &[u8]) -> bool
     let data: &[u8] = &block[(prefix+1)..];
     //crate::util::glog1("adr:",adr);
     //crate::util::glog1("len:",data.len());
-    glogx("write : Adr",adr as u32);
-    glogx("len",len as u32);
+    local_log("write : Adr",adr as u32);
+    local_log("len",len as u32);
 
     encoder::reply_bool( bmp_flash_write(adr, data) );
     true
 }
 //vFlashDone
-fn _vFlashDone(command : &str, args : &Vec<&str>) -> bool
+fn _vFlashDone(_command : &str, _args : &Vec<&str>) -> bool
 {    
     if DISABLE_FLASH
     {

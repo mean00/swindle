@@ -24,7 +24,17 @@ bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length);
 bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data);
 bool bmp_flash_complete_c();
 
+
+bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data);
+
 bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc);
+
+bool bmp_reset_target_c();
+bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
+bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
+
+bool bmp_target_halt_resume_c(bool step);
+
 
 /*
 bool cmd_auto_scan(target_s *t, int argc, const char **argv);

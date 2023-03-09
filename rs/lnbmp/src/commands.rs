@@ -12,6 +12,7 @@ mod x;
 mod registers;
 mod memory;
 mod flash;
+mod breakpoints;
 
 
 use q::_q;
@@ -20,6 +21,8 @@ use v::_v;
 use x::_X;
 use memory::_m;
 use registers::_P;
+use breakpoints::_z;
+use breakpoints::_Z;
 
 type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
 type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
@@ -40,12 +43,13 @@ struct CommandTree
 }
 
 
-const main_command_tree: [CommandTree;11] = 
+const main_command_tree: [CommandTree;17] = 
 [
     CommandTree{ command: "!", args:    0, require_connected: false,   cb: CallbackType::text(_extendedMode) },// enable extended mode
     CommandTree{ command: "Hg",args:    0, require_connected: false,   cb: CallbackType::text(_Hg)      },          // select thread
     CommandTree{ command: "Hc",args:    0, require_connected: false,   cb: CallbackType::text(_Hc)       },          // 
-    CommandTree{ command:"vFlash",args: 0, require_connected: true,    cb: CallbackType::raw(_flashv),  },  // test
+    CommandTree{ command: "vCont",args: 0, require_connected: true,    cb: CallbackType::text(_vCont)       },        
+    CommandTree{ command: "vFlash",args:0, require_connected: true,    cb: CallbackType::raw(_flashv),  },  // test
     CommandTree{ command: "v",args:     0, require_connected: false,   cb: CallbackType::raw(_v)       },  // test
     CommandTree{ command: "q",args:     0, require_connected: false,   cb: CallbackType::raw(_q)      },           // see q commands in commands/q.rs
     CommandTree{ command: "g",args:     0, require_connected: false,   cb: CallbackType::text(_g)      },           // read registers
@@ -53,6 +57,12 @@ const main_command_tree: [CommandTree;11] =
     CommandTree{ command: "X",args:     0, require_connected: true,    cb: CallbackType::text(_X)      },        // write binary    
     CommandTree{ command: "m",args:     0, require_connected: true,    cb: CallbackType::text(_m )       },        // read memory
     CommandTree{ command: "P",args:     0, require_connected: true,    cb: CallbackType::text(_P )       },    
+    CommandTree{ command: "z",args:     0, require_connected: true,    cb: CallbackType::text(_z )       },        // read memory
+    CommandTree{ command: "Z",args:     0, require_connected: true,    cb: CallbackType::text(_Z )       },    
+    CommandTree{ command: "R",args:     0, require_connected: true,    cb: CallbackType::text(_R )       },    
+    CommandTree{ command: "k",args:     0, require_connected: true,    cb: CallbackType::text(_k )       },    
+    CommandTree{ command: "c",args:     0, require_connected: true,    cb: CallbackType::text(_c )       },    
+
 ];
 
 
@@ -167,6 +177,66 @@ fn _mark(_command : &str, _args : &Vec<&str>) -> bool
     encoder::simple_send("W00");
     true
 }
+//
+fn _R(_command : &str, _args : &Vec<&str>) -> bool
+{
+   encoder::reply_bool( crate::bmp::bmp_reset_target());
+   true
+}
+fn _k(_command : &str, _args : &Vec<&str>) -> bool
+{
+    encoder::reply_bool( crate::bmp::bmp_reset_target());
+    true
+}
+//vCont[;action[:thread-id]]…’
+//
+fn _c(command : &str, args : &Vec<&str>) -> bool
+{
+    _vCont("vCont",args)
+}
+fn _vCont(command : &str, _args : &Vec<&str>) -> bool
+{
+    
+    if command.starts_with("vCont?")
+    {
+        let mut e = encoder::new();
+        e.begin();
+        e.add("vCont;c;s;t");
+        e.end();
+        return true;
+    }
+    if(command.len()<7) // naked vcond
+    {
+        crate::bmp::bmp_halt_resume(false);
+        //encoder::reply_ok();
+        return true;
+    }
+    let command_bytes = command.as_bytes();
+    return match command_bytes[6]
+    {
+        b'c' => 
+        {
+            crate::bmp::bmp_halt_resume(false);
+          //  encoder::reply_ok();
+            true
+        },
+        b's' => 
+        {
+            crate::bmp::bmp_halt_resume(true);
+         //   encoder::reply_ok();
+            true
+        },
+        b't' => 
+        {
+            //crate::bmp::bmp_halt_resume(true);
+            encoder::reply_e01(); // !! TODO !!
+            true
+        },
+        _ => false,
+    };
+    
+}
+
 
 // EOF
 

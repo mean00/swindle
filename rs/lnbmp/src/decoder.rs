@@ -12,6 +12,9 @@
 
 use crate::util::ascii_to_hex;
 use crate::util::glog;
+use crate::util::glog1;
+use crate::util::glogx;
+
 use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE};
 //
 //
@@ -91,6 +94,8 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
         let mut sz = data.len();
         let mut consumed = 0;
 
+        //glog1("In size ",data.len() as u32);
+
         // auto clear errors
         if  self.automaton  ==    PARSER_AUTOMATON::Error
         {
@@ -139,13 +144,11 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             //    CHAR_RESET_04           => PARSER_AUTOMATON::Reset,
                                                 _                       => {
                                                                         self.checksum+=c as usize;
-                                                                        if c==b'\t'
+                                                                        self.input_buffer[self.indx]= match c
                                                                         {
-                                                                            self.input_buffer[self.indx]=b' ';
-                                                                        }else
-                                                                        {
-                                                                            self.input_buffer[self.indx]=c;
-                                                                        }
+//                                                                            b'\t' => b' ',
+                                                                            _     => c,
+                                                                        };
                                                                         self.indx+=1;
                                                                         PARSER_AUTOMATON::Body
                                                                     },
@@ -154,7 +157,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                         {
                                             self.checksum+= CHAR_ESCAPE as usize;
                                             self.checksum+=c as usize;
-                                            self.input_buffer[self.indx]=c^20;
+                                            self.input_buffer[self.indx]=c^0x20;                                            
                                             self.indx+=1;
                                             PARSER_AUTOMATON::Body
                                         },

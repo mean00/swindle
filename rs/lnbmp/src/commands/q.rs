@@ -263,8 +263,8 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         return true;
     }
 
-    let mut address : u32 =0;
-    let mut length : u32 = 0;
+    let  address : u32 ;
+    let  length : u32 ;
 
     match crate::util::take_adress_length(args[0])
     {

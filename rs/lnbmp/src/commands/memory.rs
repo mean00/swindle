@@ -24,9 +24,21 @@ pub fn _m(command : &str, _args : &Vec<&str>) -> bool
     match crate::util::take_adress_length(&command[1..])
     {
         None => encoder::reply_e01(),
-        Some( (_adr,_len) ) => 
+        Some( (adr,len) ) => 
             {
-                encoder::reply_e01()
+                
+                let mut tmp  = [0];
+                let mut char_buffer : [u8;2]  =[ 0, 0];
+                let mut e  = encoder::new();
+                e.begin();
+                for i in 0..len
+                {
+                    crate::bmp::bmp_read_mem(adr+i,&mut tmp);
+                    crate::util::u8_to_ascii_to_buffer(tmp[0],&mut char_buffer);
+                    e.add_u8(&char_buffer); // handle error ?
+                }
+                e.end();
+                
             }
     }
     return true;

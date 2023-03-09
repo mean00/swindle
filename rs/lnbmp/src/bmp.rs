@@ -11,6 +11,15 @@ pub enum mapping
     RAM=1,
 }
 
+fn ret_to_bool( ret : core::ffi::c_int) -> bool
+{
+    if ret!=0
+    {
+        return true;
+    }
+    false
+}
+
 pub struct MemoryBlock
 {
     pub start_address   : u32,
@@ -87,11 +96,7 @@ pub fn swdp_scan() -> bool
 {
     unsafe 
     {
-        if rn_bmp_cmd_c::cmd_swdp_scan( null(), 0,null_mut() as *mut *const i8)!=0
-        {            
-            return true;
-        }
-        return false;
+        ret_to_bool(  rn_bmp_cmd_c::cmd_swdp_scan( null(), 0,null_mut() as *mut *const i8))
     }
 }
 
@@ -99,32 +104,20 @@ pub fn bmp_attached() -> bool
 {
     unsafe 
     {
-        if rn_bmp_cmd_c::bmp_attached_c()!=0
-        {            
-            return true;
-        }
-        return false;
+        ret_to_bool( rn_bmp_cmd_c::bmp_attached_c() )
     }
 }
 pub fn bmp_attach(target : u32) -> bool
 {
     unsafe 
     {
-        if rn_bmp_cmd_c::bmp_attach_c(target)!=0
-        {            
-            return true;
-        }
-        return false;
+        ret_to_bool(  rn_bmp_cmd_c::bmp_attach_c(target) )
     }
 }
 pub fn bmp_write_register(reg: u32, value: u32) -> bool
 {
     unsafe {
-        if rn_bmp_cmd_c::bmp_write_reg_c(reg,value) !=0
-        {
-            return true;
-        }
-        return false;
+        ret_to_bool( rn_bmp_cmd_c::bmp_write_reg_c(reg,value) )
     }
 }
 pub fn bmp_read_register(reg: u32) -> Option<u32>
@@ -142,11 +135,7 @@ pub fn bmp_read_register(reg: u32) -> Option<u32>
 pub fn bmp_flash_erase(adr: u32, size: u32) -> bool
 {
     unsafe {
-        if rn_bmp_cmd_c::bmp_flash_erase_c(adr,size)!=0
-        {
-            return true;
-        }
-        return false;
+        ret_to_bool( rn_bmp_cmd_c::bmp_flash_erase_c(adr,size) )
     }
 }
 
@@ -154,22 +143,14 @@ pub fn bmp_flash_write(adr: u32, data : &[u8]) -> bool
 {
     unsafe {
         let ptr  : * const u8 = data.as_ptr();
-        if rn_bmp_cmd_c::bmp_flash_write_c(adr, data.len() as u32,ptr)!=0
-        {
-            return true;
-        }
-        return false;
+        ret_to_bool( rn_bmp_cmd_c::bmp_flash_write_c(adr, data.len() as u32,ptr) )
     }
 }
 
 pub fn bmp_flash_complete() -> bool
 {
     unsafe {
-        if rn_bmp_cmd_c::bmp_flash_complete_c()!=0
-        {
-            return true;
-        }
-        return false;
+        ret_to_bool( rn_bmp_cmd_c::bmp_flash_complete_c() )
     }
 }
 
@@ -177,7 +158,7 @@ pub fn bmp_crc32( address : u32, length : u32) -> Option<u32>
 {
     unsafe {
         let mut crc : u32 = 0;
-        let mut crc_ptr : *mut u32 = &mut crc;
+        let  crc_ptr : *mut u32 = &mut crc;
         if rn_bmp_cmd_c::bmp_crc32_c(address, length, crc_ptr)!=0
         {
             return Some(crc);
@@ -185,4 +166,58 @@ pub fn bmp_crc32( address : u32, length : u32) -> Option<u32>
         return None;
     }
 }
+
+pub fn bmp_read_mem(address : u32, data : &mut [u8]) -> bool
+{
+    unsafe {        
+        ret_to_bool( rn_bmp_cmd_c::bmp_mem_read_c(
+            address, 
+            data.len() as u32, 
+            data.as_mut_ptr() as *mut u8) )
+    }
+}
+
+pub fn bmp_reset_target() -> bool
+{
+    unsafe {
+        ret_to_bool( rn_bmp_cmd_c::bmp_reset_target_c() )
+    }
+}
+/*
+
+typedef enum target_breakwatch {
+	TARGET_BREAK_SOFT 0,
+	TARGET_BREAK_HARD 1,
+	TARGET_WATCH_WRITE 2,
+	TARGET_WATCH_READ 3,
+	TARGET_WATCH_ACCESS 4,
+} target_breakwatch_e;
+
+ */
+
+pub fn  bmp_add_breakpoint(btype: u32, adr : u32 , len : u32) -> bool
+{
+    unsafe {
+        ret_to_bool( rn_bmp_cmd_c::bmp_add_breakpoint_c(btype,adr,len) )
+    }
+}
+pub fn  bmp_remove_breakpoint(btype: u32, adr : u32 , len : u32) -> bool
+{
+    unsafe {
+        ret_to_bool( rn_bmp_cmd_c::bmp_remove_breakpoint_c(btype,adr,len))
+    }
+}
+// resume go or step by step
+pub fn bmp_halt_resume( step : bool )-> bool
+{
+    unsafe {
+        let mut s : i32=0;
+        if step
+        {
+            s=1;
+        }
+        ret_to_bool( rn_bmp_cmd_c::bmp_target_halt_resume_c(s))
+    }
+}
+
 // EOF

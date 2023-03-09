@@ -154,9 +154,36 @@ extern "C" {
     pub fn bmp_flash_complete_c() -> bool_;
 }
 extern "C" {
+    pub fn bmp_mem_read_c(
+        addr: core::ffi::c_uint,
+        length: core::ffi::c_uint,
+        data: *mut u8,
+    ) -> bool_;
+}
+extern "C" {
     pub fn bmp_crc32_c(
         address: core::ffi::c_uint,
         length: core::ffi::c_uint,
         crc: *mut core::ffi::c_uint,
     ) -> bool_;
+}
+extern "C" {
+    pub fn bmp_reset_target_c() -> bool_;
+}
+extern "C" {
+    pub fn bmp_add_breakpoint_c(
+        type_: core::ffi::c_uint,
+        address: core::ffi::c_uint,
+        len: core::ffi::c_uint,
+    ) -> bool_;
+}
+extern "C" {
+    pub fn bmp_remove_breakpoint_c(
+        type_: core::ffi::c_uint,
+        address: core::ffi::c_uint,
+        len: core::ffi::c_uint,
+    ) -> bool_;
+}
+extern "C" {
+    pub fn bmp_target_halt_resume_c(step: bool_) -> bool_;
 }

@@ -214,12 +214,25 @@ bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length)
 	return false;
 }
 
+static uint8_t tmp[1024];
+
 bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
 {
 	if(!bmp_attached_c()) return false;
-	if (target_flash_write(cur_target, addr, data,length))
-			return true;
-	return false;
+	if (!target_flash_write(cur_target, addr, data,length))
+			return false;
+#if 0 // Verify			
+	if (!target_mem_read(cur_target, tmp, addr, length))
+			return false;
+	for(int i=0;i<length;i++)
+	{
+		if( tmp[i]!=data[i])
+		{
+			printf("Flash write mismatch at %x %x => %x\n",addr+i,data[i],tmp[i]);
+		}
+	}
+#endif	
+	return true;
 }
 bool bmp_flash_complete_c()
 {
@@ -238,7 +251,70 @@ bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *
 	return true;
 }
 
+bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data)
+{
+	if(!bmp_attached_c()) return false;	
+	if (!target_mem_read(cur_target, tmp, addr, length))
+			return false;
+	return true;
+}
 
+bool bmp_reset_target_c()
+{
+	if(!bmp_attached_c()) return false;	
+	target_reset(cur_target);
+	return true;
+}
+bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
+{
+	if(!bmp_attached_c()) return false;	
+	// Error code inverted 0 means success
+	if(target_breakwatch_set(cur_target, (target_breakwatch)type, address,len))
+		return false;
+	return true;
+}
+bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
+{
+	if(!bmp_attached_c()) return false;	
+	// Error code inverted 0 means success
+	if(target_breakwatch_clear(cur_target, (target_breakwatch)type, address,len))
+			return false;
+	return true;
+
+}
+
+bool bmp_target_halt_resume_c(bool step)
+{
+	if(!bmp_attached_c()) return false;	
+	target_halt_resume(cur_target,  step);
+	return true;
+}
+
+/*
+
+z1,addr,kind’ insert hw breakpoint
+z1,addr,kind’ remove hw breakpoint
+
+kind 2 16-bit Thumb mode breakpoint.
+kind 3 32-bit Thumb mode (Thumb-2) breakpoint.
+kind 4 32-bit ARM mode breakpoint.
+
+
+R => run
+	target_reset(cur_target);
+vRun -> ignore
+
+k command
+static void handle_kill_target(void)
+{
+	if (cur_target) {
+		target_reset(cur_target);
+		target_detach(cur_target);
+		last_target = cur_target;
+		cur_target = NULL;
+	}
+}
+*/
 
 } // extern C
 // EOF
