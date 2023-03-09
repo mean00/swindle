@@ -13,6 +13,7 @@ mod registers;
 mod memory;
 mod flash;
 mod breakpoints;
+mod run;
 
 
 use q::_q;
@@ -23,6 +24,8 @@ use memory::_m;
 use registers::_P;
 use breakpoints::_z;
 use breakpoints::_Z;
+
+use run::{_c,_R,_vCont,_k};
 
 type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
 type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
@@ -176,65 +179,6 @@ fn _mark(_command : &str, _args : &Vec<&str>) -> bool
     //NOTARGET
     encoder::simple_send("W00");
     true
-}
-//
-fn _R(_command : &str, _args : &Vec<&str>) -> bool
-{
-   encoder::reply_bool( crate::bmp::bmp_reset_target());
-   true
-}
-fn _k(_command : &str, _args : &Vec<&str>) -> bool
-{
-    encoder::reply_bool( crate::bmp::bmp_reset_target());
-    true
-}
-//vCont[;action[:thread-id]]…’
-//
-fn _c(command : &str, args : &Vec<&str>) -> bool
-{
-    _vCont("vCont",args)
-}
-fn _vCont(command : &str, _args : &Vec<&str>) -> bool
-{
-    
-    if command.starts_with("vCont?")
-    {
-        let mut e = encoder::new();
-        e.begin();
-        e.add("vCont;c;s;t");
-        e.end();
-        return true;
-    }
-    if(command.len()<7) // naked vcond
-    {
-        crate::bmp::bmp_halt_resume(false);
-        //encoder::reply_ok();
-        return true;
-    }
-    let command_bytes = command.as_bytes();
-    return match command_bytes[6]
-    {
-        b'c' => 
-        {
-            crate::bmp::bmp_halt_resume(false);
-          //  encoder::reply_ok();
-            true
-        },
-        b's' => 
-        {
-            crate::bmp::bmp_halt_resume(true);
-         //   encoder::reply_ok();
-            true
-        },
-        b't' => 
-        {
-            //crate::bmp::bmp_halt_resume(true);
-            encoder::reply_e01(); // !! TODO !!
-            true
-        },
-        _ => false,
-    };
-    
 }
 
 
