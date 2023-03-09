@@ -82,6 +82,10 @@ pub fn _tohex( v: u8) -> u8
 pub fn ascii_to_u32(s : &str) -> u32
 {
     let datain = s.as_bytes();
+    u8s_to_u32(datain)
+}
+pub fn u8s_to_u32(datain : &[u8]) -> u32
+{
     let mut val  : u32 = 0;
     for i in 0..datain.len()
     {
@@ -89,6 +93,7 @@ pub fn ascii_to_u32(s : &str) -> u32
     }
     val
 }
+
 pub fn u8_to_ascii( value : u8 ) -> [u8;2]
 {
     let mut out : [u8;2 ]= [0,0];

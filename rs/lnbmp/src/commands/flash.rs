@@ -10,7 +10,7 @@ use crate::util::hex_to_u8s;
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
-use crate::bmp::{bmp_attach,bmp_flash_erase};
+use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete};
 use crate::commands::CallbackType;
 
 const vflash_command_tree: [CommandTree;3] = 
@@ -55,14 +55,28 @@ fn _vFlashErase(command : &str, args : &Vec<&str>) -> bool
 //vFlashWrite:08000000,data
 fn _vFlashWrite(command : &str, args : &[u8]) -> bool
 {    
-    
-    return false;
+    // lookup for the ,
+    let block: &[u8] = args;
+    let len = block.len();
+
+    if len<9
+    {
+        crate::util::glog("flashWrite: invalid arg1");
+        encoder::reply_e01();
+        return true; 
+    }
+
+    let adr  =crate::util::u8s_to_u32( &block[..8] );
+    let data: &[u8] = &block[8..];
+    crate::util::glog1("adr:",adr);
+    crate::util::glog1("len:",data.len());
+    bmp_flash_write(adr, data)
 }
 //vFlashDone
 fn _vFlashDone(command : &str, args : &Vec<&str>) -> bool
 {    
     
-    return false;
+    bmp_flash_complete()
 }
 
 

@@ -150,3 +150,27 @@ pub fn bmp_flash_erase(adr: u32, size: u32) -> bool
     }
 }
 
+pub fn bmp_flash_write(adr: u32, data : &[u8]) -> bool
+{
+    unsafe {
+        let ptr  : * const u8 = data.as_ptr();
+        if rn_bmp_cmd_c::bmp_flash_write_c(adr, data.len() as u32,ptr)!=0
+        {
+            return true;
+        }
+        return false;
+    }
+}
+
+pub fn bmp_flash_complete() -> bool
+{
+    unsafe {
+        if rn_bmp_cmd_c::bmp_flash_complete_c()!=0
+        {
+            return true;
+        }
+        return false;
+    }
+}
+
+// EOF

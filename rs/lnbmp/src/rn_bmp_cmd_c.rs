@@ -143,3 +143,13 @@ extern "C" {
 extern "C" {
     pub fn bmp_flash_erase_c(addr: core::ffi::c_uint, length: core::ffi::c_uint) -> bool_;
 }
+extern "C" {
+    pub fn bmp_flash_write_c(
+        addr: core::ffi::c_uint,
+        length: core::ffi::c_uint,
+        data: *const u8,
+    ) -> bool_;
+}
+extern "C" {
+    pub fn bmp_flash_complete_c() -> bool_;
+}
