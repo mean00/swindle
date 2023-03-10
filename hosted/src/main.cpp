@@ -24,6 +24,7 @@
 #include <QObject>
 #include <QCoreApplication>
 #include <QtGlobal>
+#include <QTimer>
 #include "qtcp.h"
 
 extern "C"
@@ -167,6 +168,7 @@ void rngdb_output_flush_c()
 //
 //
 //
+extern "C" void rngdbstub_poll();
 int main(int argc, char **argv)
 {
 	qInfo() << "Qt BMP started";
@@ -174,6 +176,11 @@ int main(int argc, char **argv)
 	qInstallMessageHandler(customHandler);
 	platform_init(argc, argv);	
 	BmpTcpServer *server = new BmpTcpServer;
+
+ 	QTimer mytimer;
+    QObject::connect(&mytimer,&QTimer::timeout,rngdbstub_poll);
+    mytimer.start(100);
+
 	while(running)
 	{
 		QCoreApplication::processEvents();
