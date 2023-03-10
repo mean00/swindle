@@ -37,7 +37,7 @@ pub fn _vCont(command : &str, _args : &Vec<&str>) -> bool
         e.end();
         return true;
     }
-    if(command.len()<7) // naked vcond
+    if command.len()<7 // naked vcond
     {
         crate::bmp::bmp_halt_resume(false);
         //encoder::reply_ok();

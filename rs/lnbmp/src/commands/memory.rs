@@ -27,16 +27,28 @@ pub fn _m(command : &str, _args : &Vec<&str>) -> bool
         Some( (adr,len) ) => 
             {
                 
-                let mut tmp  = [0];
-                let mut char_buffer : [u8;2]  =[ 0, 0];
+                let mut tmp  : [u8;16]= [0;16];
+                let mut char_buffer : [u8;32]  =[ 0; 32];
+
+                let mut current_address : u32 = adr;
+                let mut left : usize = len as usize;
+
                 let mut e  = encoder::new();
                 e.begin();
-                for i in 0..len
+
+                while left!=0
                 {
-                    crate::bmp::bmp_read_mem(adr+i,&mut tmp);
-                    crate::util::u8_to_ascii_to_buffer(tmp[0],&mut char_buffer);
-                    e.add_u8(&char_buffer); // handle error ?
+                    let chunk : usize  = core::cmp::min(16,left) as usize;
+                    crate::bmp::bmp_read_mem(current_address,&mut tmp[0..chunk]);
+                    current_address += chunk as u32;
+                    left -= chunk;
+                    for i in 0..chunk
+                    {
+                        crate::util::u8_to_ascii_to_buffer( tmp[i]  , &mut char_buffer[(2*i)..]);
+                    }
+                    e.add_u8(&char_buffer[..(2*chunk)]);
                 }
+
                 e.end();
                 
             }
