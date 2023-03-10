@@ -254,7 +254,7 @@ bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *
 bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data)
 {
 	if(!bmp_attached_c()) return false;	
-	if (!target_mem_read(cur_target, tmp, addr, length))
+	if (!target_mem_read(cur_target, data, addr, length))
 			return false;
 	return true;
 }

@@ -170,7 +170,8 @@ pub fn bmp_crc32( address : u32, length : u32) -> Option<u32>
 pub fn bmp_read_mem(address : u32, data : &mut [u8]) -> bool
 {
     unsafe {        
-        ret_to_bool( rn_bmp_cmd_c::bmp_mem_read_c(
+        // mem_read_c returns flase if ok (WTF)
+        !ret_to_bool( rn_bmp_cmd_c::bmp_mem_read_c(
             address, 
             data.len() as u32, 
             data.as_mut_ptr() as *mut u8) )
