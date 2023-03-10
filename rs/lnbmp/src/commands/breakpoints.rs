@@ -15,6 +15,17 @@ use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete}
 use crate::commands::CallbackType;
 
 
+pub enum HaltState
+{
+    Running     ,
+    Error       ,
+    Request     ,
+    Stepping    ,
+    Breakpoint  ,
+    Watchpoint(u32)  ,
+    Fault       ,
+}
+
 /*
 Same value as bmp internal
 	TARGET_BREAK_SOFT 0 ,

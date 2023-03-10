@@ -1,10 +1,15 @@
 
+
+use crate::commands;
 use crate::rn_bmp_cmd_c;
 use cty;
 use core::ptr::null;
 use core::ptr::null_mut;
 use alloc::vec::Vec;
 use core::ffi::CStr;
+
+use crate::commands::breakpoints::HaltState;
+
 pub enum mapping
 {
     FLASH=0,
@@ -37,6 +42,13 @@ pub fn bmp_register_description() -> &'static str
     }
   }
 }
+pub fn bmp_drop_register_description()
+{
+    unsafe {
+    rn_bmp_cmd_c::bmp_target_description_clear_c()
+    }
+}
+
 pub fn bmp_read_registers() -> Vec<u32>
 {
     if !bmp_attached()
@@ -218,6 +230,27 @@ pub fn bmp_halt_resume( step : bool )-> bool
             s=1;
         }
         ret_to_bool( rn_bmp_cmd_c::bmp_target_halt_resume_c(s))
+    }
+}
+
+pub fn bmp_poll() -> commands::breakpoints::HaltState
+{
+    unsafe {
+        let mut wp : u32 = 0;
+        let  wp_ptr : *mut u32 = &mut wp;
+        let r : u32 = rn_bmp_cmd_c::bmp_poll_target_c(wp_ptr);
+        match r
+        {
+            0 =>   commands::breakpoints::HaltState::Running,
+            1 =>   commands::breakpoints::HaltState::Error,
+            2 =>   commands::breakpoints::HaltState::Request,
+            3 =>   commands::breakpoints::HaltState::Stepping,
+            4 =>   commands::breakpoints::HaltState::Breakpoint,
+            5 =>   commands::breakpoints::HaltState::Watchpoint(wp),
+            6 =>   commands::breakpoints::HaltState::Fault,
+            _ => panic!("wrong halt reason"),
+            
+        }
     }
 }
 

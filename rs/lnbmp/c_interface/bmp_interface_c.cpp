@@ -184,14 +184,29 @@ bool bmp_read_register_c(const unsigned int reg, uint32_t *val)
         return false;
     return true;
 }
-
+void *copy=NULL;
 const char * bmp_target_description_c()
 {
 	if(!bmp_attached_c()) return "";
 	const char *c=target_regs_description(cur_target);
 	if(!c) return "";
+	copy=(void *)c;
 	return c;
 }
+
+extern "C" void free (void *__ptr)
+
+;
+
+void bmp_target_description_clear_c( const unsigned char *data)
+{
+	if(copy)
+	{
+		free(copy);
+		copy=NULL;
+	}
+}
+
 bool bmp_write_reg_c(const unsigned int reg, const unsigned int val)
 {
 	if(!bmp_attached_c()) return false;
@@ -288,6 +303,16 @@ bool bmp_target_halt_resume_c(bool step)
 	if(!bmp_attached_c()) return false;	
 	target_halt_resume(cur_target,  step);
 	return true;
+}
+
+unsigned int bmp_poll_target_c(unsigned int *watchpoint)
+{
+	if(!bmp_attached_c()) return 0;	
+
+	target_addr_t watch;
+	target_halt_reason_e reason = target_halt_poll(cur_target, &watch);
+	*watchpoint = watch; 
+	return reason;
 }
 
 /*

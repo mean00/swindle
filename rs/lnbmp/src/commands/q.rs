@@ -136,12 +136,14 @@ fn _qXfer_features_regs(args : &[&str]) -> bool
 
     if reply_size==0
     {
+        crate::bmp::bmp_drop_register_description();
         encoder::reply_e01();
         return true;
     }
 
     if start_address >= reply_size
     {
+        crate::bmp::bmp_drop_register_description();
         encoder::simple_send("l");
         return true;
     }
@@ -153,6 +155,7 @@ fn _qXfer_features_regs(args : &[&str]) -> bool
     let end_pos = core::cmp::min(start_address+length,reply_size);
     e.add(&reply[start_address..end_pos]);
     e.end();
+    crate::bmp::bmp_drop_register_description();
     true
 }
 // 

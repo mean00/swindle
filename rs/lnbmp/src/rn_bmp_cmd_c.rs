@@ -135,6 +135,9 @@ extern "C" {
     pub fn bmp_target_description_c() -> *const core::ffi::c_char;
 }
 extern "C" {
+    pub fn bmp_target_description_clear_c();
+}
+extern "C" {
     pub fn bmp_write_reg_c(reg: core::ffi::c_uint, value: core::ffi::c_uint) -> bool_;
 }
 extern "C" {
@@ -186,4 +189,7 @@ extern "C" {
 }
 extern "C" {
     pub fn bmp_target_halt_resume_c(step: bool_) -> bool_;
+}
+extern "C" {
+    pub fn bmp_poll_target_c(watchpoint: *mut core::ffi::c_uint) -> core::ffi::c_uint;
 }
