@@ -42,6 +42,11 @@ pub fn glog (s : &str)
 {
     log(s);
 }
+#[cfg(feature = "native")]
+pub fn glogx (s : &str, v: u32)
+{
+    log1(s,v);
+}
 
 //--
 pub fn hex_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Result<&'b [u8],i32>
