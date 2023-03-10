@@ -32,6 +32,7 @@ extern "C"
 	void rngdbstub_init();
 	void rngdbstub_shutdown() ;
 	void rngdbstub_run(uint32_t s, const uint8_t *d);
+  void rngdbstub_poll();
 }
 
 
@@ -194,6 +195,11 @@ void gdb_task(void *parameters)
   while (true)
   {
       uint32_t ev= usbGdb->waitEvents();
+      // We get here at worst every 100 ms
+      if(connected)
+      {
+        rngdbstub_poll();
+      }
       if(ev & GDB_SESSION_START)
       {
         rngdbstub_init();
