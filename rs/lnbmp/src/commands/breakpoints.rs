@@ -15,6 +15,47 @@ use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete}
 use crate::commands::CallbackType;
 
 
+/*
+Same value as bmp internal
+	TARGET_BREAK_SOFT 0 ,
+	TARGET_BREAK_HARD 1,
+	TARGET_WATCH_WRITE 2,
+	TARGET_WATCH_READ 3,
+	TARGET_WATCH_ACCESS 4,
+
+ */
+enum Breakpoints
+{
+    Execute,
+    Read,
+    Write,
+    Access,
+}
+impl Breakpoints
+{
+    pub fn from_int( val : u32 )  -> Self
+    {
+        return match val
+        {
+            0 | 1   => Breakpoints::Execute,
+            2       => Breakpoints::Write,
+            3       => Breakpoints::Read,
+            4       => Breakpoints::Access,
+            _ => panic!("Invalid watchpoint"),
+        };
+    }
+    pub fn to_int( b: &Self) -> u32
+    {
+        return match b
+        {
+            Breakpoints::Execute => 1,
+            Breakpoints::Read    => 3,
+            Breakpoints::Write   => 2,
+            Breakpoints::Access  => 4,
+        }
+    }
+}
+
 fn common_z(command : &str) -> bool
 {
     let args : Vec <&str>= command.split(",").collect();
@@ -24,18 +65,23 @@ fn common_z(command : &str) -> bool
         return true;
     }
     // zZ addr kind
+    let prefix = args[0];
+    let breakpoint_watchpoint = Breakpoints::from_int( crate::util::ascii_to_u32( &prefix[1..2]));
     let address : u32 = crate::util::ascii_to_u32(args[1]);
     // we dont care, we always use 1 i.e. hw breakpoint
     let kind : u32 = crate::util::ascii_to_u32(args[2]);
     let len : u32 = 4;
+
+    
+
     if args[0].starts_with("z") // remove
     {
-        encoder::reply_bool( crate::bmp::bmp_remove_breakpoint(1, address,len) );        
+        encoder::reply_bool( crate::bmp::bmp_remove_breakpoint(Breakpoints::to_int(&breakpoint_watchpoint), address,len) );        
     }
     else
     if args[0].starts_with("Z") // add
     {
-        encoder::reply_bool( crate::bmp::bmp_add_breakpoint(1, address,len) );
+        encoder::reply_bool( crate::bmp::bmp_add_breakpoint(Breakpoints::to_int(&breakpoint_watchpoint), address,len) );
     }else
     {
         encoder::reply_e01();
