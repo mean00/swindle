@@ -67,12 +67,8 @@ fn common_z(command : &str) -> bool
     // zZ addr kind
     let prefix = args[0];
     let breakpoint_watchpoint = Breakpoints::from_int( crate::util::ascii_to_u32( &prefix[1..2]));
-    let address : u32 = crate::util::ascii_to_u32(args[1]);
-    // we dont care, we always use 1 i.e. hw breakpoint
-    let kind : u32 = crate::util::ascii_to_u32(args[2]);
+    let address : u32 = crate::util::ascii_to_u32(args[1]);    
     let len : u32 = 4;
-
-    
 
     if args[0].starts_with("z") // remove
     {
