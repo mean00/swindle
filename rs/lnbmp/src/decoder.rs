@@ -10,7 +10,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::util::ascii_to_hex;
+use crate::parsing_util::ascii_to_hex;
 use crate::util::glog;
 use crate::util::glog1;
 use crate::util::glogx;

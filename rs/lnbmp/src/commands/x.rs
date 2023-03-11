@@ -2,7 +2,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
-use crate::util::hex_to_u8s;
+use crate::parsing_util::hex_to_u8s;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};

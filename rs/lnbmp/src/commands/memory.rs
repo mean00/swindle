@@ -5,7 +5,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
-use crate::util::hex_to_u8s;
+use crate::parsing_util::hex_to_u8s;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -21,7 +21,7 @@ pub fn _m(command : &str, _args : &Vec<&str>) -> bool
         return true;
     }
     
-    match crate::util::take_adress_length(&command[1..])
+    match crate::parsing_util::take_adress_length(&command[1..])
     {
         None => encoder::reply_e01(),
         Some( (adr,len) ) => 
@@ -44,7 +44,7 @@ pub fn _m(command : &str, _args : &Vec<&str>) -> bool
                     left -= chunk;
                     for i in 0..chunk
                     {
-                        crate::util::u8_to_ascii_to_buffer( tmp[i]  , &mut char_buffer[(2*i)..]);
+                        crate::parsing_util::u8_to_ascii_to_buffer( tmp[i]  , &mut char_buffer[(2*i)..]);
                     }
                     e.add_u8(&char_buffer[..(2*chunk)]);
                 }

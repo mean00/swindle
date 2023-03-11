@@ -6,7 +6,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
 use crate::util::glogx;
-use crate::util::hex_to_u8s;
+use crate::parsing_util::hex_to_u8s;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -113,8 +113,8 @@ fn validate_q_query(args : &[&str], header1 : &str, header2 : &str ) -> Option<(
         return None;
     }
     //
-    let start_address : usize = crate::util::ascii_to_u32(conf[0]) as usize;
-    let length : usize = crate::util::ascii_to_u32(conf[1]) as usize;
+    let start_address : usize = crate::parsing_util::ascii_to_u32(conf[0]) as usize;
+    let length : usize = crate::parsing_util::ascii_to_u32(conf[1]) as usize;
     return Some((start_address, length));
 }
 //
@@ -269,7 +269,7 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
     let  address : u32 ;
     let  length : u32 ;
 
-    match crate::util::take_adress_length(args[0])
+    match crate::parsing_util::take_adress_length(args[0])
     {
         Some( (x,y)) => { address = x;length = y;},
         None =>   {encoder::reply_e01(); return true;},

@@ -164,7 +164,7 @@ fn _g(_command : &str, _args : &Vec<&str>) -> bool
         // LE first
         for j in 0..4
         {
-            crate::util::u8_to_ascii_to_buffer((reg &0xff) as u8 ,&mut buffer[2*j..]); 
+            crate::parsing_util::u8_to_ascii_to_buffer((reg &0xff) as u8 ,&mut buffer[2*j..]); 
             reg = reg >> 8;
         }
         e.add_u8(&buffer);

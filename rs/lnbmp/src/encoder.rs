@@ -14,7 +14,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::util::{ascii_to_hex,u8_to_ascii,u8_to_ascii_to_buffer};
+use crate::parsing_util::{ascii_to_hex,u8_to_ascii,u8_to_ascii_to_buffer};
 use crate::util::glog;
 use crate::{rngdb_send_data,rngdb_send_data_u8,rngdb_output_flush};
 use crate::packet_symbols;

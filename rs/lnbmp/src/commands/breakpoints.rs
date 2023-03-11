@@ -6,8 +6,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
 use crate::util::glogx;
-use crate::util::hex_to_u8s;
-
+use crate::parsing_util::hex_to_u8s;
+use crate::parsing_util::ascii_to_u32;
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
@@ -79,8 +79,8 @@ fn common_z(command : &str) -> bool
     }
     // zZ addr kind
     let prefix = args[0];
-    let breakpoint_watchpoint = Breakpoints::from_int( crate::util::ascii_to_u32( &prefix[1..2]));
-    let address : u32 = crate::util::ascii_to_u32(args[1]);    
+    let breakpoint_watchpoint = Breakpoints::from_int( ascii_to_u32( &prefix[1..2]));
+    let address : u32 = ascii_to_u32(args[1]);    
     let len : u32 = 4;
 
     if args[0].starts_with("z") // remove

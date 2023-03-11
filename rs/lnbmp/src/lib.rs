@@ -6,6 +6,7 @@
 #![allow(unused_imports)]
 
 mod util;
+mod parsing_util;
 mod packet_symbols;
 mod decoder;
 mod encoder;
@@ -114,7 +115,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                         let s = x.get_result();
                                         let command : &[u8];
                                         let args : &[u8];
-                                        match crate::util::split_command(s)
+                                        match crate::parsing_util::split_command(s)
                                         {
                                             None => {
                                                         crate::util::glog("Cannot convert string");

@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use crate::util::glog;
 use crate::bmp;
 use crate::encoder::encoder;
-use crate::util::hex_to_u8s;
+use crate::parsing_util::hex_to_u8s;
 use crate::commands::{CallbackType,exec_one,CommandTree};
 //
 //
@@ -37,7 +37,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     // split command and args
     let command : &[u8];
     let args : &[u8];
-    match crate::util::split_command(rcmd)
+    match crate::parsing_util::split_command(rcmd)
     {
         None => {
                     crate::util::glog("Cannot convert string (rcmd)");

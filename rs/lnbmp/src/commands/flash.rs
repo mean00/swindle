@@ -6,7 +6,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
 use crate::util::glogx;
-use crate::util::hex_to_u8s;
+use crate::parsing_util::hex_to_u8s;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -50,7 +50,7 @@ fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
     }
 
     let xin = &args[0];
-    match crate::util::take_adress_length(&xin[1..])
+    match crate::parsing_util::take_adress_length(&xin[1..])
     {
         None =>   encoder::reply_e01(),
         Some( (adr,len) ) => 
@@ -100,7 +100,7 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
         return true; 
     }
 
-    let adr  =crate::util::u8s_to_u32( &block[..prefix] );
+    let adr  =crate::parsing_util::u8s_to_u32( &block[..prefix] );
     let data: &[u8] = &block[(prefix+1)..];
     //crate::util::glog1("adr:",adr);
     //crate::util::glog1("len:",data.len());
