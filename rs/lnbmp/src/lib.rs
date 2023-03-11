@@ -84,47 +84,6 @@ fn          rngdb_send_data_u8( data : &[u8])
     rngdb_send_data_c(data.len() as u32, data.as_ptr() );
     }
 }
-//
-fn reply_2( prefix : &str, num : u32)
-{
-    let mut buffer: [u8;20] = [0; 20]; 
-    let mut e = crate::encoder::encoder::new();
-    e.begin();
-    e.add(prefix);
-    e.add(num.numtoa_str(16,&mut buffer));  
-    e.end();
-}
-//
-fn reply_4( prefix : &str, num : u32, prefix2 : &str, num2: u32)
-{
-    let mut buffer: [u8;20] = [0; 20]; 
-    let mut e = crate::encoder::encoder::new();
-    e.begin();
-    e.add(prefix);
-    e.add(num.numtoa_str(16,&mut buffer));  
-    e.add(prefix2);
-    e.add(num2.numtoa_str(16,&mut buffer));  
-    e.end();
-}
-
-#[no_mangle]
-extern "C" fn rngdbstub_poll()
-{
-    // this is called regularily
-    if bmp::bmp_attached()
-    {
-        match bmp::bmp_poll()
-        {
-            HaltState::Running      => (),                  // nothing to do !
-            HaltState::Error        => reply_2("X", 29),    // SIGLOST
-            HaltState::Request      => reply_2("T", 2),     // SIGINT
-            HaltState::Watchpoint(wp)  => reply_4("T", 5, "watch:",wp as u32 ), // SIGTRAP
-            HaltState::Fault        => reply_2("T", 11),  // SIGSEGV
-            HaltState::Breakpoint   => reply_2("T", 5), // SIGTRAP
-            _ => panic!("unsupported halt state"),
-        }
-    }
-}
 /**
  * 
  * 
