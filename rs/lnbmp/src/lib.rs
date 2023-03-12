@@ -24,7 +24,7 @@ use alloc::vec::Vec;
 use decoder::RESULT_AUTOMATON;
 use numtoa::NumToA;
 
-use crate::commands::breakpoints::HaltState;
+
 //
 
 #[no_mangle]

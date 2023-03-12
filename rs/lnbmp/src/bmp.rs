@@ -8,7 +8,7 @@ use core::ptr::null_mut;
 use alloc::vec::Vec;
 use core::ffi::CStr;
 
-use crate::commands::breakpoints::HaltState;
+use crate::commands::run::HaltState;
 
 pub enum mapping
 {
@@ -233,7 +233,7 @@ pub fn bmp_halt_resume( step : bool )-> bool
     }
 }
 
-pub fn bmp_poll() -> commands::breakpoints::HaltState
+pub fn bmp_poll() -> HaltState
 {
     unsafe {
         let mut wp : u32 = 0;
@@ -241,13 +241,13 @@ pub fn bmp_poll() -> commands::breakpoints::HaltState
         let r : u32 = rn_bmp_cmd_c::bmp_poll_target_c(wp_ptr);
         match r
         {
-            0 =>   commands::breakpoints::HaltState::Running,
-            1 =>   commands::breakpoints::HaltState::Error,
-            2 =>   commands::breakpoints::HaltState::Request,
-            3 =>   commands::breakpoints::HaltState::Stepping,
-            4 =>   commands::breakpoints::HaltState::Breakpoint,
-            5 =>   commands::breakpoints::HaltState::Watchpoint(wp),
-            6 =>   commands::breakpoints::HaltState::Fault,
+            0 =>   HaltState::Running,
+            1 =>   HaltState::Error,
+            2 =>   HaltState::Request,
+            3 =>   HaltState::Stepping,
+            4 =>   HaltState::Breakpoint,
+            5 =>   HaltState::Watchpoint(wp),
+            6 =>   HaltState::Fault,
             _ => panic!("wrong halt reason"),
             
         }

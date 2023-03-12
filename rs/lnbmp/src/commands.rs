@@ -13,7 +13,7 @@ mod registers;
 mod memory;
 mod flash;
 pub mod breakpoints;
-mod run;
+pub mod run;
 
 
 use q::_q;
