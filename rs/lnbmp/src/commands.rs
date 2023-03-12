@@ -25,7 +25,7 @@ use registers::_P;
 use breakpoints::_z;
 use breakpoints::_Z;
 
-use run::{_c,_R,_vCont,_k};
+use run::{_c,_R,_vCont,_k,_s};
 
 type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
 type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
@@ -46,7 +46,7 @@ struct CommandTree
 }
 
 
-const main_command_tree: [CommandTree;17] = 
+const main_command_tree: [CommandTree;19] = 
 [
     CommandTree{ command: "!", args:    0, require_connected: false,   cb: CallbackType::text(_extendedMode) },// enable extended mode
     CommandTree{ command: "Hg",args:    0, require_connected: false,   cb: CallbackType::text(_Hg)      },          // select thread
@@ -63,6 +63,8 @@ const main_command_tree: [CommandTree;17] =
     CommandTree{ command: "z",args:     0, require_connected: true,    cb: CallbackType::text(_z )       },        // read memory
     CommandTree{ command: "Z",args:     0, require_connected: true,    cb: CallbackType::text(_Z )       },    
     CommandTree{ command: "R",args:     0, require_connected: true,    cb: CallbackType::text(_R )       },    
+    CommandTree{ command: "r",args:     0, require_connected: true,    cb: CallbackType::text(_R )       },    
+    CommandTree{ command: "s",args:     0, require_connected: true,    cb: CallbackType::text(_s )       },    
     CommandTree{ command: "k",args:     0, require_connected: true,    cb: CallbackType::text(_k )       },    
     CommandTree{ command: "c",args:     0, require_connected: true,    cb: CallbackType::text(_c )       },    
 
