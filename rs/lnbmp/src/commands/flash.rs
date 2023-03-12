@@ -18,14 +18,14 @@ const vflash_command_tree: [CommandTree;3] =
 [
     CommandTree{ command: "vFlashErase",args: 0, require_connected: true,  cb: CallbackType::text( _vFlashErase) },  // flash erase
     CommandTree{ command: "vFlashWrite",args: 0, require_connected: true,  cb: CallbackType::raw(  _vFlashWrite) },  // flash write
-    CommandTree{ command: "vFlashDone",args: 0, require_connected: true,  cb: CallbackType::text( _vFlashDone)  },  // flash erase
+    CommandTree{ command: "vFlashDone", args: 0, require_connected: true,  cb: CallbackType::text( _vFlashDone)  },  // flash erase
 ];
 
 
 const DISABLE_FLASH: bool = true;
 
 
-fn local_log(p : &str, v: u32)
+fn local_log(_p : &str, _v: u32)
 {
     //crate::util::glogx(p,v);
 }

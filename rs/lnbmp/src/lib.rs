@@ -19,7 +19,7 @@ mod glue;
 use packet_symbols::{CHAR_ACK,CHAR_NACK,INPUT_BUFFER_SIZE};
 use crate::decoder::gdb_stream;
 extern crate alloc;
-use crate::util::glog1;
+use crate::util::{glog,glog1};
 use alloc::vec::Vec;
 use decoder::RESULT_AUTOMATON;
 use numtoa::NumToA;
@@ -96,6 +96,23 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
     let mut data_as_slice : &[u8] =  core::slice::from_raw_parts(d,l);
     let empty1 : [u8;0] = [0;0];
     let empty : &[u8] = &empty1;
+
+    // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
+    // i'm not sure what happens escaping-wise if we let the parser handle it
+    if crate::commands::run::target_is_running()    
+    {
+        if data_as_slice.len() == 1
+        {
+            match data_as_slice[0]
+            {
+                3  => crate::commands::run::target_halt() ,
+                _  => glog("Warning : garbage received")
+            }
+        }
+        return;
+    }
+    // the target is stopped
+    // we can parse the incoming commands
     match autoauto
     {
         Some(ref mut x) => 

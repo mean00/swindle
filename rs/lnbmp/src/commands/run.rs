@@ -22,6 +22,19 @@ pub enum HaltState
     Fault       ,
 }
 
+pub fn target_halt()
+{
+    unsafe { running = false;}
+    bmp::bmp_target_halt();    
+    reply_2("T", 2);
+}
+
+pub fn target_is_running() -> bool
+{
+    unsafe {
+        running
+    }
+}
 
 //
 fn reply_2( prefix : &str, num : u32)
@@ -30,7 +43,7 @@ fn reply_2( prefix : &str, num : u32)
     let mut e = crate::encoder::encoder::new();
     e.begin();
     e.add(prefix);
-    if(num < 16)
+    if num < 16
     {
         e.add("0");
     }
@@ -44,13 +57,13 @@ fn reply_wp( prefix : &str, num : u32, prefix2 : &str, num2: u32)
     let mut e = crate::encoder::encoder::new();
     e.begin();
     e.add(prefix);
-    if(num < 16)
+    if num < 16
     {
         e.add("0");
     }
     e.add(num.numtoa_str(16,&mut buffer));  
     e.add(prefix2);
-    if(num2 < 16)
+    if num2 < 16
     {
         e.add("0");
     }
@@ -79,7 +92,7 @@ extern "C" fn rngdbstub_poll()
             HaltState::Watchpoint(wp)  => reply_wp("T", 5, "watch:",wp as u32 ), // SIGTRAP
             HaltState::Fault        => reply_2("T", 11),  // SIGSEGV
             HaltState::Breakpoint   => reply_2("T", 5), // SIGTRAP
-            _ => panic!("unsupported halt state"),
+  //          _ => panic!("unsupported halt state"),
         }
         unsafe {running = false;}
     }
@@ -98,11 +111,11 @@ pub fn _k(_command : &str, _args : &Vec<&str>) -> bool
 }
 //vCont[;action[:thread-id]]…’
 //
-pub fn _c(command : &str, args : &Vec<&str>) -> bool
+pub fn _c(_command : &str, args : &Vec<&str>) -> bool
 {
     _vCont("vCont",args)
 }
-pub fn _s(command : &str, args : &Vec<&str>) -> bool
+pub fn _s(_command : &str, args : &Vec<&str>) -> bool
 {
     _vCont("vCont;s",args)
 }

@@ -220,6 +220,14 @@ pub fn  bmp_remove_breakpoint(btype: u32, adr : u32 , len : u32) -> bool
         ret_to_bool( rn_bmp_cmd_c::bmp_remove_breakpoint_c(btype,adr,len))
     }
 }
+
+pub fn  bmp_target_halt() -> bool
+{
+    unsafe {
+    ret_to_bool( rn_bmp_cmd_c::bmp_target_halt_c())
+    }
+}
+
 // resume go or step by step
 pub fn bmp_halt_resume( step : bool )-> bool
 {

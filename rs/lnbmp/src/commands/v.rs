@@ -11,14 +11,22 @@ use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 use crate::bmp::bmp_attach;
 use crate::commands::CallbackType;
+use crate::commands::_vCont;
 
-const v_command_tree: [CommandTree;2] = 
+const v_command_tree: [CommandTree;3] = 
 [
     CommandTree{ command: "vMustReply", args: 0, require_connected: false, cb: CallbackType::text( _vMustReply )},  // test
     CommandTree{ command: "vAttach",    args: 0, require_connected: false, cb: CallbackType::text( _vAttach) },  // test    
+    CommandTree{ command: "vRun"   ,    args: 0, require_connected: true, cb: CallbackType::text( vRun) },  // test    
 ];
-
-
+//
+//
+fn vRun(_command : &str, _args : &Vec<&str>) -> bool
+{
+   // _vCont("vCont",args)
+   encoder::reply_ok();
+   true
+}
 //
 //
 //

@@ -35,6 +35,7 @@ bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, c
 bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
 
 bool bmp_target_halt_resume_c(bool step);
+bool bmp_target_halt_c();
 
 unsigned int bmp_poll_target_c(unsigned int *watchpoint);
 

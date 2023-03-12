@@ -191,5 +191,8 @@ extern "C" {
     pub fn bmp_target_halt_resume_c(step: bool_) -> bool_;
 }
 extern "C" {
+    pub fn bmp_target_halt_c() -> bool_;
+}
+extern "C" {
     pub fn bmp_poll_target_c(watchpoint: *mut core::ffi::c_uint) -> core::ffi::c_uint;
 }

@@ -297,7 +297,12 @@ bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address
 	return true;
 
 }
-
+bool bmp_target_halt_c()
+{
+	if(!bmp_attached_c()) return false;	
+	target_halt_request(cur_target);	
+	return true;
+}
 bool bmp_target_halt_resume_c(bool step)
 {
 	if(!bmp_attached_c()) return false;	
