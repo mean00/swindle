@@ -6,14 +6,15 @@ use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
 use crate::util::glogx;
-use crate::parsing_util::hex_to_u8s;
-use crate::parsing_util::ascii_to_u32;
+
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
 use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete};
 use crate::commands::CallbackType;
 use numtoa::NumToA;
+
+use crate::parsing_util::ascii_string_to_u32;
 
 use crate::bmp;
 
@@ -69,22 +70,21 @@ fn common_z(command : &str) -> bool
     }
     // zZ addr kind
     let prefix = args[0];
-    let breakpoint_watchpoint = Breakpoints::from_int( ascii_to_u32( &prefix[1..2]));
-    let address : u32 = ascii_to_u32(args[1]);    
+    let breakpoint_watchpoint = Breakpoints::from_int( ascii_string_to_u32( &prefix[1..2]));
+    let address : u32 = ascii_string_to_u32(args[1]);    
     let len : u32 = 4;
 
     if args[0].starts_with("z") // remove
     {
-        encoder::reply_bool( crate::bmp::bmp_remove_breakpoint(Breakpoints::to_int(&breakpoint_watchpoint), address,len) );        
+        encoder::reply_bool( crate::bmp::bmp_remove_breakpoint(Breakpoints::to_int(&breakpoint_watchpoint), address,len) );
+        return true;
     }
-    else
     if args[0].starts_with("Z") // add
     {
         encoder::reply_bool( crate::bmp::bmp_add_breakpoint(Breakpoints::to_int(&breakpoint_watchpoint), address,len) );
-    }else
-    {
-        encoder::reply_e01();
+        return true;            
     }
+    encoder::reply_e01();
     true
 }
 

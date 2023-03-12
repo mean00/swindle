@@ -6,7 +6,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
 use crate::util::glogx;
-use crate::parsing_util::hex_to_u8s;
+
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -100,7 +100,7 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
         return true; 
     }
 
-    let adr  =crate::parsing_util::u8s_to_u32( &block[..prefix] );
+    let adr  =crate::parsing_util::u8s_string_to_u32( &block[..prefix] );
     let data: &[u8] = &block[(prefix+1)..];
     //crate::util::glog1("adr:",adr);
     //crate::util::glog1("len:",data.len());

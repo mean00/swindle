@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use crate::util::glog;
 use crate::bmp;
 use crate::encoder::encoder;
-use crate::parsing_util::hex_to_u8s;
+use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::commands::{CallbackType,exec_one,CommandTree};
 //
 //
@@ -29,7 +29,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     }
     // The command is hex encoded, decode it
     let mut out : [u8;32] = [0;32];    
-    let rcmd = match hex_to_u8s(largs[1],&mut out)
+    let rcmd = match ascii_hex_string_to_u8s(largs[1],&mut out)
     {
         Ok(x)    =>     x    ,
         Err(_y)    => {return false;},

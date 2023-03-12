@@ -10,7 +10,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::parsing_util::ascii_to_hex;
+use crate::parsing_util::ascii_octet_to_hex;
 use crate::util::glog;
 use crate::util::glog1;
 use crate::util::glogx;
@@ -170,11 +170,12 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                         {
                                             self.checksum_received[1]=c;
                                             // Verify checksum 
-                                            let chk=ascii_to_hex(self.checksum_received[0],self.checksum_received[1]);
+                                            let chk=ascii_octet_to_hex(self.checksum_received[0],self.checksum_received[1]);
                                             if chk == (self.checksum & 0xff) as u8
                                             {
                                                 PARSER_AUTOMATON::Done
-                                            }else
+                                            }
+                                            else
                                             {
                                                 glog("Wrong checksum\n");
                                                 PARSER_AUTOMATON::Error

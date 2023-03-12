@@ -51,8 +51,8 @@ pub fn glogx (s : &str, v: u32)
 pub fn xswap( a: &mut isize, b : &mut isize)
 {
     let z: isize = *a;
-    *a=*b;
-    *b=z;
+    *a = *b;
+    *b = z;
 }
 pub fn xmin(a : isize, b: isize) -> isize
 {

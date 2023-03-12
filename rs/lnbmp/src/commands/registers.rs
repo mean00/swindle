@@ -2,7 +2,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::glog;
-use crate::parsing_util::hex_to_u8s;
+
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -14,7 +14,7 @@ use crate::bmp::bmp_get_mapping;
 use crate::bmp::MemoryBlock;
 use crate::bmp::mapping::{ FLASH,RAM};
 
-use crate::parsing_util::ascii_to_u32;
+use crate::parsing_util::ascii_string_to_u32;
 
 use crate::bmp;
 
@@ -31,8 +31,8 @@ fn pp_prefix( command : &str) -> Option<(u32,u32)>
         glog("Pxxx wrong args");
         return None;
     }
-    let reg = ascii_to_u32(args[0]);
-    let value = ascii_to_u32(args[1]);
+    let reg = ascii_string_to_u32(args[0]);
+    let value = ascii_string_to_u32(args[1]);
     return Some( (reg,value));
 }
 // Write reg

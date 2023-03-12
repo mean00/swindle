@@ -148,7 +148,8 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                         if command.len()==0
                                         {
                                             crate::util::glog("Cannot read string");                                            
-                                        }else
+                                        }
+                                        else
                                         {                                            
                                             rngdb_send_data( CHAR_ACK ); 
                                             rngdb_output_flush( );

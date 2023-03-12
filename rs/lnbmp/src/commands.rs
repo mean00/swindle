@@ -88,7 +88,8 @@ fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
                 glog(c.command);
                 encoder::reply_e01();
                 return true;                
-            }else
+            }
+            else
             {
                 // Is it a regular callback or binary callback
                 return match c.cb

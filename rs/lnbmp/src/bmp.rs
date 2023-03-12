@@ -2,7 +2,6 @@
 
 use crate::commands;
 use crate::rn_bmp_cmd_c;
-use cty;
 use core::ptr::null;
 use core::ptr::null_mut;
 use alloc::vec::Vec;

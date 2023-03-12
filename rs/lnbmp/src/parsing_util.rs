@@ -4,15 +4,17 @@ use alloc::vec::Vec;
 use cty::size_t;
 use crate::util::glog;
 
-//--
-pub fn hex_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Result<&'b [u8],i32>
+//
+//
+//
+pub fn ascii_hex_string_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Result<&'b [u8],i32>
 {
     let datain = sin.as_bytes();
 
     let s= datain.len()/2;
     for i in 0..s
     {
-        sout[i]=ascii_to_hex( datain[i*2],datain[i*2+1]);
+        sout[i]=ascii_octet_to_hex( datain[i*2],datain[i*2+1]);
     }
     return Ok(&sout[..s]);
 }
@@ -31,7 +33,7 @@ fn _hex( digit : u8 ) -> u8
     }
 }
 //---
-pub fn ascii_to_hex( left : u8, right : u8 ) -> u8
+pub fn ascii_octet_to_hex( left : u8, right : u8 ) -> u8
 {
 
     (_hex(left)<<4)+_hex(right)
@@ -46,12 +48,12 @@ pub fn _tohex( v: u8) -> u8
     return b'0'+v;
 }
 //---
-pub fn ascii_to_u32(s : &str) -> u32
+pub fn ascii_string_to_u32(s : &str) -> u32
 {
     let datain = s.as_bytes();
-    u8s_to_u32(datain)
+    u8s_string_to_u32(datain)
 }
-pub fn u8s_to_u32(datain : &[u8]) -> u32
+pub fn u8s_string_to_u32(datain : &[u8]) -> u32
 {
     let mut val  : u32 = 0;
     for i in 0..datain.len()
@@ -84,8 +86,8 @@ pub fn take_adress_length( xin : &str ) -> Option< (u32, u32) >
         glog("take_adress_length : wrong param");
         return None;
     }
-    let address = crate::parsing_util::ascii_to_u32(args[0]);
-    let len = crate::parsing_util::ascii_to_u32(args[1]);
+    let address = crate::parsing_util::ascii_string_to_u32(args[0]);
+    let len = crate::parsing_util::ascii_string_to_u32(args[1]);
     Some ( (address,len) )
 }
 
