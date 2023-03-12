@@ -8,6 +8,9 @@ use crate::encoder::encoder;
 use numtoa::NumToA;
 use crate::bmp;
 
+
+static mut running :bool  = false;
+
 pub enum HaltState
 {
     Running     ,
@@ -48,11 +51,15 @@ fn reply_4( prefix : &str, num : u32, prefix2 : &str, num2: u32)
 extern "C" fn rngdbstub_poll()
 {
     // this is called regularily
-    if bmp::bmp_attached()
+    let check: bool;
+    unsafe {
+     check =  bmp::bmp_attached() && running;
+    }
+    if check
     {
         match bmp::bmp_poll()
         {
-            HaltState::Running      => (),                  // nothing to do !
+            HaltState::Running      => return,                  // nothing to do !
             HaltState::Error        => reply_2("X", 29),    // SIGLOST
             HaltState::Request      => reply_2("T", 2),     // SIGINT
             HaltState::Watchpoint(wp)  => reply_4("T", 5, "watch:",wp as u32 ), // SIGTRAP
@@ -60,6 +67,7 @@ extern "C" fn rngdbstub_poll()
             HaltState::Breakpoint   => reply_2("T", 5), // SIGTRAP
             _ => panic!("unsupported halt state"),
         }
+        unsafe {running = false;}
     }
 }
 
@@ -93,6 +101,7 @@ pub fn _vCont(command : &str, _args : &Vec<&str>) -> bool
     }
     if command.len()<7 // naked vcond
     {
+        unsafe {running = true;}
         crate::bmp::bmp_halt_resume(false);
         //encoder::reply_ok();
         return true;
@@ -102,6 +111,7 @@ pub fn _vCont(command : &str, _args : &Vec<&str>) -> bool
     {
         b'c' => 
         {
+            unsafe {running = true;}
             crate::bmp::bmp_halt_resume(false);
           //  encoder::reply_ok();
             true
@@ -109,6 +119,7 @@ pub fn _vCont(command : &str, _args : &Vec<&str>) -> bool
         b's' => 
         {
             crate::bmp::bmp_halt_resume(true);
+            unsafe {running = true;}
          //   encoder::reply_ok();
             true
         },
