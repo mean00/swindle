@@ -38,7 +38,7 @@ fn reply_2( prefix : &str, num : u32)
     e.end();
 }
 //
-fn reply_4( prefix : &str, num : u32, prefix2 : &str, num2: u32)
+fn reply_wp( prefix : &str, num : u32, prefix2 : &str, num2: u32)
 {
     let mut buffer: [u8;20] = [0; 20]; 
     let mut e = crate::encoder::encoder::new();
@@ -55,6 +55,7 @@ fn reply_4( prefix : &str, num : u32, prefix2 : &str, num2: u32)
         e.add("0");
     }
     e.add(num2.numtoa_str(16,&mut buffer));  
+    e.add(";");
     e.end();
 }
 
@@ -75,7 +76,7 @@ extern "C" fn rngdbstub_poll()
             HaltState::Error        => reply_2("X", 29),    // SIGLOST
             HaltState::Stepping     => reply_2("T", 5), // SIGTRAP
             HaltState::Request      => reply_2("T", 2),     // SIGINT
-            HaltState::Watchpoint(wp)  => reply_4("T", 5, "watch:",wp as u32 ), // SIGTRAP
+            HaltState::Watchpoint(wp)  => reply_wp("T", 5, "watch:",wp as u32 ), // SIGTRAP
             HaltState::Fault        => reply_2("T", 11),  // SIGSEGV
             HaltState::Breakpoint   => reply_2("T", 5), // SIGTRAP
             _ => panic!("unsupported halt state"),
