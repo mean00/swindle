@@ -12,10 +12,16 @@ extern "C"
 #include "target_internal.h"
 bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
+target_s *cur_target;
+bool shutdown_bmda;
+
 
 void gdb_target_destroy_callback(target_controller_s *tc, target_s *t)
 {
-    xAssert(0);
+    if (t==cur_target)
+	{
+		cur_target=NULL;
+	}
 }
  void gdb_target_printf(target_controller_s *tc, const char *fmt, va_list ap)
  {
@@ -41,8 +47,6 @@ target_controller_s gdb_controller = {
 
 
 
-target_s *cur_target;
-bool shutdown_bmda;
 /*
 
 */
