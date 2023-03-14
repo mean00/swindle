@@ -65,11 +65,11 @@ impl encoder
     }
     pub fn reply_ok()
     {
-        Self::raw_send_u8(b"$OK#9A");                
+        Self::raw_send_u8(b"$OK#9A"); Self::flush();
     }
     pub fn reply_e01()
     {
-        Self::raw_send_u8(b"$E01#A6");                
+        Self::raw_send_u8(b"$E01#A6"); Self::flush();
     }
     //
     pub fn begin(&mut self)
