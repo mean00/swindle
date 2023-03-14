@@ -265,7 +265,7 @@ bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *
 {
 	if(!bmp_attached_c()) return false;
 
-	if (!generic_crc32(cur_target, crc, address, length))
+	if (!generic_crc32(cur_target, (uint32_t *)crc, address, length))
 		return false;
 	return true;
 }

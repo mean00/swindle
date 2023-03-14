@@ -4,8 +4,8 @@ extern "C"
 {
 
 #include "general.h"
-
-#define BOARD_STUB(x) bool x(target *t) {return false;}
+#include "adiv5.h"
+#define BOARD_STUB(x) bool x(adiv5_access_port_s *apb) {return false;}
 
 //grep undefined /tmp/x | sort | uniq | sed 's/.*reference to .//g' | sed 's/.$/);/g' | sed 's/^/BOARD_STUB(/g' | sed 's/ //g' | uniq
 
@@ -32,7 +32,7 @@ BOARD_STUB(stm32h7_probe);
 BOARD_STUB(samx7x_probe);
 BOARD_STUB(renesas_probe);
 
-bool cortexa_probe()
+bool cortexa_probe(adiv5_access_port_s *apb, uint32_t debug_base)
 {
   return false;
 }
