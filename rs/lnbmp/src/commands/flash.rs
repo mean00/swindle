@@ -22,7 +22,7 @@ const vflash_command_tree: [CommandTree;3] =
 ];
 
 
-const DISABLE_FLASH: bool = true;
+const DISABLE_FLASH: bool = false;
 
 
 fn local_log(_p : &str, _v: u32)
