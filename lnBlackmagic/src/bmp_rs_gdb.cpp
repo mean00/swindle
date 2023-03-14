@@ -198,7 +198,7 @@ void gdb_task(void *parameters)
       // We get here at worst every 100 ms
       if(connected)
       {
-        rngdbstub_poll();
+        rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
       }
       if(ev & GDB_SESSION_START)
       {
