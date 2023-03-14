@@ -2,14 +2,17 @@
 lnBMP : black magic probe with rust in it
 =====
 
-lnBMP is made of 3 layers :
+lnBMP is a custom port of the amazin Black Magic Probe.
+lnBmp is made of 3 layers :
 
-1- gdb command parser written in rust
-2- blackmagic probe debugger engine
-3- low level stuff using lnArduino
+* a gdb command parser written in rust.
+* the blackmagic probe debugger engine.
+* low level stuff using lnArduino.
 
 Why ?
 Because it's fun to play with rust.
+Additionnaly, the structure of the gdb rust parser is simpler than the one
+from blackmagic and easier to modify to add support for things.
 
 Quick FAQ
 ==================
@@ -18,7 +21,7 @@ Quick FAQ
 * Can i run it on xyz board ? : No, only STM32F103, GD32F103, GD32F303 and CH32V3x.
 * Can i debug all the boards : No, only some are enabled, but you can easily change that.
 * Can i use a DFU update on a regular BMP software ? : Yes but /!\ be careful of the pinout used /!\
-* Is Jtag supported ? : No, only SWD
+* Is Jtag supported ? : No, only SWD. 
 
 How to build
 ------------
