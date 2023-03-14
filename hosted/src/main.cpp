@@ -152,6 +152,7 @@ extern "C"
 	{
 		current_connection->write(sz,ptr);
 	}
+	fflush(stdout);
  }
 void rngdb_output_flush_c()
 {
@@ -161,6 +162,7 @@ void rngdb_output_flush_c()
 	}
 	qInfo() << "\n";
 	eol=true;
+	fflush(stdout);
 
 }
 }
