@@ -1,0 +1,13 @@
+diff --git a/src/command.c b/src/command.c
+index 46709697..14ba19ce 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -53,7 +53,7 @@ static bool cmd_version(target_s *t, int argc, const char **argv);
+ static bool cmd_help(target_s *t, int argc, const char **argv);
+ 
+ static bool cmd_jtag_scan(target_s *t, int argc, const char **argv);
+-static bool cmd_swdp_scan(target_s *t, int argc, const char **argv);
++/*static*/ bool cmd_swdp_scan(target_s *t, int argc, const char **argv);
+ static bool cmd_auto_scan(target_s *t, int argc, const char **argv);
+ static bool cmd_frequency(target_s *t, int argc, const char **argv);
+ static bool cmd_targets(target_s *t, int argc, const char **argv);
