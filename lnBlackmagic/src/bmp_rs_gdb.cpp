@@ -72,18 +72,9 @@ public:
       _inSession=false;
     }
     bool inSession() {return _inSession;}
-    int read(int max, uint8_t *buffer)
-    {
-      return _cdc->read(buffer, max);
-    }
-    int write(int max, const uint8_t *buffer)
-    {
-      return _cdc->write(buffer, max);
-    }
-    void flush()
-    {
-       _cdc->flush();
-    }
+
+    lnUsbCDC *cdc() { xAssert(_cdc);return _cdc;}
+
     bool takeOwnership()
     {
         
@@ -214,7 +205,7 @@ void gdb_task(void *parameters)
       {
           while(connected)
           {
-            int n= usbGdb->read(GDB_BUFFER_SIZE, gdb_buffer);
+            int n= usbGdb->cdc()->read(gdb_buffer, GDB_BUFFER_SIZE);
             if(n>0)
             {
               rngdbstub_run(n,gdb_buffer);
@@ -250,7 +241,7 @@ extern "C"
   {
       while(sz && usbGdb->inSession())
       {
-        int n=usbGdb->write(sz,ptr);
+        int n=usbGdb->cdc()->write(ptr,sz);
         if(!n)
         {
           xDelay(5);      
@@ -265,7 +256,7 @@ extern "C"
   {
     if(usbGdb->inSession())
     {
-      usbGdb->flush();
+      usbGdb->cdc()->flush();
     }
   }
 }
