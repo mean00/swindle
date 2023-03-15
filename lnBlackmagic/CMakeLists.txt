@@ -51,7 +51,7 @@ IF (LN_BMP_HOSTED) # Hosted mode
             ${PC}/serial_unix.c  ${PC}/utils.c
             ${PC}/cli.c       ${PC}/probe_info.c
             ${T}/jtag_scan.c  ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c
-            ${B}/stubs.cpp
+            #!!${B}/stubs.cpp
             )
 ELSE()  # "Normal" /Standalone mode
   MESSAGE(STATUS "Building for embedded mode (${LN_BMP_HOSTED})")
@@ -59,11 +59,11 @@ ELSE()  # "Normal" /Standalone mode
   ADD_DEFINITIONS("-DPC_HOSTED=0")
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
   #  add lnBlackmagic target code and host connection stuff
-  SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp  ${B}/bmp_stubs.cpp
+  SET(BRIDGE_SRCS ${B}/bridge.cpp ${B}/bmp_gpio.cpp  #!!${B}/bmp_stubs.cpp
           ${B}/bmp_swdTap.cpp   ${B}/bmp_serial.cpp  
           ${B}/bmp_rs_gdb.cpp
           #${B}/bmp_gdb.cpp
-          ${B}/bmp_jtagstubs.cpp  ${B}/stubs.cpp
+          ${B}/bmp_jtagstubs.cpp  #!!${B}/stubs.cpp
           )
   include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
 ENDIF()
@@ -75,12 +75,8 @@ SET(BM_TARGET       ${T}/adiv5.c    ${T}/adiv5_swdp.c   ${T}/cortexm.c    ${T}/t
                         # ${S}/gdb_hostio.c 
                         ) #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
 
-SET(BM_PLATFORM_COMMON   ${B}/bmp_interface.cpp ${B}/bmp_string.cpp ${B}/bmp_utils.cpp 
-                         ${B}/bmp_gdb_cmd.cpp ${B}/bmp_thread_cache.cpp
-                         #${BMP}/../rs/lnbmp/c_interface/bmp_interface_c.cpp
-                        )
 
-add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BM_TARGET} ${BM_HOSTED} ${BM_PLATFORM_COMMON} ${BOARDS})
+add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BM_TARGET} ${BM_HOSTED}  ${BOARDS})
 IF(USE_STLINK_PINOUT)
         target_compile_definitions(lnBlackmagic PRIVATE USE_STLINK_PINOUT)
 ENDIF(USE_STLINK_PINOUT)
