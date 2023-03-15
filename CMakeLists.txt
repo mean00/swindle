@@ -8,8 +8,10 @@ MESSAGE(STATUS "Starting lnBMP ")
 MESSAGE(STATUS "======================")
 
 OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
+OPTION(USE_GD32F3        "Target GD32F303 chip with 256 flash" OFF)
+OPTION(USE_CH32V3x       "Target USE_CH32V3x chip with 256 flash" OFF)
 
-SET(USE_GD32F3      TRUE CACHE INTERNAL "")
+#SET(USE_GD32F3      TRUE CACHE INTERNAL "")
 SET(USE_CLANG       TRUE CACHE INTERNAL "")
 SET(LN_LTO "-flto"  CACHE INTERNAL "")
 
@@ -72,7 +74,9 @@ target_link_libraries(lnBMP rsbmp)
 #
 #
 #
-IF(USE_GD32F3)
+IF(USE_CH32V3x)
+    SET(TGT_NAME "CH32V3x")
+ELSEIF(USE_GD32F3)
     SET(TGT_NAME "GD32F3")
 ELSE()
     SET(TGT_NAME "STM32F1")
@@ -80,17 +84,25 @@ ENDIF()
 #
 #
 #
+MESSAGE(STATUS "=======")
 MESSAGE(STATUS "Summary")
 MESSAGE(STATUS "=======")
+
+
+math(EXPR MCU_SPEED_M "${LN_MCU_SPEED}/1000000")
+
+MESSAGE(STATUS "Built for ${LN_ARCH}/${LN_MCU} with ${LN_MCU_FLASH_SIZE} flash / ${LN_MCU_RAM_SIZE} ram")
+MESSAGE(STATUS "          MCU running at ${MCU_SPEED_M} Mhz")
 
 IF(USE_STLINK_PINOUT)
     MESSAGE(STATUS "STLink style pinout (PA13/PA14)")
     SET(TGT_PINOUT "stlink_pinout")
 ELSE()
-    MESSAGE(STATUS "lnBMP pinout (PB8/PB9)")
+    MESSAGE(STATUS "Using lnBMP pinout (PB8/PB9)")
     SET(TGT_PINOUT "default_pinout")
 ENDIF()
 
-set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${TGT_NAME} )
+
+set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${TGT_NAME}_${LN_MCU}_${MCU_SPEED_M}M )
 
 
