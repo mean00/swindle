@@ -9,13 +9,13 @@ MESSAGE(STATUS "======================")
 
 OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 
-SET(USE_GD32F3 TRUE CACHE INTERNAL "")
-SET(USE_CLANG TRUE CACHE INTERNAL "")
-SET(LN_LTO "-flto" CACHE INTERNAL "")
+SET(USE_GD32F3      TRUE CACHE INTERNAL "")
+SET(USE_CLANG       TRUE CACHE INTERNAL "")
+SET(LN_LTO "-flto"  CACHE INTERNAL "")
 
-SET(LN_ENABLE_USBD True CACHE INTERNAL "")
-SET(LN_ENABLE_I2C  FALSE CACHE INTERNAL "")
-SET(LN_ENABLE_SPI  FALSE CACHE INTERNAL "")
+SET(LN_ENABLE_USBD  True CACHE INTERNAL "")
+SET(LN_ENABLE_I2C   FALSE CACHE INTERNAL "")
+SET(LN_ENABLE_SPI   FALSE CACHE INTERNAL "")
 SET(AF_FOLDER  ${CMAKE_SOURCE_DIR}/lnArduino/)
 include(./mcuSelect.cmake)
 # Update paths
@@ -69,14 +69,28 @@ target_link_libraries(lnBMP gd32_usb_usbd )
 target_link_libraries(lnBMP lnBMP_interface )
 target_link_libraries(lnBMP rsbmp)
 
+#
+#
+#
+IF(USE_GD32F3)
+    SET(TGT_NAME "GD32F3")
+ELSE()
+    SET(TGT_NAME "STM32F1")
+ENDIF()
+#
+#
+#
 MESSAGE(STATUS "Summary")
 MESSAGE(STATUS "=======")
+
 IF(USE_STLINK_PINOUT)
     MESSAGE(STATUS "STLink style pinout (PA13/PA14)")
-    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_stlink_pinout )
-ELSE(USE_STLINK_PINOUT)
+    SET(TGT_PINOUT "stlink_pinout")
+ELSE()
     MESSAGE(STATUS "lnBMP pinout (PB8/PB9)")
-    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_default_pinout)
+    SET(TGT_PINOUT "default_pinout")
 ENDIF()
+
+set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${TGT_NAME} )
 
 
