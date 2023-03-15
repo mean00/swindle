@@ -167,7 +167,11 @@ extern "C" int gdb_if_init(void)
 }
 /**
 */
-extern void initFreeRTOS();
+void initFreeRTOS()
+{
+
+}
+
 
 
 /*
