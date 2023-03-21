@@ -195,29 +195,32 @@ void gdb_task(void *parameters)
       {
         rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
       }
-      if(ev & GDB_SESSION_START)
+      if(ev)
       {
-        rngdbstub_init();
-        connected=true;
-      }
-      if(ev & GDB_SESSION_END)
-      {
-        rngdbstub_shutdown();
-        connected=false;
-      }
-      if(ev&GDB_CDC_DATA_AVAILABLE)
-      {
-          while(connected)
-          {
-            int n= usbGdb->cdc()->read(gdb_buffer, GDB_BUFFER_SIZE);
-            if(n>0)
+        if(ev & GDB_SESSION_START)
+        {
+          rngdbstub_init();
+          connected=true;
+        }
+        if(ev & GDB_SESSION_END)
+        {
+          rngdbstub_shutdown();
+          connected=false;
+        }
+        if(ev&GDB_CDC_DATA_AVAILABLE)
+        {
+            while(connected)
             {
-              rngdbstub_run(n,gdb_buffer);
-            }else 
-            {
-              break;
+              int n= usbGdb->cdc()->read(gdb_buffer, GDB_BUFFER_SIZE);
+              if(n>0)
+              {
+                rngdbstub_run(n,gdb_buffer);
+              }else 
+              {
+                break;
+              }
             }
-          }
+        }
       }
       if(!connected)
       {
