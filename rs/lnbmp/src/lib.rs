@@ -48,7 +48,7 @@ extern "C" fn rngdbstub_shutdown()
     unsafe {
         if autoauto.is_none()
         {
-            panic!("notsome");
+//            panic!("notsome");
         }
         autoauto = None;
     }
