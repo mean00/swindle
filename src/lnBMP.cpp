@@ -1,6 +1,6 @@
 #include "lnArduino.h"
 
-#define LED LN_SYSTEM_LED
+#define LED  PC13
 #define LED2 PA8
 
 extern "C" void user_init();
