@@ -144,6 +144,9 @@ void goDfu()
   // and reboot
   // Gpio marker to enter bootloader mode
   lnPinMode(PA1,lnALTERNATE_PP);
+  // + set marker in ram
+  uint64_t *marker=(uint64_t *)0x0000000020000000;
+  *marker = 0xDEADBEEFCC00FFEEULL;
   lnSoftSystemReset();
 }
 
