@@ -51,7 +51,7 @@ static void swdioSetAsOutput(bool output);
 SwdPin pSWDIO(TSWDIO_PIN);
 SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
 SwdPin pReset(TRESET_PIN);
-const lnPin pinDirection=PB5;
+
 /**
 
 */
@@ -61,10 +61,17 @@ void bmp_gpio_init()
   pSWDIO.output();
   pSWCLK.clockOn();
   pSWCLK.output();
-  pReset.input();
-  lnPinMode(pinDirection,lnOUTPUT);
-  lnDigitalWrite(pinDirection,1);
+  pReset.input();  
 }
+/**
+*/
+ SwdPin::SwdPin(lnBMPPins no) : _fast(_mapping[no&7])
+    {
+      _me=_mapping[no&7];
+      _output=false;
+      on();
+      output();
+    }
 
 /**
 */
@@ -139,8 +146,7 @@ void swdioSetAsOutput(bool output)
   switch((int)output)
   {
       case false: // in
-       {
-           lnDigitalWrite(pinDirection,0);
+       {           
            pSWDIO.input();
            pSWCLK.clockOn();
            pSWCLK.clockOff();
@@ -148,8 +154,7 @@ void swdioSetAsOutput(bool output)
        }
        break;
       case true: // out
-      {
-          lnDigitalWrite(pinDirection,1);
+      {        
           pSWCLK.clockOn();
           pSWCLK.clockOff();
           pSWDIO.output();

@@ -7,13 +7,7 @@
 class SwdPin
 {
 public:
-    SwdPin(lnBMPPins no) : _fast(_mapping[no&7])
-    {
-      _me=_mapping[no&7];
-      _output=false;
-      on();
-      output();
-    }
+    SwdPin(lnBMPPins no);
 
 
     void on()
