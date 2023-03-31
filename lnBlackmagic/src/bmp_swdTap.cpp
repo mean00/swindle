@@ -37,7 +37,7 @@ extern "C"
   #include "adiv5.h"
 }
 
-uint32_t swd_delay_cnt=1;
+uint32_t swd_delay_cnt=2;
 
 #include "lnBMP_swdio.h"
 
@@ -65,16 +65,6 @@ void bmp_gpio_init()
 }
 /**
 */
- SwdPin::SwdPin(lnBMPPins no) : _fast(_mapping[no&7])
-    {
-      _me=_mapping[no&7];
-      _output=false;
-      on();
-      output();
-    }
-
-/**
-*/
 static uint32_t SwdRead(size_t len)
 {
 	uint32_t index = 1;
@@ -82,14 +72,15 @@ static uint32_t SwdRead(size_t len)
   int bit;
 
   swdioSetAsOutput(false);
-	while (len--)
+	for(int i=0;i<len;i++)
   {
-		bit = pSWDIO.read();
-    pSWCLK.clockOn();
-    if(bit) ret|=index;
-		index <<= 1;
     pSWCLK.clockOff();
+		bit = pSWDIO.read();
+    if(bit) ret|=index;
+    pSWCLK.clockOn();    
+		index <<= 1;    
 	}
+  pSWCLK.clockOff();
 	return ret;
 }
 /**
@@ -100,8 +91,7 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
   res= SwdRead( len);
 	int currentParity = __builtin_popcount(res) & 1;
 	int parityBit = pSWDIO.read();
-	pSWCLK.clockOn();
-	pSWCLK.clockOff();
+	pSWCLK.clockOn();	
 	*ret = res;
 	swdioSetAsOutput(true);
 	return 1&(currentParity^parityBit); // should be equal
@@ -112,15 +102,15 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
 static void SwdWrite(uint32_t MS, size_t ticks)
 {
   int cnt;
-	swdioSetAsOutput(true);
-  pSWDIO.set(MS & 1);
-	while (ticks--)
+	swdioSetAsOutput(true);  
+	for(int i=0;i<ticks;i++)
   {
+      pSWCLK.clockOff();			
+      pSWDIO.set(MS & 1);      
       pSWCLK.clockOn();
-			MS >>= 1;
-      pSWDIO.set(MS & 1);
-      pSWCLK.clockOff();
+      MS >>= 1;
 	}
+  pSWCLK.clockOff();
 }
 /**
 */
@@ -147,16 +137,16 @@ void swdioSetAsOutput(bool output)
   {
       case false: // in
        {           
-           pSWDIO.input();
-           pSWCLK.clockOn();
+           pSWDIO.input();           
            pSWCLK.clockOff();
+           pSWCLK.clockOn();
            break;
        }
        break;
       case true: // out
-      {        
-          pSWCLK.clockOn();
-          pSWCLK.clockOff();
+      {   
+          pSWCLK.clockOff();     
+          pSWCLK.clockOn();          
           pSWDIO.output();
           break;
       }
