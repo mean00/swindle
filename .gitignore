@@ -23,3 +23,6 @@ updat*.*
 rs/lnbmp/target
 *.tmp
 tags
+kicad/ch32v3x/lnBMP_ch32/lnBMP_ch32-backups/
+*.new
+*.old
