@@ -37,7 +37,8 @@ extern "C" fn rngdbstub_init()
     unsafe {
     if autoauto.is_some()
     {
-        panic!("notnull");
+        //panic!("notnull");
+        autoauto = None;
     }
     autoauto = Some(gdb_stream::<INPUT_BUFFER_SIZE>::new());
     }
