@@ -4,8 +4,8 @@ IF(NOT DEFINED LN_ARCH)
     # try without crystal...
     #SET(LN_USE_INTERNAL_CLOCK True        CACHE INTERNAL "")
     #SET(LN_MCU_SPEED          48000000    CACHE INTERNAL "") # 96 Mhz
-
-    SET(LN_MCU_SPEED          96000000    CACHE INTERNAL "") # 96 Mhz
+    #SET(LN_MCU_SPEED          96000000    CACHE INTERNAL "") # 96 Mhz
+    SET(LN_MCU_SPEED          144000000    CACHE INTERNAL "") # 144 Mhz
 
     SET(LN_ARCH "RISCV"                   CACHE INTERNAL "")
     SET(LN_MCU  "CH32V3x"                 CACHE INTERNAL "")
