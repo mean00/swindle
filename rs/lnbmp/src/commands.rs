@@ -46,7 +46,7 @@ struct CommandTree
 }
 
 
-const main_command_tree: [CommandTree;19] = 
+const main_command_tree: [CommandTree;20] = 
 [
     CommandTree{ command: "!", args:    0, require_connected: false,   cb: CallbackType::text(_extendedMode) },// enable extended mode
     CommandTree{ command: "Hg",args:    0, require_connected: false,   cb: CallbackType::text(_Hg)      },          // select thread
@@ -67,6 +67,7 @@ const main_command_tree: [CommandTree;19] =
     CommandTree{ command: "s",args:     0, require_connected: true,    cb: CallbackType::text(_s )       },    
     CommandTree{ command: "k",args:     0, require_connected: true,    cb: CallbackType::text(_k )       },    
     CommandTree{ command: "c",args:     0, require_connected: true,    cb: CallbackType::text(_c )       },    
+    CommandTree{ command: "D",args:     0, require_connected: true,    cb: CallbackType::text(_D )       },    
 
 ];
 
@@ -140,10 +141,22 @@ fn _Hg(_command : &str, _args : &Vec<&str>) -> bool
 }
 // select thread
 fn _Hc(_command : &str, _args : &Vec<&str>) -> bool
-{
+{    
     encoder::reply_ok();   
     true
 }
+
+// detach
+fn _D(_command : &str, _args : &Vec<&str>) -> bool
+{
+    if crate::bmp::bmp_attached()
+    {       
+        crate::bmp::bmp_detach();
+    }
+    encoder::reply_ok();   
+    true
+}
+
 
 // Read registers
 fn _g(_command : &str, _args : &Vec<&str>) -> bool

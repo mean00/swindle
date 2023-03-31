@@ -69,6 +69,20 @@ bool bmp_attach_c(uint32_t target)
         return false;
 
 }
+/**
+*/
+bool bmp_detach_c(uint32_t target)
+{
+	if (cur_target)
+	{
+		SET_RUN_STATE(true);
+		target_detach(cur_target);
+		cur_target = NULL;
+	}
+	return true;
+}
+
+
 static char tmpBuffer[128];
 /**
 */

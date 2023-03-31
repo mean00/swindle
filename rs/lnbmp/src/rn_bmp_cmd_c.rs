@@ -111,6 +111,9 @@ extern "C" {
     pub fn bmp_attach_c(target: core::ffi::c_uint) -> bool_;
 }
 extern "C" {
+    pub fn bmp_detach_c(target: core::ffi::c_uint) -> bool_;
+}
+extern "C" {
     pub fn bmp_attached_c() -> bool_;
 }
 extern "C" {

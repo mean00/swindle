@@ -111,6 +111,13 @@ pub fn swdp_scan() -> bool
     }
 }
 
+pub fn bmp_detach() -> bool
+{
+    unsafe 
+    {
+        ret_to_bool( rn_bmp_cmd_c::bmp_detach_c(0) )
+    }
+}
 pub fn bmp_attached() -> bool
 {
     unsafe 

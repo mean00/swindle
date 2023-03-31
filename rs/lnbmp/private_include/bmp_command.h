@@ -7,6 +7,7 @@ typedef int bool ;
 bool cmd_swdp_scan(const target_s *t, int argc, const char **argv);
 
 bool bmp_attach_c(uint32_t target);
+bool bmp_detach_c(uint32_t target);
 bool bmp_attached_c();
 
 int  bmp_map_count_c(const uint32_t  kind);
