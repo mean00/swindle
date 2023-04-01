@@ -2,7 +2,7 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
+use crate::util::{glog,glog1};
 use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util::ascii_hex_string_to_u8s;
@@ -10,10 +10,22 @@ use crate::commands::{CallbackType,exec_one,CommandTree};
 //
 //
 //
-const mon_command_tree: [CommandTree;1] = 
+const mon_command_tree: [CommandTree;2] = 
 [
     CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
+    CommandTree{ command: "voltage",args: 0,      require_connected: false ,cb: CallbackType::text( _voltage) },      // 
 ];
+
+//
+pub fn _voltage(command : &str, _args : &Vec<&str>) -> bool
+{
+
+    let voltage = bmp::bmp_get_target_voltage();
+    let voltage32 : u32 = (voltage * 1000.) as u32;
+    glog1("\nVoltage(mv):",voltage32);
+    encoder::reply_ok();
+    return true;
+}
 
 //
 // Execute command

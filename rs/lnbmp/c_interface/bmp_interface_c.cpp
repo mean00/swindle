@@ -10,6 +10,9 @@ extern "C"
 #include "gdb_hostio.h"
 #include "target.h"
 #include "target_internal.h"
+#include "lnADC.h"
+#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
+
 bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
 target_s *cur_target;
@@ -275,6 +278,22 @@ bool bmp_flash_complete_c()
 	return false;
 }
 
+float bmp_get_target_voltage_c()
+{
+   lnPeripherals::enable( Peripherals::pADC0);
+   lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO,lnADC_MODE);
+   lnSimpleADC adc(0,PIN_ADC_NRESET_DIV_BY_TWO);
+   int sample = adc.simpleRead();
+   float vcc =    lnBaseAdc::getVcc();
+   if(vcc<2.6) 
+   {
+		Logger("Invalid ADC Vref\n");
+   		return 0.0;
+   }
+   vcc=(float)sample*vcc*2.; // need to multiply by 2 
+   vcc=vcc/4095000.;
+   return vcc;
+}
 bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc)
 {
 	if(!bmp_attached_c()) return false;

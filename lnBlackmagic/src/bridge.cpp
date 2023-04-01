@@ -16,6 +16,7 @@
 #include "general.h"
 #include "target_internal.h"
 
+extern "C" float bmp_get_target_voltage_c();
 }
 
 lnStopWatch stopWatch(1);
@@ -41,9 +42,12 @@ void platform_init()
 
 /**
 */
+static char buffer[10];
 const char *platform_target_voltage(void)
 {
-  return "??";
+  float v= bmp_get_target_voltage_c();
+  snprintf(buffer,9,"%2.2f v",v);
+  return buffer;
 }
 
 /**

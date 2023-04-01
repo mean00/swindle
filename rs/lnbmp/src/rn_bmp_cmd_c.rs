@@ -160,6 +160,9 @@ extern "C" {
     pub fn bmp_flash_complete_c() -> bool_;
 }
 extern "C" {
+    pub fn bmp_get_target_voltage_c() -> f32;
+}
+extern "C" {
     pub fn bmp_mem_read_c(
         addr: core::ffi::c_uint,
         length: core::ffi::c_uint,

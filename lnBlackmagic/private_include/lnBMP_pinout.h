@@ -44,3 +44,5 @@ enum lnBMPPins
     TSWDCK_PIN=6,
     TRESET_PIN=7,
 };
+
+#define PIN_ADC_NRESET_DIV_BY_TWO PA3 // this pins is connected to NRST/2

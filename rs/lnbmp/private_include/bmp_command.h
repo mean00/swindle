@@ -25,7 +25,7 @@ bool bmp_read_reg_c (const unsigned int reg, unsigned int *value);
 bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length);
 bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data);
 bool bmp_flash_complete_c();
-
+float bmp_get_target_voltage_c();
 
 bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data);
 

@@ -118,6 +118,15 @@ pub fn bmp_detach() -> bool
         ret_to_bool( rn_bmp_cmd_c::bmp_detach_c(0) )
     }
 }
+
+pub fn bmp_get_target_voltage() -> f32
+{
+    unsafe
+    {
+        rn_bmp_cmd_c::bmp_get_target_voltage_c()
+    }
+}
+
 pub fn bmp_attached() -> bool
 {
     unsafe 
