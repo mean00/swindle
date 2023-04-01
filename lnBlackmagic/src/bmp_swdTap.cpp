@@ -37,7 +37,7 @@ extern "C"
   #include "adiv5.h"
 }
 
-uint32_t swd_delay_cnt=2;
+uint32_t swd_delay_cnt=4;
 
 #include "lnBMP_swdio.h"
 
