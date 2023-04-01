@@ -7,22 +7,41 @@ use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::commands::{CallbackType,exec_one,CommandTree};
+use crate::glue::gdb_out_rs;
+use numtoa::NumToA;
 //
 //
 //
-const mon_command_tree: [CommandTree;2] = 
+const mon_command_tree: [CommandTree;3] = 
 [
+    CommandTree{ command: "help",args: 0,      require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
     CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
     CommandTree{ command: "voltage",args: 0,      require_connected: false ,cb: CallbackType::text( _voltage) },      // 
 ];
 
 //
-pub fn _voltage(command : &str, _args : &Vec<&str>) -> bool
+pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
+{
+
+    for i in 0..mon_command_tree.len()
+    {
+        gdb_out_rs( &(mon_command_tree[i].command));
+    }
+    encoder::reply_ok();
+    return true;
+}
+
+//
+pub fn _voltage(_command : &str, _args : &Vec<&str>) -> bool
 {
 
     let voltage = bmp::bmp_get_target_voltage();
     let voltage32 : u32 = (voltage * 1000.) as u32;
-    glog1("\nVoltage(mv):",voltage32);
+    let mut buffer: [u8;20] = [0; 20]; 
+    
+    gdb_out_rs(&"Voltage (mv):");
+    gdb_out_rs(voltage32.numtoa_str(10,&mut buffer));
+    gdb_out_rs(&"\n");
     encoder::reply_ok();
     return true;
 }

@@ -22,3 +22,13 @@ pub extern "C" fn gdb_out(fmt : *const i8)
     e.end(); 
 }
 
+pub fn gdb_out_rs(fmt : &str) 
+{    
+    let mut e = encoder::new();
+    e.begin();
+    e.add("O");    
+    e.hex_and_add(fmt);    
+    e.end(); 
+}
+
+
