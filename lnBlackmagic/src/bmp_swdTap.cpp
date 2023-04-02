@@ -52,6 +52,11 @@ SwdPin pSWDIO(TSWDIO_PIN);
 SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
 SwdPin pReset(TRESET_PIN);
 
+extern "C" void bmp_set_wait_state_c(uint32_t ws)
+{
+  swd_delay_cnt = ws;
+}
+
 /**
 
 */
