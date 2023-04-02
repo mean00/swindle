@@ -59,7 +59,7 @@ const main_command_tree: [CommandTree;20] =
     CommandTree{ command: "?",args:     0, require_connected: false,   cb: CallbackType::text(_mark)  },        // reason for halt
     CommandTree{ command: "X",args:     0, require_connected: true,    cb: CallbackType::text(_X)      },        // write binary    
     CommandTree{ command: "m",args:     0, require_connected: true,    cb: CallbackType::text(_m )       },        // read memory
-    CommandTree{ command: "P",args:     0, require_connected: true,    cb: CallbackType::text(_P )       },    
+    CommandTree{ command: "P",args:     0, require_connected: true,    cb: CallbackType::text(_P )       },         // write register
     CommandTree{ command: "z",args:     0, require_connected: true,    cb: CallbackType::text(_z )       },        // read memory
     CommandTree{ command: "Z",args:     0, require_connected: true,    cb: CallbackType::text(_Z )       },    
     CommandTree{ command: "R",args:     0, require_connected: true,    cb: CallbackType::text(_R )       },    
@@ -76,7 +76,7 @@ const main_command_tree: [CommandTree;20] =
 fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
 {
    let connected : bool = crate::bmp::bmp_attached();   
-   glog(command);
+   glog(command);glog("\n");
    let empty : &str = "";
    for i in 0..tree.len()
    {
@@ -85,6 +85,9 @@ fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
         {
             if !connected && c.require_connected
             {
+                crate::glue::gdb_out_rs("Command ") ;
+                crate::glue::gdb_out_rs(c.command) ;
+                crate::glue::gdb_out_rs("cannot be used while not connected\n") ;
                 glog("Command not ok while not connected");
                 glog(c.command);
                 encoder::reply_e01();
@@ -123,6 +126,10 @@ pub fn exec(command : &str,  args : &[u8])
         {
             encoder::simple_send("");            // unsupported
             crate::util::glog1("Unsupported cmd :",command);
+            crate::util::glog("\n");
+            crate::glue::gdb_out_rs(">>>Command [") ;
+            crate::glue::gdb_out_rs(command) ;
+            crate::glue::gdb_out_rs("] is not supported\n") ;
         }        
     }
 }

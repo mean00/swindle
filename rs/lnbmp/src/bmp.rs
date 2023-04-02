@@ -211,6 +211,18 @@ pub fn bmp_reset_target() -> bool
         ret_to_bool( rn_bmp_cmd_c::bmp_reset_target_c() )
     }
 }
+/* 
+ * This adds wait state to the SWD signals i.e. slows it down
+ */
+pub fn bmp_set_wait_state(ws : u32)
+{
+    unsafe{
+        rn_bmp_cmd_c::bmp_set_wait_state_c(ws);
+    }
+}
+
+
+
 /*
 
 typedef enum target_breakwatch {

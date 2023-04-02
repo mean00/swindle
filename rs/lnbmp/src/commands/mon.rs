@@ -22,10 +22,12 @@ const mon_command_tree: [CommandTree;3] =
 //
 pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
 {
-
+    gdb_out_rs( "mon commands :\n");
     for i in 0..mon_command_tree.len()
     {
+        gdb_out_rs( "   ");
         gdb_out_rs( &(mon_command_tree[i].command));
+        gdb_out_rs( ":\n");
     }
     encoder::reply_ok();
     return true;
@@ -84,17 +86,54 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     exec_one(&mon_command_tree,as_string, args)
     
 }
-
+/*
+    Detect stuff connected to the SWD interface
+    Try to use the fastest speed
+ */
 pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
 {
-    glog("swdp_scan");
-    if bmp::swdp_scan()
+    glog("swdp_scan:\n");
+    let mut pivot = 4;
+    let mut inc = 4;
+    // is there anything at all ?
+    bmp::bmp_set_wait_state(8); // starts slow..
+    if !bmp::swdp_scan()
     {
-        glog("success!");
-        encoder::reply_ok();
-        return true;
+        glog("fail ws=8!\n");
+        return false;     // nope
     }
-    glog("fail!");
-    return false;
+
+    loop
+    {        
+        glog1("swdp_scan: pivot",pivot);
+        glog("\n");
+        glog1("swdp_scan: inc",inc);
+        glog("\n");
+        bmp::bmp_set_wait_state(pivot);
+        if !bmp::swdp_scan()
+        {
+            pivot+=inc;        
+        } 
+        else
+        {
+            pivot-=inc;
+        }   
+        inc=inc>>1;
+        if inc==0 || pivot==0
+        {
+            break;
+        }
+    }
+    // final check
+    bmp::bmp_set_wait_state(pivot);
+    if !bmp::swdp_scan()
+    {
+        glog("fail!\n");
+        return false;
+    }
+    crate::glue::gdb_out_rs_u32("Using ", pivot) ;
+    crate::glue::gdb_out_rs(" wait state\n");    
+    encoder::reply_ok();
+    return true;
     
 }

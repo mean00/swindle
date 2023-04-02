@@ -4,6 +4,8 @@ typedef void target_s ;
 typedef int bool ;
 
 
+void bmp_set_wait_state_c(unsigned int ws); // this is used to set the clock on SWD 
+
 bool cmd_swdp_scan(const target_s *t, int argc, const char **argv);
 
 bool bmp_attach_c(uint32_t target);

@@ -101,6 +101,9 @@ pub type uint_fast64_t = core::ffi::c_ulonglong;
 pub type target_s = core::ffi::c_void;
 pub type bool_ = core::ffi::c_int;
 extern "C" {
+    pub fn bmp_set_wait_state_c(ws: core::ffi::c_uint);
+}
+extern "C" {
     pub fn cmd_swdp_scan(
         t: *const target_s,
         argc: core::ffi::c_int,
