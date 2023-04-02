@@ -10,8 +10,14 @@ extern "C"
 #include "gdb_hostio.h"
 #include "target.h"
 #include "target_internal.h"
-#include "lnADC.h"
-#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
+
+
+#ifndef PC_HOSTED
+	
+	#include "lnADC.h"
+	#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
+#endif
+
 
 bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
@@ -277,7 +283,7 @@ bool bmp_flash_complete_c()
 			return true;
 	return false;
 }
-
+#ifndef PC_HOSTED
 float bmp_get_target_voltage_c()
 {
    lnPeripherals::enable( Peripherals::pADC0);
@@ -294,6 +300,12 @@ float bmp_get_target_voltage_c()
    vcc=vcc/4095000.;
    return vcc;
 }
+#else
+float bmp_get_target_voltage_c()
+{   
+   return 0.0;
+}
+#endif
 bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc)
 {
 	if(!bmp_attached_c()) return false;

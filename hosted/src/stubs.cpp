@@ -8,4 +8,4 @@ extern "C" void do_assert(const char *z)
 
 }
 extern "C" void _putchar(char) {};
-
+extern "C" void bmp_set_wait_state_c(unsigned int ws) {}

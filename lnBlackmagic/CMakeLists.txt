@@ -37,7 +37,7 @@ IF (LN_BMP_HOSTED) # Hosted mode
 
     include_directories(${S})
     include_directories(../)
-    include_directories(../lnArduino/legacy/boards/bluepill)
+    include_directories(../lnArduino/arm_gd32fx/boards/bluepill)
 
     SET(HOSTED ${BMP}/src/platforms/hosted )
     SET(PC ${BMP}/src/platforms/hosted )
