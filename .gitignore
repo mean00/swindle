@@ -26,3 +26,5 @@ tags
 kicad/ch32v3x/lnBMP_ch32/lnBMP_ch32-backups/
 *.new
 *.old
+*auto_save*
+*autosave*
