@@ -12,6 +12,7 @@ mod x;
 mod registers;
 mod memory;
 mod flash;
+mod rpc;
 pub mod breakpoints;
 pub mod run;
 
