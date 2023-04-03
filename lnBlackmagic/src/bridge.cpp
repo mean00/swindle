@@ -70,7 +70,7 @@ void platform_delay(uint32_t ms)
 */
 void user_init(void)
 {
-	xTaskCreate(&gdb_task, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY, NULL);
+	lnCreateTask(&gdb_task, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
 }
 
 /**
