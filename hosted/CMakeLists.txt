@@ -31,7 +31,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 
-find_package(Qt5 COMPONENTS Network REQUIRED)
+find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
 
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
@@ -62,7 +62,7 @@ corrosion_import_crate(MANIFEST_PATH ../rs/lnbmp/Cargo.toml    NO_DEFAULT_FEATUR
 corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 
 SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
-SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/qtcp.h)
+SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/qtcp.h ${H}/bmp_qtserial.cpp)
 
 ADD_EXECUTABLE(lnBMP_hosted ${SRC})
 target_link_libraries(lnBMP_hosted rsbmp)
@@ -71,4 +71,4 @@ target_link_libraries(lnBMP_hosted lnBlackmagic  )
 target_link_libraries(lnBMP_hosted lnBMP_interface)
 target_link_libraries(lnBMP_hosted lnBlackmagic  )
 target_link_libraries(lnBMP_hosted embeddedPrintf usb-1.0 )
-target_link_libraries(lnBMP_hosted Qt5::Network)
+target_link_libraries(lnBMP_hosted Qt5::Network Qt5::SerialPort)

@@ -44,11 +44,14 @@ IF (LN_BMP_HOSTED) # Hosted mode
 
     include_directories( ${HOSTED})
     SET(BM_HOSTED
-            ${HOSTED}/bmp_remote.c ${HOSTED}/bmp_serial.c      ${HOSTED}/dap.c
+            ${HOSTED}/bmp_remote.c 
+            #${HOSTED}/bmp_serial.c      
+            ${HOSTED}/dap.c
             ${HOSTED}/platform.c   ${HOSTED}/remote_jtagtap.c  ${HOSTED}/remote_swdptap.c
             #${PC}/cl_utils.c   
             #${PC}/gdb_if.c    
-            ${PC}/serial_unix.c  ${PC}/utils.c
+            #${PC}/serial_unix.c  
+            ${PC}/utils.c
             ${PC}/cli.c       ${PC}/probe_info.c
             ${T}/jtag_scan.c  ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c
             #!!${B}/stubs.cpp
