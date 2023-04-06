@@ -12,7 +12,8 @@ mod x;
 mod registers;
 mod memory;
 mod flash;
-mod rpc;
+pub mod rpc;
+pub mod rpc_commands;
 pub mod breakpoints;
 pub mod run;
 

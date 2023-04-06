@@ -11,11 +11,9 @@
 #![allow(unused_imports)]
 
 use crate::parsing_util::ascii_octet_to_hex;
-use crate::util::glog;
-use crate::util::glog1;
-use crate::util::glogx;
+use crate::util::{glog,glog1,glogx};
 
-use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE};
+use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE,RPC_START, RPC_END};
 //
 //
 #[derive(PartialEq,Clone,Copy)]
@@ -28,7 +26,9 @@ enum PARSER_AUTOMATON
     End1,
     End2,  
     Done, 
+    RpcDone,
     Reset, 
+    RpcBody,
     Error,
 }
 /**
@@ -42,6 +42,7 @@ pub enum RESULT_AUTOMATON
 {
     Continue,
     Ready,
+    RpcReady,
     Reset,
     Error,
 }
@@ -126,11 +127,29 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                 PARSER_AUTOMATON::Idle => 
                                             match c
                                             {
-                                                CHAR_START /*'$'*/  => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
-                                            //    CHAR_RESET_04       => PARSER_AUTOMATON::Reset,
-                                                _                   => PARSER_AUTOMATON::Idle,
+                                                CHAR_START /*'$'*/      => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
+                                                RPC_START  /* '&' */    => {glog("rpc start");self.indx=0;PARSER_AUTOMATON::RpcBody},
+                                                _                       => PARSER_AUTOMATON::Idle,
                                             }
                                             ,
+                PARSER_AUTOMATON::RpcBody => 
+                                            match c
+                                            {
+                                                RPC_END /*'$'*/         => {glog("rpc done");PARSER_AUTOMATON::RpcDone}, 
+                                                RPC_START /*'#'*/       => {self.indx=0;PARSER_AUTOMATON::RpcBody},  // restart ? wtf ?
+                                                _                       => {
+                                                                        if self.indx > INPUT_BUFFER_SIZE
+                                                                        {
+                                                                            glog("RPC input buffer overflow");
+                                                                            PARSER_AUTOMATON::Error
+                                                                        }else
+                                                                        {
+                                                                            self.input_buffer[self.indx]= c;
+                                                                            self.indx+=1;
+                                                                            PARSER_AUTOMATON::Body
+                                                                        }
+                                                                    },
+                                            },                                             
                 PARSER_AUTOMATON::Body => 
                                             match c
                                             {
@@ -182,6 +201,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             }
                                         },
                 PARSER_AUTOMATON::Reset =>   panic!("automatonReset"), 
+                PARSER_AUTOMATON::RpcDone => panic!("automatonRpcDone"), //; PARSER_AUTOMATON::Done},
                 PARSER_AUTOMATON::Done => panic!("automatonDone"), //; PARSER_AUTOMATON::Done},
                 PARSER_AUTOMATON::Error => panic!("automatonError"), //; PARSER_AUTOMATON::Done},
             };
@@ -190,6 +210,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
             {
                 PARSER_AUTOMATON::Error => {self.automaton=PARSER_AUTOMATON::Idle; return (consumed, RESULT_AUTOMATON::Error);},
                 PARSER_AUTOMATON::Done  =>   {return (consumed, RESULT_AUTOMATON::Ready);},
+                PARSER_AUTOMATON::RpcDone  =>   {return (consumed, RESULT_AUTOMATON::RpcReady);},
                 PARSER_AUTOMATON::Reset =>   {crate::util::glog("RESET");self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
                 _                         => (),
             }

@@ -9,6 +9,18 @@ use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::commands::{CallbackType,exec_one,CommandTree};
 use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
+
+
+pub fn rpc(input : &[u8])
+{
+    if input.len() < 2 // unlikely...?
+    {
+        glog("short rpc\n");
+        return;
+    }
+    glog1("rpc",input.len());glog("\n");
+}
+
 //
 //
 //
