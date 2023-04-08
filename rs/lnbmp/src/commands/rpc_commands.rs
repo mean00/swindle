@@ -1,6 +1,11 @@
 /*
     Converted from BMP remote.h
  */
+pub const RPC_JTAG_PACKET  : u8 = b'J';
+pub const RPC_SWDP_PACKET  : u8 = b'S';
+pub const RPC_GEN_PACKET   : u8 = b'G';
+pub const RPC_HL_PACKET    : u8 = b'H';
+
 /* Generic protocol elements */
 pub const RPC_START        : u8 = b'A';
 pub const RPC_TDITDO_TMS   : u8 = b'D';
@@ -30,9 +35,9 @@ pub const RPC_RESP_PARERR   : u8 = b'P';
 pub const RPC_RESP_ERR      : u8 = b'E';
 pub const RPC_RESP_NOTSUP   : u8 = b'N';
 
+
 /* High level protocol elements */
 pub const RPC_HL_CHECK          : u8 = b'C';
-pub const RPC_HL_PACKET         : u8 = b'H';
 pub const RPC_DP_READ           : u8 = b'd';
 pub const RPC_LOW_ACCESS        : u8 = b'L';
 pub const RPC_AP_READ           : u8 = b'a';
@@ -42,3 +47,9 @@ pub const RPC_MEM_READ          : u8 = b'h';
 pub const RPC_MEM_WRITE_SIZED   : u8 = b'H';
 pub const RPC_AP_MEM_WRITE_SIZED: u8 = b'm';
 
+pub const RPC_REMOTE_ERROR_UNRECOGNISED   : u8 = 1;
+pub const RPC_REMOTE_RESP         : u8 = b'&';
+pub const RPC_REMOTE_RESP_OK      : u8 = b'K';
+pub const RPC_REMOTE_RESP_PARERR  : u8 = b'P';
+pub const RPC_REMOTE_RESP_ERR     : u8 = b'E';
+pub const RPC_REMOTE_RESP_NOTSUP  : u8 = b'N';

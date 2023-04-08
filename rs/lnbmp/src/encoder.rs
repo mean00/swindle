@@ -173,7 +173,7 @@ impl encoder
     {
         rngdb_send_data_u8(data);
     }   
-    fn flush()
+    pub fn flush()
     {
         rngdb_output_flush();
     }

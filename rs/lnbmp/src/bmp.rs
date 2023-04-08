@@ -288,5 +288,70 @@ pub fn bmp_poll() -> HaltState
         }
     }
 }
+//----------------------------------
+pub fn rpc_init_swd() -> bool
+{
+    unsafe {
+        ret_to_bool( rn_bmp_cmd_c::bmp_rpc_init_swd_c() )
+    }
+}
+/*
+*/
+pub fn rpc_swd_in(value : &mut u32, nb_bits : u32) -> bool
+{
+    unsafe {
+            let ptr : *mut u32   = value;
+            ret_to_bool( rn_bmp_cmd_c::bmp_rpc_swd_in_c(ptr,nb_bits  ) )
+    }
+
+}
+/*
+*/
+pub fn  bmp_rpc_swd_in_par(value : &mut u32, xparity : &mut bool, nb_bits : u32) -> bool
+{
+    unsafe {
+        let ptr : *mut u32  = value;
+        let mut pari32 : i32 = 0;
+        let ptr_bool : *mut i32 = &mut pari32;
+        
+        let r = ret_to_bool( rn_bmp_cmd_c::bmp_rpc_swd_in_par_c(ptr, ptr_bool, nb_bits  ) );
+        
+        if pari32!=0
+        {
+            *xparity = true;
+        }else
+        {
+            *xparity = false;
+        }
+        r
+    }
+}
+
+pub fn  bmp_rpc_swd_in(value : &mut u32, nb_bits : u32) -> bool
+{
+    unsafe {
+        let ptr : *mut u32  = value;
+        
+        let r = ret_to_bool( rn_bmp_cmd_c::bmp_rpc_swd_in_c(ptr,  nb_bits  ) );
+        
+        r
+    }
+}
+/*
+*/
+pub fn  bmp_rpc_swd_out(value : u32, nb_bits : u32) -> bool
+{
+    unsafe {
+        ret_to_bool( rn_bmp_cmd_c::bmp_rpc_swd_out_c(value, nb_bits  ) )
+    }
+}
+/*
+*/
+pub fn bmp_rpc_swd_out_par(value : u32, nb_bits : u32) -> bool
+{
+    unsafe {
+        ret_to_bool( rn_bmp_cmd_c::bmp_rpc_swd_out_par_c(value, nb_bits) )
+    }
+}
 
 // EOF

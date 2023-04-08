@@ -1,5 +1,8 @@
 
-
+/**
+ * This handles the low level RPC as used when BMP is running in hosted mode
+ * It is a parralel path to the normal gdb command and is BMP specific
+ */
 use alloc::vec;
 use alloc::vec::Vec;
 use crate::util::{glog,glog1};
@@ -9,31 +12,232 @@ use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::commands::{CallbackType,exec_one,CommandTree};
 use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
+use crate::commands::rpc_commands;
 
+/**
+ * 
+ */
+fn rpc_message_out( message : &[u8])
+{    
+    encoder::raw_send_u8(&message);
+    encoder::flush();    
+}
+/**
+ * 
+ */
+fn rpc_reply(code : u8, subcode: u8)
+{
+    let mut reply : [u8;5] =[0,0,0,0,0];
+    
+    let ascii=crate::parsing_util::u8_to_ascii(subcode);
 
-pub fn rpc(input : &[u8])
+    reply[0]=rpc_commands::RPC_REMOTE_RESP;
+    reply[1]=code;    
+    reply[2]=ascii[0];
+    reply[3]=ascii[1];
+    reply[4]=crate::packet_symbols::RPC_END;
+    rpc_message_out(&reply);    
+}
+/**
+ * 
+ */
+fn rpc_reply32(code : u8, subcode: u32)
+{
+    let mut reply : [u8;11] =[0,0,0,0,0,0,0,0,0,0,0];        
+
+    reply[0]=rpc_commands::RPC_REMOTE_RESP;
+    reply[1]=code;    
+    for i in 0..4
+    {
+        let ascii=crate::parsing_util::u8_to_ascii(  ((subcode>>(8*(3-i))) & 0xff) as u8);
+        reply[2+i*2]=ascii[0];
+        reply[3+i*2]=ascii[1];
+    }
+    reply[10]=crate::packet_symbols::RPC_END;
+    rpc_message_out(&reply);    
+}
+/*
+ */
+fn rpc_hl_packet(input : &[u8]) -> bool
+{
+    glog("hl packet\n");
+    false
+}
+/*
+ */
+fn rpc_gen_packet(input : &[u8]) -> bool
+{
+    glog("gen packet\n");
+    false
+}
+/*
+ */
+
+fn nbTick( pin: &[u8]) -> u32
+{
+    if pin.len()<2
+    {
+        glog("!!!! Size parm in swd SEQ too short");
+        return 0;
+    }
+    crate::parsing_util::ascii_octet_to_hex(pin[0],pin[2]) as u32
+}
+
+fn rpc_swdp_packet(input : &[u8]) -> bool
+{
+    match input[0]
+    {
+        rpc_commands::RPC_INIT        => { 
+                                    bmp::rpc_init_swd();  
+                                    rpc_reply(rpc_commands::RPC_RESP_OK, 0);
+                                    return true;
+                                },
+        rpc_commands::RPC_IN_PAR      => {
+                                    let tick = nbTick(&input[1..=2]);
+                                    if tick == 0
+                                    {
+                                        return false;
+                                    }
+                                    let mut value : u32 =0;
+                                    let mut parity : bool = false;
+                                    match bmp::bmp_rpc_swd_in_par(&mut value, &mut parity, tick )
+                                    {
+                                        true => 
+                                                    rpc_reply32(
+                                                        match parity
+                                                        {
+                                                            true => rpc_commands::RPC_RESP_PARERR,
+                                                            false => rpc_commands::RPC_RESP_OK,
+                                                        }, value),
+                                        false =>  rpc_reply(rpc_commands::RPC_RESP_ERR,0),
+                                    };
+                                    return true;
+                                },
+        rpc_commands::RPC_IN          => {
+                                    let tick = nbTick(&input[1..=2]);
+                                    if tick == 0
+                                    {
+                                        return false;
+                                    }
+                                    let mut value : u32 =0;
+                                    match bmp::bmp_rpc_swd_in(&mut value, tick  )
+                                    {
+                                        true  =>  rpc_reply32(rpc_commands::RPC_RESP_OK, value),
+                                        false =>  rpc_reply32(rpc_commands::RPC_RESP_ERR, value),                                        
+                                    };
+                                },
+        rpc_commands::RPC_OUT_PAR     => {
+                                    let tick = nbTick(&input[1..=2]);
+                                    if tick == 0
+                                    {
+                                        return false;
+                                    }
+                                    let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
+                                    bmp::bmp_rpc_swd_out_par(param,  tick  );
+                                    rpc_reply(rpc_commands::RPC_RESP_OK, 0);
+                                },
+        rpc_commands::RPC_OUT         => {
+                                    if input.len()!=9
+                                    {
+                                        glog("RPC_out wrong len\n");
+                                        return false;
+                                    }
+                                    let tick = nbTick(&input[1..=2]);
+                                    if tick == 0
+                                    {
+                                        return false;
+                                    }
+                                    let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
+                                    bmp::bmp_rpc_swd_out(param,  tick  );
+                                    rpc_reply(rpc_commands::RPC_RESP_OK, 0);
+                            },
+        _                   => (),
+    };
+    /*
+    uint8_t ticks;
+    uint32_t param;
+    bool badParity;
+
+    switch (packet[1]) {
+    case REMOTE_INIT: /@ SS = initialise =============================== @/
+        if (i == 2) {
+            remote_dp.dp_read = firmware_swdp_read;
+            remote_dp.low_access = firmware_swdp_low_access;
+            remote_dp.abort = firmware_swdp_abort;
+            swdptap_init();
+            remote_respond(REMOTE_RESP_OK, 0);
+        } else {
+            remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_WRONGLEN);
+        }
+        break;
+
+    case REMOTE_IN_PAR: /@ SI = In parity ============================= @/
+        ticks = remotehston(2, &packet[2]);
+        badParity = swd_proc.seq_in_parity(&param, ticks);
+        remote_respond(badParity ? REMOTE_RESP_PARERR : REMOTE_RESP_OK, param);
+        break;
+
+    case REMOTE_IN: /@ Si = In ======================================= @/
+        ticks = remotehston(2, &packet[2]);
+        param = swd_proc.seq_in(ticks);
+        remote_respond(REMOTE_RESP_OK, param);
+        break;
+
+    case REMOTE_OUT: /@ So= Out ====================================== @/
+        ticks = remotehston(2, &packet[2]);
+        param = remotehston(-1, &packet[4]);
+        swd_proc.seq_out(param, ticks);
+        remote_respond(REMOTE_RESP_OK, 0);
+        break;
+
+    case REMOTE_OUT_PAR: /@ SO = Out parity ========================== @/
+        ticks = remotehston(2, &packet[2]);
+        param = remotehston(-1, &packet[4]);
+        swd_proc.seq_out_parity(param, ticks);
+        remote_respond(REMOTE_RESP_OK, 0);
+        break;
+*/
+    glog("unmanaged swdp packet\n");
+    false
+}
+/*
+ */
+fn rpc_jtag_packet(input : &[u8]) -> bool
+{
+    glog("jtag packet\n");
+    false
+}
+
+/*
+ */
+fn rpc_wrapper(input : &[u8]) -> bool
 {
     if input.len() < 2 // unlikely...?
     {
         glog("short rpc\n");
-        return;
+        return false;
     }
     glog1("rpc",input.len());glog("\n");
+    return match input[0]
+    {
+        rpc_commands::RPC_JTAG_PACKET  => rpc_jtag_packet(&input[1..]),
+        rpc_commands::RPC_SWDP_PACKET  => rpc_swdp_packet(&input[1..]),
+        rpc_commands::RPC_GEN_PACKET   => rpc_gen_packet(&input[1..]),
+        rpc_commands::RPC_HL_PACKET    => rpc_hl_packet(&input[1..]),
+        _ => {glog("wrong RPC header\n");return false;}
+    };    
 }
 
-//
-//
-//
-const rpc_command_tree: [CommandTree;1] = 
-[
-    CommandTree{ command: "xx",args: 0,      require_connected: false ,cb: CallbackType::text( xx) },      //     
-];
-
-//
-pub fn xx(_command : &str, _args : &Vec<&str>) -> bool
+/**
+ * 
+ */
+pub fn rpc(input : &[u8]) -> bool
 {
-   
-    return true;
+   if !rpc_wrapper(input)
+   {
+        rpc_reply(rpc_commands::RPC_RESP_ERR, rpc_commands::RPC_REMOTE_ERROR_UNRECOGNISED);
+   }
+   true
 }
 /*
  #include "general.h"
@@ -126,64 +330,6 @@ pub fn xx(_command : &str, _args : &Vec<&str>) -> bool
          s++;
      }
      gdb_if_putchar(REMOTE_EOM, 1);
- }
- 
- static adiv5_debug_port_s remote_dp = {
-     .ap_read = firmware_ap_read,
-     .ap_write = firmware_ap_write,
-     .mem_read = advi5_mem_read_bytes,
-     .mem_write = adiv5_mem_write_bytes,
- };
- 
- static void remote_packet_process_swd(unsigned i, char *packet)
- {
-     uint8_t ticks;
-     uint32_t param;
-     bool badParity;
- 
-     switch (packet[1]) {
-     case REMOTE_INIT: /@ SS = initialise =============================== @/
-         if (i == 2) {
-             remote_dp.dp_read = firmware_swdp_read;
-             remote_dp.low_access = firmware_swdp_low_access;
-             remote_dp.abort = firmware_swdp_abort;
-             swdptap_init();
-             remote_respond(REMOTE_RESP_OK, 0);
-         } else {
-             remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_WRONGLEN);
-         }
-         break;
- 
-     case REMOTE_IN_PAR: /@ SI = In parity ============================= @/
-         ticks = remotehston(2, &packet[2]);
-         badParity = swd_proc.seq_in_parity(&param, ticks);
-         remote_respond(badParity ? REMOTE_RESP_PARERR : REMOTE_RESP_OK, param);
-         break;
- 
-     case REMOTE_IN: /@ Si = In ======================================= @/
-         ticks = remotehston(2, &packet[2]);
-         param = swd_proc.seq_in(ticks);
-         remote_respond(REMOTE_RESP_OK, param);
-         break;
- 
-     case REMOTE_OUT: /@ So= Out ====================================== @/
-         ticks = remotehston(2, &packet[2]);
-         param = remotehston(-1, &packet[4]);
-         swd_proc.seq_out(param, ticks);
-         remote_respond(REMOTE_RESP_OK, 0);
-         break;
- 
-     case REMOTE_OUT_PAR: /@ SO = Out parity ========================== @/
-         ticks = remotehston(2, &packet[2]);
-         param = remotehston(-1, &packet[4]);
-         swd_proc.seq_out_parity(param, ticks);
-         remote_respond(REMOTE_RESP_OK, 0);
-         break;
- 
-     default:
-         remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_UNRECOGNISED);
-         break;
-     }
  }
  
  
@@ -389,3 +535,4 @@ pub fn xx(_command : &str, _args : &Vec<&str>) -> bool
 */ 
 
 // EOF
+

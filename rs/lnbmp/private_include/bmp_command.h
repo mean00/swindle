@@ -42,6 +42,13 @@ bool bmp_target_halt_c();
 
 unsigned int bmp_poll_target_c(unsigned int *watchpoint);
 
+
+bool bmp_rpc_init_swd_c();
+bool bmp_rpc_swd_in_c(uint32_t *value,  const unsigned int nb_bits);
+bool bmp_rpc_swd_in_par_c(uint32_t *value, bool *par,  const unsigned int nb_bits);
+bool bmp_rpc_swd_out_c(const uint32_t value,  const unsigned int nb_bits);
+bool bmp_rpc_swd_out_par_c(const uint32_t value,   const unsigned int nb_bits);
+
 /*
 bool cmd_auto_scan(target_s *t, int argc, const char **argv);
 bool cmd_frequency(target_s *t, int argc, const char **argv);

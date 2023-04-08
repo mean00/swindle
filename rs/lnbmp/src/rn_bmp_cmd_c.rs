@@ -205,3 +205,22 @@ extern "C" {
 extern "C" {
     pub fn bmp_poll_target_c(watchpoint: *mut core::ffi::c_uint) -> core::ffi::c_uint;
 }
+extern "C" {
+    pub fn bmp_rpc_init_swd_c() -> bool_;
+}
+extern "C" {
+    pub fn bmp_rpc_swd_in_c(value: *mut core::ffi::c_uint, nb_bits: core::ffi::c_uint) -> bool_;
+}
+extern "C" {
+    pub fn bmp_rpc_swd_in_par_c(
+        value: *mut core::ffi::c_uint,
+        par: *mut bool_,
+        nb_bits: core::ffi::c_uint,
+    ) -> bool_;
+}
+extern "C" {
+    pub fn bmp_rpc_swd_out_c(value: core::ffi::c_uint, nb_bits: core::ffi::c_uint) -> bool_;
+}
+extern "C" {
+    pub fn bmp_rpc_swd_out_par_c(value: core::ffi::c_uint, nb_bits: core::ffi::c_uint) -> bool_;
+}
