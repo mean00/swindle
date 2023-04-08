@@ -13,7 +13,7 @@
 use crate::parsing_util::ascii_octet_to_hex;
 use crate::util::{glog,glog1,glogx};
 
-use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE,RPC_START, RPC_END};
+use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE,RPC_START, RPC_END, RPC_START_SESSION};
 //
 //
 #[derive(PartialEq,Clone,Copy)]
@@ -29,6 +29,7 @@ enum PARSER_AUTOMATON
     RpcDone,
     Reset, 
     RpcBody,
+    PARSER_AUTOMATON_RPC2_HEAD1, // alternat RPC starting by a '+'    
     Error,
 }
 /**
@@ -127,11 +128,17 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                 PARSER_AUTOMATON::Idle => 
                                             match c
                                             {
+                                                RPC_START_SESSION /* + */ => PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1,
                                                 CHAR_START /*'$'*/      => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
-                                                RPC_START  /* '&' */    => {glog("rpc start");self.indx=0;PARSER_AUTOMATON::RpcBody},
+                                                RPC_START  /* '!' */    => {glog("rpc start");self.indx=0;PARSER_AUTOMATON::RpcBody},
                                                 _                       => PARSER_AUTOMATON::Idle,
-                                            }
-                                            ,
+                                            },
+                PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1 => 
+                                            match c
+                                            {
+                                                RPC_END => PARSER_AUTOMATON::Idle, /* Skip + EOM so we get a vanilla RPC string */
+                                                _ => PARSER_AUTOMATON::Idle, /* It is also used from some jtag RPC commands, dont optimize it */
+                                            },
                 PARSER_AUTOMATON::RpcBody => 
                                             match c
                                             {
@@ -146,7 +153,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                                         {
                                                                             self.input_buffer[self.indx]= c;
                                                                             self.indx+=1;
-                                                                            PARSER_AUTOMATON::Body
+                                                                            PARSER_AUTOMATON::RpcBody
                                                                         }
                                                                     },
                                             },                                             

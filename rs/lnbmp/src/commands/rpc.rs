@@ -59,6 +59,7 @@ fn rpc_reply32(code : u8, subcode: u32)
 /**
  * 
  */
+#[no_mangle]
 fn rpc_reply_string(code : u8, s: &[u8])
 {    
     let mut reply : [u8;2] =[0,0];
@@ -78,12 +79,17 @@ fn rpc_hl_packet(input : &[u8]) -> bool
 }
 /*
  */
+#[no_mangle]
 fn rpc_gen_packet(input : &[u8]) -> bool
 {
     glog("gen packet\n");
     let mut res : u8 = 0;
     match input[0]
     {
+        rpc_commands::RPC_START => {
+                                        rpc_reply_string(rpc_commands::RPC_REMOTE_RESP_OK, b"LNBMP");
+                                        return true; 
+                                    },
         rpc_commands::RPC_VOLTAGE => {
                                         rpc_reply_string(rpc_commands::RPC_REMOTE_RESP_OK, b"????"); 
                                         return true; 
@@ -149,6 +155,7 @@ fn nbTick( pin: &[u8]) -> u32
 /*
 
  */
+#[no_mangle]
 fn rpc_swdp_packet(input : &[u8]) -> bool
 {
     match input[0]
@@ -235,6 +242,7 @@ fn rpc_jtag_packet(input : &[u8]) -> bool
 
 /*
  */
+#[no_mangle]
 fn rpc_wrapper(input : &[u8]) -> bool
 {
     if input.len() < 2 // unlikely...?
