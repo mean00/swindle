@@ -39,7 +39,6 @@ SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../lnArduino)
 ADD_DEFINITIONS("-DLN_LINUX=1")
 include( ${ARDUINO_GD32_FREERTOS}/embeddedPrintf.cmake)
 
-
 include_directories(include)
 include_directories(${BMP}/)
 include_directories(${BMP}/src/include)
@@ -47,11 +46,10 @@ include_directories(${BMP}/src/platforms/pc)
 include_directories(${BMP}/src/platforms/hosted)
 include_directories(${BMP}/src/target)
 include_directories(${BMP}/../lnBlackmagic/include )
-
 #
 #
-
 ADD_DEFINITIONS("-DPC_HOSTED=1")
+ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1") # HOSTED_BMP_ONLY
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-g3")
 ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
