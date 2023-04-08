@@ -49,13 +49,8 @@ bool bmp_rpc_swd_in_par_c(uint32_t *value, bool *par,  const unsigned int nb_bit
 bool bmp_rpc_swd_out_c(const uint32_t value,  const unsigned int nb_bits);
 bool bmp_rpc_swd_out_par_c(const uint32_t value,   const unsigned int nb_bits);
 
-/*
-bool cmd_auto_scan(target_s *t, int argc, const char **argv);
-bool cmd_frequency(target_s *t, int argc, const char **argv);
-bool cmd_targets(target_s *t, int argc, const char **argv);
-bool cmd_morse(target_s *t, int argc, const char **argv);
-bool cmd_halt_timeout(target_s *t, int argc, const char **argv);
-bool cmd_connect_reset(target_s *t, int argc, const char **argv);
-bool cmd_reset(target_s *t, int argc, const char **argv);
-bool cmd_tdi_low_reset(target_s *t, int argc, const char **argv);
-*/
+// platform
+void platform_nrst_set_val(bool assert);
+bool platform_nrst_get_val();
+const char *platform_target_voltage(void);
+void platform_target_clk_output_enable(bool enable);

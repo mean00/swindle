@@ -79,6 +79,22 @@ impl encoder
         Self::raw_send_u8(&[packet_symbols::CHAR_START]);
     }
     //
+    pub fn hexify_and_raw_send(str : &[u8])
+    {                
+        let buffer = get_temp_buffer();
+        let mut byt = str;
+        while byt.len()>0
+        {
+            let n=core::cmp::min(byt.len(),TEMP_BUFFER_SIZE/2);
+            for i in 0..n
+            {
+                u8_to_ascii_to_buffer(byt[i],&mut buffer[2*i..]);
+            }
+            Self::raw_send_u8(&buffer[..2*n]);
+            byt=&byt[n..];
+        }
+    }
+    //
     pub fn hex_and_add(&mut self, data :  &str)
     {
         let mut byt = data.as_bytes();

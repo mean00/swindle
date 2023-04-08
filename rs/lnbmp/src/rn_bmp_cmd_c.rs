@@ -224,3 +224,15 @@ extern "C" {
 extern "C" {
     pub fn bmp_rpc_swd_out_par_c(value: core::ffi::c_uint, nb_bits: core::ffi::c_uint) -> bool_;
 }
+extern "C" {
+    pub fn platform_nrst_set_val(assert: bool_);
+}
+extern "C" {
+    pub fn platform_nrst_get_val() -> bool_;
+}
+extern "C" {
+    pub fn platform_target_voltage() -> *const core::ffi::c_char;
+}
+extern "C" {
+    pub fn platform_target_clk_output_enable(enable: bool_);
+}

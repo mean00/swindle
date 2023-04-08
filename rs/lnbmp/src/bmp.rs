@@ -353,5 +353,36 @@ pub fn bmp_rpc_swd_out_par(value : u32, nb_bits : u32) -> bool
         ret_to_bool( rn_bmp_cmd_c::bmp_rpc_swd_out_par_c(value, nb_bits) )
     }
 }
+/*
+----------------- platform --------------
+ */
 
+ pub fn bmp_platform_nrst_set_val( ass : bool)
+ {
+    unsafe {
+        rn_bmp_cmd_c::platform_nrst_set_val(ass as i32);
+    }
+ }
+ pub fn bmp_platform_nrst_get_val() -> bool
+ {
+    unsafe {
+        ret_to_bool( rn_bmp_cmd_c::platform_nrst_get_val() )
+    }
+ }
+ pub fn bmp_platform_target_clk_output_enable(enable : bool)
+ {
+    unsafe {
+        rn_bmp_cmd_c::platform_target_clk_output_enable(enable as i32)
+    }
+ }
+/*
+ pub fn bmp_platform_target_voltage() ->
+ {
+    unsafe {
+        rn_bmp_cmd_c::platform_target_voltage()
+    }
+ }
+*/
+/*
+ */
 // EOF
