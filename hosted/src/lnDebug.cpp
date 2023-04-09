@@ -35,7 +35,10 @@ static void LoggerInternal(const char *fmt, va_list &args)
       uint32_t tick=getTick()-originalTick;
       static char buffer[PREFIX_BUFFER_SIZE+OUTER_BUFFER_SIZE+1];
 
-      sprintf(buffer,"[%d]",tick);
+      int ss=tick/1000;
+      int ms = tick-(ss*1000);
+
+      sprintf(buffer,"[%02d:%03d]",ss,ms);
       int ln=strlen(buffer);
 
       vsnprintf(buffer+ln,OUTER_BUFFER_SIZE,fmt,args);
@@ -65,4 +68,20 @@ extern "C" void Logger(const char *fmt,...)
 void LoggerInit()
 {
   originalTick=getTick();
+}
+
+extern void bmplogger(const char *fmt...)
+{
+  if(!fmt[0]) return;
+  va_list va;
+  va_start(va,fmt);
+  LoggerInternal(fmt,va);
+  va_end(va);
+}
+extern void bmploggern(int n, const char *a)
+{
+  static char bfer[512];
+  memcpy(bfer,a,n);
+  bfer[n]=0;
+  bmplogger("<%s>",bfer);
 }

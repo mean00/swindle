@@ -24,7 +24,7 @@ private:
 //
 //
 //
-#define QBUFFER_SIZE 512
+#define QBUFFER_SIZE 64
 class BMPTcp : public QObject
 {
     Q_OBJECT

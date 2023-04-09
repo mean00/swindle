@@ -25,7 +25,7 @@
 #include <QCoreApplication>
 #include <QtGlobal>
 #include <QTimer>
-#include "qtcp.h"
+#include "bmp_qtnetwork.h"
 
 extern "C"
 {
@@ -47,8 +47,7 @@ extern "C"
 	void rngdbstub_run(uint32_t s, const uint8_t *d);
 }
 //-----
-#define PORT 2000
-BMPTcp *current_connection = NULL;
+
 bool running = true;
 //
 //
@@ -61,116 +60,16 @@ void customHandler(QtMsgType type, const QMessageLogContext &context, const QStr
 
 
 
-
 //
-//
-BmpTcpServer::BmpTcpServer(QObject *parent )
-{
-	_server = new QTcpServer(this);
-	connect(_server, SIGNAL(newConnection()),  this, SLOT(newConnection()));
-	if(!_server->listen(QHostAddress::Any, PORT))
-    {
-        qInfo() << "Tcp Server could not start";
-		running=false;
-		QCoreApplication::quit();
-    }
-    else
-    {
-        qInfo() << "Tcp Server started on port " << PORT;
-    }
-}
-    
-void BmpTcpServer::newConnection()
-{
-	qInfo() << "New connection";
- 	BMPTcp *tcp  = new BMPTcp(_server->nextPendingConnection());
-}
 //
 //
 //
 
-BMPTcp::BMPTcp(QTcpSocket *sock)
+void exit_from_bmp()
 {
-	_socket = sock;
-	_socket->setSocketOption(QAbstractSocket::LowDelayOption, true);
-	connect(_socket, SIGNAL(disconnected()),  this, SLOT(disconnected()));
-	connect(_socket, SIGNAL(readyRead()),  this, SLOT(readyRead()));
-	current_connection=this;
-	rngdbstub_init();
-}
-//
-//
-//
-void BMPTcp::disconnected()
-{
-	qInfo() << "Client disconnected";
-	current_connection=NULL;
-	rngdbstub_shutdown();
-	this->deleteLater();
 	running=false;
 }
-//
-//
-//
-void BMPTcp::readyRead()
-{
-	while(true)
-	{
-		int nb= _socket->bytesAvailable();
-		if (nb<=0)
-			return;		
-		if(nb>QBUFFER_SIZE) nb=QBUFFER_SIZE;		
-		int actual = _socket->read((char *)_buffer, nb);
-		rngdbstub_run(actual,_buffer);
-	}
-}
-//
-//
-void BMPTcp::write( uint32_t sz, const uint8_t *ptr)
-{
-	_socket->write( (const char *)ptr,sz);
-}
-//
-//
-void BMPTcp::flush()
-{
-	_socket->flush();
-}
 
-static bool eol=true;
-
-extern "C"
-{
- void         rngdb_send_data_c( uint32_t sz, const uint8_t *ptr)
- {
-	if(eol)
-	{
-		eol=false;
-		qInfo() << "Reply :";
-	}
-	qInfo().noquote() << QString::fromLatin1((const char *)ptr,sz);
-	if(current_connection)
-	{
-		current_connection->write(sz,ptr);
-	}
-	fflush(stdout);
- }
-void rngdb_output_flush_c()
-{
-	if(current_connection)
-	{
-		current_connection->flush();
-	}
-	qInfo() << "\n";
-	eol=true;
-	fflush(stdout);
-
-}
-}
-//
-//
-//
-//
 extern "C" void rngdbstub_poll();
 int main(int argc, char **argv)
 {
@@ -186,7 +85,7 @@ int main(int argc, char **argv)
 
 	while(running)
 	{
-		QCoreApplication::processEvents();
+		QCoreApplication::processEvents( QEventLoop::AllEvents, 50);
 	}	
 	delete server;
 	server=NULL;
@@ -194,11 +93,4 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-extern "C" 
-{
-	int gdb_if_init(void)
-	{
-		return 0;
-	}
-}
 
