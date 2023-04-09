@@ -128,10 +128,10 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                             match state
                             {
                                 RESULT_AUTOMATON::RpcReady => 
-                                {
+                                    {
                                         let s = x.get_result(); // s is a RPC command block
                                         commands::rpc::rpc(s);
-                                },
+                                    },
                                 RESULT_AUTOMATON::Ready => 
                                     {
                                         // ok we have a full string...

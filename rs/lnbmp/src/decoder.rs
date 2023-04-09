@@ -130,7 +130,11 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             {
                                                 RPC_START_SESSION /* + */ => PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1,
                                                 CHAR_START /*'$'*/      => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
-                                                RPC_START  /* '!' */    => {glog("rpc start");self.indx=0;PARSER_AUTOMATON::RpcBody},
+                                                RPC_START  /* '!' */    => {
+                                                                            glog("rpc start\n");
+                                                                            self.indx=0;
+                                                                            PARSER_AUTOMATON::RpcBody
+                                                                            },
                                                 _                       => PARSER_AUTOMATON::Idle,
                                             },
                 PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1 => 
@@ -142,12 +146,15 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                 PARSER_AUTOMATON::RpcBody => 
                                             match c
                                             {
-                                                RPC_END /*'$'*/         => {glog("rpc done");PARSER_AUTOMATON::RpcDone}, 
+                                                RPC_END /*'$'*/         => {
+                                                                        glog1("rpc done(",self.indx);glog(")\n");
+                                                                        PARSER_AUTOMATON::RpcDone
+                                                                        }, 
                                                 RPC_START /*'#'*/       => {self.indx=0;PARSER_AUTOMATON::RpcBody},  // restart ? wtf ?
                                                 _                       => {
                                                                         if self.indx > INPUT_BUFFER_SIZE
                                                                         {
-                                                                            glog("RPC input buffer overflow");
+                                                                            glog("RPC input buffer overflow\n");
                                                                             PARSER_AUTOMATON::Error
                                                                         }else
                                                                         {
@@ -161,7 +168,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             match c
                                             {
                                                 CHAR_START /*'$'*/  => {
-                                                            crate::util::glog("RESTARTING DECODER");
+                                                            crate::util::glog("RESTARTING DECODER\n");
                                                             self.indx = 0;
                                                             self.checksum=0;
                                                             PARSER_AUTOMATON::Body}, 
