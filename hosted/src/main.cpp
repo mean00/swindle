@@ -92,6 +92,7 @@ void BmpTcpServer::newConnection()
 BMPTcp::BMPTcp(QTcpSocket *sock)
 {
 	_socket = sock;
+	_socket->setSocketOption(QAbstractSocket::LowDelayOption, true);
 	connect(_socket, SIGNAL(disconnected()),  this, SLOT(disconnected()));
 	connect(_socket, SIGNAL(readyRead()),  this, SLOT(readyRead()));
 	current_connection=this;

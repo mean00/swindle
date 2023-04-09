@@ -41,6 +41,10 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
 extern "C" int platform_buffer_write(const uint8_t *data, int size)
 {
     int nb=qserial->write((const char *)data,size);
+    if(nb)
+    {
+        qserial->flush();
+    }
     qWarning() << "Write " << nb << "\n";
     return nb;
 }
