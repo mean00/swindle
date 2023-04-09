@@ -24,6 +24,12 @@ macro_rules! setup_log
                 crate::util::glog(s);
             }
         }
+        fn bmpwarning<T: uDisplay> (s : &str, v: T)
+        {
+            crate::util::glog("Warning:");
+            crate::util::glog1(s,v);
+        }
+
         fn bmplog1<T: uDisplay> (s : &str, v: T)
         {
             if $enabled
@@ -56,6 +62,10 @@ macro_rules! setup_log
             {
                 print!("<<{:?}\n",s);
             }
+        }
+        fn bmpwarning<T: core::fmt::Display> (s : &str, v: T)
+        {
+                print!("<<{:?}:{}\n",s,v);
         }
         fn bmplog1<T: core::fmt::Display> (s : &str, v: T)
         {
