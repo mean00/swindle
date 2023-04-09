@@ -1,7 +1,7 @@
 
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
-use crate::util::glog;
+
 use alloc::vec::Vec;
 use crate::encoder::encoder;
 
@@ -32,6 +32,7 @@ use run::{_c,_R,_vCont,_k,_s};
 type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
 type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
 
+crate::setup_log!(true);
 
 enum CallbackType
 {
@@ -78,7 +79,7 @@ const main_command_tree: [CommandTree;20] =
 fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
 {
    let connected : bool = crate::bmp::bmp_attached();   
-   glog(command);glog("\n");
+   bmplog(command);bmplog("\n");
    let empty : &str = "";
    for i in 0..tree.len()
    {
@@ -90,8 +91,8 @@ fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
                 crate::glue::gdb_out_rs("Command ") ;
                 crate::glue::gdb_out_rs(c.command) ;
                 crate::glue::gdb_out_rs("cannot be used while not connected\n") ;
-                glog("Command not ok while not connected");
-                glog(c.command);
+                bmplog("Command not ok while not connected");
+                bmplog(c.command);
                 encoder::reply_e01();
                 return true;                
             }
@@ -127,8 +128,8 @@ pub fn exec(command : &str,  args : &[u8])
     {
         {
             encoder::simple_send("");            // unsupported
-            crate::util::glog1("Unsupported cmd :",command);
-            crate::util::glog("\n");
+            bmplog1("Unsupported cmd :",command);
+            bmplog("\n");
             crate::glue::gdb_out_rs(">>>Command [") ;
             crate::glue::gdb_out_rs(command) ;
             crate::glue::gdb_out_rs("] is not supported\n") ;

@@ -4,8 +4,6 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
-use crate::util::glogx;
 
 
 use crate::encoder::encoder;
@@ -13,6 +11,8 @@ use super::{CommandTree,exec_one};
 
 use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete};
 use crate::commands::CallbackType;
+
+crate::setup_log!(true);
 
 const vflash_command_tree: [CommandTree;3] = 
 [
@@ -24,11 +24,6 @@ const vflash_command_tree: [CommandTree;3] =
 
 const DISABLE_FLASH: bool = false;
 
-
-fn local_log(_p : &str, _v: u32)
-{
-    //crate::util::glogx(p,v);
-}
 
 //
 //
@@ -55,8 +50,8 @@ fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
         None =>   encoder::reply_e01(),
         Some( (adr,len) ) => 
             {   
-                local_log("Erase : Adr",adr);
-                local_log("len",len);
+                bmplogx("Erase : Adr",adr);
+                bmplogx("len",len);
                 encoder::reply_bool(bmp_flash_erase(adr,len));
             },
     };
@@ -77,7 +72,7 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
 
     if len<9
     {
-        crate::util::glog("flashWrite: invalid arg1");
+        bmplog("flashWrite: invalid arg1");
         encoder::reply_e01();
         return true; 
     }
@@ -95,17 +90,17 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
     }
     if prefix==0
     {
-        crate::util::glog("flashWrite: invalid arg2");
+        bmplog("flashWrite: invalid arg2");
         encoder::reply_e01();
         return true; 
     }
 
     let adr  =crate::parsing_util::u8s_string_to_u32( &block[..prefix] );
     let data: &[u8] = &block[(prefix+1)..];
-    //crate::util::glog1("adr:",adr);
-    //crate::util::glog1("len:",data.len());
-    local_log("write : Adr",adr as u32);
-    local_log("len",len as u32);
+    bmplog1("adr:",adr);
+    bmplog1("len:",data.len());
+    bmplogx("write : Adr",adr as u32);
+    bmplogx("len",len as u32);
 
     encoder::reply_bool( bmp_flash_write(adr, data) );
     true

@@ -1,8 +1,6 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
-
 
 use crate::encoder::encoder;
 use numtoa::NumToA;
@@ -10,6 +8,8 @@ use crate::bmp;
 
 
 static mut running :bool  = false;
+
+crate::setup_log!(false);
 
 pub enum HaltState
 {

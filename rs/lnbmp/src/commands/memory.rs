@@ -4,13 +4,14 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
-
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
 use crate::bmp::{bmp_attach,bmp_flash_erase};
+
+crate::setup_log!(false);
+
 
 // memory read m80070f6,4
 pub fn _m(command : &str, _args : &Vec<&str>) -> bool

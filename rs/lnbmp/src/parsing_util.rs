@@ -2,7 +2,8 @@ use alloc::alloc::Layout as Layout;
 use alloc::alloc::alloc as alloc;
 use alloc::vec::Vec;
 use cty::size_t;
-use crate::util::glog;
+
+crate::setup_log!(false);
 
 //
 //
@@ -83,7 +84,7 @@ pub fn take_adress_length( xin : &str ) -> Option< (u32, u32) >
     let args : Vec <&str>= xin.split(",").collect();
     if args.len()!=2
     {
-        glog("take_adress_length : wrong param");
+        bmplog("take_adress_length : wrong param");
         return None;
     }
     let address = crate::parsing_util::ascii_string_to_u32(args[0]);

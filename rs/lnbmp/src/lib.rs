@@ -14,16 +14,17 @@ mod commands;
 mod rn_bmp_cmd_c;
 mod bmp;
 mod glue;
+mod lnlogger;
 
 
 use packet_symbols::{CHAR_ACK,CHAR_NACK,INPUT_BUFFER_SIZE};
 use crate::decoder::gdb_stream;
 extern crate alloc;
-use crate::util::{glog,glog1};
 use alloc::vec::Vec;
 use decoder::RESULT_AUTOMATON;
 use numtoa::NumToA;
 
+crate::setup_log!(false);
 
 //
 
@@ -107,7 +108,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
             match data_as_slice[0]
             {
                 3  => crate::commands::run::target_halt() ,
-                _  => glog("Warning : garbage received")
+                _  => bmplog("Warning : garbage received")
             }
         }
         return;
@@ -141,7 +142,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                         match crate::parsing_util::split_command(s)
                                         {
                                             None => {
-                                                        crate::util::glog("Cannot convert string");
+                                                        bmplog("Cannot convert string");
                                                         command = empty;
                                                         args = empty;                                                        
                                                     },
@@ -153,7 +154,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                         }
                                         if command.len()==0
                                         {
-                                            crate::util::glog("Cannot read string");                                            
+                                            bmplog("Cannot read string");                                            
                                         }
                                         else
                                         {                                            

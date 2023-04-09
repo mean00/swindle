@@ -1,7 +1,7 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
+
 
 
 use crate::encoder::encoder;
@@ -16,6 +16,8 @@ use crate::bmp::mapping::{ FLASH,RAM};
 
 
 use numtoa::NumToA;
+
+crate::setup_log!(false);
 
 pub fn _X(_command : &str, _args : &Vec<&str>) -> bool
 {

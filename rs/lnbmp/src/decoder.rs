@@ -11,9 +11,9 @@
 #![allow(unused_imports)]
 
 use crate::parsing_util::ascii_octet_to_hex;
-use crate::util::{glog,glog1,glogx};
-
 use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE,RPC_START, RPC_END, RPC_START_SESSION};
+//
+crate::setup_log!(false);
 //
 //
 #[derive(PartialEq,Clone,Copy)]
@@ -96,7 +96,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
         let mut sz = data.len();
         let mut consumed = 0;
 
-        //glog1("In size ",data.len() as u32);
+        bmplog1("In size ",data.len() as u32);
 
         // auto clear errors
         if  self.automaton  ==    PARSER_AUTOMATON::Error
@@ -109,10 +109,10 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
             
             let c : u8 = data[dex];
             //let _d : char = c as char;
-            //crate::util::glog1("c",d);
-            //crate::util::glog1("u",c);
-            //crate::util::glog1("S",self.automaton as usize);
-            //crate::util::glog1("i",self.indx);
+            //bmplog1("c",d);
+            //bmplog1("u",c);
+            //bmplog1("S",self.automaton as usize);
+            //bmplog1("i",self.indx);
             consumed+=1;
             sz-=1;
             dex+=1;
@@ -131,7 +131,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                 RPC_START_SESSION /* + */ => PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1,
                                                 CHAR_START /*'$'*/      => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
                                                 RPC_START  /* '!' */    => {
-                                                                            glog("rpc start\n");
+                                                                            bmplog("rpc start\n");
                                                                             self.indx=0;
                                                                             PARSER_AUTOMATON::RpcBody
                                                                             },
@@ -147,14 +147,14 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             match c
                                             {
                                                 RPC_END /*'$'*/         => {
-                                                                        glog1("rpc done(",self.indx);glog(")\n");
+                                                                        bmplog1("rpc done(",self.indx);bmplog(")\n");
                                                                         PARSER_AUTOMATON::RpcDone
                                                                         }, 
                                                 RPC_START /*'#'*/       => {self.indx=0;PARSER_AUTOMATON::RpcBody},  // restart ? wtf ?
                                                 _                       => {
                                                                         if self.indx > INPUT_BUFFER_SIZE
                                                                         {
-                                                                            glog("RPC input buffer overflow\n");
+                                                                            bmplog("RPC input buffer overflow\n");
                                                                             PARSER_AUTOMATON::Error
                                                                         }else
                                                                         {
@@ -168,7 +168,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             match c
                                             {
                                                 CHAR_START /*'$'*/  => {
-                                                            crate::util::glog("RESTARTING DECODER\n");
+                                                            bmplog("RESTARTING DECODER\n");
                                                             self.indx = 0;
                                                             self.checksum=0;
                                                             PARSER_AUTOMATON::Body}, 
@@ -210,7 +210,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             }
                                             else
                                             {
-                                                glog("Wrong checksum\n");
+                                                bmplog("Wrong checksum\n");
                                                 PARSER_AUTOMATON::Error
                                             }
                                         },
@@ -225,7 +225,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                 PARSER_AUTOMATON::Error => {self.automaton=PARSER_AUTOMATON::Idle; return (consumed, RESULT_AUTOMATON::Error);},
                 PARSER_AUTOMATON::Done  =>   {return (consumed, RESULT_AUTOMATON::Ready);},
                 PARSER_AUTOMATON::RpcDone  =>   {return (consumed, RESULT_AUTOMATON::RpcReady);},
-                PARSER_AUTOMATON::Reset =>   {crate::util::glog("RESET");self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
+                PARSER_AUTOMATON::Reset =>   {bmplog("RESET");self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
                 _                         => (),
             }
         }

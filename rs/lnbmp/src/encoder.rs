@@ -15,7 +15,6 @@
 #![allow(unused_imports)]
 
 use crate::parsing_util::{u8_to_ascii,u8_to_ascii_to_buffer};
-use crate::util::glog;
 use crate::{rngdb_send_data,rngdb_send_data_u8,rngdb_output_flush};
 use crate::packet_symbols;
 
@@ -23,6 +22,8 @@ use crate::packet_symbols;
 // DF -- not thread safe, not re-entrant,ugly but simple
 const TEMP_BUFFER_SIZE : usize = 64;
 static mut  temp_buffer : [u8;TEMP_BUFFER_SIZE] = [0;TEMP_BUFFER_SIZE];
+
+crate::setup_log!(false);
 
 pub struct encoder
 {

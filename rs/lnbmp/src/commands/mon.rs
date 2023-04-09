@@ -2,7 +2,6 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::{glog,glog1};
 use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util::ascii_hex_string_to_u8s;
@@ -11,6 +10,7 @@ use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
 //
 //
+crate::setup_log!(true);
 //
 const mon_command_tree: [CommandTree;3] = 
 [
@@ -73,7 +73,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     match crate::parsing_util::split_command(rcmd)
     {
         None => {
-                    crate::util::glog("Cannot convert string (rcmd)");
+                    bmplog("Cannot convert string (rcmd)");
                     return false;                                                       
                 },
         Some( (x,y) ) =>
@@ -92,23 +92,34 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
  */
 pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
 {
-    glog("swdp_scan:\n");
+    bmplog("swdp_scan:\n");
+//--
+    bmp::bmp_set_wait_state(0);
+    if !bmp::swdp_scan()
+    {
+        bmplog("fail!\n");
+        return false;
+    }
+    encoder::reply_ok();
+    return true;
+//--
+
     let mut pivot = 4;
     let mut inc = 4;
     // is there anything at all ?
     bmp::bmp_set_wait_state(8); // starts slow..
     if !bmp::swdp_scan()
     {
-        glog("fail ws=8!\n");
+        bmplog("fail ws=8!\n");
         return false;     // nope
     }
 
     loop
     {        
-        glog1("swdp_scan: pivot",pivot);
-        glog("\n");
-        glog1("swdp_scan: inc",inc);
-        glog("\n");
+        bmplog1("swdp_scan: pivot",pivot);
+        bmplog("\n");
+        bmplog1("swdp_scan: inc",inc);
+        bmplog("\n");
         bmp::bmp_set_wait_state(pivot);
         if !bmp::swdp_scan()
         {
@@ -128,7 +139,7 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
     bmp::bmp_set_wait_state(pivot);
     if !bmp::swdp_scan()
     {
-        glog("fail!\n");
+        bmplog("fail!\n");
         return false;
     }
     crate::glue::gdb_out_rs_u32("Using ", pivot) ;

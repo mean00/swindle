@@ -1,8 +1,6 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
-
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -19,6 +17,9 @@ use crate::parsing_util::ascii_string_to_u32;
 use crate::bmp;
 
 use numtoa::NumToA;
+
+crate::setup_log!(false);
+
 // write register
 // Pf=40000008
 //
@@ -28,7 +29,7 @@ fn pp_prefix( command : &str) -> Option<(u32,u32)>
     let args : Vec <&str>= command.split('=').collect();
     if args.len()!=2
     {
-        glog("Pxxx wrong args");
+        bmplog("Pxxx wrong args");
         return None;
     }
     let reg = ascii_string_to_u32(args[0]);

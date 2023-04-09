@@ -4,14 +4,14 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
-
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 use crate::bmp::bmp_attach;
 use crate::commands::CallbackType;
 use crate::commands::_vCont;
+
+crate::setup_log!(false);
 
 const v_command_tree: [CommandTree;3] = 
 [

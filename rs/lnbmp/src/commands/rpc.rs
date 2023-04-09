@@ -5,8 +5,8 @@
  */
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::{glog,glog1};
 use crate::bmp;
+use crate::lnlogger::{*};
 use crate::encoder::{*};
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::commands::{CallbackType,exec_one,CommandTree};
@@ -14,6 +14,11 @@ use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
 use crate::commands::rpc_commands;
 
+
+
+crate::setup_log!(true);
+
+//-------------------------------
 /**
  * 
  */
@@ -85,7 +90,7 @@ fn rpc_reply_hex_string(code : u8, s: &[u8])
  */
 fn rpc_hl_packet(input : &[u8]) -> bool
 {
-    glog("hl packet\n");
+    bmplog("hl packet\n");
     false
 }
 /*
@@ -93,25 +98,25 @@ fn rpc_hl_packet(input : &[u8]) -> bool
 #[no_mangle]
 fn rpc_gen_packet(input : &[u8]) -> bool
 {
-    glog("\tgen packet\n");
+    bmplog("\tgen packet\n");
     let mut res : u8 = 0;
     match input[0]
     {
         rpc_commands::RPC_START => {
-                                        glog("rpc start session\n");
+                                        bmplog("rpc start session\n");
                                         rpc_reply_string(rpc_commands::RPC_REMOTE_RESP_OK, b"LNBMP");
                                         return true; 
                                     },
         rpc_commands::RPC_VOLTAGE => {
-                                        glog("rpc voltage\n");
+                                        bmplog("rpc voltage\n");
                                         rpc_reply_string(rpc_commands::RPC_REMOTE_RESP_OK, b"????"); 
                                         return true; 
                                     },
         rpc_commands::RPC_NRST_SET => {    
-                                        glog("rpc rst set\n");
+                                        bmplog("rpc rst set\n");
                                         if input.len() < 2
                                         {
-                                            glog("\tmalformed NRST SET\n");
+                                            bmplog("\tmalformed NRST SET\n");
                                             return false;
                                         }   
                                         let mut enable : bool = false;
@@ -124,15 +129,16 @@ fn rpc_gen_packet(input : &[u8]) -> bool
                                         return true;
                                     },
         rpc_commands::RPC_NRST_GET => {       
-                                        glog("rpc rst get\n");
+                                        bmplog("rpc rst get\n");
                                         let enabled : u8 = bmp::bmp_platform_nrst_get_val() as u8;
                                         rpc_reply(rpc_commands::RPC_RESP_OK, enabled);  
                                         return true;
                                     },
         rpc_commands::RPC_TARGET_CLK_OE => {       
+                                        bmplog("\trpc OE clk\n");
                                         if input.len() < 2
                                         {
-                                            glog("\tmalformed CLK_OE SET\n");
+                                            bmplog("\tmalformed CLK_OE SET\n");
                                             return false;
                                         }   
                                         let mut enabled : bool = false;
@@ -162,7 +168,7 @@ fn nbTick( pin: &[u8]) -> u32
 {
     if pin.len()<2
     {
-        glog("!!!! Size parm in swd SEQ too short\n");
+        bmplog("!!!! Size parm in swd SEQ too short\n");
         return 0;
     }
     crate::parsing_util::ascii_octet_to_hex(pin[0],pin[1]) as u32
@@ -173,16 +179,18 @@ fn nbTick( pin: &[u8]) -> u32
 #[no_mangle]
 fn rpc_swdp_packet(input : &[u8]) -> bool
 {
-    glog("\tswd:\n");
+    bmplog("\tswd:\n");
     match input[0]
     {
         rpc_commands::RPC_INIT        => { 
+                                    bmplog("\tinit swd\n");
                                     bmp::rpc_init_swd();  
                                     rpc_reply(rpc_commands::RPC_RESP_OK, 0);
                                     return true;
                                 },
-        rpc_commands::RPC_IN_PAR      => {
+        rpc_commands::RPC_IN_PAR      => {                                    
                                     let tick = nbTick(&input[1..=2]);
+                                    bmplog1("\tIn_par bits  : ",tick); bmplog("\n");
                                     if tick == 0
                                     {
                                         return false;
@@ -195,15 +203,16 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                                     rpc_reply32(
                                                         match parity
                                                         {
-                                                            true => rpc_commands::RPC_RESP_PARERR,
-                                                            false => rpc_commands::RPC_RESP_OK,
+                                                            true => {bmplog("In: BAD PARITY\n");rpc_commands::RPC_RESP_PARERR},
+                                                            false => {bmplog1("\t\t value",value);bmplog("\n");rpc_commands::RPC_RESP_OK},
                                                         }, value),
-                                        false =>  rpc_reply(rpc_commands::RPC_RESP_ERR,0),
+                                        false =>  {bmplog("In: FAIL\n");rpc_reply(rpc_commands::RPC_RESP_ERR,0)},
                                     };
                                     return true;
                                 },
         rpc_commands::RPC_IN          => {
                                     let tick = nbTick(&input[1..=2]);
+                                    bmplog1("\tIn bits  : ",tick); bmplog("\n");
                                     if tick == 0
                                     {
                                         return false;
@@ -211,13 +220,14 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                     let mut value : u32 =0;
                                     match bmp::bmp_rpc_swd_in(&mut value, tick  )
                                     {
-                                        true  =>  rpc_reply32(rpc_commands::RPC_RESP_OK, value),
-                                        false =>  rpc_reply32(rpc_commands::RPC_RESP_ERR, value),                                        
+                                        true  =>  {bmplog1("\t\t value",value);bmplog("\n");rpc_reply32(rpc_commands::RPC_RESP_OK, value);},
+                                        false =>   {bmplog("In: FAIL\n");rpc_reply32(rpc_commands::RPC_RESP_ERR, value);},
                                     };
                                     return true;
                                 },
         rpc_commands::RPC_OUT_PAR     => {
                                     let tick = nbTick(&input[1..=2]);
+                                    bmplog1("\tOut_par bits  : ",tick); bmplog("\n");
                                     if tick == 0
                                     {
                                         return false;
@@ -233,10 +243,11 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                     {
                                         return false;
                                     }
+                                    bmplog1("\tOut bits  : ",tick); bmplog("\n");
                                     // total should be 1 (cmd) + 2 (size) + 2*x
                                     if input.len()<5
                                     {
-                                        glog("RPC_out wrong len\n");
+                                        bmplog("RPC_out wrong len\n");
                                         return false;
                                     }
 
@@ -246,16 +257,16 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                     rpc_reply(rpc_commands::RPC_RESP_OK, 0);
                                     return true;
                             },
-        _                   => (),
+        _                   => bmplog1("Unsupported SWP RPC command",input[0]),
     };
-    glog("unmanaged swdp packet\n");
+    bmplog("unmanaged swdp packet\n");
     false
 }
 /*
  */
 fn rpc_jtag_packet(input : &[u8]) -> bool
 {
-    glog("jtag packet\n");
+    bmplog("jtag packet\n");
     false
 }
 
@@ -266,15 +277,15 @@ fn rpc_wrapper(input : &[u8]) -> bool
 {
     if input.len() < 2 // unlikely...?
     {
-        glog("**short rpc\n");
+        bmplog("**short rpc\n");
         return false;
     }
-    glog1("rpc call (",input.len());glog(")\n");
+    bmplog1("rpc call (",input.len());bmplog(")\n");
     if input.len()>2
     {
-        glog1("\tClass : ",input[0]);
-        glog1("Cmd : ",input[1]);
-        glog("\n");
+        bmplog1("\tClass : ",input[0]);
+        bmplog1("Cmd : ",input[1]);
+        bmplog("\n");
     }
     return match input[0]
     {
@@ -282,7 +293,7 @@ fn rpc_wrapper(input : &[u8]) -> bool
         rpc_commands::RPC_SWDP_PACKET  => rpc_swdp_packet(&input[1..]),
         rpc_commands::RPC_GEN_PACKET   => rpc_gen_packet(&input[1..]),
         rpc_commands::RPC_HL_PACKET    => rpc_hl_packet(&input[1..]),
-        _ => {glog("wrong RPC header\n");return false;}
+        _ => {bmplog("wrong RPC header\n");return false;}
     };    
 }
 

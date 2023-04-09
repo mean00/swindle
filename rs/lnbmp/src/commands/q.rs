@@ -4,9 +4,6 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
-use crate::util::glogx;
-
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -22,6 +19,8 @@ use crate::commands::CallbackType;
 use crate::commands::mon::_qRcmd;
 
 use numtoa::NumToA;
+
+crate::setup_log!(true);
 
 const q_command_tree: [CommandTree;10] = 
 [
@@ -276,15 +275,15 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
     }
     let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
     let crc = bmp_crc32(address,length);
-    glogx("CRC : Adr",address as u32);
-    glogx("len",length as u32);
+    bmplogx("CRC : Adr",address as u32);
+    bmplogx("len",length as u32);
 
 
     match crc 
     {
         Some(x) => 
                     {
-                        glogx("crc",x);
+                        bmplogx("crc",x);
                         let mut e = encoder::new();
                         e.begin();
                         e.add("C");

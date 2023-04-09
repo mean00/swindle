@@ -4,8 +4,6 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::util::glog;
-use crate::util::glogx;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -18,7 +16,7 @@ use crate::parsing_util::ascii_string_to_u32;
 
 use crate::bmp;
 
-
+crate::setup_log!(false);
 /*
 Same value as bmp internal
 	TARGET_BREAK_SOFT 0 ,
