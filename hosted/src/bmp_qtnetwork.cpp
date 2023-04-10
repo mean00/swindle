@@ -38,6 +38,7 @@ extern "C"
 #include "exception.h"
 #include "gdb_packet.h"
 #include "morse.h"
+#include <fcntl.h>
 }
 //--
 
@@ -57,13 +58,23 @@ extern void exit_from_bmp();
 char tcp_buffer[1024];
 int tcp_index=0;
 
+void lowDelay(int skt)
+{
+    int flags  = fcntl( skt, F_GETFL, 0 );
+    if(fcntl( skt, F_SETFL, flags | O_NDELAY ) < 0 )
+    {
+        printf("Cannot set nodelay\n");
+        exit(-1);
+    }
+}
+
 //
 //
 BmpTcpServer::BmpTcpServer(QObject *parent )
 {
 	_server = new QTcpServer(this);
 	connect(_server, SIGNAL(newConnection()),  this, SLOT(newConnection()));
-	if(!_server->listen(QHostAddress::Any, PORT))
+	if(!_server->listen(QHostAddress::AnyIPv4, PORT))
     {
         QBMPLOG("**Tcp Server could not start**\n");
 		exit_from_bmp();
@@ -71,6 +82,8 @@ BmpTcpServer::BmpTcpServer(QObject *parent )
     }
     else
     {
+        // swith to low delay using low level call
+        lowDelay(_server->socketDescriptor());
         QBMPLOG("Tcp Server started on port %d \n", PORT);
     }
 }
@@ -92,6 +105,8 @@ BMPTcp::BMPTcp(QTcpSocket *sock)
 	connect(_socket, SIGNAL(readyRead()),  this, SLOT(readyRead()));
 	current_connection=this;
 	_socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    lowDelay( _socket->socketDescriptor());
+    _socket->setReadBufferSize(512);
 	rngdbstub_init();
 }
 //
@@ -110,11 +125,15 @@ void BMPTcp::disconnected()
 //
 void BMPTcp::readyRead()
 {
+    QBMPLOG("--Ready data available\n");
 	while(true)
 	{
 		int nb= _socket->bytesAvailable();
 		if (nb<=0)
+        {
+            QBMPLOG("--data processed\n");
 			return;		
+        }
 		if(nb>QBUFFER_SIZE) nb=QBUFFER_SIZE;		
 		int actual = _socket->read((char *)_buffer, nb);
         QBMPLOG("tcp read \n");
@@ -138,11 +157,20 @@ void BMPTcp::write( uint32_t sz, const uint8_t *ptr)
 void BMPTcp::flush()
 {
     QBMPLOG("tcp write :");
+    for(int i=0;i<tcp_index;i++)
+    {
+        uint8_t c=tcp_buffer[i];
+    }
     QBMPLOGN((int)tcp_index,(const char *)tcp_buffer);
     QBMPLOG("\n");
-    _socket->write(tcp_buffer,tcp_index);	
+    if(tcp_index!=_socket->write(tcp_buffer,tcp_index))
+    {
+        printf("** incomplete send **\n");
+        exit(-1);
+    }
     tcp_index=0;
 	_socket->flush();
+    _socket->waitForBytesWritten();
 }
 
 static bool eol=true;

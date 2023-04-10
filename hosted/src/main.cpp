@@ -66,8 +66,8 @@ void customHandler(QtMsgType type, const QMessageLogContext &context, const QStr
 //
 
 void exit_from_bmp()
-{
-	running=false;
+{	
+	QCoreApplication::exit(0);
 }
 
 extern "C" void rngdbstub_poll();
@@ -81,12 +81,10 @@ int main(int argc, char **argv)
 
  	QTimer mytimer;
     QObject::connect(&mytimer,&QTimer::timeout,rngdbstub_poll);
-    mytimer.start(100);
+ //   mytimer.start(100);
 
-	while(running)
-	{
-		QCoreApplication::processEvents( QEventLoop::AllEvents, 50);
-	}	
+	QCoreApplication::exec();
+	
 	delete server;
 	server=NULL;
 	/* Should never get here */

@@ -29,31 +29,92 @@ extern "C"
 QSerialPort *qserial = NULL;
 /**
 */
+bool fullread(int total, uint8_t *data)
+{
+    while(total)
+    {
+        while(qserial->waitForReadyRead(10)==false)
+        {
 
+        }
+        int nb=qserial->read((char *)data,total);
+        if(nb<=0)
+        {
+           QBMPLOG("************Warning : serial error \n");
+           exit(-1);
+           return false;
+        }
+        total-=nb;
+        data+=nb;
+    }
+    return true;                
+}
 extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
 {
-    qserial->waitForReadyRead(-1);
-    int nb=qserial->read((char *)data,maxsize);
+    // This breaks layers separation oh well
+    // The expected input is REMOTE_RESP ... REMOTE_EOM
+    // and we take only the payload
+    // too bad we have a proper automaton in the rust side
+    {
+        uint8_t c;
+        if(!fullread(1,&c)) return -6;
+        if(c!='&')
+        {
+            QBMPLOG("*************Warning : invalid resp \n");
+            return -1;
+        }
+    }
+    int nb=0;
     
-    QBMPLOG("Read %d bytes\n",nb);
-    return nb;
+    while(1)
+    {
+          if(!fullread(1,data+nb)) 
+          {
+            return -6;
+          }
+          
+          if(data[nb]=='#') 
+          {
+            data[nb]=0;
+            QBMPLOG("Serial Read %d bytes ",nb);
+            QBMPLOGN(nb,(const char *)data);
+            QBMPLOG("\n");
+            
+            return nb;
+          }
+          nb++;
+          if(nb>=maxsize)
+          {
+            return nb;
+          }
+    }
+    return -1;
 }
 /**
 */
 
 extern "C" int platform_buffer_write(const uint8_t *data, int size)
 {
+    int orgsize=size;
     while(size)
     {
         int nb=qserial->write((const char *)data,size);
         if(nb<=0)
+        {
+            QBMPLOG("***** WRITE FAILURE\n");
+            exit(-1);
             break;
-        
-        QBMPLOG("Write %d bytes\n",nb);
-        qserial->flush();
+        }
+        QBMPLOG("Write %d bytes",nb);
+        QBMPLOGN(nb,(const char *)data);
+        QBMPLOG("\n");
         size-=nb;
         data+=nb;        
     }    
+    QBMPLOG("-- flush in \n");
+    qserial->flush();
+    QBMPLOG("-- flush end \n");
+    QBMPLOG("Write %d bytes\n",orgsize);
     return size;
 }
 /**
@@ -122,6 +183,7 @@ extern "C" int serial_open(const bmda_cli_options_s *opt, const char *serial)
     qserial->setFlowControl(QSerialPort::NoFlowControl);
     qserial->setBaudRate(QSerialPort::Baud115200);
     qserial->setDataBits(QSerialPort::Data8);
+    qserial->setReadBufferSize(1);
     //qserial->setFlowControl(QSerialPort::NoFlowControl);
     return 0;
 }
