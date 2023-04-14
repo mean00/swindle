@@ -375,6 +375,15 @@ pub fn bmp_rpc_swd_out_par(value : u32, nb_bits : u32) -> bool
         rn_bmp_cmd_c::platform_target_clk_output_enable(enable as i32)
     }
  }
+
+pub fn bmplog( s : &str)
+{
+    unsafe {
+        rn_bmp_cmd_c::Logger2(s.len() as i32 , s.as_ptr() as *const i8);
+    }
+}
+ 
+
 /*
  pub fn bmp_platform_target_voltage() ->
  {

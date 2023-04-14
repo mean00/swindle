@@ -236,3 +236,6 @@ extern "C" {
 extern "C" {
     pub fn platform_target_clk_output_enable(enable: bool_);
 }
+extern "C" {
+    pub fn Logger2(n: core::ffi::c_int, fmt: *const core::ffi::c_char);
+}

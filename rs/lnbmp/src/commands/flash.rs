@@ -12,7 +12,7 @@ use super::{CommandTree,exec_one};
 use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete};
 use crate::commands::CallbackType;
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 
 const vflash_command_tree: [CommandTree;3] = 
 [

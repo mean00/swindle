@@ -17,8 +17,11 @@ use crate::bmp::bmp_crc32;
 use crate::bmp::mapping::{ FLASH,RAM};
 use crate::commands::CallbackType;
 use crate::commands::mon::_qRcmd;
+use crate::util::xmin;
 
 use numtoa::NumToA;
+
+use crc;
 
 crate::setup_log!(true);
 
@@ -273,27 +276,48 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         Some( (x,y)) => { address = x;length = y;},
         None =>   {encoder::reply_e01(); return true;},
     }
-    let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
-    let crc = bmp_crc32(address,length);
+    let mut buffer: [u8;32] = [0; 32]; // should be big enough!    
+
+    // loop in crc
+    const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
+
+    let mut digest = crc32_cksum.digest();
     bmplogx("CRC : Adr",address as u32);
     bmplogx("len",length as u32);
-
-
-    match crc 
+//
+    //let crc = bmp_crc32(address,length);
+    // preamble if any
+    let tail = address+length;    
+    let mut adr : u32 = address;
+    let mut block=0;
+    while adr<tail
     {
-        Some(x) => 
-                    {
-                        bmplogx("crc",x);
-                        let mut e = encoder::new();
-                        e.begin();
-                        e.add("C");
-                        e.add(x.numtoa_str(16,&mut buffer));     // INPUT_BUFFER_SIZE
-                        e.end();
-                    },
-        None => encoder::error(3),
+        block = block +1;
+        if block > 64 // every 2k bytes or so
+        {
+            block = 0;
+            encoder::raw_send_u8(&[0]);
+        }
+        let rd: u32 = xmin((tail-adr) as u32,buffer.len() as u32);
+        if crate::bmp::bmp_read_mem(adr, &mut buffer[0..(rd as usize)]) == false
+        {
+            bmplogx("CRC : cant read memory at address ",adr);bmplog("\n");
+            encoder::error(1);
+            return true;
+        }
+        digest.update(&buffer[0..(rd as usize)]);
+        adr+=rd;
+    }   
+    let crc=digest.finalize();   
+    bmplogx("crc::<",crc);bmplog(">\n");
+    {
+        let mut e = encoder::new();
+        e.begin();
+        e.add("C");
+        e.add(crc.numtoa_str(16,&mut buffer));     // INPUT_BUFFER_SIZE
+        e.end();
     }
     true
-
 }
 
 

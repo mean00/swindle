@@ -123,19 +123,27 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                         {
                             let consumed : usize;
                             let state : RESULT_AUTOMATON;
-                            
+                            bmplog("Parsing..\n");
                             (consumed, state) =  x.parse(data_as_slice);
-
+                            bmplog("Parsed..\n");
                             match state
                             {
                                 RESULT_AUTOMATON::RpcReady => 
                                     {
+                                        bmplog("Rpc....\n");
                                         let s = x.get_result(); // s is a RPC command block
-                                        commands::rpc::rpc(s);
+                                        if s.len() > 0
+                                        {
+                                            //bmplog("--> ACK\n");
+                                            //rngdb_send_data( CHAR_ACK ); 
+                                            commands::rpc::rpc(s);
+                                            bmplog("Rpc done\n");
+                                        }
                                     },
                                 RESULT_AUTOMATON::Ready => 
                                     {
                                         // ok we have a full string...
+                                        bmplog("Gdb call\n");
                                         let s = x.get_result();
                                         let command : &[u8];
                                         let args : &[u8];
@@ -157,14 +165,19 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                             bmplog("Cannot read string");                                            
                                         }
                                         else
-                                        {                                            
-                                            rngdb_send_data( CHAR_ACK ); 
+                                        {               
+                                            bmplog("--> ACK\n");
+                                            rngdb_send_data_u8( &[CHAR_ACK] );
                                             rngdb_output_flush( );
                                             let as_string = core::str::from_utf8_unchecked(command);
+                                            bmplog("Exec..:");
+                                            bmplog(as_string);
+                                            bmplog("\n");
                                             commands::exec(as_string, args);
+                                            bmplog("Exec done\n");
                                         }
                                     },
-                                RESULT_AUTOMATON::Error => {rngdb_send_data( CHAR_NACK ); rngdb_output_flush( );},
+                                RESULT_AUTOMATON::Error => {rngdb_send_data_u8( &[CHAR_NACK] ); rngdb_output_flush( );},
                                 RESULT_AUTOMATON::Continue => (),
                                 RESULT_AUTOMATON::Reset => (),
                             }
@@ -178,3 +191,4 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
 }
 
 // EOF
+

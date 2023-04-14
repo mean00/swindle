@@ -33,7 +33,7 @@ pub fn gdb_out_rs(fmt : &str)
 // send string str + value to gdb
 pub fn gdb_out_rs_u32(fmt : &str, value : u32) 
 {    
-    let mut buffer: [u8;8] = [0; 8]; 
+    let mut buffer: [u8;12] = [0; 12]; 
     let mut e = encoder::new();
     e.begin();
     e.add("O");    

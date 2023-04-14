@@ -54,3 +54,6 @@ void platform_nrst_set_val(bool assert);
 bool platform_nrst_get_val();
 const char *platform_target_voltage(void);
 void platform_target_clk_output_enable(bool enable);
+
+//
+void Logger2(int n , const char *fmt);

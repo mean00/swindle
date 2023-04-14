@@ -16,7 +16,7 @@ use crate::commands::rpc_commands;
 
 
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 
 //-------------------------------
 /**
@@ -200,13 +200,15 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                     match bmp::bmp_rpc_swd_in_par(&mut value, &mut parity, tick )
                                     {
                                         true => 
+                                        {
+                                                    bmplogx("\tIn_par value  : ",value); bmplog("\n");
                                                     rpc_reply32(
                                                         match parity
                                                         {
                                                             true => {bmplog("In: BAD PARITY\n");rpc_commands::RPC_RESP_PARERR},
                                                             false => {bmplog1("\t\t value",value);bmplog("\n");rpc_commands::RPC_RESP_OK},
-                                                        }, value),
-                                        false =>  {bmplog("In: FAIL\n");rpc_reply(rpc_commands::RPC_RESP_ERR,0)},
+                                                        }, value);},
+                                        false =>  {bmplog("In: FAIL\n");rpc_reply32(rpc_commands::RPC_RESP_ERR,value)},
                                     };
                                     return true;
                                 },
@@ -220,19 +222,22 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                     let mut value : u32 =0;
                                     match bmp::bmp_rpc_swd_in(&mut value, tick  )
                                     {
-                                        true  =>  {bmplog1("\t\t value",value);bmplog("\n");rpc_reply32(rpc_commands::RPC_RESP_OK, value);},
+                                        true  =>  {bmplogx("\t\t value",value);bmplog("\n");rpc_reply32(rpc_commands::RPC_RESP_OK, value);},
                                         false =>   {bmplog("In: FAIL\n");rpc_reply32(rpc_commands::RPC_RESP_ERR, value);},
                                     };
                                     return true;
                                 },
         rpc_commands::RPC_OUT_PAR     => {
                                     let tick = nbTick(&input[1..=2]);
-                                    bmplog1("\tOut_par bits  : ",tick); bmplog("\n");
+                                    bmplog1("\tOut_par bits  : ",tick); 
                                     if tick == 0
                                     {
                                         return false;
                                     }
                                     let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
+                                    bmplog1("\tOut_par value  : ",param); 
+                                    bmplog("\n");
+
                                     bmp::bmp_rpc_swd_out_par(param,  tick  );
                                     rpc_reply(rpc_commands::RPC_RESP_OK, 0);
                                     return true;
@@ -245,14 +250,17 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                     }
                                     bmplog1("\tOut bits  : ",tick); bmplog("\n");
                                     // total should be 1 (cmd) + 2 (size) + 2*x
-                                    if input.len()<5
+                                    if input.len()<4
                                     {
-                                        bmplog("RPC_out wrong len\n");
+                                        bmplog1("RPC_out wrong len:",input.len());bmplog("\n");
                                         return false;
                                     }
 
 
                                     let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
+                                    bmplog1("\tOut_par value  : ",param); 
+                                    bmplog("\n");
+
                                     bmp::bmp_rpc_swd_out(param,  tick  );
                                     rpc_reply(rpc_commands::RPC_RESP_OK, 0);
                                     return true;

@@ -10,7 +10,7 @@ use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
 //
 //
-crate::setup_log!(true);
+crate::setup_log!(false);
 //
 const mon_command_tree: [CommandTree;3] = 
 [
@@ -94,14 +94,14 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
 {
     bmplog("swdp_scan:\n");
 //--
-    bmp::bmp_set_wait_state(0);
-    if !bmp::swdp_scan()
-    {
-        bmplog("fail!\n");
-        return false;
-    }
-    encoder::reply_ok();
-    return true;
+    //bmp::bmp_set_wait_state(0);
+    //if !bmp::swdp_scan()
+    //{
+      //  bmplog("fail!\n");
+      //  return false;
+    //}
+    //encoder::reply_ok();
+    //return true;
 //--
 
     let mut pivot = 4;

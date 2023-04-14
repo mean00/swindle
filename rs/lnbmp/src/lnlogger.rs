@@ -21,27 +21,27 @@ macro_rules! setup_log
         {
             if $enabled
             {
-                crate::util::glog(s);
+                glog(s);
             }
         }
         fn bmpwarning<T: uDisplay> (s : &str, v: T)
         {
-            crate::util::glog("Warning:");
-            crate::util::glog1(s,v);
+            glog("Warning:");
+            glog1(s,v);
         }
 
         fn bmplog1<T: uDisplay> (s : &str, v: T)
         {
             if $enabled
             {
-                crate::util::glog1(s,v);
+                glog1(s,v);
             }
         }
         fn bmplogx (s : &str, v: u32)
         {
             if $enabled
             {
-                crate::util::glog1(s,v);
+                glog1(s,v);
             }
         }
 
@@ -54,13 +54,14 @@ macro_rules! setup_log
 {
     ($enabled : tt) => {
         extern crate std;
-        use std::print;        
+        use std::print;     
+        
 
         fn bmplog(  s: &str)
         {
             if $enabled
             {
-                print!("<<{:?}\n",s);
+                crate::bmp::bmplog(s);
             }
         }
         fn bmpwarning<T: core::fmt::Display> (s : &str, v: T)

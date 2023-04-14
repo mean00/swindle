@@ -14,17 +14,17 @@ use std::print;
 #[cfg(feature = "hosted")]
 pub fn glog (s : &str)
 {
-    print!("<<{:?}\n",s);
+    print!("<<{:?}",s);
 }
 #[cfg(feature = "hosted")]
 pub fn glog1<T: core::fmt::Display> (s : &str, v: T)
 {
-    print!("<<{:?}:{}\n",s,v);
+    print!("<<{:?}:{}",s,v);
 }
 #[cfg(feature = "hosted")]
 pub fn glogx (s : &str, v: u32)
 {
-    print!("<<{:?}:0x{:#x}\n",s,v);
+    print!("<<{:?}:{:#x}",s,v);
 }
 
 #[cfg(feature = "native")]
@@ -54,7 +54,7 @@ pub fn xswap( a: &mut isize, b : &mut isize)
     *a = *b;
     *b = z;
 }
-pub fn xmin(a : isize, b: isize) -> isize
+pub fn xmin<T : core::cmp::PartialOrd >(a : T, b: T) -> T
 {
     if a< b { return a;}
     b

@@ -16,7 +16,7 @@ rnarduino = { path = "../../lnArduino/rust/rnArduino", features = ["cdc"] , opti
 ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
 numtoa = {version = "0.2.4"}
-
+crc = { version ="3.0", features = []}
 [lib]
 name = "rsbmp"
 path = "src/lib.rs"

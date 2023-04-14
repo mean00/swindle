@@ -108,6 +108,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
         {
             
             let c : u8 = data[dex];
+            bmplog1("InputChar, ",c as char);            
             //let _d : char = c as char;
             //bmplog1("c",d);
             //bmplog1("u",c);
@@ -125,10 +126,11 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                 _               => PARSER_AUTOMATON::Init,
                                             }
                                             ,
-                PARSER_AUTOMATON::Idle => 
+                PARSER_AUTOMATON::Idle =>  {
+                                            bmplog("Idle\n");
                                             match c
                                             {
-                                                RPC_START_SESSION /* + */ => PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1,
+                                               // RPC_START_SESSION /* + */ => PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1,
                                                 CHAR_START /*'$'*/      => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
                                                 RPC_START  /* '!' */    => {
                                                                             bmplog("rpc start\n");
@@ -136,14 +138,18 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                                             PARSER_AUTOMATON::RpcBody
                                                                             },
                                                 _                       => PARSER_AUTOMATON::Idle,
-                                            },
+                                            }},
                 PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1 => 
+                                            {
+                                            bmplog("RPC_H1\n");
                                             match c
                                             {
                                                 RPC_END => PARSER_AUTOMATON::Idle, /* Skip + EOM so we get a vanilla RPC string */
                                                 _ => PARSER_AUTOMATON::Idle, /* It is also used from some jtag RPC commands, dont optimize it */
-                                            },
+                                            }},
                 PARSER_AUTOMATON::RpcBody => 
+                                            {
+                                            bmplog("RPC_body\n");
                                             match c
                                             {
                                                 RPC_END /*'$'*/         => {
@@ -163,8 +169,10 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                                             PARSER_AUTOMATON::RpcBody
                                                                         }
                                                                     },
-                                            },                                             
+                                            }},                                             
                 PARSER_AUTOMATON::Body => 
+                                            {
+                                            bmplog("GDB_body\n");
                                             match c
                                             {
                                                 CHAR_START /*'$'*/  => {
@@ -176,6 +184,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                 CHAR_ESCAPE /*'}'*/     => PARSER_AUTOMATON::Escape, 
                                             //    CHAR_RESET_04           => PARSER_AUTOMATON::Reset,
                                                 _                       => {
+                                                                        bmplog1("T:<",c);bmplog(">");
                                                                         self.checksum+=c as usize;
                                                                         self.input_buffer[self.indx]= match c
                                                                         {
@@ -185,7 +194,8 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                                         self.indx+=1;
                                                                         PARSER_AUTOMATON::Body
                                                                     },
-                                            }, 
+                                            }
+                                        }, 
                 PARSER_AUTOMATON::Escape => 
                                         {
                                             self.checksum+= CHAR_ESCAPE as usize;
@@ -196,11 +206,13 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                         },
                 PARSER_AUTOMATON::End1 => 
                                         {
+                                            bmplog("CHK1\n");
                                             self.checksum_received[0]=c;
                                             PARSER_AUTOMATON::End2
                                         },
                 PARSER_AUTOMATON::End2 => 
                                         {
+                                            bmplog("CHK2\n");
                                             self.checksum_received[1]=c;
                                             // Verify checksum 
                                             let chk=ascii_octet_to_hex(self.checksum_received[0],self.checksum_received[1]);

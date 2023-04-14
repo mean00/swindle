@@ -10,8 +10,8 @@ pub const RPC_START             : u8 = b'!';
 pub const RPC_END               : u8 = b'#';
 
 
-pub const CHAR_ACK              : &str = "+";
-pub const CHAR_NACK             : &str = "-";
+pub const CHAR_ACK              : u8 = b'+';
+pub const CHAR_NACK             : u8 = b'-';
 
 pub const INPUT_BUFFER_SIZE: usize = 512+24;
 
