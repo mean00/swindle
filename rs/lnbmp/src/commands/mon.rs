@@ -73,7 +73,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     match crate::parsing_util::split_command(rcmd)
     {
         None => {
-                    bmplog("Cannot convert string (rcmd)");
+                    bmpwarning("Cannot convert string (rcmd)",0);
                     return false;                                                       
                 },
         Some( (x,y) ) =>
@@ -110,7 +110,7 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
     bmp::bmp_set_wait_state(8); // starts slow..
     if !bmp::swdp_scan()
     {
-        bmplog("fail ws=8!\n");
+        bmpwarning("fail ws=8!\n",0);
         return false;     // nope
     }
 
@@ -139,7 +139,7 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
     bmp::bmp_set_wait_state(pivot);
     if !bmp::swdp_scan()
     {
-        bmplog("fail!\n");
+        bmpwarning("swdp fail!\n",pivot);
         return false;
     }
     crate::glue::gdb_out_rs_u32("Using ", pivot) ;

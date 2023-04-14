@@ -272,7 +272,6 @@ const CRC_BUFFER_SIZE : usize = 64;
 
 fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
 {
-
     if args.len()==0
     {
         encoder::reply_e01();
@@ -287,12 +286,12 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         Some( (x,y)) => { address = x;length = y;},
         None =>   {encoder::reply_e01(); return true;},
     }
-    let mut buffer: [u8;CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!    
 
     // loop in crc
     const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&GDB_CRC_ALG);
-
     let mut digest = crc32_cksum.digest();
+    let mut buffer: [u8;CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
+
     bmplogx("CRC : Adr",address as u32);
     bmplogx("len",length as u32);
 //
@@ -312,7 +311,7 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         let rd: u32 = xmin((tail-adr) as u32,buffer.len() as u32);
         if crate::bmp::bmp_read_mem(adr, &mut buffer[0..(rd as usize)]) == false
         {
-            bmplogx("CRC : cant read memory at address ",adr);bmplog("\n");
+            bmpwarning("CRC : cant read memory",adr);
             encoder::error(1);
             return true;
         }
