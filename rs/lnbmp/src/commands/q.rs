@@ -23,7 +23,7 @@ use numtoa::NumToA;
 
 use crc;
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 
 const q_command_tree: [CommandTree;10] = 
 [
@@ -258,6 +258,17 @@ fn _qOffsets(_command : &str, _args : &Vec<&str>) -> bool
 }
 // qCRC:addr hex,length hex’
 // return Ccrc32 hex
+const GDB_CRC_ALG: crc::Algorithm<u32> = crc::Algorithm {
+    width: 32,
+    poly: 0x04c11db7,
+    init: 0xffffffff,
+    refin: false,
+    refout: false,
+    xorout: 0x0000,
+    check: 0xaee7,
+    residue: 0x0000
+};
+const CRC_BUFFER_SIZE : usize = 64;
 
 fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
 {
@@ -276,10 +287,10 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         Some( (x,y)) => { address = x;length = y;},
         None =>   {encoder::reply_e01(); return true;},
     }
-    let mut buffer: [u8;32] = [0; 32]; // should be big enough!    
+    let mut buffer: [u8;CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!    
 
     // loop in crc
-    const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
+    const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&GDB_CRC_ALG);
 
     let mut digest = crc32_cksum.digest();
     bmplogx("CRC : Adr",address as u32);
