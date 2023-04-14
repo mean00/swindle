@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 
  	QTimer mytimer;
     QObject::connect(&mytimer,&QTimer::timeout,rngdbstub_poll);
- //   mytimer.start(100);
+    mytimer.start(100);
 
 	QCoreApplication::exec();
 	

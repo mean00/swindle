@@ -40,8 +40,11 @@ extern "C"
 #include "morse.h"
 #include <fcntl.h>
 }
-//--
-
+//-- disable debug
+#undef QBMPLOG
+#undef QBMPLOGN
+#define QBMPLOG(...) {}
+#define QBMPLOGN(...) {}
 // Rust part
 extern "C" 
 {
@@ -100,13 +103,14 @@ void BmpTcpServer::newConnection()
 BMPTcp::BMPTcp(QTcpSocket *sock)
 {
 	_socket = sock;
-	_socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+	
 	connect(_socket, SIGNAL(disconnected()),  this, SLOT(disconnected()));
 	connect(_socket, SIGNAL(readyRead()),  this, SLOT(readyRead()));
 	current_connection=this;
-	_socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
-    lowDelay( _socket->socketDescriptor());
     _socket->setReadBufferSize(512);
+    _socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    lowDelay( _socket->socketDescriptor());
+    
 	rngdbstub_init();
 }
 //
@@ -186,6 +190,20 @@ extern "C"
 		eol=false;
 		QBMPLOG("Reply :\n");
 	}
+#if 0
+    for(int i=0;i<sz;i++)
+    {
+        printf("0x%02x-",ptr[i]);
+    }
+    printf("!");
+    for(int i=0;i<sz;i++)
+    {
+        int c=ptr[i];
+        if(c<' ') c='.';
+        printf("%c!",c);
+    }
+#endif
+
 	if(current_connection)
 	{
 		current_connection->write(sz,ptr);
@@ -200,6 +218,7 @@ void rngdb_output_flush_c()
 	{
         QBMPLOG(" flush \n");
 		current_connection->flush();
+        current_connection->flush();
 	}
 	qInfo() << "\n";
 	eol=true;

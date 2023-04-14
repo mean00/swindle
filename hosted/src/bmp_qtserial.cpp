@@ -26,26 +26,50 @@ extern "C"
 
 #define xAssert(x) if(!(x)) {printf("%s FAILED in %s \n",#x,__PRETTY_FUNCTION__);exit(0);}
 
+//-- disable debug
+#undef QBMPLOG
+#undef QBMPLOGN
+#define QBMPLOG(...) {}
+#define QBMPLOGN(...) {}
+
+
 QSerialPort *qserial = NULL;
 /**
 */
-bool fullread(int total, uint8_t *data)
-{
-    while(total)
-    {
-        while(qserial->waitForReadyRead(10)==false)
-        {
 
-        }
-        int nb=qserial->read((char *)data,total);
-        if(nb<=0)
+bool waitData()
+{
+    while(1)
+    {
+        int a = qserial->bytesAvailable();        
+        if(a==0)
         {
-           QBMPLOG("************Warning : serial error \n");
-           exit(-1);
-           return false;
+            while(qserial->waitForReadyRead(10)==false)
+            {
+
+            }
+            continue;
         }
-        total-=nb;
-        data+=nb;
+        if(a<0)
+        {
+            return false;
+        }
+        return true;
+    }
+}
+bool readChar(uint8_t *data)
+{
+    if(!waitData())
+    {
+        QBMPLOG("************Warning : serial error \n");
+        return false;
+    }
+    int nb=qserial->read((char *)data,1);
+    if(nb<=0)
+    {
+        QBMPLOG("************Warning : serial error-2 \n");
+        exit(-1);
+        return false;
     }
     return true;                
 }
@@ -57,7 +81,10 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
     // too bad we have a proper automaton in the rust side
     {
         uint8_t c;
-        if(!fullread(1,&c)) return -6;
+        if(!readChar(&c))
+        {
+            return -6;
+        }
         if(c!='&')
         {
             QBMPLOG("*************Warning : invalid resp \n");
@@ -68,7 +95,7 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
     
     while(1)
     {
-          if(!fullread(1,data+nb)) 
+          if(!readChar(data+nb)) 
           {
             return -6;
           }
