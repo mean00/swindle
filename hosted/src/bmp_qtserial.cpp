@@ -57,65 +57,117 @@ bool waitData()
         return true;
     }
 }
+
+typedef enum SER_AUTO
+{
+    SERIAL_IDLE,
+    SERIAL_DATA,
+    SERIAL_DONE
+};
+#define SERIAL_BUFFER_SIZE 512
+uint8_t buffer_serial[SERIAL_BUFFER_SIZE];
+SER_AUTO serial_auto=SERIAL_IDLE;
+int serial_head=0;
+int serial_tail=0;
+
 bool readChar(uint8_t *data)
 {
-    if(!waitData())
+    // shrink 
+    if(serial_head==serial_tail)
     {
-        QBMPLOG("************Warning : serial error \n");
-        return false;
+        serial_head=serial_tail=0;
     }
-    int nb=qserial->read((char *)data,1);
-    if(nb<=0)
+    while(1)
     {
-        QBMPLOG("************Warning : serial error-2 \n");
-        exit(-1);
-        return false;
-    }
-    return true;                
+        if(serial_head!=serial_tail)
+        {
+            *data=buffer_serial[serial_head++];
+            return true;
+        }
+
+        
+        // do we have data already available ?
+        int a = qserial->bytesAvailable();
+        if(a)
+        {
+             if(a>SERIAL_BUFFER_SIZE)
+             {
+                a=SERIAL_BUFFER_SIZE;
+             }
+             int nb=qserial->read((char *)(buffer_serial+serial_tail),a);
+             if(nb>0)
+             {
+                serial_tail+=nb;
+                continue;
+             }
+             if(nb<0)
+             {
+                printf("Error on serial\n");
+                return false;
+             }
+        }
+        while(qserial->waitForReadyRead(10)==false)
+        {
+
+        }
+    }        
 }
+/**
+*/
 extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
 {
     // This breaks layers separation oh well
     // The expected input is REMOTE_RESP ... REMOTE_EOM
     // and we take only the payload
     // too bad we have a proper automaton in the rust side
+    serial_auto=SERIAL_IDLE;
+    int nb=0;
+    while(1)
     {
         uint8_t c;
         if(!readChar(&c))
         {
             return -6;
         }
-        if(c!='&')
+        switch(serial_auto)
         {
-            QBMPLOG("*************Warning : invalid resp \n");
-            return -1;
+            case SERIAL_IDLE: 
+                    if(c=='&')
+                    {
+                        serial_auto = SERIAL_DATA;
+                        break;
+                    }else
+                    {
+                        QBMPLOG("*************Warning : invalid resp \n");
+                    }
+                    break;
+            case SERIAL_DATA:
+             {
+                
+                if(c=='#')
+                {
+                    data[nb]=0;
+                    QBMPLOG("Serial Read %d bytes ",nb);
+                    QBMPLOGN(nb,(const char *)data);
+                    QBMPLOG("\n");  
+                    serial_auto = SERIAL_DONE;          
+                    return nb;
+                }
+                data[nb++]=c;
+                if(nb>maxsize)
+                {
+                    QBMPLOG("OVERFLOW!\n");
+                    return -6;
+                }                
+             }
+             break;
+            case SERIAL_DONE:
+            default:
+                printf("Invalid state\n");
+                xAssert(0);
+                break;
         }
-    }
-    int nb=0;
-    
-    while(1)
-    {
-          if(!readChar(data+nb)) 
-          {
-            return -6;
-          }
-          
-          if(data[nb]=='#') 
-          {
-            data[nb]=0;
-            QBMPLOG("Serial Read %d bytes ",nb);
-            QBMPLOGN(nb,(const char *)data);
-            QBMPLOG("\n");
-            
-            return nb;
-          }
-          nb++;
-          if(nb>=maxsize)
-          {
-            return nb;
-          }
-    }
-    return -1;
+    }      
 }
 /**
 */
@@ -128,7 +180,7 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
         int nb=qserial->write((const char *)data,size);
         if(nb<=0)
         {
-            QBMPLOG("***** WRITE FAILURE\n");
+            printf("***** WRITE FAILURE\n");
             exit(-1);
             break;
         }

@@ -220,7 +220,7 @@ void rngdb_output_flush_c()
 		current_connection->flush();
         current_connection->flush();
 	}
-	qInfo() << "\n";
+	QBMPLOG("\n");
 	eol=true;
 }
 }
