@@ -37,6 +37,7 @@ pub const RPC_RESP_NOTSUP   : u8 = b'N';
 
 
 /* High level protocol elements */
+pub const RPC_HL_VERSION        : u8 = 2;
 pub const RPC_HL_CHECK          : u8 = b'C';
 pub const RPC_DP_READ           : u8 = b'd';
 pub const RPC_LOW_ACCESS        : u8 = b'L';

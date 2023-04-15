@@ -90,8 +90,37 @@ fn rpc_reply_hex_string(code : u8, s: &[u8])
  */
 fn rpc_hl_packet(input : &[u8]) -> bool
 {
-    bmplog("hl packet\n");
-    false
+    bmplog("\thl packet\n");
+    let mut res : u8 = 0;
+    if input[0]== rpc_commands::RPC_HL_CHECK
+    {
+        rpc_message_out(&[
+        rpc_commands::RPC_REMOTE_RESP,
+        rpc_commands::RPC_RESP_OK,
+        rpc_commands::RPC_HL_VERSION,
+        crate::packet_symbols::RPC_END]);
+        return true;
+    }    
+    // the follow up is 
+    // - index dp (2)
+    // - ap.apsel (2)
+    // [...]
+    match input[0]
+    {        
+        RPC_DP_READ => (),
+        RPC_LOW_ACCESS => (),
+        RPC_AP_READ => (),
+        RPC_AP_WRITE => (),
+        RPC_AP_MEM_READ=> (),
+        RPC_MEM_READ => (),
+        RPC_MEM_WRITE_SIZED => (),
+        RPC_AP_MEM_WRITE_SIZED=> (),
+        _ => (),
+    };
+
+    bmpwarning("\tunknown hl packet\n",input[0]);
+    rpc_reply(rpc_commands::RPC_RESP_ERR, rpc_commands::RPC_REMOTE_ERROR_UNRECOGNISED);
+    true
 }
 /*
  */
@@ -317,170 +346,6 @@ pub fn rpc(input : &[u8]) -> bool
    true
 }
 /*
- #include "general.h"
- #include "remote.h"
- #include "gdb_packet.h"
- #include "jtagtap.h"
- #include "swd.h"
- #include "gdb_if.h"
- #include "version.h"
- #include "exception.h"
- #include <stdarg.h>
- #include "target/adiv5.h"
- #include "target.h"
- #include "hex_utils.h"
- 
- #define NTOH(x)    (((x) <= 9) ? (x) + '0' : 'a' + (x)-10)
- #define HTON(x)    (((x) <= '9') ? (x) - '0' : ((TOUPPER(x)) - 'A' + 10))
- #define TOUPPER(x) ((((x) >= 'a') && ((x) <= 'z')) ? ((x) - ('a' - 'A')) : (x))
- #define ISHEX(x)   ((((x) >= '0') && ((x) <= '9')) || (((x) >= 'A') && ((x) <= 'F')) || (((x) >= 'a') && ((x) <= 'f')))
- 
- /@ Return numeric version of string, until illegal hex digit, or max @/
- uint64_t remotehston(const uint32_t max, const char *const str)
- {
-     uint64_t ret = 0;
-     for (size_t i = 0; i < max; ++i) {
-         const char value = str[i];
-         if (!ISHEX(value))
-             return ret;
-         ret = (ret << 4U) | HTON(value);
-     }
-     return ret;
- }
- 
- #if PC_HOSTED == 0
- static void remote_send_buf(uint8_t *buffer, size_t len)
- {
-     uint8_t *p = buffer;
-     char hex[2];
-     do {
-         hexify(hex, (const void *)p++, 1);
- 
-         gdb_if_putchar(hex[0], 0);
-         gdb_if_putchar(hex[1], 0);
- 
-     } while (p < (buffer + len));
- }
- 
- static void remote_respond_buf(char respCode, uint8_t *buffer, size_t len)
- {
-     gdb_if_putchar(REMOTE_RESP, 0);
-     gdb_if_putchar(respCode, 0);
- 
-     remote_send_buf(buffer, len);
- 
-     gdb_if_putchar(REMOTE_EOM, 1);
- }
- 
- /@ Send response to far end @/
- static void remote_respond(char respCode, uint64_t param)
- {
-     char buf[35]; /@Response, code, EOM and 2*16 hex nibbles@/
-     char *p = buf;
- 
-     gdb_if_putchar(REMOTE_RESP, 0);
-     gdb_if_putchar(respCode, 0);
- 
-     do {
-         *p++ = NTOH(param & 0x0fU);
-         param >>= 4U;
-     } while (param);
- 
-     /@ At this point the number to print is the buf, but backwards, so spool it out @/
-     do {
-         gdb_if_putchar(*--p, 0);
-     } while (p > buf);
-     gdb_if_putchar(REMOTE_EOM, 1);
- }
- 
- static void remote_respond_string(char respCode, const char *s)
- /@ Send response to far end @/
- {
-     gdb_if_putchar(REMOTE_RESP, 0);
-     gdb_if_putchar(respCode, 0);
-     while (*s) {
-         /@ Just clobber illegal characters so they don't disturb the protocol @/
-         if ((*s == '$') || (*s == REMOTE_SOM) || (*s == REMOTE_EOM))
-             gdb_if_putchar(' ', 0);
-         else
-             gdb_if_putchar(*s, 0);
-         s++;
-     }
-     gdb_if_putchar(REMOTE_EOM, 1);
- }
- 
- 
- static void remote_packet_process_general(unsigned i, char *packet)
- {
-     (void)i;
-     uint32_t freq;
-     switch (packet[1]) {
-     case REMOTE_VOLTAGE:
-         remote_respond_string(REMOTE_RESP_OK, platform_target_voltage());
-         break;
- 
-     case REMOTE_NRST_SET:
-         platform_nrst_set_val(packet[2] == '1');
-         remote_respond(REMOTE_RESP_OK, 0);
-         break;
- 
-     case REMOTE_NRST_GET:
-         remote_respond(REMOTE_RESP_OK, platform_nrst_get_val());
-         break;
-     case REMOTE_FREQ_SET:
-         platform_max_frequency_set(remotehston(8, packet + 2));
-         remote_respond(REMOTE_RESP_OK, 0);
-         break;
-     case REMOTE_FREQ_GET:
-         freq = platform_max_frequency_get();
-         remote_respond_buf(REMOTE_RESP_OK, (uint8_t *)&freq, 4);
-         break;
- 
-     case REMOTE_PWR_SET:
- #ifdef PLATFORM_HAS_POWER_SWITCH
-         if (packet[2] == '1' && !platform_target_get_power() &&
-             platform_target_voltage_sense() > POWER_CONFLICT_THRESHOLD) {
-             /@ want to enable target power, but voltage > 0.5V sensed
-              * on the pin -> cancel
-              @/
-             remote_respond(REMOTE_RESP_ERR, 0);
-         } else {
-             platform_target_set_power(packet[2] == '1');
-             remote_respond(REMOTE_RESP_OK, 0);
-         }
- #else
-         remote_respond(REMOTE_RESP_NOTSUP, 0);
- #endif
-         break;
- 
-     case REMOTE_PWR_GET:
- #ifdef PLATFORM_HAS_POWER_SWITCH
-         remote_respond(REMOTE_RESP_OK, platform_target_get_power());
- #else
-         remote_respond(REMOTE_RESP_NOTSUP, 0);
- #endif
-         break;
- 
- #if !defined(BOARD_IDENT) && defined(BOARD_IDENT)
- #define PLATFORM_IDENT() BOARD_IDENT
- #endif
-     case REMOTE_START:
- #if defined(ENABLE_DEBUG) && defined(PLATFORM_HAS_DEBUG)
-         //debug_bmp = true;
- #endif
-         remote_respond_string(REMOTE_RESP_OK, PLATFORM_IDENT "" FIRMWARE_VERSION);
-         break;
- 
-     case REMOTE_TARGET_CLK_OE:
-         platform_target_clk_output_enable(packet[2] != '0');
-         remote_respond(REMOTE_RESP_OK, 0);
-         break;
- 
-     default:
-         remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_UNRECOGNISED);
-         break;
-     }
- }
  
  static void remote_packet_process_high_level(unsigned i, char *packet)
  
@@ -585,30 +450,6 @@ pub fn rpc(input : &[u8]) -> bool
      SET_IDLE_STATE(1);
  }
  
- void remote_packet_process(unsigned i, char *packet)
- {
-     switch (packet[0]) {
-     case REMOTE_SWDP_PACKET:
-         remote_packet_process_swd(i, packet);
-         break;
- 
-     case REMOTE_JTAG_PACKET:
-         remote_packet_process_jtag(i, packet);
-         break;
- 
-     case REMOTE_GEN_PACKET:
-         remote_packet_process_general(i, packet);
-         break;
- 
-     case REMOTE_HL_PACKET:
-         remote_packet_process_high_level(i, packet);
-         break;
- 
-     default: /@ Oh dear, unrecognised, return an error @/
-         remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_UNRECOGNISED);
-         break;
-     }
- }
 */ 
 
 // EOF
