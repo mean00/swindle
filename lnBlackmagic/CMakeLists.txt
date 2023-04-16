@@ -27,7 +27,7 @@ IF (LN_BMP_HOSTED) # Hosted mode
     MESSAGE(STATUS "Building for hosted mode (${LN_BMP_HOSTED})")
     ADD_DEFINITIONS("-DPC_HOSTED=1")
     ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1")
-    ADD_DEFINITIONS("-DENABLE_DEBUG=1")
+    #    ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
     # Set a dummy configuration for lnArduino so it builds
     SET(LN_EXT "arm_gd32fx")
