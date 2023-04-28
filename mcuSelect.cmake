@@ -13,7 +13,7 @@ IF(NOT DEFINED LN_ARCH)
     SET(LN_MCU_FLASH_SIZE     256         CACHE INTERNAL "")
     SET(LN_MCU_STATIC_RAM     8           CACHE INTERNAL "")
     SET(LN_SPEC               "picolibc"  CACHE INTERNAL "") # if not set we use nano
-    SET(LN_BOOTLOADER_SIZE    0     CACHE INTERNAL "")
+    SET(LN_BOOTLOADER_SIZE    16          CACHE INTERNAL "")
     #SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
   ELSE()
     IF(USE_GD32F3)
