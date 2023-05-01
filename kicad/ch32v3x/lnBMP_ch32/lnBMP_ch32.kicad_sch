@@ -2507,7 +2507,7 @@
     (property "Value" "USB_OTG" (at 214.63 19.05 0)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "Connector_USB:USB_Mini-B_Lumberg_2486_01_Horizontal" (at 218.44 30.48 0)
+    (property "Footprint" "Connector_USB:USB_Micro-B_Wuerth_629105150521" (at 218.44 30.48 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" " ~" (at 218.44 30.48 0)
