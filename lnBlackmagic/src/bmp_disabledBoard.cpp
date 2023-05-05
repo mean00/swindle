@@ -9,6 +9,13 @@ extern "C"
 
 //grep undefined /tmp/x | sort | uniq | sed 's/.*reference to .//g' | sed 's/.$/);/g' | sed 's/^/BOARD_STUB(/g' | sed 's/ //g' | uniq
 
+BOARD_STUB(imxrt_probe);
+BOARD_STUB(lpc55xx_probe);
+BOARD_STUB(lpc55_dp_prepare);
+BOARD_STUB(lpc55_dmap_prepare);
+BOARD_STUB(lpc55_dmap_probe);
+BOARD_STUB(lpc40xx_probe);
+
 BOARD_STUB(efm32_aap_probe);
 BOARD_STUB(efm32_probe);
 BOARD_STUB(ke04_probe);

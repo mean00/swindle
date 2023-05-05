@@ -47,7 +47,20 @@ IF (LN_BMP_HOSTED) # Hosted mode
             ${HOSTED}/bmp_remote.c 
             #${HOSTED}/bmp_serial.c      
             ${HOSTED}/dap.c
-            ${HOSTED}/platform.c   ${HOSTED}/remote_jtagtap.c  ${HOSTED}/remote_swdptap.c
+            ${HOSTED}/platform.c   
+            ${HOSTED}/debug.c   
+            ${HOSTED}/remote/protocol_v0.c  
+            ${HOSTED}/remote/protocol_v0_swd.c  
+            ${HOSTED}/remote/protocol_v0_jtag.c  
+            ${HOSTED}/remote/protocol_v0_adiv5.c  
+            ${HOSTED}/remote/protocol_v1.c  
+            ${HOSTED}/remote/protocol_v1_adiv5.c              
+            ${HOSTED}/remote/protocol_v2.c  
+            ${HOSTED}/remote/protocol_v3.c  
+            ${HOSTED}/remote/protocol_v3_adiv5.c  
+            
+            
+            #${HOSTED}/remote/_swdptap.c
             #${PC}/cl_utils.c   
             #${PC}/gdb_if.c    
             #${PC}/serial_unix.c  
@@ -71,7 +84,7 @@ ELSE()  # "Normal" /Standalone mode
   include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
 ENDIF()
 SET(BM_SRC          ${S}/command.c  ${S}/crc32.c        ${S}/exception.c    #${S}/gdb_main.c ${S}/gdb_packet.c
-                    ${S}/hex_utils.c ${S}/morse.c ${S}/remote.c ${S}/timing.c)
+                    ${S}/hex_utils.c ${S}/morse.c ${S}/remote.c ${S}/timing.c ${S}/maths_utils.c )
 SET(BM_TARGET       ${T}/adiv5.c    ${T}/adiv5_swdp.c   ${T}/cortexm.c    ${T}/target_flash.c ${T}/gdb_reg.c
                     ${T}/lmi.c      
                     ${T}/target.c ${T}/sfdp.c

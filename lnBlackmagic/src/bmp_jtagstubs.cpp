@@ -41,7 +41,8 @@ extern jtag_proc_s jtag_proc={NULL,NULL,NULL,NULL,NULL};
 {
   return ;
 }
-uint32_t jtag_scan(const uint8_t *irlens)
+//uint32_t jtag_scan(const uint8_t *irlens)
+uint32_t jtag_scan()
 {
   return -1;
 }
