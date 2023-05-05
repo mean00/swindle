@@ -251,20 +251,20 @@ extern "C" void bmp_ident(bmp_info_s *info)
 /**
 */
 
-extern "C" int serial_open(const bmda_cli_options_s *opt, const char *serial)
+extern "C" bool serial_open(const bmda_cli_options_s *opt, const char *serial)
 {    
     QBMPLOG("Serial open\n");
     if(!qserial->open(QIODevice::ReadWrite))
     {
         QBMPLOG("cannot open\n");
-        return -1;
+        return false;
     }
     qserial->setFlowControl(QSerialPort::NoFlowControl);
     qserial->setBaudRate(QSerialPort::Baud115200);
     qserial->setDataBits(QSerialPort::Data8);
     qserial->setReadBufferSize(1);
     //qserial->setFlowControl(QSerialPort::NoFlowControl);
-    return 0;
+    return true;
 }
 
 // EOF
