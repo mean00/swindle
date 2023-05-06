@@ -210,19 +210,21 @@ extern "C"  int find_debuggers(bmda_cli_options_s *cl_opts, bmp_info_s *info)
             if(portInfo.vendorIdentifier() == BMP_VID)
             {
                 // take the 1st one (?)
-                if(pid==BMP_PID)// || pid==LNBMP_PID)
+                if(pid==LNBMP_PID)// || pid == BMP_PID|| pid==LNBMP_PID)
                 {
                     // take the 1st one (?)
                     memset(info,0,sizeof(*info));
                     info->bmp_type=BMP_TYPE_BMP;
                     // this is ugly, dont check anything just copy hoping it fits    
                     strcpy(info->manufacturer,portInfo.systemLocation().toLatin1().constData());
+                    return 0;
                 }                
-                return 0;
+                
             }            
         }
         
     }
+    printf("-- Cannot find valid debugger --\n");
     xAssert(0);    
     return 0;
 }
