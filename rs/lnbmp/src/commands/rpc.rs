@@ -94,11 +94,15 @@ fn rpc_hl_packet(input : &[u8]) -> bool
     let mut res : u8 = 0;
     if input[0]== rpc_commands::RPC_HL_CHECK
     {
-        rpc_message_out(&[
+        rpc_reply(rpc_commands::RPC_RESP_OK, rpc_commands::RPC_HL_VERSION);
+        /*
+        rpc_message_
+        out(&[
         rpc_commands::RPC_REMOTE_RESP,
         rpc_commands::RPC_RESP_OK,
         rpc_commands::RPC_HL_VERSION,
         crate::packet_symbols::RPC_END]);
+        */
         return true;
     }    
     // the follow up is 
