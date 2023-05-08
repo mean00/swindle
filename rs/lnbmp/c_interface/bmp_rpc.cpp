@@ -62,4 +62,33 @@ extern "C" bool bmp_rpc_swd_out_par_c(const uint32_t value, uint32_t nb_bits)
   swd_proc.seq_out_parity(value, nb_bits);
   return true;
 }
+/**
+      AP/DP part
+*/
+
+
+extern "C" bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint16_t address, int32_t *err, uint32_t *value)
+{  
+  remote_dp.dev_index  = device_index;
+
+  adiv5_access_port_s remote_ap;
+  remote_ap.apsel = ap_selection;
+  remote_ap.dp = &remote_dp;
+
+  *value = adiv5_dp_read(&remote_dp, address); // firmware_swdp_read 0x40010c04
+  *err = remote_dp.fault;
+
+  return true;
+}
+
+
+extern "C" bool bmp_adiv5_full_dp_low_level_c( const uint32_t device_index,  const uint32_t ap_selection, const uint16_t  address, const uint32_t value, int32_t *err, uint32_t *outvalue)
+{  
+  remote_dp.dev_index  = device_index;
+  *outvalue = remote_dp.low_access( &remote_dp, ap_selection, address, value);
+  *err = remote_dp.fault;
+
+  return true;
+}
+
 // EOF

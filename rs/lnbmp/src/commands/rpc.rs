@@ -13,10 +13,10 @@ use crate::commands::{CallbackType,exec_one,CommandTree};
 use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
 use crate::commands::rpc_commands;
+use crate::parsing_util::ascii_octet_to_hex;
 
 
-
-crate::setup_log!(false);
+crate::setup_log!(true);
 
 //-------------------------------
 /**
@@ -85,6 +85,29 @@ fn rpc_reply_hex_string(code : u8, s: &[u8])
     encoder::hexify_and_raw_send(s);
     rpc_message_out(&[crate::packet_symbols::RPC_END]);
 }
+/**
+ * 
+ */
+fn hex16_to_u32( input : &[u8] ) -> u32
+{
+    let mut left : u32 = ascii_octet_to_hex(input[0],input[1]) as u32;
+    let mut right : u32 = ascii_octet_to_hex(input[2],input[3]) as u32;
+    return (left<<8)+right;
+}
+/**
+ * 
+ */
+fn reply_adiv5_32( fault : i32, value : u32)
+{
+    if fault!=0
+    {
+        bmplog1("\tAdiv error   : ",fault as u32); bmplog("\n");
+        rpc_reply32(rpc_commands::RPC_RESP_ERR, (  (fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32));
+    }else
+    {
+        rpc_reply32(rpc_commands::RPC_RESP_OK, value);
+    }
+}
 
 /*
  */
@@ -94,7 +117,8 @@ fn rpc_hl_packet(input : &[u8]) -> bool
     let mut res : u8 = 0;
     if input[0]== rpc_commands::RPC_HL_CHECK
     {
-        rpc_reply(rpc_commands::RPC_RESP_OK, rpc_commands::RPC_HL_VERSION);
+        bmplog("\t\tget version\n");
+        rpc_reply(rpc_commands::RPC_RESP_OK, 1*0+1*rpc_commands::RPC_HL_VERSION); // Force version 1
         /*
         rpc_message_
         out(&[
@@ -105,23 +129,70 @@ fn rpc_hl_packet(input : &[u8]) -> bool
         */
         return true;
     }    
+    if input.len()<8
+    {
+        rpc_reply(rpc_commands::RPC_RESP_ERR, rpc_commands::RPC_REMOTE_ERROR_UNRECOGNISED);
+        bmpwarning("Command too short\n",input.len());
+        return true;
+    }
     // the follow up is 
     // - index dp (2)
     // - ap.apsel (2)
+    // 0   1    2    3    4    5    6    7    8
+    // CMD INDEXX    AP_SEL    ADDREEEEEEEEESSS
     // [...]
-    match input[0]
-    {        
-        RPC_DP_READ => (),
-        RPC_LOW_ACCESS => (),
-        RPC_AP_READ => (),
-        RPC_AP_WRITE => (),
-        RPC_AP_MEM_READ=> (),
-        RPC_MEM_READ => (),
-        RPC_MEM_WRITE_SIZED => (),
-        RPC_AP_MEM_WRITE_SIZED=> (),
-        _ => (),
-    };
+    
+    let device_index: u32= ascii_octet_to_hex(input[1],input[2]) as u32;
+    let ap_selection: u32= ascii_octet_to_hex(input[3],input[4]) as u32;
 
+    let as_string = unsafe {core::str::from_utf8_unchecked(input)};
+    bmplog( "\t\t");bmplog( as_string);bmplog("\n");
+
+    match input[0]
+    {            
+        rpc_commands::RPC_DP_READ =>
+            {        
+                    let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..]);
+                    let mut value : u32;
+                    let mut fault : i32;                                
+
+                    bmplogx("\t\t DP_READ:",input[0] as u32);bmplog("\n");
+                    bmplogx("\t\t device_index  ",device_index);
+                    bmplogx(" ap_selection at ",ap_selection);
+                    bmplogx(" dp_read at ",address);
+                    (fault, value) = bmp::bmp_adiv5_full_dp_read(device_index, ap_selection, address as u16);
+                    bmplogx("\t\tvalue :",value);bmplog("\n");
+                    reply_adiv5_32(fault, value);
+                    return true;
+            },
+        rpc_commands::RPC_LOW_ACCESS =>
+            {      
+                // 0 12 34 56 78 90 12 34 56  
+                // L 00 00*00-04*50-00-00-00
+                let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
+                let value   : u32 = crate::parsing_util::u8s_string_to_u32(&input[9..]);                
+                let mut fault : i32;                
+                bmplogx("\t\t LOW_ACCESS:",input[0] as u32);bmplog("\n");
+                bmplogx("\t\t device_index  ",device_index);
+                bmplogx(" ap_selection at ",ap_selection);
+                bmplogx("\t\taddress :",address);bmplog("\n");
+                bmplogx("\t\tvalue :",value);bmplog("\n");
+                let mut outvalue : u32;
+                (fault, outvalue) = bmp::bmp_adiv5_full_dp_low_level( device_index, ap_selection, address as u16,value);
+                bmplogx("\t\toutvalue :",outvalue);bmplog("\n");
+                reply_adiv5_32(fault, outvalue);
+                return true;
+            },
+            rpc_commands::RPC_AP_READ => (),
+            rpc_commands::RPC_AP_WRITE => (),
+            rpc_commands::RPC_AP_MEM_READ=> (),   //          'a' 
+            rpc_commands::RPC_MEM_READ => (),     // 104 0x68 'h'
+            rpc_commands::RPC_MEM_WRITE_SIZED => (),
+            rpc_commands::RPC_AP_MEM_WRITE_SIZED=> (),
+            _ => (),
+    };
+    bmplog("\t\t Other HL cmd \n");
+    panic!();
     bmpwarning("\tunknown hl packet\n",input[0]);
     rpc_reply(rpc_commands::RPC_RESP_ERR, rpc_commands::RPC_REMOTE_ERROR_UNRECOGNISED);
     true
@@ -234,12 +305,12 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                     {
                                         true => 
                                         {
-                                                    bmplogx("\tIn_par value  : ",value); bmplog("\n");
+                                                    //bmplogx("\tIn_par value  : ",value); bmplog("\n");
                                                     rpc_reply32(
                                                         match parity
                                                         {
                                                             true => {bmplog("In: BAD PARITY\n");rpc_commands::RPC_RESP_PARERR},
-                                                            false => {bmplog1("\t\t value",value);bmplog("\n");rpc_commands::RPC_RESP_OK},
+                                                            false => {bmplogx("\t\t value",value);bmplog("\n");rpc_commands::RPC_RESP_OK},
                                                         }, value);},
                                         false =>  {bmplog("In: FAIL\n");rpc_reply32(rpc_commands::RPC_RESP_ERR,value)},
                                     };
@@ -268,7 +339,7 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                         return false;
                                     }
                                     let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
-                                    bmplog1("\tOut_par value  : ",param); 
+                                    bmplogx("\tOut_par value  : ",param); 
                                     bmplog("\n");
 
                                     bmp::bmp_rpc_swd_out_par(param,  tick  );
@@ -291,7 +362,7 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
 
 
                                     let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
-                                    bmplog1("\tOut_par value  : ",param); 
+                                    bmplogx("\tOut_par value  : ",param); 
                                     bmplog("\n");
 
                                     bmp::bmp_rpc_swd_out(param,  tick  );
@@ -310,6 +381,84 @@ fn rpc_jtag_packet(input : &[u8]) -> bool
     bmplog("jtag packet\n");
     false
 }
+/**
+ * 
+ */
+fn rpc_adiv5_packet(input : &[u8]) -> bool
+{
+    
+    let as_string = unsafe {core::str::from_utf8_unchecked(input)};
+    bmplog( "ADIV5==>");bmplog( as_string);bmplog("\n");
+    if input.len()<8
+    {
+        rpc_reply(rpc_commands::RPC_RESP_ERR, rpc_commands::RPC_REMOTE_ERROR_UNRECOGNISED);
+        bmpwarning("Command adiv5 too short\n",input.len());
+        return true;
+    }
+    // the follow up is 
+    // - index dp (2)
+    // - ap.apsel (2)
+    // 0   1    2    3    4    5    6    7    8
+    // CMD INDEXX    AP_SEL    ADDREEEEEEEEESSS
+    // [...]
+    
+    let device_index: u32= ascii_octet_to_hex(input[1],input[2]) as u32;
+    let ap_selection: u32= ascii_octet_to_hex(input[3],input[4]) as u32;
+
+    match input[0]
+    {
+        rpc_commands::RPC_REMOTE_MEM_READ        => { 
+                                    bmplog("\tMEM_READ\n");
+                                    },
+        rpc_commands::RPC_REMOTE_MEM_WRITE        => { 
+                                    bmplog("\tMEM_WRITE\n");
+                                    },
+        
+        rpc_commands::RPC_REMOTE_AP_READ        => { 
+                                      bmplog("\tAP_READ\n");
+                                   },
+        rpc_commands::RPC_REMOTE_AP_WRITE        => { 
+                                    bmplog("\tAP_WRITE\n");
+                                },
+        rpc_commands::RPC_REMOTE_ADIV5_RAW_ACCESS        => { // 'R'
+                                    //R 00  00     0000 00000004 
+                                    //  dev apsel  addr value
+                                    bmplog("\tRAW_ACCESS\n");
+                                    let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
+                                    let value   : u32 = crate::parsing_util::u8s_string_to_u32(&input[9..]);                
+                                    let mut fault : i32;                                                    
+                                    bmplogx("\t\t device_index  ",device_index);
+                                    bmplogx(" ap_selection at ",ap_selection);
+                                    bmplogx("\taddress :",address);
+                                    bmplogx(" value :",value);bmplog("\n");
+                                    let mut outvalue : u32;
+                                    //pub fn  bmp_adiv5_full_dp_low_level( device_index : u32, ap_selection :u32, address : u16, value : u32) -> ( i32 , u32)
+                                    (fault, outvalue) = bmp::bmp_adiv5_full_dp_low_level( device_index, ap_selection, address as u16,value);
+                                    bmplogx("\t\toutvalue :",outvalue);bmplogx(" fault :",fault as u32);bmplog("\n");
+                                    reply_adiv5_32(fault, outvalue);
+                                    return true;
+                                },
+        rpc_commands::RPC_REMOTE_DP_READ      => {                       //'d'
+                                    
+                                    let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..]);
+                                    let mut value : u32;
+                                    let mut fault : i32;                                
+                
+                                    bmplogx("\t\t RPC_REMOTE_DP_READ:",input[0] as u32);bmplog("\n");
+                                    bmplogx("\t\t device_index  ",device_index);
+                                    bmplogx(" ap_selection at ",ap_selection);
+                                    bmplogx(" dp_read at ",address);
+                                    (fault, value) = bmp::bmp_adiv5_full_dp_read(device_index, ap_selection, address as u16);
+                                    bmplogx("\t\tvalue :",value);bmplog("\n");
+                                    reply_adiv5_32(fault, value);
+                                    return true;
+                                },
+        _ => (),
+    };
+    bmplog("**** FAILED : adiv5 packet*********\n");
+    false
+}
+
 
 /*
  */
@@ -330,6 +479,7 @@ fn rpc_wrapper(input : &[u8]) -> bool
     }
     return match input[0]
     {
+        rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&input[1..]),
         rpc_commands::RPC_JTAG_PACKET  => rpc_jtag_packet(&input[1..]),
         rpc_commands::RPC_SWDP_PACKET  => rpc_swdp_packet(&input[1..]),
         rpc_commands::RPC_GEN_PACKET   => rpc_gen_packet(&input[1..]),
@@ -349,112 +499,7 @@ pub fn rpc(input : &[u8]) -> bool
    }
    true
 }
-/*
- 
- static void remote_packet_process_high_level(unsigned i, char *packet)
- 
- {
-     (void)i;
-     SET_IDLE_STATE(0);
- 
-     adiv5_access_port_s remote_ap;
-     /@ Re-use packet buffer. Align to DWORD! @/
-     void *src = (void *)(((uint32_t)packet + 7U) & ~7U);
-     char index = packet[1];
-     if (index == REMOTE_HL_CHECK) {
-         remote_respond(REMOTE_RESP_OK, REMOTE_HL_VERSION);
-         return;
-     }
-     packet += 2;
-     remote_dp.dp_jd_index = remotehston(2, packet);
-     packet += 2;
-     remote_ap.apsel = remotehston(2, packet);
-     remote_ap.dp = &remote_dp;
-     switch (index) {
-     case REMOTE_DP_READ: /@ Hd = Read from DP register @/
-         packet += 2;
-         uint16_t addr16 = remotehston(4, packet);
-         uint32_t data = adiv5_dp_read(&remote_dp, addr16);
-         remote_respond_buf(REMOTE_RESP_OK, (uint8_t *)&data, 4);
-         break;
-     case REMOTE_LOW_ACCESS: /@ HL = Low level access @/
-         packet += 2;
-         addr16 = remotehston(4, packet);
-         packet += 4;
-         uint32_t value = remotehston(8, packet);
-         data = remote_dp.low_access(&remote_dp, remote_ap.apsel, addr16, value);
-         remote_respond_buf(REMOTE_RESP_OK, (uint8_t *)&data, 4);
-         break;
-     case REMOTE_AP_READ: /@ Ha = Read from AP register@/
-         packet += 2;
-         addr16 = remotehston(4, packet);
-         data = adiv5_ap_read(&remote_ap, addr16);
-         remote_respond_buf(REMOTE_RESP_OK, (uint8_t *)&data, 4);
-         break;
-     case REMOTE_AP_WRITE: /@ Ha = Write to AP register@/
-         packet += 2;
-         addr16 = remotehston(4, packet);
-         packet += 4;
-         value = remotehston(8, packet);
-         adiv5_ap_write(&remote_ap, addr16, value);
-         remote_respond(REMOTE_RESP_OK, 0);
-         break;
-     case REMOTE_AP_MEM_READ: /@ HM = Read from Mem and set csw @/
-         packet += 2;
-         remote_ap.csw = remotehston(8, packet);
-         packet += 6;
-         /@fall through@/
-     case REMOTE_MEM_READ: /@ Hh = Read from Mem @/
-         packet += 2;
-         uint32_t address = remotehston(8, packet);
-         packet += 8;
-         uint32_t count = remotehston(8, packet);
-         packet += 8;
-         adiv5_mem_read(&remote_ap, src, address, count);
-         if (remote_ap.dp->fault == 0) {
-             remote_respond_buf(REMOTE_RESP_OK, src, count);
-             break;
-         }
-         remote_respond(REMOTE_RESP_ERR, 0);
-         remote_ap.dp->fault = 0;
-         break;
-     case REMOTE_AP_MEM_WRITE_SIZED: /@ Hm = Write to memory and set csw @/
-         packet += 2;
-         remote_ap.csw = remotehston(8, packet);
-         packet += 6;
-         /@fall through@/
-     case REMOTE_MEM_WRITE_SIZED: /@ HH = Write to memory@/
-         packet += 2;
-         align_e align = remotehston(2, packet);
-         packet += 2;
-         uint32_t dest = remotehston(8, packet);
-         packet += 8;
-         size_t len = remotehston(8, packet);
-         packet += 8;
-         if (len & ((1U << align) - 1U)) {
-             /@ len  and align do not fit@/
-             remote_respond(REMOTE_RESP_ERR, 0);
-             break;
-         }
-         /@ Read as stream of hexified bytes@/
-         unhexify(src, packet, len);
-         adiv5_mem_write_sized(&remote_ap, dest, src, len, align);
-         if (remote_ap.dp->fault) {
-             /@ Errors handles on hosted side.@/
-             remote_respond(REMOTE_RESP_ERR, 0);
-             remote_ap.dp->fault = 0;
-             break;
-         }
-         remote_respond(REMOTE_RESP_OK, 0);
-         break;
-     default:
-         remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_UNRECOGNISED);
-         break;
-     }
-     SET_IDLE_STATE(1);
- }
- 
-*/ 
+
 
 // EOF
 

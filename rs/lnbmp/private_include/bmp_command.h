@@ -49,6 +49,9 @@ bool bmp_rpc_swd_in_par_c(uint32_t *value, bool *par,  const unsigned int nb_bit
 bool bmp_rpc_swd_out_c(const uint32_t value,  const unsigned int nb_bits);
 bool bmp_rpc_swd_out_par_c(const uint32_t value,   const unsigned int nb_bits);
 
+//
+bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint16_t address, int32_t *err, uint32_t *value);
+bool bmp_adiv5_full_dp_low_level_c( const uint32_t device_index, const uint32_t ap_selection, const uint16_t  address, const uint32_t value, int32_t *err, uint32_t *outvalue);
 // platform
 void platform_nrst_set_val(bool assert);
 bool platform_nrst_get_val();

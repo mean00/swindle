@@ -41,7 +41,7 @@ macro_rules! setup_log
         {
             if $enabled
             {
-                glog1(s,v);
+                glogx(s,v);
             }
         }
 

@@ -28,7 +28,7 @@ pub fn glogx (s : &str, v: u32)
 }
 
 #[cfg(feature = "native")]
-use rnarduino::rn_os_helper::{log,log1};
+use rnarduino::rn_os_helper::{log,log1,logx};
 
 #[cfg(feature = "native")]
 pub fn glog1<T: uDisplay> (s : &str, v: T)
@@ -45,7 +45,7 @@ pub fn glog (s : &str)
 #[cfg(feature = "native")]
 pub fn glogx (s : &str, v: u32)
 {
-    log1(s,v);
+    logx(s,v);
 }
 
 pub fn xswap( a: &mut isize, b : &mut isize)

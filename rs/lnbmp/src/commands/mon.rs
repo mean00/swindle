@@ -107,13 +107,13 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
     let mut pivot = 4;
     let mut inc = 4;
     // is there anything at all ?
-    bmp::bmp_set_wait_state(8); // starts slow..
+    bmp::bmp_set_wait_state(4); // starts slow..
     if !bmp::swdp_scan()
     {
         bmpwarning("fail ws=8!\n",0);
         return false;     // nope
     }
-
+/*
     loop
     {        
         bmplog1("swdp_scan: pivot",pivot);
@@ -135,13 +135,16 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
             break;
         }
     }
+    
     // final check
+    pivot=8;
     bmp::bmp_set_wait_state(pivot);
     if !bmp::swdp_scan()
     {
         bmpwarning("swdp fail!\n",pivot);
         return false;
     }
+    */
     crate::glue::gdb_out_rs_u32("Using ", pivot) ;
     crate::glue::gdb_out_rs(" wait state\n");    
     encoder::reply_ok();

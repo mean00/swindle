@@ -225,6 +225,25 @@ extern "C" {
     pub fn bmp_rpc_swd_out_par_c(value: core::ffi::c_uint, nb_bits: core::ffi::c_uint) -> bool_;
 }
 extern "C" {
+    pub fn bmp_adiv5_full_dp_read_c(
+        device_index: core::ffi::c_uint,
+        ap_selection: core::ffi::c_uint,
+        address: u16,
+        err: *mut i32,
+        value: *mut core::ffi::c_uint,
+    ) -> bool_;
+}
+extern "C" {
+    pub fn bmp_adiv5_full_dp_low_level_c(
+        device_index: core::ffi::c_uint,
+        ap_selection: core::ffi::c_uint,
+        address: u16,
+        value: core::ffi::c_uint,
+        err: *mut i32,
+        outvalue: *mut core::ffi::c_uint,
+    ) -> bool_;
+}
+extern "C" {
     pub fn platform_nrst_set_val(assert: bool_);
 }
 extern "C" {

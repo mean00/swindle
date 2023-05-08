@@ -384,6 +384,45 @@ pub fn bmplog( s : &str)
 }
  
 
+
+pub fn  bmp_adiv5_full_dp_low_level( device_index : u32, ap_selection :u32, address : u16, value : u32) -> ( i32 , u32)
+{
+    unsafe
+    {
+        let mut outvalue : u32 = 0;
+        let ptr : *mut u32  = &mut outvalue;
+
+        let mut ret : i32 = -1;
+        let ret_ptr : *mut i32 = &mut ret;
+
+        rn_bmp_cmd_c::bmp_adiv5_full_dp_low_level_c( device_index, 
+                                                    ap_selection,  
+                                                    address, 
+                                                    value, 
+                                                    ret_ptr, 
+                                                    ptr);
+        return (ret, outvalue);
+    }
+
+}
+
+pub fn  bmp_adiv5_full_dp_read(device_index : u32, ap_selection :u32, address : u16) -> ( i32 , u32)
+{
+
+    unsafe
+    {
+        let mut value : u32 = 0;
+        let ptr : *mut u32  = &mut value;
+
+        let mut ret : i32 = -1;
+        let ret_ptr : *mut i32 = &mut ret;
+
+        rn_bmp_cmd_c::bmp_adiv5_full_dp_read_c(device_index, ap_selection,  address, ret_ptr, ptr);
+        return (ret, value);
+    }
+
+}
+
 /*
  pub fn bmp_platform_target_voltage() ->
  {
