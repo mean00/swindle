@@ -55,7 +55,15 @@ extern "C" bool bmp_rpc_swd_out_par_c(const uint32_t value, uint32_t nb_bits)
    return true;
 }
 
-
+extern "C" bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address, int32_t *err, uint32_t *value)
+{
+   xAssert(0);
+   return true;
+}
+extern "C" bool bmp_adiv5_full_dp_low_level_c()
+{
+   xAssert(0);
+}
 extern "C" 
 {
 	int gdb_if_init(void)
