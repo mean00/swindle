@@ -118,7 +118,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
     if input[0]== rpc_commands::RPC_HL_CHECK
     {
         bmplog("\t\tget version\n");
-        rpc_reply(rpc_commands::RPC_RESP_OK, 1*0+1*rpc_commands::RPC_HL_VERSION); // Force version 1
+        rpc_reply(rpc_commands::RPC_RESP_OK, 2*1+0*rpc_commands::RPC_HL_VERSION); // Force version 1
         /*
         rpc_message_
         out(&[
@@ -191,6 +191,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
             rpc_commands::RPC_AP_MEM_WRITE_SIZED=> (),
             _ => (),
     };
+    
     bmplog("\t\t Other HL cmd \n");
     panic!();
     bmpwarning("\tunknown hl packet\n",input[0]);
