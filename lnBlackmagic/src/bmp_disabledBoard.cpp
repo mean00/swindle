@@ -11,6 +11,10 @@ extern "C"
 
 
 }
+extern "C" bool cortexa_probe(adiv5_access_port_s *apb, uint32_t debug_base)
+{
+  return false;
+}
 
 extern "C" const char *list_enabled_boards()
 {
