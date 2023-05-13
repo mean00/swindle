@@ -24,7 +24,8 @@ MACRO(DECLARE_MCU mcu source probe)
         OPTION(${mcu} "adding support for ${mcu}")
         LIST(FIND LN_ALL_BOARDS ${mcu} does_exist)
         IF( ${does_exist} EQUAL -1)
-                MESSAGE(FATAL_ERROR "board : ${board} is not in available boards!")
+                MESSAGE(ERROR "board : ${board} is not in available boards!")
+                MESSAGE(FATAL_ERROR "available boards: ${LN_ALL_BOARDS}")
         ENDIF( ${does_exist} EQUAL -1)        
         LIST(FIND LN_ENABLED_BOARDS ${mcu} is_enabled)
         IF( ${is_enabled} EQUAL -1)
@@ -126,8 +127,11 @@ IF (LN_BMP_HOSTED)
             #${PC}/gdb_if.c    
             #${PC}/serial_unix.c  
             ${PC}/utils.c
-            ${PC}/cli.c       ${PC}/probe_info.c
-            ${T}/jtag_scan.c  ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c
+            ${PC}/cli.c       
+            ${PC}/probe_info.c
+            ${T}/jtag_scan.c  
+            ${T}/jtag_devs.c    
+            ${T}/adiv5_jtagdp.c
             #!!${B}/stubs.cpp
             )
 ELSE()  
@@ -171,7 +175,7 @@ SET(BM_TARGET   ${T}/adiv5.c
                 ${T}/target_flash.c 
                 #${T}/target_probe.c 
                 ${T}/gdb_reg.c
-                ${T}/lmi.c      
+                #${T}/lmi.c      
                 ${T}/target.c 
                 ${T}/sfdp.c
                 # ${S}/gdb_hostio.c 
