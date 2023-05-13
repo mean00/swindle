@@ -12,7 +12,7 @@ use super::{CommandTree,exec_one};
 use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete};
 use crate::commands::CallbackType;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 
 const vflash_command_tree: [CommandTree;3] = 
 [
@@ -45,7 +45,8 @@ fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
     }
 
     let xin = &args[0];
-    match crate::parsing_util::take_adress_length(&xin[1..])
+    bmplog1("Input : ",xin);
+    match crate::parsing_util::take_adress_length(xin)
     {
         None =>   encoder::reply_e01(),
         Some( (adr,len) ) => 
