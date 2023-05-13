@@ -258,3 +258,6 @@ extern "C" {
 extern "C" {
     pub fn Logger2(n: core::ffi::c_int, fmt: *const core::ffi::c_char);
 }
+extern "C" {
+    pub fn list_enabled_boards() -> *const core::ffi::c_char;
+}

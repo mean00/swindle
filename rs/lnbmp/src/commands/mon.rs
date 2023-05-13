@@ -12,11 +12,12 @@ use numtoa::NumToA;
 //
 crate::setup_log!(false);
 //
-const mon_command_tree: [CommandTree;3] = 
+const mon_command_tree: [CommandTree;4] = 
 [
     CommandTree{ command: "help",args: 0,      require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
     CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
     CommandTree{ command: "voltage",args: 0,      require_connected: false ,cb: CallbackType::text( _voltage) },      // 
+    CommandTree{ command: "boards",args: 0,      require_connected: false ,cb: CallbackType::text( _boards) },      // 
 ];
 
 //
@@ -29,6 +30,16 @@ pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
         gdb_out_rs( &(mon_command_tree[i].command));
         gdb_out_rs( ":\n");
     }
+    encoder::reply_ok();
+    return true;
+}
+
+//
+fn _boards(_command : &str, _args : &Vec<&str>) -> bool
+{
+    gdb_out_rs( "Support enabled for :\n");
+    gdb_out_rs( bmp::bmp_supported_boards());
+    gdb_out_rs( "\n");
     encoder::reply_ok();
     return true;
 }

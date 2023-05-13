@@ -60,3 +60,4 @@ void platform_target_clk_output_enable(bool enable);
 
 //
 void Logger2(int n , const char *fmt);
+ const char *list_enabled_boards();

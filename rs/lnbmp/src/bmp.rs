@@ -422,6 +422,14 @@ pub fn  bmp_adiv5_full_dp_read(device_index : u32, ap_selection :u32, address : 
     }
 
 }
+/**
+ * 
+ */
+pub fn bmp_supported_boards() -> &'static str
+{
+   let placeholder  = "placeholder";
+   return placeholder;
+}
 
 /*
  pub fn bmp_platform_target_voltage() ->
