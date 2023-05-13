@@ -171,7 +171,7 @@ SET(BM_SRC      ${S}/command.c
 SET(BM_TARGET   ${T}/adiv5.c    
                 ${T}/adiv5_swdp.c   
                 ${T}/cortexm.c    
-                ${T}/cortexa.c    
+                #${T}/cortexa.c    
                 ${T}/target_flash.c 
                 #${T}/target_probe.c 
                 ${T}/gdb_reg.c
