@@ -427,7 +427,20 @@ pub fn  bmp_adiv5_full_dp_read(device_index : u32, ap_selection :u32, address : 
  */
 pub fn bmp_supported_boards() -> &'static str
 {
-   let placeholder  = "placeholder";
+   
+   unsafe {
+        let boards=  rn_bmp_cmd_c::list_enabled_boards();
+      
+        let output =  CStr::from_ptr(boards).to_str();
+        match output
+        {
+            Ok(x) => return x,
+            _  => (),
+        }
+   }
+   // convert to &str
+
+   let placeholder  = "--error--";
    return placeholder;
 }
 
