@@ -11,12 +11,17 @@ OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 OPTION(USE_GD32F3        "Target GD32F303 chip with 256 flash" OFF)
 OPTION(USE_CH32V3x       "Target USE_CH32V3x chip with 256 flash" OFF)
 
-SET(USE_CH32v3x_USB_OTG True CACHE INTERNAL "")
-SET(USE_CH32V3x        True CACHE INTERNAL "")
+IF(USE_NO_DEFAULT)
 
-#SET(USE_GD32F3      TRUE CACHE INTERNAL "")
-SET(USE_CLANG       TRUE CACHE INTERNAL "")
-SET(LN_LTO "-flto"  CACHE INTERNAL "")
+ELSE(USE_NO_DEFAULT)
+    #SET(USE_CH32V3x        True CACHE INTERNAL "")
+    SET(USE_GD32F3      TRUE CACHE INTERNAL "")
+    #SET(USE_CLANG       TRUE CACHE INTERNAL "")
+    #SET(LN_LTO "-flto"  CACHE INTERNAL "")
+ENDIF(USE_NO_DEFAULT)
+IF(USE_CH32V3x)
+    SET(USE_CH32v3x_USB_OTG True CACHE INTERNAL "")
+ENDIF(USE_CH32V3x)
 
 SET(LN_ENABLE_USBD  True CACHE INTERNAL "")
 SET(LN_ENABLE_I2C   FALSE CACHE INTERNAL "")
@@ -30,6 +35,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${AF_FOLDER}/cmake CACHE INTERNAL "")
 PROJECT(lnBMP NONE) # the NONE is very important !
 
 enable_language(C CXX ASM) # this is important too!
+#
+include(./enabled_board.cmake)
 #
 
 include(applyPatch)
@@ -106,6 +113,11 @@ ELSE()
 ENDIF()
 
 
-set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${TGT_NAME}_${LN_MCU}_${MCU_SPEED_M}M )
+set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M )
 
+#---
+IF(USE_CLANG)
 
+ELSE()
+    target_link_libraries(lnBMP "-Wl,--allow-multiple-definition")
+ENDIF()    
