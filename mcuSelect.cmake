@@ -22,9 +22,9 @@ IF(NOT DEFINED LN_ARCH)
         SET(LN_MCU_FLASH_SIZE  256   CACHE INTERNAL "")
         SET(LN_MCU_RAM_SIZE    46    CACHE INTERNAL "")
         SET(LN_MCU_STATIC_RAM  5     CACHE INTERNAL "")
-        SET(LN_MCU_SPEED 72000000    CACHE INTERNAL "") #=> ok
-        #SET(LN_MCU_SPEED 96000000    CACHE INTERNAL "") #=> ok
-              #      SET(LN_MCU_SPEED  72000000    CACHE INTERNAL "") #=> ok
+        #SET(LN_MCU_SPEED 72000000    CACHE INTERNAL "") #=> ok
+        SET(LN_MCU_SPEED 96000000    CACHE INTERNAL "") #=> ok
+        #      SET(LN_MCU_SPEED  72000000    CACHE INTERNAL "") #=> ok
         SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
         SET(LN_ENABLE_USBD True CACHE INTERNAL "")
         SET(LN_BOOTLOADER_SIZE 8     CACHE INTERNAL "")
