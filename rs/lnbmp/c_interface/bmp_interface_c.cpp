@@ -12,8 +12,7 @@ extern "C"
 #include "target_internal.h"
 
 
-#ifndef PC_HOSTED
-	
+#if PC_HOSTED == 0
 	#include "lnADC.h"
 	#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
 #endif
@@ -283,11 +282,29 @@ bool bmp_flash_complete_c()
 			return true;
 	return false;
 }
-#ifndef PC_HOSTED
+#if PC_HOSTED == 1
+float bmp_get_target_voltage_c()
+{   
+   return 0.0;
+}
+#else
+/*
+*/
+void adcInit()
+{
+	static bool inited=false;
+	if(!inited)
+	{
+		inited=true;
+		lnPeripherals::enable( Peripherals::pADC0);
+   		lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO,lnADC_MODE);
+	}
+}
+/*
+*/
 float bmp_get_target_voltage_c()
 {
-   lnPeripherals::enable( Peripherals::pADC0);
-   lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO,lnADC_MODE);
+   adcInit();   
    lnSimpleADC adc(0,PIN_ADC_NRESET_DIV_BY_TWO);
    int sample = adc.simpleRead();
    float vcc =    lnBaseAdc::getVcc();
@@ -296,14 +313,9 @@ float bmp_get_target_voltage_c()
 		Logger("Invalid ADC Vref\n");
    		return 0.0;
    }
-   vcc=(float)sample*vcc*2.; // need to multiply by 2 
+   vcc=(float)sample*vcc*PIN_ADC_NRESET_MULTIPLIER; // need to multiply by 2 
    vcc=vcc/4095000.;
    return vcc;
-}
-#else
-float bmp_get_target_voltage_c()
-{   
-   return 0.0;
 }
 #endif
 bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc)
