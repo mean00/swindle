@@ -290,6 +290,7 @@ float bmp_get_target_voltage_c()
 #else
 /*
 */
+lnSimpleADC *adc=NULL;
 void adcInit()
 {
 	static bool inited=false;
@@ -298,22 +299,25 @@ void adcInit()
 		inited=true;
 		lnPeripherals::enable( Peripherals::pADC0);
    		lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO,lnADC_MODE);
+		adc = new lnSimpleADC(0,PIN_ADC_NRESET_DIV_BY_TWO);
 	}
 }
 /*
 */
 float bmp_get_target_voltage_c()
 {
-   adcInit();   
-   lnSimpleADC adc(0,PIN_ADC_NRESET_DIV_BY_TWO);
-   int sample = adc.simpleRead();
+   adcInit();      
+   int sample = 0;
+   for(int i=0;i<16;i++) sample+= adc->simpleRead();
+   sample/=16;
+
    float vcc =    lnBaseAdc::getVcc();
    if(vcc<2.6) 
    {
 		Logger("Invalid ADC Vref\n");
    		return 0.0;
    }
-   vcc=(float)sample*vcc*PIN_ADC_NRESET_MULTIPLIER; // need to multiply by 2 
+   vcc=(float)sample*vcc*PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER 
    vcc=vcc/4095000.;
    return vcc;
 }
