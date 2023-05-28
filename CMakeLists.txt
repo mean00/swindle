@@ -11,11 +11,15 @@ OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 OPTION(USE_GD32F3        "Target GD32F303 chip with 256 flash" OFF)
 OPTION(USE_CH32V3x       "Target USE_CH32V3x chip with 256 flash" OFF)
 
+
 IF(USE_NO_DEFAULT)
 
 ELSE(USE_NO_DEFAULT)
+    SET(USE_CH32V3x True)
+    SET(USE_CLANG True)
+
     #SET(USE_CH32V3x        True CACHE INTERNAL "")
-    SET(USE_GD32F3      TRUE CACHE INTERNAL "")
+    #SET(USE_GD32F3      TRUE CACHE INTERNAL "")
     #SET(USE_CLANG       TRUE CACHE INTERNAL "")
     #SET(LN_LTO "-flto"  CACHE INTERNAL "")
 ENDIF(USE_NO_DEFAULT)
@@ -112,12 +116,15 @@ ELSE()
     SET(TGT_PINOUT "default_pinout")
 ENDIF()
 
+IF(USE_CLANG)
+    MESSAGE(STATUS "Using Clang/llvm toolchain")
+    SET(LN_COMPILER "_CLANG" CACHE STRING "")
+ELSE()
+    MESSAGE(STATUS "Using Gcc toolchain")
+    target_link_libraries(lnBMP "-Wl,--allow-multiple-definition") # we have symbols from gcc and symbols from llvm
+    SET(LN_COMPILER "_GCC" CACHE STRING "")
+ENDIF()    
 
-set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M )
+set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
 
 #---
-IF(USE_CLANG)
-
-ELSE()
-    target_link_libraries(lnBMP "-Wl,--allow-multiple-definition")
-ENDIF()    
