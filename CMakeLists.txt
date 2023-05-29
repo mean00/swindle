@@ -16,7 +16,7 @@ IF(USE_NO_DEFAULT)
 
 ELSE(USE_NO_DEFAULT)
     SET(USE_CH32V3x True)
-    SET(USE_CLANG True)
+    #SET(USE_CLANG True)
 
     #SET(USE_CH32V3x        True CACHE INTERNAL "")
     #SET(USE_GD32F3      TRUE CACHE INTERNAL "")
@@ -126,5 +126,14 @@ ELSE()
 ENDIF()    
 
 set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
+
+IF(USE_CH32V3x) # Create checksum
+    add_custom_command(TARGET lnBMP
+    POST_BUILD
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/lnCH32Checksum.py  $<TARGET_FILE:lnBMP>.bin $<TARGET_FILE:lnBMP>.ck_bin
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Generating checksumed file"
+    )
+ENDIF(USE_CH32V3x) # Create checksum
 
 #---
