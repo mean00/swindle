@@ -42,6 +42,8 @@ payload = content[total_header_size:]
 
 lnHash=xxhash.xxh32(payload,0x100).intdigest()
 
+hash_len = len(payload) 
+print("xxhash computed over %d bytes (0x %x)" % (hash_len, hash_len) )
 print("digest %x " % (lnHash))
 
 
