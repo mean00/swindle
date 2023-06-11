@@ -56,13 +56,18 @@
         }
       ],
       "drc_exclusions": [
-        "courtyards_overlap|121549999|90240001|8bc17440-ec82-4bdb-93cf-6838c855fdb5|c0b48f4e-8f5c-43d9-9a9d-321e470c4186",
-        "courtyards_overlap|124150001|90240001|9fc75914-1832-48ca-86cf-64828e801440|8bc17440-ec82-4bdb-93cf-6838c855fdb5",
-        "lib_footprint_mismatch|105343750|91390178|6039938b-831e-40d4-bc1c-c7a12fdb4bb3|00000000-0000-0000-0000-000000000000",
-        "lib_footprint_mismatch|106040000|74275000|9f12dc38-26ac-4895-8e2c-0f99e4c5179f|00000000-0000-0000-0000-000000000000",
-        "lib_footprint_mismatch|118003750|85316369|c0b48f4e-8f5c-43d9-9a9d-321e470c4186|00000000-0000-0000-0000-000000000000",
-        "lib_footprint_mismatch|123075000|91490000|8bc17440-ec82-4bdb-93cf-6838c855fdb5|00000000-0000-0000-0000-000000000000",
-        "lib_footprint_mismatch|141010000|91531250|8567e16a-ab34-47f0-8519-2740bd92d2b8|00000000-0000-0000-0000-000000000000",
+        "courtyards_overlap|121549999|90450001|8bc17440-ec82-4bdb-93cf-6838c855fdb5|c0b48f4e-8f5c-43d9-9a9d-321e470c4186",
+        "courtyards_overlap|121949999|92949999|437e5956-5f22-4ab5-939e-7bfad94c5ef6|8bc17440-ec82-4bdb-93cf-6838c855fdb5",
+        "courtyards_overlap|124749999|90549999|8bc17440-ec82-4bdb-93cf-6838c855fdb5|9fc75914-1832-48ca-86cf-64828e801440",
+        "lib_footprint_mismatch|105263375|91371428|6039938b-831e-40d4-bc1c-c7a12fdb4bb3|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|105393375|75049125|9f12dc38-26ac-4895-8e2c-0f99e4c5179f|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|117923375|85297619|c0b48f4e-8f5c-43d9-9a9d-321e470c4186|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|123411625|91700000|8bc17440-ec82-4bdb-93cf-6838c855fdb5|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|131011625|96990000|83e22f20-50c4-43f3-aca3-0beb8b4a71c1|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|131923929|76190000|eb95bce1-cedf-4542-b14c-4c6fbdeed68c|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|140631072|97190000|2e7bcc17-8bf6-4f62-a848-1d370376b16e|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|141010000|91611625|8567e16a-ab34-47f0-8519-2740bd92d2b8|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|147763375|71100001|874ef5bb-0100-406d-8068-376c033b3ec0|00000000-0000-0000-0000-000000000000",
         "silk_edge_clearance|155400000|87850000|9fd3d0f3-fd1b-4fef-875a-d1bf7e3181c0|dfcaf24f-e927-47a9-b28e-d06de5b4e2e2",
         "silk_edge_clearance|155400000|88150000|9fd3d0f3-fd1b-4fef-875a-d1bf7e3181c0|703ca304-f634-4827-8a92-1e7c650ce09f",
         "silk_edge_clearance|155400000|88150000|9fd3d0f3-fd1b-4fef-875a-d1bf7e3181c0|79d5429d-ac55-4500-a76d-cfc378e23ac2",
@@ -130,8 +135,8 @@
         "min_copper_edge_clearance": 0.0,
         "min_hole_clearance": 0.25,
         "min_hole_to_hole": 0.25,
-        "min_microvia_diameter": 0.19999999999999998,
-        "min_microvia_drill": 0.09999999999999999,
+        "min_microvia_diameter": 0.3,
+        "min_microvia_drill": 0.25,
         "min_resolved_spokes": 2,
         "min_silk_clearance": 0.0,
         "min_text_height": 0.7999999999999999,
@@ -147,9 +152,6 @@
       },
       "teardrop_options": [
         {
-          "td_allow_use_two_tracks": true,
-          "td_curve_segcount": 5,
-          "td_on_pad_in_zone": false,
           "td_onpadsmd": true,
           "td_onroundshapesonly": false,
           "td_ontrackend": false,
@@ -158,29 +160,35 @@
       ],
       "teardrop_parameters": [
         {
+          "td_allow_use_two_tracks": true,
           "td_curve_segcount": 0,
           "td_height_ratio": 1.0,
           "td_length_ratio": 0.5,
           "td_maxheight": 2.0,
           "td_maxlen": 1.0,
+          "td_on_pad_in_zone": false,
           "td_target_name": "td_round_shape",
           "td_width_to_size_filter_ratio": 0.9
         },
         {
+          "td_allow_use_two_tracks": true,
           "td_curve_segcount": 0,
           "td_height_ratio": 1.0,
           "td_length_ratio": 0.5,
           "td_maxheight": 2.0,
           "td_maxlen": 1.0,
+          "td_on_pad_in_zone": false,
           "td_target_name": "td_rect_shape",
           "td_width_to_size_filter_ratio": 0.5
         },
         {
+          "td_allow_use_two_tracks": true,
           "td_curve_segcount": 0,
           "td_height_ratio": 1.0,
           "td_length_ratio": 0.5,
           "td_maxheight": 2.0,
           "td_maxlen": 1.0,
+          "td_on_pad_in_zone": false,
           "td_target_name": "td_track_end",
           "td_width_to_size_filter_ratio": 0.9
         }
