@@ -21,30 +21,30 @@
 /* Provides main entry point.  Initialise subsystems and enter GDB
  * protocol loop.
  */
-#include <QObject>
-#include <QCoreApplication>
-#include <QtGlobal>
-#include <QTimer>
 #include "bmp_qtnetwork.h"
+#include <QCoreApplication>
+#include <QObject>
+#include <QTimer>
+#include <QtGlobal>
 
 extern "C"
 {
-#include "general.h"
+#include "exception.h"
 #include "gdb_if.h"
 #include "gdb_main.h"
-#include "target.h"
-#include "exception.h"
 #include "gdb_packet.h"
+#include "general.h"
 #include "morse.h"
+#include "target.h"
 }
 //--
 
 // Rust part
-extern "C" 
+extern "C"
 {
-	void rngdbstub_init();
-	void rngdbstub_shutdown() ;
-	void rngdbstub_run(uint32_t s, const uint8_t *d);
+    void rngdbstub_init();
+    void rngdbstub_shutdown();
+    void rngdbstub_run(uint32_t s, const uint8_t *d);
 }
 //-----
 
@@ -55,10 +55,8 @@ bool running = true;
 void customHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     QByteArray localMsg = msg.toLocal8Bit();
-	fprintf(stderr, "%s", localMsg.constData());    
+    fprintf(stderr, "%s", localMsg.constData());
 }
-
-
 
 //
 //
@@ -66,29 +64,27 @@ void customHandler(QtMsgType type, const QMessageLogContext &context, const QStr
 //
 
 void exit_from_bmp()
-{	
-	QCoreApplication::exit(0);
+{
+    QCoreApplication::exit(0);
 }
 
 extern "C" void rngdbstub_poll();
 int main(int argc, char **argv)
 {
-	qInfo() << "Qt BMP started";
-	QCoreApplication a(argc, argv);
-	qInstallMessageHandler(customHandler);
-	platform_init(argc, argv);	
-	BmpTcpServer *server = new BmpTcpServer;
+    qInfo() << "Qt BMP started";
+    QCoreApplication a(argc, argv);
+    qInstallMessageHandler(customHandler);
+    platform_init(argc, argv);
+    BmpTcpServer *server = new BmpTcpServer;
 
- 	QTimer mytimer;
-    QObject::connect(&mytimer,&QTimer::timeout,rngdbstub_poll);
+    QTimer mytimer;
+    QObject::connect(&mytimer, &QTimer::timeout, rngdbstub_poll);
     mytimer.start(100);
 
-	QCoreApplication::exec();
-	
-	delete server;
-	server=NULL;
-	/* Should never get here */
-	return 0;
+    QCoreApplication::exec();
+
+    delete server;
+    server = NULL;
+    /* Should never get here */
+    return 0;
 }
-
-

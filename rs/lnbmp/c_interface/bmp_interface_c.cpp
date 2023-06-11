@@ -2,266 +2,265 @@
 extern "C"
 {
 
-#include "general.h"
 #include "ctype.h"
-#include "hex_utils.h"
+#include "gdb_hostio.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
-#include "gdb_hostio.h"
+#include "general.h"
+#include "hex_utils.h"
 #include "target.h"
 #include "target_internal.h"
 
-
 #if PC_HOSTED == 0
-	#include "lnADC.h"
-	#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
+#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
+#include "lnADC.h"
 #endif
 
+    bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
-bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
+    target_s *cur_target;
+    bool shutdown_bmda;
 
-target_s *cur_target;
-bool shutdown_bmda;
+    void gdb_target_destroy_callback(target_controller_s *tc, target_s *t)
+    {
+        if (t == cur_target)
+        {
+            cur_target = NULL;
+        }
+    }
+    void gdb_target_printf(target_controller_s *tc, const char *fmt, va_list ap)
+    {
+        xAssert(0);
+    }
+    target_controller_s gdb_controller = {
+        .destroy_callback = gdb_target_destroy_callback,
+        .printf = gdb_target_printf,
 
+        .open = hostio_open,
+        .close = hostio_close,
+        .read = hostio_read,
+        .write = hostio_write,
+        .lseek = hostio_lseek,
+        .rename = hostio_rename,
+        .unlink = hostio_unlink,
+        .stat = hostio_stat,
+        .fstat = hostio_fstat,
+        .gettimeofday = hostio_gettimeofday,
+        .isatty = hostio_isatty,
+        .system = hostio_system,
+    };
 
-void gdb_target_destroy_callback(target_controller_s *tc, target_s *t)
-{
-    if (t==cur_target)
-	{
-		cur_target=NULL;
-	}
-}
- void gdb_target_printf(target_controller_s *tc, const char *fmt, va_list ap)
- {
-    xAssert(0);
- }
-target_controller_s gdb_controller = {
-	.destroy_callback = gdb_target_destroy_callback,
-	.printf = gdb_target_printf,
+    /*
 
-	.open = hostio_open,
-	.close = hostio_close,
-	.read = hostio_read,
-	.write = hostio_write,
-	.lseek = hostio_lseek,
-	.rename = hostio_rename,
-	.unlink = hostio_unlink,
-	.stat = hostio_stat,
-	.fstat = hostio_fstat,
-	.gettimeofday = hostio_gettimeofday,
-	.isatty = hostio_isatty,
-	.system = hostio_system,
-};
+    */
+    bool bmp_attached_c()
+    {
+        if (!cur_target)
+            return false;
 
-
-
-/*
-
-*/
-bool bmp_attached_c()
-{
-	if(!cur_target)
-		return false;
-	
-	return target_attached(cur_target);	
-}
-/**
-*/
-bool bmp_attach_c(uint32_t target)
-{
-	    cur_target = target_attach_n(target, &gdb_controller);
-		if (cur_target) 
+        return target_attached(cur_target);
+    }
+    /**
+     */
+    bool bmp_attach_c(uint32_t target)
+    {
+        cur_target = target_attach_n(target, &gdb_controller);
+        if (cur_target)
         {
             return true;
         }
         return false;
+    }
+    /**
+     */
+    bool bmp_detach_c(uint32_t target)
+    {
+        if (cur_target)
+        {
+            SET_RUN_STATE(true);
+            target_detach(cur_target);
+            cur_target = NULL;
+        }
+        return true;
+    }
 
-}
-/**
-*/
-bool bmp_detach_c(uint32_t target)
-{
-	if (cur_target)
-	{
-		SET_RUN_STATE(true);
-		target_detach(cur_target);
-		cur_target = NULL;
-	}
-	return true;
-}
+    static char tmpBuffer[128];
+    /**
+     */
+    void gdb_outf(const char *fmt, ...)
+    {
+        va_list ap;
 
+        va_start(ap, fmt);
+        char *buf;
+        // this is suboptimal
+        vsnprintf((char *)tmpBuffer, 127, fmt, ap);
+        gdb_out(tmpBuffer);
+        va_end(ap);
+    }
 
-static char tmpBuffer[128];
-/**
-*/
-void gdb_outf(const char *fmt, ...)
-{    
-	va_list ap;
+    int bmp_map_count_c(int kind)
+    {
+        if (!bmp_attached_c())
+        {
+            return 0; // DF ?
+        }
+        int count = 0;
+        switch (kind)
+        {
+        case 0: // flash
+        {
+            target_flash_s *f = cur_target->flash;
+            while (f)
+            {
+                count++;
+                f = f->next;
+            }
+            return count;
+        }
+        break;
+        case 1: // ram
+        {
+            target_ram_s *f = cur_target->ram;
+            while (f)
+            {
+                count++;
+                f = f->next;
+            }
+            return count;
+        }
+        break;
+        default:
+            xAssert(0);
+        }
+        return 0;
+    }
 
-	va_start(ap, fmt);
-	char *buf;
-    // this is suboptimal
-    vsnprintf((char *)tmpBuffer,127,fmt,ap);    
-	gdb_out(tmpBuffer);
-	va_end(ap);    
-}
+    bool bmp_map_get_c(int kind, int index, uint32_t *start, uint32_t *size, uint32_t *blockSize)
+    {
+        if (!bmp_attached_c())
+        {
+            return false; // DF ?
+        }
+        int count = 0;
+        switch (kind)
+        {
+        case 0: // flash
+        {
+            target_flash_s *f = cur_target->flash;
+            while (f && index != 0)
+            {
+                count++;
+                f = f->next;
+                index--;
+            }
+            if (f)
+            {
+                *start = f->start;
+                *size = f->length;
+                *blockSize = f->blocksize;
+                return true;
+            }
+            return false;
+        }
+        break;
+        case 1: // ram
+        {
+            target_ram_s *f = cur_target->ram;
+            while (f && index != 0)
+            {
+                count++;
+                f = f->next;
+                index--;
+            }
+            if (f)
+            {
+                *start = f->start;
+                *size = f->length;
+                *blockSize = 0;
+                return true;
+            }
+            return false;
+        }
+        break;
+        default:
+            xAssert(0);
+        }
+        return 0;
+    }
 
-int bmp_map_count_c(int kind)
-{
-	if(!bmp_attached_c())
-	{
-		return 0; // DF ?
-	}
-	int count=0;
-	switch(kind)
-	{
-		case 0: // flash	
-			{
-				target_flash_s *f = cur_target->flash;
-				while(f)
-				{
-					count++;
-					f=f->next;
-				}
-				return count;		
-			}
-			break;
-		case 1: // ram	
-			{
-				target_ram_s *f = cur_target->ram;
-				while(f)
-				{
-					count++;
-					f=f->next;
-				}
-				return count;		
-			}
-			break;
-		default: 
-			xAssert(0);
-	}
-	return 0;
-}
+    unsigned int bmp_registers_count_c()
+    {
+        if (!bmp_attached_c())
+        {
+            return 0;
+        }
+        return target_regs_size(cur_target) / 4;
+    }
+    bool bmp_read_register_c(const unsigned int reg, uint32_t *val)
+    {
+        if (!target_reg_read(cur_target, reg, val, 4))
+            return false;
+        return true;
+    }
+    void *copy = NULL;
+    const char *bmp_target_description_c()
+    {
+        if (!bmp_attached_c())
+            return "";
+        const char *c = target_regs_description(cur_target);
+        if (!c)
+            return "";
+        copy = (void *)c;
+        return c;
+    }
 
-bool bmp_map_get_c(int kind, int index, uint32_t *start, uint32_t *size, uint32_t *blockSize)
-{
-	if(!bmp_attached_c())
-	{
-		return false; // DF ?
-	}
-	int count=0;
-	switch(kind)
-	{
-		case 0: // flash	
-			{
-				target_flash_s *f = cur_target->flash;
-				while(f && index!=0)
-				{
-					count++;
-					f=f->next;
-					index--;
-				}
-				if(f)
-				{
-					*start=f->start;
-					*size=f->length;
-					*blockSize=f->blocksize;
-					return true;
-				}
-				return false;
-			}
-			break;
-		case 1: // ram	
-			{
-				target_ram_s *f = cur_target->ram;
-				while(f && index!=0)
-				{
-					count++;
-					f=f->next;
-					index--;
-				}
-				if(f)
-				{
-					*start=f->start;
-					*size=f->length;
-					*blockSize=0;
-					return true;
-				}
-				return false;
-			}
-			break;
-		default: 
-			xAssert(0);
-	}
-	return 0;
-}
+    extern "C" void free(void *__ptr)
 
-unsigned int bmp_registers_count_c()
-{
-	if( !bmp_attached_c())
-	{
-		return 0;
-	}
-	return target_regs_size(cur_target)/4;
-}
-bool bmp_read_register_c(const unsigned int reg, uint32_t *val)
-{
-	if(!target_reg_read(cur_target,reg,val,4)) 
+        ;
+
+    void bmp_target_description_clear_c(const unsigned char *data)
+    {
+        if (copy)
+        {
+            free(copy);
+            copy = NULL;
+        }
+    }
+
+    bool bmp_write_reg_c(const unsigned int reg, const unsigned int val)
+    {
+        if (!bmp_attached_c())
+            return false;
+        if (target_reg_write(cur_target, reg, &val, sizeof(val)) > 0)
+            return true;
         return false;
-    return true;
-}
-void *copy=NULL;
-const char * bmp_target_description_c()
-{
-	if(!bmp_attached_c()) return "";
-	const char *c=target_regs_description(cur_target);
-	if(!c) return "";
-	copy=(void *)c;
-	return c;
-}
+    }
+    bool bmp_read_reg_c(const unsigned int reg, unsigned int *val)
+    {
+        if (!bmp_attached_c())
+            return false;
+        if (target_reg_read(cur_target, reg, val, sizeof(*val)) > 0)
+            return true;
+        return false;
+    }
+    bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length)
+    {
+        if (!bmp_attached_c())
+            return false;
+        if (target_flash_erase(cur_target, addr, length))
+            return true;
+        return false;
+    }
 
-extern "C" void free (void *__ptr)
+    static uint8_t tmp[1024];
 
-;
-
-void bmp_target_description_clear_c( const unsigned char *data)
-{
-	if(copy)
-	{
-		free(copy);
-		copy=NULL;
-	}
-}
-
-bool bmp_write_reg_c(const unsigned int reg, const unsigned int val)
-{
-	if(!bmp_attached_c()) return false;
-	if (target_reg_write(cur_target, reg, &val, sizeof(val)) > 0)
-			return true;
-	return false;
-}
-bool bmp_read_reg_c(const unsigned int reg, unsigned int *val)
-{
-	if(!bmp_attached_c()) return false;
-	if (target_reg_read(cur_target, reg, val, sizeof(*val)) > 0)
-			return true;
-	return false;
-}
-bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length)
-{
-	if(!bmp_attached_c()) return false;
-	if (target_flash_erase(cur_target, addr, length))
-			return true;
-	return false;
-}
-
-static uint8_t tmp[1024];
-
-bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
-{
-	if(!bmp_attached_c()) return false;
-	if (!target_flash_write(cur_target, addr, data,length))
-			return false;
+    bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
+    {
+        if (!bmp_attached_c())
+            return false;
+        if (!target_flash_write(cur_target, addr, data, length))
+            return false;
 #if 0 // Verify			
 	if (!target_mem_read(cur_target, tmp, addr, length))
 			return false;
@@ -272,150 +271,156 @@ bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const
 			printf("Flash write mismatch at %x %x => %x\n",addr+i,data[i],tmp[i]);
 		}
 	}
-#endif	
-	return true;
-}
-bool bmp_flash_complete_c()
-{
-	if(!bmp_attached_c()) return false;
-	if (target_flash_complete(cur_target))
-			return true;
-	return false;
-}
-#if PC_HOSTED == 1
-float bmp_get_target_voltage_c()
-{   
-   return 0.0;
-}
-#else
-/*
-*/
-lnSimpleADC *adc=NULL;
-void adcInit()
-{
-	static bool inited=false;
-	if(!inited)
-	{
-		inited=true;
-		lnPeripherals::enable( Peripherals::pADC0);
-   		lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO,lnADC_MODE);
-		adc = new lnSimpleADC(0,PIN_ADC_NRESET_DIV_BY_TWO);
-	}
-}
-/*
-*/
-float bmp_get_target_voltage_c()
-{
-   adcInit();      
-   
-
-   float vcc =    lnBaseAdc::getVcc();
-   if(vcc<2.6) 
-   {
-		Logger("Invalid ADC Vref\n");
-   		return 0.0;
-   }
-   int sample = 0;
-   for(int i=0;i<16;i++) 
-   {
-	   	sample+= adc->simpleRead();
-   }
-   sample/=16;
-
-   vcc=(float)sample*vcc*PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER 
-   vcc=vcc/4095000.;
-   return vcc;
-}
 #endif
-bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc)
-{
-	if(!bmp_attached_c()) return false;
+        return true;
+    }
+    bool bmp_flash_complete_c()
+    {
+        if (!bmp_attached_c())
+            return false;
+        if (target_flash_complete(cur_target))
+            return true;
+        return false;
+    }
+#if PC_HOSTED == 1
+    float bmp_get_target_voltage_c()
+    {
+        return 0.0;
+    }
+#else
+    /*
+     */
+    lnSimpleADC *adc = NULL;
+    void adcInit()
+    {
+        static bool inited = false;
+        if (!inited)
+        {
+            inited = true;
+            lnPeripherals::enable(Peripherals::pADC0);
+            lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);
+            adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO);
+        }
+    }
+    /*
+     */
+    float bmp_get_target_voltage_c()
+    {
+        adcInit();
 
-	if (!generic_crc32(cur_target, (uint32_t *)crc, address, length))
-		return false;
-	return true;
-}
+        float vcc = lnBaseAdc::getVcc();
+        if (vcc < 2.6)
+        {
+            Logger("Invalid ADC Vref\n");
+            return 0.0;
+        }
+        int sample = 0;
+        for (int i = 0; i < 16; i++)
+        {
+            sample += adc->simpleRead();
+        }
+        sample /= 16;
 
-bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data)
-{
-	if(!bmp_attached_c()) return false;	
-	if (!target_mem_read(cur_target, data, addr, length))
-			return false;
-	return true;
-}
+        vcc = (float)sample * vcc * PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER
+        vcc = vcc / 4095000.;
+        return vcc;
+    }
+#endif
+    bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc)
+    {
+        if (!bmp_attached_c())
+            return false;
 
-bool bmp_reset_target_c()
-{
-	if(!bmp_attached_c()) return false;	
-	target_reset(cur_target);
-	return true;
-}
-bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
-{
-	if(!bmp_attached_c()) return false;	
-	// Error code inverted 0 means success
-	if(target_breakwatch_set(cur_target, (target_breakwatch)type, address,len))
-		return false;
-	return true;
-}
-bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
-{
-	if(!bmp_attached_c()) return false;	
-	// Error code inverted 0 means success
-	if(target_breakwatch_clear(cur_target, (target_breakwatch)type, address,len))
-			return false;
-	return true;
+        if (!generic_crc32(cur_target, (uint32_t *)crc, address, length))
+            return false;
+        return true;
+    }
 
-}
-bool bmp_target_halt_c()
-{
-	if(!bmp_attached_c()) return false;	
-	target_halt_request(cur_target);	
-	return true;
-}
-bool bmp_target_halt_resume_c(bool step)
-{
-	if(!bmp_attached_c()) return false;	
-	target_halt_resume(cur_target,  step);
-	return true;
-}
+    bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data)
+    {
+        if (!bmp_attached_c())
+            return false;
+        if (!target_mem_read(cur_target, data, addr, length))
+            return false;
+        return true;
+    }
 
-unsigned int bmp_poll_target_c(unsigned int *watchpoint)
-{
-	if(!bmp_attached_c()) return 0;	
+    bool bmp_reset_target_c()
+    {
+        if (!bmp_attached_c())
+            return false;
+        target_reset(cur_target);
+        return true;
+    }
+    bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
+    {
+        if (!bmp_attached_c())
+            return false;
+        // Error code inverted 0 means success
+        if (target_breakwatch_set(cur_target, (target_breakwatch)type, address, len))
+            return false;
+        return true;
+    }
+    bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
+    {
+        if (!bmp_attached_c())
+            return false;
+        // Error code inverted 0 means success
+        if (target_breakwatch_clear(cur_target, (target_breakwatch)type, address, len))
+            return false;
+        return true;
+    }
+    bool bmp_target_halt_c()
+    {
+        if (!bmp_attached_c())
+            return false;
+        target_halt_request(cur_target);
+        return true;
+    }
+    bool bmp_target_halt_resume_c(bool step)
+    {
+        if (!bmp_attached_c())
+            return false;
+        target_halt_resume(cur_target, step);
+        return true;
+    }
 
-	target_addr_t watch;
-	target_halt_reason_e reason = target_halt_poll(cur_target, &watch);
-	*watchpoint = watch; 
-	return reason;
-}
+    unsigned int bmp_poll_target_c(unsigned int *watchpoint)
+    {
+        if (!bmp_attached_c())
+            return 0;
 
-/*
+        target_addr_t watch;
+        target_halt_reason_e reason = target_halt_poll(cur_target, &watch);
+        *watchpoint = watch;
+        return reason;
+    }
 
-z1,addr,kind’ insert hw breakpoint
-z1,addr,kind’ remove hw breakpoint
+    /*
 
-kind 2 16-bit Thumb mode breakpoint.
-kind 3 32-bit Thumb mode (Thumb-2) breakpoint.
-kind 4 32-bit ARM mode breakpoint.
+    z1,addr,kind’ insert hw breakpoint
+    z1,addr,kind’ remove hw breakpoint
+
+    kind 2 16-bit Thumb mode breakpoint.
+    kind 3 32-bit Thumb mode (Thumb-2) breakpoint.
+    kind 4 32-bit ARM mode breakpoint.
 
 
-R => run
-	target_reset(cur_target);
-vRun -> ignore
+    R => run
+        target_reset(cur_target);
+    vRun -> ignore
 
-k command
-static void handle_kill_target(void)
-{
-	if (cur_target) {
-		target_reset(cur_target);
-		target_detach(cur_target);
-		last_target = cur_target;
-		cur_target = NULL;
-	}
-}
-*/
+    k command
+    static void handle_kill_target(void)
+    {
+        if (cur_target) {
+            target_reset(cur_target);
+            target_detach(cur_target);
+            last_target = cur_target;
+            cur_target = NULL;
+        }
+    }
+    */
 
 } // extern C
 // EOF
-

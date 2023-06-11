@@ -118,7 +118,8 @@ fn rpc_hl_packet(input : &[u8]) -> bool
     if input[0]== rpc_commands::RPC_HL_CHECK
     {
         bmplog("\t\tget version\n");
-        rpc_reply(rpc_commands::RPC_RESP_OK, 2*1+0*rpc_commands::RPC_HL_VERSION); // Force version 1
+        const force_version : u8 = 2; //rpc_commands::RPC_HL_VERSION ; // Force version 1
+        rpc_reply(rpc_commands::RPC_RESP_OK, force_version); // Force version 1
         /*
         rpc_message_
         out(&[

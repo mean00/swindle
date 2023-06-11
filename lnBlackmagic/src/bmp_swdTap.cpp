@@ -32,16 +32,16 @@ Original license header
 #include "lnBMP_pinout.h"
 extern "C"
 {
-  #include "general.h"
-  #include "timing.h"
-  #include "adiv5.h"
+#include "adiv5.h"
+#include "general.h"
+#include "timing.h"
 }
 
-uint32_t swd_delay_cnt=4;
+uint32_t swd_delay_cnt = 4;
 
 #include "lnBMP_swdio.h"
 
-static uint32_t SwdRead(size_t ticks) ;
+static uint32_t SwdRead(size_t ticks);
 static bool SwdRead_parity(uint32_t *ret, size_t ticks);
 static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
@@ -54,7 +54,7 @@ SwdPin pReset(TRESET_PIN);
 
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
-  swd_delay_cnt = ws;
+    swd_delay_cnt = ws;
 }
 
 /**
@@ -62,139 +62,139 @@ extern "C" void bmp_set_wait_state_c(uint32_t ws)
 */
 void bmp_gpio_init()
 {
-  pSWDIO.on();
-  pSWDIO.output();
-  pSWCLK.clockOn();
-  pSWCLK.output();
-  pReset.input();  
+    pSWDIO.on();
+    pSWDIO.output();
+    pSWCLK.clockOn();
+    pSWCLK.output();
+    pReset.input();
 }
 /**
-*/
+ */
 static uint32_t SwdRead(size_t len)
 {
-	uint32_t index = 1;
-	uint32_t ret = 0;
-  int bit;
+    uint32_t index = 1;
+    uint32_t ret = 0;
+    int bit;
 
-  swdioSetAsOutput(false);
-	for(int i=0;i<len;i++)
-  {
+    swdioSetAsOutput(false);
+    for (int i = 0; i < len; i++)
+    {
+        pSWCLK.clockOff();
+        bit = pSWDIO.read();
+        if (bit)
+            ret |= index;
+        pSWCLK.clockOn();
+        index <<= 1;
+    }
     pSWCLK.clockOff();
-		bit = pSWDIO.read();
-    if(bit) ret|=index;
-    pSWCLK.clockOn();    
-		index <<= 1;    
-	}
-  pSWCLK.clockOff();
-	return ret;
+    return ret;
 }
 /**
-*/
+ */
 static bool SwdRead_parity(uint32_t *ret, size_t len)
 {
-	uint32_t res = 0;
-  res= SwdRead( len);
-	int currentParity = __builtin_popcount(res) & 1;
-	int parityBit = pSWDIO.read();
-	pSWCLK.clockOn();	
-	*ret = res;
-	swdioSetAsOutput(true);
-	return 1&(currentParity^parityBit); // should be equal
+    uint32_t res = 0;
+    res = SwdRead(len);
+    int currentParity = __builtin_popcount(res) & 1;
+    int parityBit = pSWDIO.read();
+    pSWCLK.clockOn();
+    *ret = res;
+    swdioSetAsOutput(true);
+    return 1 & (currentParity ^ parityBit); // should be equal
 }
 /**
 
 */
 static void SwdWrite(uint32_t MS, size_t ticks)
 {
-  int cnt;
-	swdioSetAsOutput(true);  
-	for(int i=0;i<ticks;i++)
-  {
-      pSWCLK.clockOff();			
-      pSWDIO.set(MS & 1);      
-      pSWCLK.clockOn();
-      MS >>= 1;
-	}
-  pSWCLK.clockOff();
+    int cnt;
+    swdioSetAsOutput(true);
+    for (int i = 0; i < ticks; i++)
+    {
+        pSWCLK.clockOff();
+        pSWDIO.set(MS & 1);
+        pSWCLK.clockOn();
+        MS >>= 1;
+    }
+    pSWCLK.clockOff();
 }
 /**
-*/
+ */
 static void SwdWrite_parity(uint32_t MS, size_t ticks)
 {
-	int parity = __builtin_popcount(MS) & 1;
-  SwdWrite(MS,ticks);
-	pSWDIO.set(parity);
-  pSWCLK.clockOn();
-	pSWCLK.clockOff();
+    int parity = __builtin_popcount(MS) & 1;
+    SwdWrite(MS, ticks);
+    pSWDIO.set(parity);
+    pSWCLK.clockOn();
+    pSWCLK.clockOff();
 }
-
 
 /**
     properly invert SWDIO direction if needed
 */
-static bool oldDrive=false;
+static bool oldDrive = false;
 void swdioSetAsOutput(bool output)
 {
-  if(output==oldDrive) return;
-	oldDrive = output;
+    if (output == oldDrive)
+        return;
+    oldDrive = output;
 
-  switch((int)output)
-  {
-      case false: // in
-       {           
-           pSWDIO.input();           
-           pSWCLK.clockOff();
-           pSWCLK.clockOn();
-           break;
-       }
-       break;
-      case true: // out
-      {   
-          pSWCLK.clockOff();     
-          pSWCLK.clockOn();          
-          pSWDIO.output();
-          break;
-      }
-      default:
+    switch ((int)output)
+    {
+    case false: // in
+    {
+        pSWDIO.input();
+        pSWCLK.clockOff();
+        pSWCLK.clockOn();
         break;
-  }
+    }
+    break;
+    case true: // out
+    {
+        pSWCLK.clockOff();
+        pSWCLK.clockOn();
+        pSWDIO.output();
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 /**
-*/
+ */
 extern "C" void platform_srst_set_val(bool assert)
 {
-  if(assert) // force reset to low
-  {
-    pReset.off();
-    swait();
-    pReset.output();
-  }
-  else // release reset
-  {
-    pReset.input();
-  }
+    if (assert) // force reset to low
+    {
+        pReset.off();
+        swait();
+        pReset.output();
+    }
+    else // release reset
+    {
+        pReset.input();
+    }
 }
 /**
-*/
+ */
 extern "C" bool platform_srst_get_val(void)
 {
-  pReset.input();
-  swait();
-  return pReset.read();
+    pReset.input();
+    swait();
+    return pReset.read();
 }
 
 swd_proc_s swd_proc;
 /**
 
 */
-extern "C" void  swdptap_init()
+extern "C" void swdptap_init()
 {
-	swd_proc.seq_in         = SwdRead;
-	swd_proc.seq_in_parity  = SwdRead_parity;
-	swd_proc.seq_out        = SwdWrite;
-	swd_proc.seq_out_parity = SwdWrite_parity;
-
+    swd_proc.seq_in = SwdRead;
+    swd_proc.seq_in_parity = SwdRead_parity;
+    swd_proc.seq_out = SwdWrite;
+    swd_proc.seq_out_parity = SwdWrite_parity;
 }
 
 // EOF

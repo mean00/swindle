@@ -7,35 +7,30 @@
 
 #pragma once
 
-#define fdebug2(...) {}
-#define fdebug(...) {}
-
+#define fdebug2(...)                                                                                                   \
+    {                                                                                                                  \
+    }
+#define fdebug(...)                                                                                                    \
+    {                                                                                                                  \
+    }
 
 /**
 
 */
-#define MAX_SYMBOL_LENGTH   50
-#define MAX_FOS_SYMBOLS     10
-static const char *neededSymbols[]=
-{
-    "pxCurrentTCB",
-    "xSuspendedTaskList",
-    "pxDelayedTaskList",
-    "pxReadyTasksLists",
-    "uxCurrentNumberOfTasks",
-    "freeRTOSDebug",
-    "xSchedulerRunning",
-    NULL
-};
+#define MAX_SYMBOL_LENGTH 50
+#define MAX_FOS_SYMBOLS 10
+static const char *neededSymbols[] = {
+    "pxCurrentTCB",           "xSuspendedTaskList", "pxDelayedTaskList", "pxReadyTasksLists",
+    "uxCurrentNumberOfTasks", "freeRTOSDebug",      "xSchedulerRunning", NULL};
 enum FreeRTOSSymbols
 {
-    spxCurrentTCB=0,
-    sxSuspendedTaskList=1,
-    spxDelayedTaskList=2,
-    spxReadyTasksLists=3,
-    suxCurrentNumberOfTasks=4,
-    sfreeRTOSDebug=5,
-    sxSchedulerRunning=6
+    spxCurrentTCB = 0,
+    sxSuspendedTaskList = 1,
+    spxDelayedTaskList = 2,
+    spxReadyTasksLists = 3,
+    suxCurrentNumberOfTasks = 4,
+    sfreeRTOSDebug = 5,
+    sxSchedulerRunning = 6
 };
 
 /**
@@ -43,189 +38,194 @@ enum FreeRTOSSymbols
 */
 class AllSymbols
 {
-public:
-
-  AllSymbols()
-  {
-      clear();
-  }
-  bool ready()
-  {
-    return _ready;
-  }
-  void clear()
-  {
-      _ready=false;
-      _nbSymbols=0;
-      _nbNeededSymbols=(sizeof(neededSymbols)/sizeof(const char *))-1;
-      memset(&_debugInfo,0,sizeof(_debugInfo));
-      for(int i=0;i< MAX_FOS_SYMBOLS;i++) _address[i]=-1;
-  }
-  bool readSymbol(FreeRTOSSymbols symbol,uint32_t &val)
-  {
-    uint32_t *pSym=getSymbol(symbol);
-    if(!pSym)
+  public:
+    AllSymbols()
     {
-      return false;
+        clear();
     }
-    val=*pSym;
-    return true;
-  }
-  bool readSymbolValue(FreeRTOSSymbols symbol,uint32_t &val)
-  {
-    uint32_t *pSym=getSymbol(symbol);
-    if(!pSym)
+    bool ready()
     {
-      return false;
+        return _ready;
     }
-    val=readMem32(*pSym,0); // TODO : exception
-    return true;
-  }
-  /**
-
-  */
-  bool readDebugBlock()
-  {
-
-    if(!cur_target)
+    void clear()
     {
-      gdb_putpacketz("");
-      return false;
+        _ready = false;
+        _nbSymbols = 0;
+        _nbNeededSymbols = (sizeof(neededSymbols) / sizeof(const char *)) - 1;
+        memset(&_debugInfo, 0, sizeof(_debugInfo));
+        for (int i = 0; i < MAX_FOS_SYMBOLS; i++)
+            _address[i] = -1;
     }
-    // do we have the debug block ?
-    uint32_t debugBlock;
-    uint32_t *pSym=getSymbol(sfreeRTOSDebug);
-    if(!pSym)
+    bool readSymbol(FreeRTOSSymbols symbol, uint32_t &val)
     {
-      gdb_putpacketz("");
-      return false;
-    }
-    debugBlock=*pSym;
-    // read info block
-
-  #define READ_FIELD(field)   _debugInfo.field=readMem32(debugBlock,offsetof(lnFreeRTOSDebug,field));
-    READ_FIELD(MAGIC)
-    READ_FIELD(LIST_SIZE);
-    READ_FIELD(NB_OF_PRIORITIES)
-    READ_FIELD(MPU_ENABLED)
-    READ_FIELD(MAX_TASK_NAME_LEN)
-    READ_FIELD(OFFSET_TASK_NUM)
-    READ_FIELD(OFFSET_TASK_NAME)
-
-    READ_FIELD(OFFSET_LIST_ITEM_NEXT);
-    READ_FIELD(OFFSET_LIST_ITEM_OWNER);
-
-    READ_FIELD(OFFSET_LIST_NUMBER_OF_ITEM);
-    READ_FIELD(OFFSET_LIST_INDEX);
-
-
-    if(_debugInfo.MAGIC==LN_FREERTOS_MAGIC)
-    {
-      _ready=true;
-    }          
-    else
-    {
-      _ready=false;
-    }
-    return _ready;
-  }
-  /*
-  */
-  void add(const char *name,uint32_t  value)
-  {
-    if(strcmp(name,neededSymbols[_nbSymbols])) xAssert(0);
-    _address[_nbSymbols]=value;
-    _nbSymbols++;
-    xAssert(_nbSymbols<=MAX_FOS_SYMBOLS);
-  }
-  /*
-  */
-  uint32_t *getSymbol(const char *name)
-  {
-    for(int i=0;i<_nbSymbols;i++)
-    {
-      if(!strcmp(name,neededSymbols[i]))
-      {
-        if(_address[i]==-1) return NULL;
-        return _address+i;
-      }
-    }
-    fdebug2("Symbol %s not found\n",name);
-    return NULL;
-  }
-  uint32_t *getSymbol(FreeRTOSSymbols s)
-  {
-    if(_address[s]==-1) return NULL;
-        return _address+s;
-    fdebug2("Symbol %s not found\n",s);
-    return NULL;
-  }
-  /*
-  */
-  bool queryNextSymbol()
-  {
-    if(_nbSymbols==_nbNeededSymbols) // got them all
-    {
-        gdb_putpacket("OK",2);
-        if(!_ready)
+        uint32_t *pSym = getSymbol(symbol);
+        if (!pSym)
         {
-          _ready=readDebugBlock();
+            return false;
         }
-        return false;
+        val = *pSym;
+        return true;
     }
-    stringWrapper wr;
-    wr.append("qSymbol:");
-    wr.appendHexified(neededSymbols[_nbSymbols]);
-    char *s=wr.string();
-    gdb_putpacket(s, strlen(s));
-    free(s);
-    return true;
-  }
-  /*
-  */
-  bool decodeSymbol(int len,const char *packet)
-  {
-    // the format is adress: hexified symbol
-    uint32_t addr;
-
-    if(sscanf(packet, "%x:", &addr)!=1)
+    bool readSymbolValue(FreeRTOSSymbols symbol, uint32_t &val)
     {
-      // ok we dont have an address, do we have a name ?
-      if(len<3 || packet[0]!=':')
-      {
-        gdb_putpacket("E01",3);
-        return false;
-      }
-      // use unknown address
-      fdebug2("Non existing symbol ! =>");
-      addr=-1;
+        uint32_t *pSym = getSymbol(symbol);
+        if (!pSym)
+        {
+            return false;
+        }
+        val = readMem32(*pSym, 0); // TODO : exception
+        return true;
     }
-    // grab the name now, since we passed the sscanf, we know there is a ':'
-    const char *name=packet;
-    while(*name!=':') name++;
-    name++;
+    /**
 
-    int hexLen=packet+len-name;
+    */
+    bool readDebugBlock()
+    {
 
-    hexLen=((hexLen+1)&~1)/2; // in decoded bytes
-    if(hexLen>MAX_SYMBOL_LENGTH) xAssert(0);
-    unhexify(_decodedName,name,hexLen);
-    fdebug2("got symbol [%s] with value 0x%x\n",_decodedName,addr);
-    add(_decodedName,(uint32_t )addr);
-    queryNextSymbol();
-    return true;
-  }
-protected:
-  uint32_t  _address[MAX_FOS_SYMBOLS];
-  int       _nbSymbols;
-  int       _nbNeededSymbols;
-  // We allocate it here statically to avoid stressing the heap on the fly
-  char      _decodedName[MAX_SYMBOL_LENGTH];
-  bool      _ready;
-public:
-  // Additionnal debug info provided by the target
-  lnFreeRTOSDebug _debugInfo;
+        if (!cur_target)
+        {
+            gdb_putpacketz("");
+            return false;
+        }
+        // do we have the debug block ?
+        uint32_t debugBlock;
+        uint32_t *pSym = getSymbol(sfreeRTOSDebug);
+        if (!pSym)
+        {
+            gdb_putpacketz("");
+            return false;
+        }
+        debugBlock = *pSym;
+        // read info block
+
+#define READ_FIELD(field) _debugInfo.field = readMem32(debugBlock, offsetof(lnFreeRTOSDebug, field));
+        READ_FIELD(MAGIC)
+        READ_FIELD(LIST_SIZE);
+        READ_FIELD(NB_OF_PRIORITIES)
+        READ_FIELD(MPU_ENABLED)
+        READ_FIELD(MAX_TASK_NAME_LEN)
+        READ_FIELD(OFFSET_TASK_NUM)
+        READ_FIELD(OFFSET_TASK_NAME)
+
+        READ_FIELD(OFFSET_LIST_ITEM_NEXT);
+        READ_FIELD(OFFSET_LIST_ITEM_OWNER);
+
+        READ_FIELD(OFFSET_LIST_NUMBER_OF_ITEM);
+        READ_FIELD(OFFSET_LIST_INDEX);
+
+        if (_debugInfo.MAGIC == LN_FREERTOS_MAGIC)
+        {
+            _ready = true;
+        }
+        else
+        {
+            _ready = false;
+        }
+        return _ready;
+    }
+    /*
+     */
+    void add(const char *name, uint32_t value)
+    {
+        if (strcmp(name, neededSymbols[_nbSymbols]))
+            xAssert(0);
+        _address[_nbSymbols] = value;
+        _nbSymbols++;
+        xAssert(_nbSymbols <= MAX_FOS_SYMBOLS);
+    }
+    /*
+     */
+    uint32_t *getSymbol(const char *name)
+    {
+        for (int i = 0; i < _nbSymbols; i++)
+        {
+            if (!strcmp(name, neededSymbols[i]))
+            {
+                if (_address[i] == -1)
+                    return NULL;
+                return _address + i;
+            }
+        }
+        fdebug2("Symbol %s not found\n", name);
+        return NULL;
+    }
+    uint32_t *getSymbol(FreeRTOSSymbols s)
+    {
+        if (_address[s] == -1)
+            return NULL;
+        return _address + s;
+        fdebug2("Symbol %s not found\n", s);
+        return NULL;
+    }
+    /*
+     */
+    bool queryNextSymbol()
+    {
+        if (_nbSymbols == _nbNeededSymbols) // got them all
+        {
+            gdb_putpacket("OK", 2);
+            if (!_ready)
+            {
+                _ready = readDebugBlock();
+            }
+            return false;
+        }
+        stringWrapper wr;
+        wr.append("qSymbol:");
+        wr.appendHexified(neededSymbols[_nbSymbols]);
+        char *s = wr.string();
+        gdb_putpacket(s, strlen(s));
+        free(s);
+        return true;
+    }
+    /*
+     */
+    bool decodeSymbol(int len, const char *packet)
+    {
+        // the format is adress: hexified symbol
+        uint32_t addr;
+
+        if (sscanf(packet, "%x:", &addr) != 1)
+        {
+            // ok we dont have an address, do we have a name ?
+            if (len < 3 || packet[0] != ':')
+            {
+                gdb_putpacket("E01", 3);
+                return false;
+            }
+            // use unknown address
+            fdebug2("Non existing symbol ! =>");
+            addr = -1;
+        }
+        // grab the name now, since we passed the sscanf, we know there is a ':'
+        const char *name = packet;
+        while (*name != ':')
+            name++;
+        name++;
+
+        int hexLen = packet + len - name;
+
+        hexLen = ((hexLen + 1) & ~1) / 2; // in decoded bytes
+        if (hexLen > MAX_SYMBOL_LENGTH)
+            xAssert(0);
+        unhexify(_decodedName, name, hexLen);
+        fdebug2("got symbol [%s] with value 0x%x\n", _decodedName, addr);
+        add(_decodedName, (uint32_t)addr);
+        queryNextSymbol();
+        return true;
+    }
+
+  protected:
+    uint32_t _address[MAX_FOS_SYMBOLS];
+    int _nbSymbols;
+    int _nbNeededSymbols;
+    // We allocate it here statically to avoid stressing the heap on the fly
+    char _decodedName[MAX_SYMBOL_LENGTH];
+    bool _ready;
+
+  public:
+    // Additionnal debug info provided by the target
+    lnFreeRTOSDebug _debugInfo;
 };
-
 
 //

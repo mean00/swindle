@@ -1,24 +1,24 @@
 
 #pragma once
-#include <QObject>
-#include <QTcpSocket>
-#include <QTcpServer>
 #include <QDebug>
+#include <QObject>
+#include <QTcpServer>
+#include <QTcpSocket>
 //
 //
 //
 class BmpTcpServer : public QObject
 {
     Q_OBJECT
-public:
+  public:
     explicit BmpTcpServer(QObject *parent = 0);
-    
-signals:
-    
-public slots:
+
+  signals:
+
+  public slots:
     void newConnection();
-    
-private:
+
+  private:
     QTcpServer *_server;
 };
 //
@@ -28,15 +28,16 @@ private:
 class BMPTcp : public QObject
 {
     Q_OBJECT
-public :
+  public:
     explicit BMPTcp(QTcpSocket *sock);
-public slots:
+  public slots:
     void disconnected();
     void readyRead();
-    void write( uint32_t sz, const uint8_t *ptr);
+    void write(uint32_t sz, const uint8_t *ptr);
     void flush();
-private:
-    QTcpSocket *_socket;   
-    uint8_t     _buffer[QBUFFER_SIZE];
+
+  private:
+    QTcpSocket *_socket;
+    uint8_t _buffer[QBUFFER_SIZE];
 };
 //

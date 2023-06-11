@@ -1,26 +1,28 @@
 #pragma once
 
-#define swait() {for(int lop = swd_delay_cnt; --lop > 0;) __asm__("nop");}
-
-/**
-*/
-class SwdPin
-{
-public:
-    
-    SwdPin(lnBMPPins no) : _fast(_mapping[no&7])
-    {
-      _me=_mapping[no&7];
-      _output=false;
-      _wait= true;
-      on();
-      output();
+#define swait()                                                                                                        \
+    {                                                                                                                  \
+        for (int lop = swd_delay_cnt; --lop > 0;)                                                                      \
+            __asm__("nop");                                                                                            \
     }
 
+/**
+ */
+class SwdPin
+{
+  public:
+    SwdPin(lnBMPPins no) : _fast(_mapping[no & 7])
+    {
+        _me = _mapping[no & 7];
+        _output = false;
+        _wait = true;
+        on();
+        output();
+    }
 
     void on()
     {
-       _fast.on();
+        _fast.on();
     }
     void off()
     {
@@ -28,45 +30,49 @@ public:
     }
     void input()
     {
-      lnPinMode(_me,lnINPUT_FLOATING);
+        lnPinMode(_me, lnINPUT_FLOATING);
     }
     void output()
     {
-      lnPinMode(_me,lnOUTPUT);
+        lnPinMode(_me, lnOUTPUT);
     }
     void set(bool x)
     {
-      if(x) on();
-      else  off();
-      //lnDigitalWrite(_me,x);
+        if (x)
+            on();
+        else
+            off();
+        // lnDigitalWrite(_me,x);
     }
     int read()
     {
         return lnDigitalRead(_me);
     }
-protected:
-  lnPin     _me;
-  bool      _output;
-  bool      _wait;
-  lnFastIO  _fast;
+
+  protected:
+    lnPin _me;
+    bool _output;
+    bool _wait;
+    lnFastIO _fast;
 };
 /**
-*/
+ */
 class SwdWaitPin : public SwdPin
 {
-public:  
-    SwdWaitPin(lnBMPPins no) :  SwdPin(no)
+  public:
+    SwdWaitPin(lnBMPPins no) : SwdPin(no)
     {
-
     }
     void clockOn()
     {
-       _fast.on();
-       if(_wait) swait();
+        _fast.on();
+        if (_wait)
+            swait();
     }
     void clockOff()
     {
         _fast.off();
-        if(_wait) swait();
+        if (_wait)
+            swait();
     }
 };
