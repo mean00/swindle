@@ -1,8 +1,7 @@
-﻿BasedOnStyle: Microsoft
-AllowShortBlocksOnASingleLine: 'true'
-AllowShortCaseLabelsOnASingleLine: 'true'
-Cpp11BracedListStyle: 'true'
-IndentCaseLabels: 'true'
+﻿---
+BasedOnStyle: Microsoft
 Language: Cpp
+Standard: Auto
 UseTab: Never
-BreakBeforeBraces: Allman
+
+...
