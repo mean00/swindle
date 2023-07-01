@@ -69,6 +69,7 @@ DECLARE_MCU( SFDP sfdp.c        sfdp_probe)
 DECLARE_MCU( STM32F1 stm32f1.c  stm32f1_probe gd32f1_probe mm32f3xx_probe mm32l0xx_probe at32fxx_probe )
 DECLARE_MCU( STM32F4 stm32f4.c  stm32f4_probe gd32f4_probe)
 DECLARE_MCU( STM32G0 stm32g0.c  stm32g0_probe )
+DECLARE_MCU( STM32H5 stm32h5.c  stm32h5_probe )
 DECLARE_MCU( STM32H7 stm32h7.c  stm32h7_probe )
 DECLARE_MCU( STM32L0 stm32l0.c  stm32l0_probe )
 DECLARE_MCU( STM32L4 stm32l4.c  stm32l4_probe )
@@ -131,7 +132,8 @@ IF (LN_BMP_HOSTED)
             ${PC}/probe_info.c
             ${T}/jtag_scan.c  
             ${T}/jtag_devs.c    
-            ${T}/adiv5_jtagdp.c
+            ${T}/adiv5_jtag.c
+            ${T}/spi.c
             #!!${B}/stubs.cpp
             )
 ELSE()  
@@ -169,7 +171,7 @@ SET(BM_SRC      ${S}/command.c
                 )
 #------                    
 SET(BM_TARGET   ${T}/adiv5.c    
-                ${T}/adiv5_swdp.c   
+                ${T}/adiv5_swd.c   
                 ${T}/cortexm.c    
                 #${T}/cortexa.c    
                 ${T}/target_flash.c 
@@ -178,6 +180,7 @@ SET(BM_TARGET   ${T}/adiv5.c
                 #${T}/lmi.c      
                 ${T}/target.c 
                 ${T}/sfdp.c
+                ${T}/spi.c
                 # ${S}/gdb_hostio.c 
                 #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
                 )
