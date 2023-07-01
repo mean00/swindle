@@ -308,8 +308,8 @@ extern "C"
     {
         adcInit();
 
-        float vcc = lnBaseAdc::getVcc();
-        if (vcc < 2.6)
+        float vcc = 3300.; // lnBaseAdc::getVcc();
+        if (vcc < 2600)
         {
             Logger("Invalid ADC Vref\n");
             return 0.0;
