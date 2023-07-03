@@ -69,6 +69,25 @@ fn rpc_reply32(code : u8, subcode: u32)
 /**
  * 
  */
+fn rpc_reply32_le(code : u8, subcode: u32)
+{
+    let mut reply : [u8;11] =[0,0,0,0,0,0,0,0,0,0,0];
+
+    reply[0]=rpc_commands::RPC_REMOTE_RESP;
+    reply[1]=code;    
+    for i in 0..4
+    {
+        let ascii=crate::parsing_util::u8_to_ascii(  ((subcode>>8*i) & 0xff) as u8);
+        reply[2+i*2]=ascii[0];
+        reply[3+i*2]=ascii[1];
+    }
+    reply[10]=crate::packet_symbols::RPC_END;
+    rpc_message_out(&reply);    
+}
+
+/**
+ * 
+ */
 #[no_mangle]
 fn rpc_reply_string(code : u8, s: &[u8])
 {    
@@ -102,10 +121,10 @@ fn reply_adiv5_32( fault : i32, value : u32)
     if fault!=0
     {
         bmplog1("\tAdiv error   : ",fault as u32); bmplog("\n");
-        rpc_reply32(rpc_commands::RPC_RESP_ERR, (  (fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32));
+        rpc_reply32_le(rpc_commands::RPC_RESP_ERR, (  (fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32));
     }else
     {
-        rpc_reply32(rpc_commands::RPC_RESP_OK, value);
+        rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
     }
 }
 
@@ -257,7 +276,17 @@ fn rpc_gen_packet(input : &[u8]) -> bool
                                         return true;
                                     },
         
-        rpc_commands::RPC_FREQ_SET => {   rpc_reply(rpc_commands::RPC_RESP_NOTSUP, 0);    return true;},
+        rpc_commands::RPC_FREQ_SET => {       
+                                        bmplog("\trpcFreq SET\n");
+                                        rpc_reply(rpc_commands::RPC_RESP_OK, 0);  
+                                        return true;
+                                    },
+        rpc_commands::RPC_FREQ_GET => {       
+                                        bmplog("\trpcFreq GET\n");
+                                        rpc_reply32(rpc_commands::RPC_RESP_OK, 4000);   // hardcode 4 Mbis
+                                        return true;
+                                    },
+
         rpc_commands::RPC_FREQ_GET => {   rpc_reply(rpc_commands::RPC_RESP_NOTSUP, 0);    return true;},
         rpc_commands::RPC_PWR_SET =>  {   rpc_reply(rpc_commands::RPC_RESP_NOTSUP, 0);    return true;},
         rpc_commands::RPC_PWR_GET =>  {   rpc_reply(rpc_commands::RPC_RESP_NOTSUP, 0);    return true;},
