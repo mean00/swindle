@@ -203,8 +203,27 @@ fn rpc_hl_packet(input : &[u8]) -> bool
                 reply_adiv5_32(fault, outvalue);
                 return true;
             },
-            rpc_commands::RPC_AP_READ => (),
-            rpc_commands::RPC_AP_WRITE => (),
+            rpc_commands::RPC_AP_READ => 
+            {
+                let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
+                let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
+                bmplogx("\t\t AP_READ addr:",address);bmplog("\n");
+                bmplogx("\t\t value  ",value);
+                reply_adiv5_32(0, value);
+                return true;
+
+            },
+            rpc_commands::RPC_AP_WRITE => 
+            {
+                let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
+                let value : u32 = crate::parsing_util::u8s_string_to_u32(&input[9..]);
+                bmp::bmp_adiv5_ap_write(device_index, ap_selection, address,value);
+                bmplogx("\t\t AP_WRITE addr:",address);bmplog("\n");
+                bmplogx("\t\t value  ",value);
+                reply_adiv5_32(0, 0);
+                return true;
+
+            },                        
             rpc_commands::RPC_AP_MEM_READ=> (),   //          'a' 
             rpc_commands::RPC_MEM_READ => (),     // 104 0x68 'h'
             rpc_commands::RPC_MEM_WRITE_SIZED => (),
@@ -283,7 +302,7 @@ fn rpc_gen_packet(input : &[u8]) -> bool
                                     },
         rpc_commands::RPC_FREQ_GET => {       
                                         bmplog("\trpcFreq GET\n");
-                                        rpc_reply32(rpc_commands::RPC_RESP_OK, 4000);   // hardcode 4 Mbis
+                                        rpc_reply32_le(rpc_commands::RPC_RESP_OK, 4000);   // hardcode 4 Mbis
                                         return true;
                                     },
 

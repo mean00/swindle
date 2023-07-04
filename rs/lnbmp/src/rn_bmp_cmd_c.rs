@@ -244,6 +244,21 @@ extern "C" {
     ) -> bool_;
 }
 extern "C" {
+    pub fn bmp_adiv5_ap_read_c(
+        device_index: core::ffi::c_uint,
+        ap_selection: core::ffi::c_uint,
+        address: core::ffi::c_uint,
+    ) -> core::ffi::c_uint;
+}
+extern "C" {
+    pub fn bmp_adiv5_ap_write_c(
+        device_index: core::ffi::c_uint,
+        ap_selection: core::ffi::c_uint,
+        address: core::ffi::c_uint,
+        value: core::ffi::c_uint,
+    );
+}
+extern "C" {
     pub fn platform_nrst_set_val(assert: bool_);
 }
 extern "C" {

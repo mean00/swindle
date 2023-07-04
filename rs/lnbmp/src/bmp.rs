@@ -383,7 +383,27 @@ pub fn bmplog( s : &str)
     }
 }
  
+pub fn bmp_adiv5_ap_read( device_index : u32, ap_selection : u32, address : u32 ) -> u32
+{
+    unsafe
+    {
+        rn_bmp_cmd_c::bmp_adiv5_ap_read_c(          device_index,
+                                                    ap_selection, 
+                                                    address )        
+    }
 
+}
+
+pub fn bmp_adiv5_ap_write( device_index : u32, ap_selection: u32, address : u32, value : u32 )
+{
+    unsafe
+    {
+        rn_bmp_cmd_c::bmp_adiv5_ap_write_c(         device_index,
+                                                    ap_selection, 
+                                                    address,
+                                                    value );     
+    }
+}
 
 pub fn  bmp_adiv5_full_dp_low_level( device_index : u32, ap_selection :u32, address : u16, value : u32) -> ( i32 , u32)
 {
