@@ -55,6 +55,20 @@ bool bmp_adiv5_full_dp_low_level_c(const uint32_t device_index, const uint32_t a
 uint32_t  bmp_adiv5_ap_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t  address);
 void   bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t  address, uint32_t value);
 
+int32_t bmp_adiv5_mem_read_c( const uint32_t  device_index,
+                                            const uint32_t  ap_selection, 
+                                            const uint32_t  csw,
+                                            const uint32_t address,
+                                            uint8_t *buffer,
+                                            uint32_t len);
+
+int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
+                                            const uint32_t  ap_selection, 
+                                            const uint32_t  csw,
+                                            const uint32_t address,
+                                            const uint32_t align,
+                                            const uint8_t *buffer,
+                                            uint32_t len);
 
 // platform
 void platform_nrst_set_val(bool assert);

@@ -11,6 +11,7 @@ extern "C"
 #include "hex_utils.h"
 #include "target.h"
 #include "target_internal.h"
+#include "adiv5.h"
 }
 
 static adiv5_debug_port_s remote_dp = {
@@ -102,5 +103,31 @@ extern "C" uint32_t bmp_adiv5_ap_read_c(  const uint32_t device_index, const  ui
 {
     AP_PREAMBLE() 
     return adiv5_ap_write(&remote_ap, address,value);
+}
+
+
+extern "C" int32_t bmp_adiv5_mem_read_c( const uint32_t  device_index,
+                                            const uint32_t  ap_selection, 
+                                            const uint32_t  csw,
+                                            const uint32_t address,
+                                            uint8_t *buffer, uint32_t len)
+{
+    AP_PREAMBLE()  
+    remote_ap.csw = csw;
+    adiv5_mem_read(&remote_ap, buffer, address, len);
+    return remote_dp.fault;
+}
+
+extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
+                                            const uint32_t  ap_selection, 
+                                            const uint32_t  csw,
+                                            const uint32_t address,
+                                            const uint32_t alin,
+                                            const uint8_t *buffer, uint32_t len)
+{
+    AP_PREAMBLE()  
+    remote_ap.csw = csw;
+    adiv5_mem_write_sized(&remote_ap, address, (const void *)buffer, (size_t)len, (align_e)alin);    
+    return remote_dp.fault;
 }
 // EOF

@@ -375,14 +375,18 @@ pub fn bmp_rpc_swd_out_par(value : u32, nb_bits : u32) -> bool
         rn_bmp_cmd_c::platform_target_clk_output_enable(enable as i32)
     }
  }
-
+/**
+ * 
+ */
 pub fn bmplog( s : &str)
 {
     unsafe {
         rn_bmp_cmd_c::Logger2(s.len() as i32 , s.as_ptr() as *const i8);
     }
 }
- 
+/**
+ * 
+ */
 pub fn bmp_adiv5_ap_read( device_index : u32, ap_selection : u32, address : u32 ) -> u32
 {
     unsafe
@@ -393,7 +397,39 @@ pub fn bmp_adiv5_ap_read( device_index : u32, ap_selection : u32, address : u32 
     }
 
 }
-
+/**
+ * 
+ */
+pub fn   bmp_adiv5_mem_read(device_index : u32, ap_selection: u32, csw : u32, address : u32, buffer  : &mut[u8]) -> i32
+{
+    unsafe {
+                return rn_bmp_cmd_c::bmp_adiv5_mem_read_c( device_index,
+                                            ap_selection, 
+                                            csw,
+                                            address,
+                                            buffer.as_ptr() as *mut u8,
+                                            buffer.len() as u32);
+            
+    }
+}
+/**
+ * 
+ */
+pub fn bmp_adiv5_mem_write(device_index : u32, ap_selection: u32, csw : u32, address : u32, align : u32, buffer: &[u8]) -> i32
+{
+    unsafe {
+            return rn_bmp_cmd_c::bmp_adiv5_mem_write_c( device_index,
+                                            ap_selection, 
+                                            csw,
+                                            address,
+                                            align,
+                                            buffer.as_ptr() as *const u8,
+                                            buffer.len() as u32);
+            }
+}
+/**
+ * 
+ */
 pub fn bmp_adiv5_ap_write( device_index : u32, ap_selection: u32, address : u32, value : u32 )
 {
     unsafe
@@ -404,7 +440,9 @@ pub fn bmp_adiv5_ap_write( device_index : u32, ap_selection: u32, address : u32,
                                                     value );     
     }
 }
-
+/**
+ * 
+ */
 pub fn  bmp_adiv5_full_dp_low_level( device_index : u32, ap_selection :u32, address : u16, value : u32) -> ( i32 , u32)
 {
     unsafe

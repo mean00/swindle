@@ -19,6 +19,17 @@ pub fn ascii_hex_string_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Resu
     }
     return Ok(&sout[..s]);
 }
+//
+//
+pub fn u8_hex_string_to_u8s<'a,'b>(sin : &'a [u8], sout: &'b mut [u8]) -> &'b [u8]
+{
+    let s= sin.len()/2;
+    for i in 0..s
+    {
+        sout[i]=ascii_octet_to_hex( sin[i*2],sin[i*2+1]);
+    }
+    &sout[..s]
+}
 
 /**
  * 

@@ -127,6 +127,20 @@ fn reply_adiv5_32( fault : i32, value : u32)
         rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
     }
 }
+/**
+ * 
+ */
+fn reply_adiv5_block(fault: i32, buffer : &[u8])
+{
+    if fault!=0
+    {
+        bmplog1("\reply_adiv5_block error   : ",fault as u32); bmplog("\n");
+        rpc_reply32_le(rpc_commands::RPC_RESP_ERR, (  (fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32));
+    }else
+    {       
+        rpc_reply_hex_string(rpc_commands::RPC_RESP_OK,buffer);
+    }
+}
 
 /*
  */
@@ -203,31 +217,70 @@ fn rpc_hl_packet(input : &[u8]) -> bool
                 reply_adiv5_32(fault, outvalue);
                 return true;
             },
-            rpc_commands::RPC_AP_READ => 
+            rpc_commands::RPC_AP_READ => //'a
             {
                 let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
                 let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
                 bmplogx("\t\t AP_READ addr:",address);bmplog("\n");
-                bmplogx("\t\t value  ",value);
+                bmplogx("\t\t value  ",value);bmplog("\n");
                 reply_adiv5_32(0, value);
                 return true;
 
             },
-            rpc_commands::RPC_AP_WRITE => 
+            rpc_commands::RPC_AP_WRITE => // 'A
             {
                 let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
                 let value : u32 = crate::parsing_util::u8s_string_to_u32(&input[9..]);
                 bmp::bmp_adiv5_ap_write(device_index, ap_selection, address,value);
                 bmplogx("\t\t AP_WRITE addr:",address);bmplog("\n");
-                bmplogx("\t\t value  ",value);
+                bmplogx("\t\t value  ",value);bmplog("\n");
                 reply_adiv5_32(0, 0);
                 return true;
 
             },                        
-            rpc_commands::RPC_AP_MEM_READ=> (),   //          'a' 
-            rpc_commands::RPC_MEM_READ => (),     // 104 0x68 'h'
-            rpc_commands::RPC_MEM_WRITE_SIZED => (),
-            rpc_commands::RPC_AP_MEM_WRITE_SIZED=> (),
+            
+            rpc_commands::RPC_MEM_READ => { //M0000a3000040e000edfc00000004
+                                            let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..(5+8)]);
+                                            let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[13..(13+8)]);
+                                            let length : u32 = crate::parsing_util::u8s_string_to_u32(&input[(13+8)..(13+16)]);
+                                            bmplogx("\t\t MEM READ CSW :",csw1);bmplog("\n");
+                                            bmplogx("\t\t adr  :",address);bmplog("\n");
+                                            bmplogx("\t\t len  :",length);bmplog("\n");
+                                            if length>1024
+                                            {
+                                                rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
+                                                return true;
+                                            }
+                                            let mut buffer : [u8;1024]= [0;1024];
+                                            let fault  : i32 ;
+                                            let l : usize = length as usize;
+                                            fault = bmp::bmp_adiv5_mem_read(device_index, ap_selection, csw1 ,address,&mut buffer[0..l]);
+                                            reply_adiv5_block(fault, &buffer[0..l]);
+                                            return true;
+                                            },     // M
+            rpc_commands::RPC_MEM_WRITE => { // m0000a300004002e000edfc0000000401040001
+                                            let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..(5+8)]);
+                                            let align : u32 = crate::parsing_util::u8s_string_to_u32(&input[13..(13+2)]);
+                                            let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[(13+2)..(13+10)]);
+                                            let length : u32 = crate::parsing_util::u8s_string_to_u32(&input[(13+10)..(13+18)]);
+                                            bmplogx("\t\t RPC_MEM_WRITE CSW :",csw1);bmplog("\n");
+                                            bmplogx("\t\t adr  :",address);bmplog("\n");
+                                            bmplogx("\t\t len  :",length);bmplog("\n");
+                                            bmplogx("\t\t align  :",align);bmplog("\n");
+                                            if length>1024
+                                            {
+                                                rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR , 0);
+                                                return true;
+                                            }
+                                            let mut buffer : [u8;1024] = [0;1024];
+                                            let fault  : i32 ;
+                                            let l : usize = length as usize;
+                                            let decoded = crate::parsing_util::u8_hex_string_to_u8s(&input[(13+18)..], &mut buffer);                                            
+                                            fault = bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1 ,address,align,decoded);
+                                            reply_adiv5_32(fault,0);
+                                            return true;                                            
+                                            },        // m
+            
             _ => (),
     };
     

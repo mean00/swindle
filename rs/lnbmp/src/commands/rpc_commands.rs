@@ -51,10 +51,9 @@ pub const RPC_DP_READ           : u8 = b'd';
 pub const RPC_LOW_ACCESS        : u8 = b'L';
 pub const RPC_AP_READ           : u8 = b'a';
 pub const RPC_AP_WRITE          : u8 = b'A';
-pub const RPC_AP_MEM_READ       : u8 = b'M';
-pub const RPC_MEM_READ          : u8 = b'h';
-pub const RPC_MEM_WRITE_SIZED   : u8 = b'H';
-pub const RPC_AP_MEM_WRITE_SIZED: u8 = b'm';
+//pub const RPC_AP_MEM_READ       : u8 = b'M';
+pub const RPC_MEM_READ          : u8 = b'M';
+pub const RPC_MEM_WRITE         : u8 = b'm';
 
 pub const RPC_REMOTE_ERROR_UNRECOGNISED   : u8 = 1;
 pub const RPC_REMOTE_RESP         : u8 = b'&';

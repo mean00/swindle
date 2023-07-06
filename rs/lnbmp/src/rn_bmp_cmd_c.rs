@@ -259,6 +259,27 @@ extern "C" {
     );
 }
 extern "C" {
+    pub fn bmp_adiv5_mem_read_c(
+        device_index: core::ffi::c_uint,
+        ap_selection: core::ffi::c_uint,
+        csw: core::ffi::c_uint,
+        address: core::ffi::c_uint,
+        buffer: *mut u8,
+        len: core::ffi::c_uint,
+    ) -> i32;
+}
+extern "C" {
+    pub fn bmp_adiv5_mem_write_c(
+        device_index: core::ffi::c_uint,
+        ap_selection: core::ffi::c_uint,
+        csw: core::ffi::c_uint,
+        address: core::ffi::c_uint,
+        align: core::ffi::c_uint,
+        buffer: *const u8,
+        len: core::ffi::c_uint,
+    ) -> i32;
+}
+extern "C" {
     pub fn platform_nrst_set_val(assert: bool_);
 }
 extern "C" {
