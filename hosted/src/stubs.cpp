@@ -84,4 +84,27 @@ extern "C" void bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t
 {
     xAssert(0);
 }
+
+extern "C" int32_t bmp_adiv5_mem_read_c( const uint32_t  device_index,
+                                            const uint32_t  ap_selection, 
+                                            const uint32_t  csw,
+                                            const uint32_t address,
+                                            uint8_t *buffer, uint32_t len)
+{
+    xAssert(0);
+    return 0;
+}
+
+extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
+                                            const uint32_t  ap_selection, 
+                                            const uint32_t  csw,
+                                            const uint32_t address,
+                                            const uint32_t alin,
+                                            const uint8_t *buffer, uint32_t len)
+
+{
+    xAssert(0);
+    return 0;
+}
+
 // -- eof --
