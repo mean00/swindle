@@ -61,8 +61,8 @@ extern "C"
 BMPTcp *current_connection = NULL;
 
 extern void exit_from_bmp();
-
-char tcp_buffer[1024];
+#define BUFFER_SIZE (3*1024)
+char tcp_buffer[BUFFER_SIZE];
 int tcp_index = 0;
 
 void lowDelay(int skt)
@@ -155,7 +155,7 @@ void BMPTcp::write(uint32_t sz, const uint8_t *ptr)
 {
     memcpy(tcp_buffer + tcp_index, ptr, sz);
     tcp_index += sz;
-    if (tcp_index >= 1024)
+    if (tcp_index >= BUFFER_SIZE)
     {
         printf("** BUFFER OVERFLOW **\n");
         exit(-1);
