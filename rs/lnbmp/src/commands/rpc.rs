@@ -18,6 +18,34 @@ use crate::parsing_util::ascii_octet_to_hex;
 
 crate::setup_log!(true);
 
+struct popping_buffer<'a>
+{
+   data : &'a [u8],
+}
+
+impl <'a>popping_buffer <'a>
+{
+    pub fn new( inc : &'a [u8]) -> Self
+    {
+        popping_buffer
+        {
+            data : inc,
+        }
+    }
+    pub fn pop( &mut self, nb : usize) -> &'a [u8]
+    {
+        let r= &self.data[0..nb];
+        self.data=&self.data[nb..];
+        r
+    }
+    pub fn leftover( &mut self) -> &'a [u8]
+    {
+        let r= &self.data[0..];
+        self.data=&self.data[0..0];
+        r
+    }
+}
+
 //-------------------------------
 /**
  * 
@@ -203,8 +231,9 @@ fn rpc_hl_packet(input : &[u8]) -> bool
             {      
                 // 0 12 34 56 78 90 12 34 56  
                 // L 00 00*00-04*50-00-00-00
-                let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
-                let value   : u32 = crate::parsing_util::u8s_string_to_u32(&input[9..]);                
+                let mut pop = popping_buffer::new(&input[5..]);
+                let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
+                let value : u32 = crate::parsing_util::u8s_string_to_u32(pop.leftover());
                 let fault : i32;                
                 bmplogx("\t\t LOW_ACCESS:",input[0] as u32);bmplog("\n");
                 bmplogx("\t\t device_index  ",device_index);
@@ -219,7 +248,8 @@ fn rpc_hl_packet(input : &[u8]) -> bool
             },
             rpc_commands::RPC_AP_READ => //'a
             {
-                let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
+                let mut pop = popping_buffer::new(&input[5..]);
+                let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
                 let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
                 bmplogx("\t\t AP_READ addr:",address);bmplog("\n");
                 bmplogx("\t\t value  ",value);bmplog("\n");
@@ -229,8 +259,9 @@ fn rpc_hl_packet(input : &[u8]) -> bool
             },
             rpc_commands::RPC_AP_WRITE => // 'A
             {
-                let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..9]);
-                let value : u32 = crate::parsing_util::u8s_string_to_u32(&input[9..]);
+                let mut pop = popping_buffer::new(&input[5..]);
+                let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
+                let value : u32 = crate::parsing_util::u8s_string_to_u32(pop.leftover());
                 bmp::bmp_adiv5_ap_write(device_index, ap_selection, address,value);
                 bmplogx("\t\t AP_WRITE addr:",address);bmplog("\n");
                 bmplogx("\t\t value  ",value);bmplog("\n");
@@ -240,9 +271,10 @@ fn rpc_hl_packet(input : &[u8]) -> bool
             },                        
             
             rpc_commands::RPC_MEM_READ => { //M0000a3000040e000edfc00000004
-                                            let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..(5+8)]);
-                                            let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[13..(13+8)]);
-                                            let length : u32 = crate::parsing_util::u8s_string_to_u32(&input[(13+8)..(13+16)]);
+                                            let mut pop = popping_buffer::new(&input[5..]);
+                                            let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
+                                            let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
+                                            let length : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
                                             bmplogx("\t\t MEM READ CSW :",csw1);bmplog("\n");
                                             bmplogx("\t\t adr  :",address);bmplog("\n");
                                             bmplogx("\t\t len  :",length);bmplog("\n");
@@ -259,10 +291,11 @@ fn rpc_hl_packet(input : &[u8]) -> bool
                                             return true;
                                             },     // M
             rpc_commands::RPC_MEM_WRITE => { // m0000a300004002e000edfc0000000401040001
-                                            let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..(5+8)]);
-                                            let align : u32 = crate::parsing_util::u8s_string_to_u32(&input[13..(13+2)]);
-                                            let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[(13+2)..(13+10)]);
-                                            let length : u32 = crate::parsing_util::u8s_string_to_u32(&input[(13+10)..(13+18)]);
+                                            let mut pop = popping_buffer::new(&input[5..]);
+                                            let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
+                                            let align : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(2));                                            
+                                            let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
+                                            let length : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
                                             bmplogx("\t\t RPC_MEM_WRITE CSW :",csw1);bmplog("\n");
                                             bmplogx("\t\t adr  :",address);bmplog("\n");
                                             bmplogx("\t\t len  :",length);bmplog("\n");
@@ -275,7 +308,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
                                             let mut buffer : [u8;1024] = [0;1024];
                                             let fault  : i32 ;
                                             let l : usize = length as usize;
-                                            let decoded = crate::parsing_util::u8_hex_string_to_u8s(&input[(13+18)..], &mut buffer);                                            
+                                            let decoded = crate::parsing_util::u8_hex_string_to_u8s(pop.leftover(), &mut buffer);                                            
                                             fault = bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1 ,address,align,decoded);
                                             reply_adiv5_32(fault,0);
                                             return true;                                            
