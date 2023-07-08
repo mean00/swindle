@@ -13,5 +13,5 @@ pub const RPC_END               : u8 = b'#';
 pub const CHAR_ACK              : u8 = b'+';
 pub const CHAR_NACK             : u8 = b'-';
 
-pub const INPUT_BUFFER_SIZE: usize = (1024*2+64);
+pub const INPUT_BUFFER_SIZE: usize = 1024*2+64;
 

@@ -15,6 +15,7 @@ mod rn_bmp_cmd_c;
 mod bmp;
 mod glue;
 mod lnlogger;
+mod poppingbuffer;
 
 
 use packet_symbols::{CHAR_ACK,CHAR_NACK,INPUT_BUFFER_SIZE};

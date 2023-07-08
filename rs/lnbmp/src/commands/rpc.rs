@@ -14,37 +14,9 @@ use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
 use crate::commands::rpc_commands;
 use crate::parsing_util::ascii_octet_to_hex;
-
+use crate::poppingbuffer::popping_buffer;
 
 crate::setup_log!(true);
-
-struct popping_buffer<'a>
-{
-   data : &'a [u8],
-}
-
-impl <'a>popping_buffer <'a>
-{
-    pub fn new( inc : &'a [u8]) -> Self
-    {
-        popping_buffer
-        {
-            data : inc,
-        }
-    }
-    pub fn pop( &mut self, nb : usize) -> &'a [u8]
-    {
-        let r= &self.data[0..nb];
-        self.data=&self.data[nb..];
-        r
-    }
-    pub fn leftover( &mut self) -> &'a [u8]
-    {
-        let r= &self.data[0..];
-        self.data=&self.data[0..0];
-        r
-    }
-}
 
 //-------------------------------
 /**
@@ -306,8 +278,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
                                                 return true;
                                             }
                                             let mut buffer : [u8;1024] = [0;1024];
-                                            let fault  : i32 ;
-                                            let l : usize = length as usize;
+                                            let fault  : i32 ;                                            
                                             let decoded = crate::parsing_util::u8_hex_string_to_u8s(pop.leftover(), &mut buffer);                                            
                                             fault = bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1 ,address,align,decoded);
                                             reply_adiv5_32(fault,0);
