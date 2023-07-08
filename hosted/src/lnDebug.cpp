@@ -103,12 +103,13 @@ extern void bmplogger(const char *fmt...)
 }
 extern void bmploggern(int n, const char *a)
 {
-    static char bfer[512];
+#define MAX_DUMP 2064    
+    static char bfer[MAX_DUMP];
     while (n)
     {
         int r = n;
-        if (r > 511)
-            r = 511;
+        if (r > MAX_DUMP)
+            r = MAX_DUMP;
         memcpy(bfer, a, r);
         bfer[r] = 0;
         bmplogger("<%s>", bfer);
