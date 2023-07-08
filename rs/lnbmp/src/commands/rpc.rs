@@ -16,7 +16,7 @@ use crate::commands::rpc_commands;
 use crate::parsing_util::ascii_octet_to_hex;
 use crate::poppingbuffer::popping_buffer;
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 
 //-------------------------------
 /**
