@@ -41,6 +41,7 @@ extern "C"
 #include <fcntl.h>
 }
 //-- disable debug
+#if 1
 #undef QBMPLOG
 #undef QBMPLOGN
 #define QBMPLOG(...)                                                                                                   \
@@ -49,6 +50,7 @@ extern "C"
 #define QBMPLOGN(...)                                                                                                  \
     {                                                                                                                  \
     }
+#endif    
 // Rust part
 extern "C"
 {
@@ -165,11 +167,14 @@ void BMPTcp::write(uint32_t sz, const uint8_t *ptr)
 //
 void BMPTcp::flush()
 {
-    QBMPLOG("tcp write :");
+    if(!tcp_index) return;
+    QBMPLOG("tcp write :\n");
+#if 0    
     for (int i = 0; i < tcp_index; i++)
     {
         uint8_t c = tcp_buffer[i];
     }
+#endif    
     QBMPLOGN((int)tcp_index, (const char *)tcp_buffer);
     QBMPLOG("\n");
     if (tcp_index != _socket->write(tcp_buffer, tcp_index))
