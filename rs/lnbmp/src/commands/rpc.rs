@@ -175,18 +175,20 @@ fn rpc_hl_packet(input : &[u8]) -> bool
     // 0   1    2    3    4    5    6    7    8
     // CMD INDEXX    AP_SEL    ADDREEEEEEEEESSS
     // [...]
-    
+    let mut pop = popping_buffer::new(&input);
+    let cmd = pop.pop(1)[0];
     let device_index: u32= ascii_octet_to_hex(input[1],input[2]) as u32;
     let ap_selection: u32= ascii_octet_to_hex(input[3],input[4]) as u32;
+    pop.pop(4);
 
     let as_string = unsafe {core::str::from_utf8_unchecked(input)};
     bmplog( "\t\t");bmplog( as_string);bmplog("\n");
 
-    match input[0]
+    match cmd
     {            
         rpc_commands::RPC_DP_READ =>
             {        
-                    let address : u32 = crate::parsing_util::u8s_string_to_u32(&input[5..]);
+                    let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.leftover());
                     let value : u32;
                     let fault : i32;                                
 
@@ -202,8 +204,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
         rpc_commands::RPC_LOW_ACCESS =>
             {      
                 // 0 12 34 56 78 90 12 34 56  
-                // L 00 00*00-04*50-00-00-00
-                let mut pop = popping_buffer::new(&input[5..]);
+                // L 00 00*00-04*50-00-00-00                
                 let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
                 let value : u32 = crate::parsing_util::u8s_string_to_u32(pop.leftover());
                 let fault : i32;                
@@ -219,8 +220,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
                 return true;
             },
             rpc_commands::RPC_AP_READ => //'a
-            {
-                let mut pop = popping_buffer::new(&input[5..]);
+            {                
                 let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
                 let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
                 bmplogx("\t\t AP_READ addr:",address);bmplog("\n");
@@ -230,8 +230,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
 
             },
             rpc_commands::RPC_AP_WRITE => // 'A
-            {
-                let mut pop = popping_buffer::new(&input[5..]);
+            {             
                 let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
                 let value : u32 = crate::parsing_util::u8s_string_to_u32(pop.leftover());
                 bmp::bmp_adiv5_ap_write(device_index, ap_selection, address,value);
@@ -242,8 +241,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
 
             },                        
             
-            rpc_commands::RPC_MEM_READ => { //M0000a3000040e000edfc00000004
-                                            let mut pop = popping_buffer::new(&input[5..]);
+            rpc_commands::RPC_MEM_READ => { //M0000a3000040e000edfc00000004                                            
                                             let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
                                             let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
                                             let length : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
@@ -262,8 +260,7 @@ fn rpc_hl_packet(input : &[u8]) -> bool
                                             reply_adiv5_block(fault, &buffer[0..l]);
                                             return true;
                                             },     // M
-            rpc_commands::RPC_MEM_WRITE => { // m0000a300004002e000edfc0000000401040001
-                                            let mut pop = popping_buffer::new(&input[5..]);
+            rpc_commands::RPC_MEM_WRITE => { // m0000a300004002e000edfc0000000401040001                                            
                                             let csw1 : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
                                             let align : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(2));                                            
                                             let address : u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
