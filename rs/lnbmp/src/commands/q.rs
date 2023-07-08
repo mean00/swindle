@@ -306,7 +306,8 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         if block > 64 // every 2k bytes or so
         {
             block = 0;
-            encoder::raw_send_u8(&[0]);
+//            encoder::raw_send_u8(&[0]);
+//            encoder::flush();
         }
         let rd: u32 = xmin((tail-adr) as u32,buffer.len() as u32);
         if crate::bmp::bmp_read_mem(adr, &mut buffer[0..(rd as usize)]) == false
@@ -324,7 +325,8 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         let mut e = encoder::new();
         e.begin();
         e.add("C");
-        e.add(crc.numtoa_str(16,&mut buffer));     // INPUT_BUFFER_SIZE
+        let hex = crc.numtoa_str(16,&mut buffer);
+        e.add(hex);     // INPUT_BUFFER_SIZE
         e.end();
     }
     true
