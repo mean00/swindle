@@ -149,6 +149,7 @@ ELSE()
                 ${B}/bridge.cpp 
                 ${B}/bmp_gpio.cpp  
                 ${B}/bmp_swdTap.cpp   
+                ${B}/bmp_rvTap.cpp  
                 ${B}/bmp_serial.cpp  
                 ${B}/bmp_rs_gdb.cpp                
                 ${B}/bmp_jtagstubs.cpp  
