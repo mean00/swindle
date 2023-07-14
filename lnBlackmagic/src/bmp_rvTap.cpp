@@ -54,7 +54,7 @@ extern SwdPin pReset;
 // 32
 // 7
 // total = 22+32
-static bool sendHeader(const uint8_t host, uint32_t &data, bool write)
+static bool send_rv_frame(const uint8_t host, uint32_t &data, bool write)
 {
         pSWDIO.on();        
         pSWCLK.clockOn();
@@ -152,13 +152,13 @@ static bool sendHeader(const uint8_t host, uint32_t &data, bool write)
 static bool rv_write(const uint8_t host, const uint32_t value)
 {    
     uint32_t v=value;
-    return sendHeader(host, v, true); 
+    return send_rv_frame(host, v, true); 
 }
 /**
 */
 static bool rv_read(const uint8_t host, uint32_t *value)
 {
-    return sendHeader(host, *value, false); 
+    return send_rv_frame(host, *value, false); 
 }
 /**
 */
@@ -185,5 +185,13 @@ extern "C" void rvtap_init()
     rv_proc.write   = rv_write;
     rv_proc.read    = rv_read;
     rv_proc.wake_up = rv_wakeup;
+
+    pSWDIO.on();
+    pSWDIO.output();
+    pSWCLK.clockOn();
+    pSWCLK.output();
+    pReset.input();
+    rv_wakeup();
+
 }
 // EOF
