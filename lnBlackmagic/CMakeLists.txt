@@ -187,6 +187,7 @@ SET(BM_TARGET   ${T}/adiv5.c
 #----------
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
+target_link_libraries( lnBlackmagic lnArduino)
 IF(USE_STLINK_PINOUT)
         target_compile_definitions(lnBlackmagic PRIVATE USE_STLINK_PINOUT)
 ENDIF(USE_STLINK_PINOUT)
