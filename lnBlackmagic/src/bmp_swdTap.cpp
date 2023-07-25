@@ -196,5 +196,30 @@ extern "C" void swdptap_init()
     swd_proc.seq_out = SwdWrite;
     swd_proc.seq_out_parity = SwdWrite_parity;
 }
-
+/**
+*/
+extern "C" void platform_pin_set(uint8_t pin, uint8_t value)
+{
+    if(!pin)
+    {
+        pSWCLK.set(value);
+    }else {
+        pSWDIO.output();
+        __asm__("nop");
+        pSWDIO.set(value);
+    }
+}
+/**
+*/
+extern "C" uint8_t  platform_pin_get(uint8_t pin)
+{
+    if(!pin)
+    {
+        xAssert(0);
+    }else {
+        pSWDIO.input();
+        __asm__("nop");
+        return (uint8_t )pSWDIO.read();
+    }
+}
 // EOF
