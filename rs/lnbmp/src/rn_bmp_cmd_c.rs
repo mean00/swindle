@@ -297,3 +297,9 @@ extern "C" {
 extern "C" {
     pub fn list_enabled_boards() -> *const core::ffi::c_char;
 }
+extern "C" {
+    pub fn platform_pin_set(pin: u8, value: u8);
+}
+extern "C" {
+    pub fn platform_pin_get(pin: u8) -> u8;
+}

@@ -501,6 +501,26 @@ pub fn bmp_supported_boards() -> &'static str
    let placeholder  = "--error--";
    return placeholder;
 }
+/**
+ * 
+ */
+pub fn platform_pin_set( pin : u8, value : u8) 
+{
+    unsafe {
+        rn_bmp_cmd_c::platform_pin_set(pin,value);
+    }
+}
+/*
+
+*/
+pub fn platform_pin_get( pin : u8)  -> u8
+{
+    unsafe {
+        rn_bmp_cmd_c::platform_pin_get(pin)
+    }
+}
+
+
 
 /*
  pub fn bmp_platform_target_voltage() ->
