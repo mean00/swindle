@@ -127,5 +127,17 @@ extern "C"
     void platform_request_boot(void)
     {
     }
+    extern void platform_pin_set(uint8_t pin, uint8_t value);
+    extern bool platform_pin_get(uint8_t pin);
+    bool bmp_pin_get(uint8_t pin)
+    {
+        return platform_pin_get(  pin);
+    }
+    bool bmp_pin_set(uint8_t pin, uint8_t state)
+    {
+         platform_pin_set(  pin, state);
+         return true;
+    }
+
 } // extern "C"
 // EOF

@@ -300,6 +300,31 @@ fn rpc_gen_packet(input : &[u8]) -> bool
     
     match input[0]
     {
+        rpc_commands::RPC_PIN_SET => {
+                                        if input.len()!=3
+                                        {
+                                            bmplog("Wrong param in pinSet\n");
+                                            return false;
+                                        }
+                                        let pin = input[1];
+                                        let state = input[2];
+                                        bmplog("PIN SET\n");
+                                        bmp::bmp_pin_set(pin,state);
+                                        rpc_reply(rpc_commands::RPC_RESP_OK, 0);
+                                        return true;
+                                        },
+        rpc_commands::RPC_PIN_GET => {
+                                        if input.len()!=2
+                                        {
+                                            bmplog("Wrong param in pinGet\n");
+                                            return false;
+                                        }
+                                        let pin = input[1];                                
+                                        bmplog("PIN GET\n");
+                                        let val = bmp::bmp_pin_get(pin);
+                                        rpc_reply(rpc_commands::RPC_RESP_OK, val );
+                                        return true;            
+                                    } ,                
         rpc_commands::RPC_START => {
                                         bmplog("rpc start session\n");
                                         rpc_reply_string(rpc_commands::RPC_REMOTE_RESP_OK, b"LNBMP");
@@ -390,32 +415,6 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
     bmplog("\tswd:\n");
     match input[0]
     {
-        rpc_commands::RPC_PIN_SET => {
-                                        if input.len()!=3
-                                        {
-                                            bmplog("Wrong param in pinSet\n");
-                                            return false;
-                                        }
-                                        let pin = input[1];
-                                        let state = input[2];
-                                        bmplog("PIN SET\n");
-                                        bmp::bmp_pin_set(pin,state);
-                                        rpc_reply(rpc_commands::RPC_RESP_OK, 0);
-                                        return true;
-                            },
-        rpc_commands::RPC_PIN_GET => {
-                                if input.len()!=2
-                                {
-                                    bmplog("Wrong param in pinGet\n");
-                                    return false;
-                                }
-                                let pin = input[1];                                
-                                bmplog("PIN GET\n");
-                                let val = bmp::bmp_pin_get(pin);
-                                rpc_reply(rpc_commands::RPC_RESP_OK, val );
-                                return true;            
-                        } ,        
-
         rpc_commands::RPC_INIT        => { 
                                     bmplog("\tinit swd\n");
                                     bmp::rpc_init_swd();  
