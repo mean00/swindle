@@ -130,4 +130,6 @@ extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
     adiv5_mem_write_sized(&remote_ap, address, (const void *)buffer, (size_t)len, (align_e)alin);    
     return remote_dp.fault;
 }
+
+
 // EOF

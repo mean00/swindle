@@ -399,7 +399,7 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                         let pin = input[1];
                                         let state = input[2];
                                         bmplog("PIN SET\n");
-                                        bmp::platform_pin_set(pin,state);
+                                        bmp::bmp_pin_set(pin,state);
                                         rpc_reply(rpc_commands::RPC_RESP_OK, 0);
                                         return true;
                             },
@@ -411,7 +411,7 @@ fn rpc_swdp_packet(input : &[u8]) -> bool
                                 }
                                 let pin = input[1];                                
                                 bmplog("PIN GET\n");
-                                let val = bmp::platform_pin_get(pin);
+                                let val = bmp::bmp_pin_get(pin);
                                 rpc_reply(rpc_commands::RPC_RESP_OK, val );
                                 return true;            
                         } ,        

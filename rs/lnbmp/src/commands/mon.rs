@@ -5,20 +5,62 @@ use alloc::vec::Vec;
 use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util::ascii_hex_string_to_u8s;
+use crate::parsing_util::ascii_string_to_u32;
 use crate::commands::{CallbackType,exec_one,CommandTree};
 use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
+use crate::bmp::{bmp_pin_set,bmp_pin_get};
 //
 //
 crate::setup_log!(false);
 //
-const mon_command_tree: [CommandTree;4] = 
+const mon_command_tree: [CommandTree;6] = 
 [
     CommandTree{ command: "help",args: 0,      require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
-    CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
-    CommandTree{ command: "voltage",args: 0,      require_connected: false ,cb: CallbackType::text( _voltage) },      // 
-    CommandTree{ command: "boards",args: 0,      require_connected: false ,cb: CallbackType::text( _boards) },      // 
+    CommandTree{ command: "swdp_scan",args: 0, require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
+    CommandTree{ command: "voltage",args: 0,   require_connected: false ,cb: CallbackType::text( _voltage) },      // 
+    CommandTree{ command: "boards",args: 0,    require_connected: false ,cb: CallbackType::text( _boards) },      // 
+    CommandTree{ command: "wgpio",args: 0,     require_connected: false ,cb: CallbackType::text( _wgpios) },      // 
+    CommandTree{ command: "rgpio",args: 0,     require_connected: false ,cb: CallbackType::text( _rgpios) },      // 
 ];
+//
+pub fn _rgpios(command : &str, _args : &Vec<&str>) -> bool
+{
+
+    let args : Vec <&str>= command.split(" ").collect();
+    if args.len()!=2
+    {
+        encoder::reply_e01();
+        return true;
+    }
+    // cmd pin
+    
+    let pin    = ascii_string_to_u32( &args[1]);
+    
+    gdb_out_rs( "mon get gin :\n");
+    let state  = bmp_pin_get(pin as u8);
+    encoder::reply_ok();
+    return true;
+}
+
+//
+pub fn _wgpios(command : &str, _args : &Vec<&str>) -> bool
+{
+    let args : Vec <&str>= command.split(" ").collect();
+    if args.len()!=3
+    {
+        encoder::reply_e01();
+        return true;
+    }
+    // cmd pin state    
+    let pin    = ascii_string_to_u32( &args[1]);
+    let state  = ascii_string_to_u32( &args[2]);
+    gdb_out_rs( "mon set pin :\n");
+    bmp_pin_set(pin as u8, state as u8);
+    encoder::reply_ok();
+    return true;
+}
+
 
 //
 pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
