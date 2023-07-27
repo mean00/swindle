@@ -2,6 +2,11 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
+extern "C"
+{
+    #include "bmp_remote.h"
+    #include "src/remote.h"
+}
 
 void xAssert(int a)
 {
@@ -107,4 +112,60 @@ extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
     return 0;
 }
 
+extern "C"
+{
+extern void remote_pin_set(uint8_t p, uint8_t s);
+extern bool remote_pin_get(uint8_t p);
+
+void bmp_pin_set(uint8_t pin, uint8_t state)
+{
+    remote_pin_set(pin,state);
+}
+
+bool bmp_pin_get(uint8_t pin)
+{
+    return remote_pin_get(pin);
+}
+
+
+// This shouold be in platform.c but we put them here to minimize the change
+// in blackmagic source tree 
+void remote_pin_set(uint8_t pin, uint8_t value) // pin 0 = clk, pin 1 = io
+{
+	uint8_t buffer[REMOTE_MAX_MSG_SIZE]=	{			REMOTE_SOM, REMOTE_GEN_PACKET, 'W',pin, value, REMOTE_EOM, 0};
+	platform_buffer_write(buffer, 6);
+	int length = platform_buffer_read(buffer,REMOTE_MAX_MSG_SIZE);
+	if(length<1) 
+	{
+		DEBUG_ERROR("Invalid pin set reply\n");
+		return ;//false;
+	}
+	bool r= buffer[0]==REMOTE_RESP_OK;
+	if(!r)
+	{
+			DEBUG_ERROR(" pin set error\n");
+	}
+	//return r;
+}
+bool remote_pin_get(uint8_t pin) // pin 0 = clk, pin 1 = io
+{
+	uint8_t buffer[REMOTE_MAX_MSG_SIZE]=	{			REMOTE_SOM, REMOTE_GEN_PACKET, 'w',pin, REMOTE_EOM, 0};
+	platform_buffer_write(buffer, 5);
+	int length = platform_buffer_read(buffer,REMOTE_MAX_MSG_SIZE);
+	if(length<1) 
+	{
+		DEBUG_ERROR("Invalid pin set reply\n");
+		return false;
+	}
+	bool r= buffer[0]==REMOTE_RESP_OK;
+	if(!r)
+	{
+			DEBUG_ERROR(" pin set error\n");
+	}else
+	{
+		r=buffer[1];
+	}
+	return r;
+}
+}
 // -- eof --
