@@ -36,18 +36,33 @@ extern "C"
 #include "timing.h"
 #include "rv.h"
 }
+
+
+#if 0
 extern uint32_t swd_delay_cnt;
 #include "lnBMP_swdio.h"
 
+    extern SwdPin pSWDIO;
+    extern SwdWaitPin pSWCLK;
+    extern SwdPin pReset;
 
+#else
+    #define pSWCLK 0
+    #define pSWDIO 1
+    #define pReset 0 // ??
+    #define WAIT() {__asm__("nop");}
 
-
-extern SwdPin pSWDIO;
-extern SwdWaitPin pSWCLK;
-extern SwdPin pReset;
-
-#define WAIT() {__asm__("nop");}
-
+    #define  SETCLOCK(p,v)      bmp_pin_set(p,v)
+    #define  SETPIN(p,v)        bmp_pin_set(p,v)      
+    #define  GETPIN(x)          bmp_pin_get(x)
+    #define  SET_OUTPUT(x)      {}
+    #define  SET_INPUT(x)       {}
+    extern "C"
+    {
+        void bmp_pin_set(uint8_t pin, uint8_t state);
+        bool bmp_pin_get(uint8_t pin);
+    }
+#endif
 //  Start Adr(8bits)  Read(0)/Write(1) ParityHost(x) 5x0  32 bits ParityDevice(1) 5x0 Stop
 // 10
 // 5
@@ -56,16 +71,16 @@ extern SwdPin pReset;
 // total = 22+32
 static bool send_rv_frame(const uint8_t host, uint32_t &data, bool write)
 {
-        pSWDIO.on();        
-        pSWCLK.clockOn();
+        SETPIN(pSWDIO,1);        
+        SETCLOCK(pSWCLK,1);
         // Ok we are idle
 
         // Send start
-        pSWDIO.off();
+        SETPIN(pSWDIO,0);
         WAIT();
-        pSWCLK.off(); // start bit...
+        SETPIN(pSWCLK,0); // start bit...
         WAIT();
-        pSWCLK.clockOn();
+        SETCLOCK(pSWCLK,1);
         WAIT();
         int mask=0x80;
         int value=host;
@@ -73,27 +88,27 @@ static bool send_rv_frame(const uint8_t host, uint32_t &data, bool write)
         // send address
         while(mask)
         {
-            pSWCLK.clockOff();
-            pSWDIO.set(!!(value&mask));
-            pSWCLK.clockOn();
+            SETCLOCK(pSWCLK,0);
+            SETPIN(pSWDIO,!!(value&mask));
+            SETCLOCK(pSWCLK,1);
             mask>>=1;
         }
         // Read/Write bit
-        pSWCLK.clockOff();
-        pSWDIO.set(write);
-        pSWCLK.clockOn();
+        SETCLOCK(pSWCLK,0);
+        SETPIN(pSWDIO,write);
+        SETCLOCK(pSWCLK,1);
         // Parity: address  ^op
         int currentParity = (__builtin_popcount(host) + write) & 1;
-        pSWCLK.clockOff();
-        pSWDIO.set(currentParity);
-        pSWCLK.clockOn();
+        SETCLOCK(pSWCLK,0);
+        SETPIN(pSWDIO,currentParity);
+        SETCLOCK(pSWCLK,1);
 
         // 5 bits@0
-        pSWCLK.clockOff(); pSWCLK.clockOn();
-        pSWCLK.clockOff(); pSWCLK.clockOn();
-        pSWCLK.clockOff(); pSWCLK.clockOn();
-        pSWCLK.clockOff(); pSWCLK.clockOn();
-        pSWCLK.clockOff(); pSWCLK.clockOn();
+        SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+        SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+        SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+        SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+        SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
 
         if(write)
         {
@@ -101,50 +116,50 @@ static bool send_rv_frame(const uint8_t host, uint32_t &data, bool write)
             int value=host;
             while(mask)
             {
-                pSWCLK.clockOff();
-                pSWDIO.set(!!(value&mask));
-                pSWCLK.clockOn();
+                SETCLOCK(pSWCLK,0);
+                SETPIN(pSWDIO,!!(value&mask));
+                SETCLOCK(pSWCLK,1);
                 mask>>=1;
             }
             // Parity target
-            pSWCLK.clockOff();
-            pSWDIO.set(0); // TODO
-            pSWCLK.clockOn();
+            SETCLOCK(pSWCLK,0);
+            SETPIN(pSWDIO,0); // TODO
+            SETCLOCK(pSWCLK,1);
 
             // 5 bits@0
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
 
 
 
         }else  // READ
         {
-            pSWDIO.input();
+            SET_INPUT(pSWDIO)
             uint32_t mask=1<<31;
             data=0;
             while(mask)
             {
-                pSWCLK.clockOff();
-                data=(data<<1)+pSWDIO.read();
-                pSWCLK.clockOn();
+                SETCLOCK(pSWCLK,0);
+                data=(data<<1)+GETPIN(pSWDIO);
+                SETCLOCK(pSWCLK,1);
                 mask>>=1;
             }
             // 5 bits@0
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();
-            pSWCLK.clockOff(); pSWCLK.clockOn();            
-            pSWDIO.output();
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);
+            SETCLOCK(pSWCLK,0); SETCLOCK(pSWCLK,1);            
+            SET_OUTPUT(pSWDIO)
         }
 
         // stop bit
-        pSWCLK.clockOn();
-        pSWDIO.set(0);
-        pSWDIO.set(1);
+        SETCLOCK(pSWCLK,1);
+        SETPIN(pSWDIO,0);
+        SETPIN(pSWDIO,1);
         return true;
 }
 /**
@@ -164,15 +179,15 @@ static bool rv_read(const uint8_t host, uint32_t *value)
 */
 static void rv_wakeup()
 {
-    pSWCLK.on();
-    pSWDIO.set(1);
+    SETPIN(pSWCLK,1);
+    SETPIN(pSWDIO,1);
     for(int i=0;i<100;i++)
     {
-        pSWCLK.clockOff();
-        pSWCLK.clockOn();
+        SETCLOCK(pSWCLK,0);
+        SETCLOCK(pSWCLK,1);
     }
-    pSWDIO.set(0);
-    pSWDIO.set(1); // stop
+    SETPIN(pSWDIO,0);
+    SETPIN(pSWDIO,1); // stop
 }
 
 //----------------
@@ -186,12 +201,20 @@ extern "C" void rvtap_init()
     rv_proc.read    = rv_read;
     rv_proc.wake_up = rv_wakeup;
 
-    pSWDIO.on();
-    pSWDIO.output();
-    pSWCLK.clockOn();
-    pSWCLK.output();
-    pReset.input();
+    SETPIN(pSWDIO,1);
+    SET_OUTPUT(pSWDIO)
+    SETCLOCK(pSWCLK,1);
+    SET_OUTPUT(pSWCLK);
+    SET_INPUT(pReset);
     rv_wakeup();
 
 }
+
+extern "C" void rv_test(void)
+{
+    rvtap_init();
+    rv_write(0x10, 0x12345678);
+
+}
+
 // EOF

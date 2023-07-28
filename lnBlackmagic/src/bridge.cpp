@@ -62,7 +62,10 @@ extern "C"
     {
         lnDelayMs(ms);
     }
-
+    void bmp_test()
+    {
+        
+    }
     /**
      */
     void user_init(void)

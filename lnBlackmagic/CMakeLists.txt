@@ -184,6 +184,7 @@ SET(BM_TARGET   ${T}/adiv5.c
                 ${T}/spi.c
                 # ${S}/gdb_hostio.c 
                 #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
+                ${B}/bmp_rvTap.cpp  
                 )
 #----------
 
