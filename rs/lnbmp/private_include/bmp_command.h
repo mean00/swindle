@@ -83,3 +83,6 @@ const char *list_enabled_boards();
 void    bmp_pin_set(uint8_t pin, uint8_t value);
 uint8_t bmp_pin_get(uint8_t pin);
 //
+void bmp_test();
+
+//

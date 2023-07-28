@@ -9,12 +9,12 @@ use crate::parsing_util::ascii_string_to_u32;
 use crate::commands::{CallbackType,exec_one,CommandTree};
 use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
-use crate::bmp::{bmp_pin_set,bmp_pin_get};
+use crate::bmp::{bmp_pin_set,bmp_pin_get,bmp_test};
 //
 //
 crate::setup_log!(false);
 //
-const mon_command_tree: [CommandTree;6] = 
+const mon_command_tree: [CommandTree;7] = 
 [
     CommandTree{ command: "help",args: 0,      require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
     CommandTree{ command: "swdp_scan",args: 0, require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
@@ -22,6 +22,7 @@ const mon_command_tree: [CommandTree;6] =
     CommandTree{ command: "boards",args: 0,    require_connected: false ,cb: CallbackType::text( _boards) },      // 
     CommandTree{ command: "wgpio",args: 0,     require_connected: false ,cb: CallbackType::text( _wgpios) },      // 
     CommandTree{ command: "rgpio",args: 0,     require_connected: false ,cb: CallbackType::text( _rgpios) },      // 
+    CommandTree{ command: "test",args: 0,      require_connected: false ,cb: CallbackType::text( _test) },      // 
 ];
 //
 pub fn _rgpios(command : &str, _args : &Vec<&str>) -> bool
@@ -42,7 +43,15 @@ pub fn _rgpios(command : &str, _args : &Vec<&str>) -> bool
     encoder::reply_ok();
     return true;
 }
-
+//
+pub fn _test(command : &str, _args : &Vec<&str>) -> bool
+{
+   
+    gdb_out_rs( "test :\n");
+    bmp_test();
+    encoder::reply_ok();
+    return true;
+}
 //
 pub fn _wgpios(command : &str, _args : &Vec<&str>) -> bool
 {

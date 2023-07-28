@@ -520,6 +520,12 @@ pub fn bmp_pin_get( pin : u8)  -> u8
     }
 }
 
+pub fn bmp_test()
+{
+    unsafe {
+        rn_bmp_cmd_c::bmp_test()
+    }
+}
 
 
 /*
