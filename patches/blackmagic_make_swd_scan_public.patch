@@ -1,5 +1,5 @@
 diff --git a/src/command.c b/src/command.c
-index a6a6c737..2280bd0d 100644
+index 7be1b62e..09c9e78d 100644
 --- a/src/command.c
 +++ b/src/command.c
 @@ -54,7 +54,7 @@ static bool cmd_version(target_s *t, int argc, const char **argv);
@@ -8,6 +8,6 @@ index a6a6c737..2280bd0d 100644
  static bool cmd_jtag_scan(target_s *target, int argc, const char **argv);
 -static bool cmd_swdp_scan(target_s *t, int argc, const char **argv);
 +/*static*/ bool cmd_swdp_scan(target_s *t, int argc, const char **argv);
+ static bool cmd_rvswp_scan(target_s *t, int argc, const char **argv);
  static bool cmd_auto_scan(target_s *t, int argc, const char **argv);
  static bool cmd_frequency(target_s *t, int argc, const char **argv);
- static bool cmd_targets(target_s *t, int argc, const char **argv);
