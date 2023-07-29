@@ -59,16 +59,16 @@ IF(USE_STLINK_PINOUT)
     SET(LN_DEBUG_UART 1 CACHE INTERNAL "")
 ENDIF()
 
-add_subdirectory(${AF_FOLDER})
 
 # tiny USB configuration
 SET(LN_USB_NB_CDC 2) # 2 CDC interfaces
 SET(LN_USB_NB_HID 0) # No HID
 SET(LN_USB_DFU_RUNTIME 1 CACHE INTERNAL "")
-include(${AF_FOLDER}/setup.cmake)
-USE_LIBRARY(tinyUsb)
 
 #SET(LN_CUSTOM_LD_SCRIPT ${CMAKE_SOURCE_DIR}/custom_ldscript.ld)
+
+add_subdirectory(${AF_FOLDER})
+
 
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
@@ -79,9 +79,15 @@ GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 
 ADD_SUBDIRECTORY(lnBlackmagic)
 ADD_SUBDIRECTORY(rs)
+
+#include(${AF_FOLDER}/setup.cmake)
+USE_LIBRARY(tinyUsb)
+
+
+target_link_libraries(lnBMP lnArduino)
 target_link_libraries(lnBMP lnarduino_c_bindings)
 target_link_libraries(lnBMP lnBlackmagic )
-target_link_libraries(lnBMP gd32_usb_usbd )
+target_link_libraries(lnBMP tinyUsb gd32_usb_usbd )
 target_link_libraries(lnBMP lnBMP_interface )
 target_link_libraries(lnBMP rsbmp)
 
