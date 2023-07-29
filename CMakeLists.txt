@@ -49,6 +49,7 @@ APPLY_PATCH_IF_NEEDED(patched8 blackmagic_no_debug_bmp.patch                blac
 APPLY_PATCH_IF_NEEDED(patched7 blackmagic_use_custom_target_mem_map.patch   blackmagic      "use heap based mem map")
 APPLY_PATCH_IF_NEEDED(patched9 blackmagic_no_libopencm3.patch               blackmagic      "use heap based mem map")
 APPLY_PATCH_IF_NEEDED(patched10 blackmagic_make_swd_scan_public.patch       blackmagic      "make swdp_scan public ")
+APPLY_PATCH_IF_NEEDED(patched11 blackmagic_use_embedded_printf.patch        blackmagic      "use embedded printf instead of bmp newlib ")
 #APPLY_PATCH_IF_NEEDED(patched9 blackmagic_intercept_commands.patch        blackmagic      "intercept gdb commands ")
 
 include_directories(${CMAKE_SOURCE_DIR})
