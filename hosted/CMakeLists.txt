@@ -59,6 +59,9 @@ ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-g3")
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
+
+set(  LN_MCU_FOLDER  ${CMAKE_SOURCE_DIR}/../lnArduino/mcus/arm_gd32fx/)
+
 include(../enabled_board.cmake)
 
 ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
@@ -79,3 +82,4 @@ target_link_libraries(lnBMP_hosted lnBMP_interface)
 target_link_libraries(lnBMP_hosted lnBlackmagic  )
 target_link_libraries(lnBMP_hosted embeddedPrintf usb-1.0 )
 target_link_libraries(lnBMP_hosted Qt5::Network Qt5::SerialPort)
+target_link_libraries(lnBMP_hosted lnArduino)

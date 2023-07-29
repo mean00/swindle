@@ -126,6 +126,7 @@ ELSE()
 ENDIF()    
 
 set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
+target_link_libraries(lnBMP lnArduino)
 #
 #   Checksum the file...
 #
