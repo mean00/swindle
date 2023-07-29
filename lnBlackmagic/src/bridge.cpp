@@ -14,6 +14,7 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 #include "version.h"
+#include "printf.h"
 
     extern "C" float bmp_get_target_voltage_c();
 }
@@ -45,7 +46,7 @@ extern "C"
     const char *platform_target_voltage(void)
     {
         float v = bmp_get_target_voltage_c();
-        snprintf(buffer, 9, "%2.2f v", v);
+        snprintf_(buffer, 9, "%2.2f v", v);
         return buffer;
     }
 

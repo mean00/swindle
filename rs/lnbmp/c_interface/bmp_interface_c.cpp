@@ -10,6 +10,7 @@ extern "C"
 #include "hex_utils.h"
 #include "target.h"
 #include "target_internal.h"
+#include "platform.h"
 
 #if PC_HOSTED == 0
 #include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
