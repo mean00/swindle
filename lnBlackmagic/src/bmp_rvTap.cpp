@@ -54,21 +54,36 @@ extern uint32_t swd_delay_cnt;
         __asm__("nop");                                                                                                \
     }
 
-#define SETCLOCK(p, v) bmp_pin_set(p, v)
-#define SETPIN(p, v) bmp_pin_set(p, v)
-#define GETPIN(x) bmp_pin_get(x)
-#define SET_OUTPUT(x)                                                                                                  \
-    {                                                                                                                  \
-    }
-#define SET_INPUT(x)                                                                                                   \
-    {                                                                                                                  \
-    }
+#define SETCLOCK(p, v)      bmp_pin_set(p, v)
+#define SETPIN(p, v)        bmp_pin_set(p, v)
+#define GETPIN(p)           bmp_pin_get(p)
+#define SET_OUTPUT(p)       bmp_pin_direction(p,1)
+#define SET_INPUT(p)        bmp_pin_direction(p,0)
 extern "C"
 {
     void bmp_pin_set(uint8_t pin, uint8_t state);
     bool bmp_pin_get(uint8_t pin);
+    void bmp_pin_direction(uint8_t pint, uint8_t is_output);
 }
 #endif
+
+#define WRITE_BIT(x)    {SETCLOCK(pSWCLK, 0);   WAIT();      SETPIN(pSWDIO, !!(x));    WAIT();     SETCLOCK(pSWCLK, 1);}
+
+
+bool parityOdd (uint32_t in)
+{
+    uint32_t  mid = in ^ (in >> 1);
+    mid = mid ^ (mid >> 2);
+    mid = mid ^ (mid >> 4);
+    mid = mid ^ (mid >> 8);
+    mid = mid ^ (mid >> 16);
+    return mid & 1;
+}
+bool parityEven(uint32_t in)
+{
+    return !(parityOdd(in));
+}
+
 //  Start Adr(8bits)  Read(0)/Write(1) ParityHost(x) 5x0  32 bits ParityDevice(1) 5x0 Stop
 // 10
 // 5
@@ -80,104 +95,88 @@ static bool send_rv_frame(const uint8_t host, uint32_t &data, bool write)
     SETPIN(pSWDIO, 1);
     SETCLOCK(pSWCLK, 1);
     // Ok we are idle
-
+    WAIT();   WAIT();
     // Send start
     SETPIN(pSWDIO, 0);
     WAIT();
-    SETPIN(pSWCLK, 0); // start bit...
+    //SETPIN(pSWCLK, 0); // start bit...
     WAIT();
-    SETCLOCK(pSWCLK, 1);
+   // SETCLOCK(pSWCLK, 1);
+   // SETCLOCK(pSWCLK, 0);
     WAIT();
-    int mask = 0x80;
+    int mask = 0x40;
     int value = host;
 
     // send address
     while (mask)
     {
-        SETCLOCK(pSWCLK, 0);
-        SETPIN(pSWDIO, !!(value & mask));
-        SETCLOCK(pSWCLK, 1);
+        WRITE_BIT( (value & mask)  );
         mask >>= 1;
     }
     // Read/Write bit
-    SETCLOCK(pSWCLK, 0);
-    SETPIN(pSWDIO, write);
-    SETCLOCK(pSWCLK, 1);
+    WRITE_BIT( write );
+
     // Parity: address  ^op
-    int currentParity = (__builtin_popcount(host) + write) & 1;
-    SETCLOCK(pSWCLK, 0);
-    SETPIN(pSWDIO, currentParity);
-    SETCLOCK(pSWCLK, 1);
+    int currentParity = (parityOdd(host)^ write);    
+    WRITE_BIT( currentParity );
 
     // 5 bits@0
-    SETCLOCK(pSWCLK, 0);
-    SETCLOCK(pSWCLK, 1);
-    SETCLOCK(pSWCLK, 0);
-    SETCLOCK(pSWCLK, 1);
-    SETCLOCK(pSWCLK, 0);
-    SETCLOCK(pSWCLK, 1);
-    SETCLOCK(pSWCLK, 0);
-    SETCLOCK(pSWCLK, 1);
-    SETCLOCK(pSWCLK, 0);
-    SETCLOCK(pSWCLK, 1);
+    WRITE_BIT( 0 );
+    WRITE_BIT( 0 );
+    WRITE_BIT( 0 );
+    WRITE_BIT( 0 );
+    WRITE_BIT( 0 );
 
     if (write)
     {
-        uint32_t mask = 1 << 31;
-        int value = host;
+        uint32_t mask = 1UL << 31;
+        uint32_t value = data;
         while (mask)
         {
-            SETCLOCK(pSWCLK, 0);
-            SETPIN(pSWDIO, !!(value & mask));
-            SETCLOCK(pSWCLK, 1);
+            WRITE_BIT( (value & mask) );
             mask >>= 1;
         }
         // Parity target
-        SETCLOCK(pSWCLK, 0);
-        SETPIN(pSWDIO, 0); // TODO
-        SETCLOCK(pSWCLK, 1);
+        uint32_t parity=0; // TODO
+        WRITE_BIT( parity );
 
         // 5 bits@0
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
+        WRITE_BIT( 0 );
+        WRITE_BIT( 0 );
+        WRITE_BIT( 0 );
+        WRITE_BIT( 1 );
+        WRITE_BIT( 1 );
+
     }
     else // READ
-    {
-        SET_INPUT(pSWDIO)
-        uint32_t mask = 1 << 31;
+    {        
         data = 0;
-        while (mask)
+        for(int i=0;i<32;i++)
         {
             SETCLOCK(pSWCLK, 0);
+            if(!i)
+            {
+                SET_INPUT(pSWDIO);
+            }
             data = (data << 1) + GETPIN(pSWDIO);
             SETCLOCK(pSWCLK, 1);
-            mask >>= 1;
         }
-        // 5 bits@0
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SETCLOCK(pSWCLK, 0);
-        SETCLOCK(pSWCLK, 1);
-        SET_OUTPUT(pSWDIO)
+        uint32_t er = 0;
+        for(int i=0;i<6;i++)
+        {
+            SETCLOCK(pSWCLK, 0);
+            er = (er << 1) + GETPIN(pSWDIO);
+            SETCLOCK(pSWCLK, 1);
+        }
+        int parity= er >>5;
+        er &= 0xf;
+        printf("Out : 0x%x, parity =%x er=%x\n",data,parity,er);
     }
-
+    
     // stop bit
-    SETCLOCK(pSWCLK, 1);
+    SETCLOCK(pSWCLK, 0);    
     SETPIN(pSWDIO, 0);
+    SETCLOCK(pSWCLK, 1);    
     SETPIN(pSWDIO, 1);
     return true;
 }
@@ -221,18 +220,24 @@ extern "C" void rvtap_init()
     rv_proc.read = rv_read;
     rv_proc.wake_up = rv_wakeup;
     #endif
-    SETPIN(pSWDIO, 1);
-    SET_OUTPUT(pSWDIO)
+    SETPIN(pSWDIO, 1);  // IDLE IS HIGH
+    SET_OUTPUT(pSWDIO);
     SETCLOCK(pSWCLK, 1);
+    SETPIN(pSWDIO, 1); 
     SET_OUTPUT(pSWCLK);
-    SET_INPUT(pReset);
+    SETPIN(pSWDIO, 1); 
+    //SET_INPUT(pReset);
     //rv_wakeup();
 }
 
 extern "C" void rv_test(void)
 {
     rvtap_init();
-    rv_write(0x10, 0x12345678);
+    uint32_t v;
+    rv_write(0x10, 0x80000001);
+    rv_read(0x11, &v);
+    rv_read(0x11, &v);
+    printf("0x%x\n", v);
 }
 
 // EOF

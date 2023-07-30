@@ -504,6 +504,12 @@ pub fn bmp_supported_boards() -> &'static str
 /**
  * 
  */
+pub fn bmp_pin_direction( pin : u8, output : u8) 
+{
+    unsafe {
+        rn_bmp_cmd_c::bmp_pin_direction(pin, output);
+    }
+}
 pub fn bmp_pin_set( pin : u8, value : u8) 
 {
     unsafe {

@@ -203,8 +203,7 @@ extern "C" void platform_pin_set(uint8_t pin, uint8_t value)
     if(!pin)
     {
         pSWCLK.set(value);
-    }else {
-        pSWDIO.output();
+    }else {        
         __asm__("nop");
         pSWDIO.set(value);
     }
@@ -216,10 +215,30 @@ extern "C" uint8_t  platform_pin_get(uint8_t pin)
     if(!pin)
     {
         xAssert(0);
-    }else {
-        pSWDIO.input();
+    }else {        
         __asm__("nop");
         return (uint8_t )pSWDIO.read();
     }
 }
+/**
+*/
+extern "C" void  platform_pin_direction(uint8_t pin, uint8_t is_write)
+{
+    if(pin>1)
+    {
+        xAssert(0);
+    }
+    int map = (pin<<1)+(is_write&1);
+    switch(map)
+    {
+        case 0:  pSWCLK.input();break; // clock +read
+        case 1:  pSWCLK.output();break; // clock +read
+        case 2:  pSWDIO.input();break; // clock +read
+        case 3:  pSWDIO.output();break; // clock +read
+        default:
+            xAssert(0);
+            break;
+    }
+}
+
 // EOF

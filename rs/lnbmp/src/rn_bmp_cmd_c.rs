@@ -304,5 +304,8 @@ extern "C" {
     pub fn bmp_pin_get(pin: u8) -> u8;
 }
 extern "C" {
+    pub fn bmp_pin_direction(pin: u8, output: u8);
+}
+extern "C" {
     pub fn bmp_test();
 }

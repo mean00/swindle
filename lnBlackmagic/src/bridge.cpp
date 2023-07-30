@@ -133,6 +133,7 @@ extern "C"
     }
     extern void platform_pin_set(uint8_t pin, uint8_t value);
     extern bool platform_pin_get(uint8_t pin);
+    extern void platform_pin_direction(uint8_t pin, uint8_t output);
     bool bmp_pin_get(uint8_t pin)
     {
         return platform_pin_get(  pin);
@@ -142,6 +143,10 @@ extern "C"
          platform_pin_set(  pin, state);
          return true;
     }
-
+    // output = 1, input =0
+    void    bmp_pin_direction(uint8_t pin, uint8_t output)
+    {
+         platform_pin_direction(  pin, output);
+    }
 } // extern "C"
 // EOF

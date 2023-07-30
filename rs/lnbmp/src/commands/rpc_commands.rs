@@ -9,6 +9,7 @@ pub const RPC_ADIV5_PACKET : u8 = b'A';
 
 pub const RPC_PIN_SET      : u8 = b'W';
 pub const RPC_PIN_GET      : u8 = b'w';
+pub const RPC_PIN_DIRECTION      : u8 = b'X';
 
 /* Generic protocol elements */
 pub const RPC_START        : u8 = b'A';

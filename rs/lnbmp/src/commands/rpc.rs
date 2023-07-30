@@ -300,6 +300,19 @@ fn rpc_gen_packet(input : &[u8]) -> bool
     
     match input[0]
     {
+        rpc_commands::RPC_PIN_DIRECTION => {
+                                        if input.len()!=3
+                                        {
+                                            bmplog("Wrong param in pinDirection\n");
+                                            return false;
+                                        }
+                                        let pin = input[1];
+                                        let dir = input[2];
+                                        bmplog("PIN DIR\n");
+                                        bmp::bmp_pin_direction(pin,dir);
+                                        rpc_reply(rpc_commands::RPC_RESP_OK, 0);
+                                        return true;
+                                        },
         rpc_commands::RPC_PIN_SET => {
                                         if input.len()!=3
                                         {

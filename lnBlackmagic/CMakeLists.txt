@@ -175,7 +175,11 @@ SET(BM_SRC      ${S}/command.c
                 ${S}/maths_utils.c 
                 #${S}/gdb_main.c ${S}/gdb_packet.c
                 )
-#------                    
+#------
+IF(USE_RISCV)
+                SET(EXTRA ${T}/riscv32.c ${T}/riscv.c ${T}/riscv_jtag_dtm.c)
+ENDIF()
+
 SET(BM_TARGET   ${T}/adiv5.c    
                 ${T}/adiv5_swd.c   
                 ${T}/cortexm.c    
