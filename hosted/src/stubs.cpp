@@ -178,9 +178,17 @@ bool remote_pin_get(uint8_t pin) // pin 0 = clk, pin 1 = io
 	if(!r)
 	{
 			DEBUG_ERROR(" pin set error\n");
+            xAssert(0);
 	}else
 	{
-		r=buffer[1];
+        // this is hackish
+        switch(buffer[2])
+        {
+            case '0': r=0;break;
+            case '1': r=1;break;
+            default:
+                    xAssert(0);
+        }
 	}
 	return r;
 }

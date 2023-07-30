@@ -168,6 +168,7 @@ static bool send_rv_frame(const uint8_t host, uint32_t &data, bool write)
             er = (er << 1) + GETPIN(pSWDIO);
             SETCLOCK(pSWCLK, 1);
         }
+        SET_OUTPUT(pSWDIO);
         int parity= er >>5;
         er &= 0xf;
         printf("Out : 0x%x, parity =%x er=%x\n",data,parity,er);
@@ -236,6 +237,8 @@ extern "C" void rv_test(void)
     uint32_t v;
     rv_write(0x10, 0x80000001);
     rv_read(0x11, &v);
+#undef printf    
+    printf("0x%x\n", v);
     rv_read(0x11, &v);
     printf("0x%x\n", v);
 }
