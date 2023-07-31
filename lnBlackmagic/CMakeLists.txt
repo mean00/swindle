@@ -45,6 +45,7 @@ ENDMACRO(DECLARE_MCU mcu source)
 
 
 DECLARE_MCU( CH32F1 ch32f1.c    ch32f1_probe)
+DECLARE_MCU( CH32V3XX ch32v3xx.c    ch32v3xx_probe)
 DECLARE_MCU( EFM32 efm32.c      efm32_probe efm32_aap_probe)
 DECLARE_MCU( IMXRT imxrt.c      imxrt_probe)
 DECLARE_MCU( KINETIS kinetis.c  kinetis_probe kinetis_mdm_probe )
@@ -176,9 +177,9 @@ SET(BM_SRC      ${S}/command.c
                 #${S}/gdb_main.c ${S}/gdb_packet.c
                 )
 #------
-IF(USE_RISCV)
-                SET(EXTRA ${T}/riscv32.c ${T}/riscv.c ${T}/riscv_jtag_dtm.c)
-ENDIF()
+#IF(USE_RISCV)
+                SET(EXTRA ${T}/riscv32.c  ${T}/riscv64.c ${T}/riscv_debug.c  ${T}/riscv_jtag_dtm.c)
+#ENDIF()
 
 SET(BM_TARGET   ${T}/adiv5.c    
                 ${T}/adiv5_swd.c   
@@ -194,6 +195,7 @@ SET(BM_TARGET   ${T}/adiv5.c
                 # ${S}/gdb_hostio.c 
                 #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
                 ${B}/bmp_rvTap.cpp  
+                ${EXTRA}
                 )
 #----------
 
