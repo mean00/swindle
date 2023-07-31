@@ -111,6 +111,13 @@ extern "C" {
     ) -> bool_;
 }
 extern "C" {
+    pub fn cmd_rvswdp_scan(
+        t: *const target_s,
+        argc: core::ffi::c_int,
+        argv: *mut *const core::ffi::c_char,
+    ) -> bool_;
+}
+extern "C" {
     pub fn bmp_attach_c(target: core::ffi::c_uint) -> bool_;
 }
 extern "C" {

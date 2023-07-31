@@ -14,10 +14,11 @@ use crate::bmp::{bmp_pin_set,bmp_pin_get,bmp_test};
 //
 crate::setup_log!(false);
 //
-const mon_command_tree: [CommandTree;7] = 
+const mon_command_tree: [CommandTree;8] = 
 [
     CommandTree{ command: "help",args: 0,      require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
     CommandTree{ command: "swdp_scan",args: 0, require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
+    CommandTree{ command: "rvswdp_scan",args: 0, require_connected: false ,cb: CallbackType::text( _rvswdp_scan) },      // 
     CommandTree{ command: "voltage",args: 0,   require_connected: false ,cb: CallbackType::text( _voltage) },      // 
     CommandTree{ command: "boards",args: 0,    require_connected: false ,cb: CallbackType::text( _boards) },      // 
     CommandTree{ command: "wgpio",args: 0,     require_connected: false ,cb: CallbackType::text( _wgpios) },      // 
@@ -148,6 +149,21 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     exec_one(&mon_command_tree,as_string, args)
     
 }
+/**
+ * 
+ */
+pub fn _rvswdp_scan(_command : &str, _args : &Vec<&str>) -> bool
+{
+    bmplog("rvswdp_scan:\n");
+    if !bmp::rvswdp_scan()
+    {
+        bmpwarning("rvswdp fail!\n","");
+        return false;
+    }    
+    encoder::reply_ok();
+    return true;
+}
+
 /*
     Detect stuff connected to the SWD interface
     Try to use the fastest speed
