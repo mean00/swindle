@@ -1,0 +1,14 @@
+{       
+    "files.associations": {
+        "*.txt": "cmake",
+        "memory_resource": "cpp",
+        "ostream": "cpp",
+        "streambuf": "cpp"
+    },
+    "C_Cpp.codeAnalysis.clangTidy.args": [
+        "--extra-arg=--target=arm"
+    ],
+    "cmake.generator": "Unix Makefiles",
+    "cortex-debug.variableUseNaturalFormat": false
+    
+}
