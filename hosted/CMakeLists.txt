@@ -11,20 +11,37 @@ PROJECT(lnBMPHosted C CXX)
 #
 # Create a dummy setup to build BMP/lnBMP
 #
+set(LN_EXT                  arm_gd32fx)
+set(LN_MCU_FOLDER           ${CMAKE_SOURCE_DIR}/../lnArduino/mcus/arm_gd32fx/)
+SET(LN_BMP_HOSTED           True CACHE INTERNAL "")
+SET(LN_ARCH                 "X86" CACHE INTERNAL "")
+SET(LN_MCU                  "M4" CACHE INTERNAL "")
+SET(LN_TOOLCHAIN_EXT        "arm_gd32fx_clang" CACHE INTERNAL "")
+SET(LN_ENABLE_RUST          ON   CACHE INTERNAL "")
+set(AF_FOLDER               ${CMAKE_SOURCE_DIR}/../lnArduino CACHE INTERNAL "")
+set(CMAKE_MODULE_PATH       ${CMAKE_MODULE_PATH} ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
-SET(LN_BMP_HOSTED True CACHE INTERNAL "")
-SET(LN_ARCH            "X86" CACHE INTERNAL "")
-SET(LN_MCU             "M4" CACHE INTERNAL "")
-SET(LN_TOOLCHAIN_EXT   "arm_gd32fx_clang" CACHE INTERNAL "")
-SET(LN_ENABLE_RUST      ON   CACHE INTERNAL "")
-set(AF_FOLDER          ${CMAKE_SOURCE_DIR}/../lnArduino CACHE INTERNAL "")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
 SET(Rust_CARGO_TARGET "" CACHE INTERNAL "")
 SET(CMAKE_C_COMPILER /usr/bin/clang CACHE INTERNAL "")
 SET(CMAKE_CXX_COMPILER /usr/bin/clang++ CACHE INTERNAL "")
 SET(CMAKE_CXX_AR /usr/bin/llvm-ar  CACHE INTERNAL "")
 SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
+#
+
+add_library(lnArduino INTERFACE)
+
+target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/)
+target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/include)
+target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/arduinoLayer/include)
+target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/FreeRTOS/include)
+target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER})
+target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER}/boards/bluepill)
+target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/FreeRTOS/portable/GCC/ARM_CM3/)
+
+target_include_directories(lnArduino INTERFACE ${CMAKE_BINARY_DIR})
+
+
 
 # Qt5
 
@@ -72,10 +89,10 @@ SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/bmp_qtnetwork.h ${H}/bmp_qtserial.cpp ${H}/bmp_qtnetwork.cpp)
 
 ADD_EXECUTABLE(lnBMP_hosted ${SRC})
-target_link_libraries(lnBMP_hosted rsbmp)
-target_link_libraries(lnBMP_hosted lnBMP_interface)
-target_link_libraries(lnBMP_hosted lnBlackmagic  )
-target_link_libraries(lnBMP_hosted lnBMP_interface)
-target_link_libraries(lnBMP_hosted lnBlackmagic  )
-target_link_libraries(lnBMP_hosted embeddedPrintf usb-1.0 )
-target_link_libraries(lnBMP_hosted Qt5::Network Qt5::SerialPort)
+target_link_libraries(lnBMP_hosted PRIVATE rsbmp)
+target_link_libraries(lnBMP_hosted PRIVATE lnBMP_interface)
+target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
+target_link_libraries(lnBMP_hosted PRIVATE lnBMP_interface)
+target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
+target_link_libraries(lnBMP_hosted PRIVATE embeddedPrintf usb-1.0 )
+target_link_libraries(lnBMP_hosted PRIVATE Qt5::Network Qt5::SerialPort)
