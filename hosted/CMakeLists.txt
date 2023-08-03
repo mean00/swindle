@@ -8,6 +8,13 @@ SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 PROJECT(lnBMPHosted C CXX)
 
+function(dump_cmake_variables)
+    get_cmake_property(_variableNames VARIABLES)
+    list (SORT _variableNames)
+    foreach (_variableName ${_variableNames})
+        message(STATUS "${_variableName}=${${_variableName}}")
+    endforeach()
+endfunction()
 #
 # Create a dummy setup to build BMP/lnBMP
 #
@@ -52,6 +59,15 @@ set(CMAKE_AUTOUIC ON)
 
 
 find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(libusb REQUIRED libusb-1.0)
+
+FIND_PATH(FTDI_INCLUDE ftdi.h PATHS /usr/include/libftdi1 /usr/include/libftdi)
+FIND_PATH(HIDAPI_INCLUDE hidapi.h PATHS /usr/include/hidapi)
+
+
+#dump_cmake_variables()
 
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
@@ -69,14 +85,18 @@ include_directories(${BMP}/../lnBlackmagic/include )
 #
 #
 ADD_DEFINITIONS("-DPC_HOSTED=1")
-ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1") # HOSTED_BMP_ONLY
+# If we use WCH Link BMP_ONLY must be false
+ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=0") # HOSTED_BMP_ONLY
+#ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1") # HOSTED_BMP_ONLY
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-g3")
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
+ADD_DEFINITIONS("-DWCH_FORCE_SUPPORT=1")
 
-
-
+include_directories( ${libusb_INCLUDE_DIRS} ) 
+include_directories( ${FTDI_INCLUDE} )  
+include_directories( ${HIDAPI_INCLUDE} )
 include(../enabled_board.cmake)
 
 ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
@@ -95,6 +115,7 @@ target_link_libraries(lnBMP_hosted PRIVATE lnBMP_interface)
 target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
 target_link_libraries(lnBMP_hosted PRIVATE lnBMP_interface)
 target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
-target_link_libraries(lnBMP_hosted PRIVATE embeddedPrintf usb-1.0 )
+target_link_libraries(lnBMP_hosted PRIVATE embeddedPrintf  ${libusb_LIBRARIES} )
 target_link_libraries(lnBMP_hosted PRIVATE Qt5::Network Qt5::SerialPort)
+target_link_libraries(lnBMP_hosted PRIVATE hidapi-libusb ftdi1)
 

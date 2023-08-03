@@ -193,10 +193,6 @@ bool remote_pin_get(uint8_t pin) // pin 0 = clk, pin 1 = io
 	return r;
 }
 
-uint32_t bmp_rvswd_scan()
-{
-    return 0;
-}
 void riscv_jtag_dtm_handler(const uint8_t dev_index)
 {
     
