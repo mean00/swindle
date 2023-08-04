@@ -95,7 +95,7 @@ IF (LN_BMP_HOSTED)
         #----------------------------
     MESSAGE(STATUS "Building for hosted mode (${LN_BMP_HOSTED})")
     ADD_DEFINITIONS("-DPC_HOSTED=1")
-    ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1")
+    ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=0")
     #    ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
     # Set a dummy configuration for lnArduino so it builds
@@ -127,7 +127,28 @@ IF (LN_BMP_HOSTED)
             ${HOSTED}/remote/protocol_v2.c  
             ${HOSTED}/remote/protocol_v3.c  
             ${HOSTED}/remote/protocol_v3_adiv5.c  
-            
+            #
+            #${HOSTED}/bmp_libusb.c
+            #
+            ${HOSTED}/wchlink.c
+            ${HOSTED}/riscv_dtm_wchlink.c 
+            ${HOSTED}/jlink.c
+            ${HOSTED}/jlink_swd.c
+            ${HOSTED}/jlink_jtag.c
+            ${HOSTED}/ftdi_jtag.c
+            ${HOSTED}/ftdi_swd.c
+            ${HOSTED}/ftdi_bmp.c
+            #
+            ${HOSTED}/stlinkv2.c
+            ${HOSTED}/stlinkv2_jtag.c
+            ${HOSTED}/stlinkv2_swd.c
+            #
+            ${HOSTED}/dap_command.c
+            ${HOSTED}/dap_jtag.c
+            ${HOSTED}/dap_swd.c
+            ${HOSTED}/cmsis_dap.c
+
+            #${HOSTED}/cmsis_dap.c
             
             #${HOSTED}/remote/_swdptap.c
             #${PC}/cl_utils.c   

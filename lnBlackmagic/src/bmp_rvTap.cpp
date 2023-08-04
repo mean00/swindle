@@ -277,22 +277,22 @@ extern "C" void rv_test(void)
 static bool riscv_dtm_rvswd_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
     (void)dmi;
-	if(!rv_write(0,address)) // FIXME TODO
+	if(!rv_write(RV_HOST_DMCONTROL,address)) // FIXME TODO
     {
         return false;
     }
-    return rv_read(0,value);  // FIXME TODO
+    return rv_read(RV_HOST_DATA1,value);  // FIXME TODO
 }
 /**
 */
 static bool riscv_dtm_rvswd_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
 {
 	(void)dmi;
-	if(!rv_write(0,address))  // FIXME TODO
+	if(!rv_write(RV_HOST_DMCONTROL,address))  // FIXME TODO
     { 
         return false;
     }
-    return rv_write(0,value);  // FIXME TODO
+    return rv_write(RV_HOST_DATA1,value);  // FIXME TODO
 }
 
 
