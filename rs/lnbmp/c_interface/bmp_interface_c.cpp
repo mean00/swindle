@@ -204,6 +204,12 @@ extern "C"
             return false;
         return true;
     }
+    bool bmp_read_registers_c(unsigned int *val) // careful, must be able to store all regs
+    {
+        target_regs_read(cur_target, val);
+        return true;
+    }
+
     void *copy = NULL;
     const char *bmp_target_description_c()
     {

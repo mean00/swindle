@@ -59,6 +59,14 @@ pub fn bmp_read_registers() -> Vec<u32>
     let n= unsafe { rn_bmp_cmd_c::bmp_registers_count_c()  };
     for i in 0..n
     {
+        r.push(0); // extend vector
+    }
+    unsafe {
+    rn_bmp_cmd_c::bmp_read_registers_c(r.as_mut_ptr());
+    }
+    /*
+    for i in 0..n
+    {
         let mut val: u32 = 0;
         unsafe {
             if rn_bmp_cmd_c::bmp_read_register_c(i, &mut val as *mut u32) != 0
@@ -67,6 +75,7 @@ pub fn bmp_read_registers() -> Vec<u32>
             }
         }        
     }
+    */
     return r;
 }
 pub fn bmp_get_mapping(map : mapping) -> Vec<MemoryBlock>

@@ -145,6 +145,9 @@ extern "C" {
     pub fn bmp_read_register_c(reg: core::ffi::c_uint, val: *mut core::ffi::c_uint) -> bool_;
 }
 extern "C" {
+    pub fn bmp_read_registers_c(val: *mut core::ffi::c_uint) -> bool_;
+}
+extern "C" {
     pub fn bmp_target_description_c() -> *const core::ffi::c_char;
 }
 extern "C" {

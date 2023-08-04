@@ -32,7 +32,7 @@ use run::{_c,_R,_vCont,_k,_s};
 type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
 type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 
 enum CallbackType
 {
@@ -124,6 +124,7 @@ fn exec_one(tree : &[CommandTree], command : &str, args : &[u8]) -> bool
 
 pub fn exec(command : &str,  args : &[u8]) 
 {  
+    bmplog1(">> cmd :",command);bmplog("\n");
     if !exec_one(&main_command_tree,command, args)
     {
         {
@@ -135,6 +136,7 @@ pub fn exec(command : &str,  args : &[u8])
             crate::glue::gdb_out_rs("] is not supported\n") ;
         }        
     }
+    bmplog1("<< cmd :",command);bmplog("\n");
 }
 //
 //
@@ -171,19 +173,18 @@ fn _D(_command : &str, _args : &Vec<&str>) -> bool
 // Read registers
 fn _g(_command : &str, _args : &Vec<&str>) -> bool
 {       
-    // this one may be called while we are not connected
-    if !crate::bmp::bmp_attached()
-    {
-           encoder::reply_e01();
-           return true;
-    }
-    
 
     let regs = crate::bmp::bmp_read_registers();
     let mut e = encoder::new();
-    e.begin();
+    
     let mut buffer : [u8;8]=[0;8];
     let n: usize = regs.len();
+    if n==0
+    {
+        encoder::simple_send("0000");
+        true;
+    }
+    e.begin();
     for i in 0..n
     {       
         let mut reg = regs[i];

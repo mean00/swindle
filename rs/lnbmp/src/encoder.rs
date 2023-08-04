@@ -23,7 +23,7 @@ use crate::packet_symbols;
 const TEMP_BUFFER_SIZE : usize = 64;
 static mut  temp_buffer : [u8;TEMP_BUFFER_SIZE] = [0;TEMP_BUFFER_SIZE];
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 
 pub struct encoder
 {
@@ -138,7 +138,7 @@ impl encoder
              },
             };
             if n> TEMP_BUFFER_SIZE-2
-            {
+            {                
                 Self::raw_send_u8(&buffer[0..n]);
                 n=0;
             }
