@@ -23,7 +23,7 @@ use flash::_flashv;
 use v::_v;
 use x::_X;
 use memory::_m;
-use registers::_P;
+use registers::{_P,_g};
 use breakpoints::_z;
 use breakpoints::_Z;
 
@@ -170,35 +170,6 @@ fn _D(_command : &str, _args : &Vec<&str>) -> bool
 }
 
 
-// Read registers
-fn _g(_command : &str, _args : &Vec<&str>) -> bool
-{       
-
-    let regs = crate::bmp::bmp_read_registers();
-    let mut e = encoder::new();
-    
-    let mut buffer : [u8;8]=[0;8];
-    let n: usize = regs.len();
-    if n==0
-    {
-        encoder::simple_send("0000");
-        true;
-    }
-    e.begin();
-    for i in 0..n
-    {       
-        let mut reg = regs[i];
-        // LE first
-        for j in 0..4
-        {
-            crate::parsing_util::u8_to_ascii_to_buffer((reg &0xff) as u8 ,&mut buffer[2*j..]); 
-            reg = reg >> 8;
-        }
-        e.add_u8(&buffer);
-    }
-    e.end();
-    true
-}
 //
 // Request reason for halt
 fn _mark(_command : &str, _args : &Vec<&str>) -> bool

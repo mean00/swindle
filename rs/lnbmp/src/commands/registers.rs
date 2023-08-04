@@ -50,3 +50,34 @@ pub fn _P(command : &str, _args : &Vec<&str>) -> bool
     return true;
 }
 
+
+// Read registers
+pub fn _g(_command : &str, _args : &Vec<&str>) -> bool
+{       
+
+    let regs = crate::bmp::bmp_read_registers();
+    let mut e = encoder::new();
+    
+    let mut buffer : [u8;8]=[0;8];
+    let n: usize = regs.len();
+    if n==0
+    {
+        encoder::simple_send("0000");
+        true;
+    }
+    e.begin();
+    for i in 0..n
+    {       
+        let mut reg = regs[i];
+        // LE first
+        for j in 0..4
+        {
+            crate::parsing_util::u8_to_ascii_to_buffer((reg &0xff) as u8 ,&mut buffer[2*j..]); 
+            reg = reg >> 8;
+        }
+        e.add_u8(&buffer);
+    }
+    e.end();
+    true
+}
+
