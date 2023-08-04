@@ -65,6 +65,30 @@ pub fn ascii_string_to_u32(s : &str) -> u32
     let datain = s.as_bytes();
     u8s_string_to_u32(datain)
 }
+
+pub fn ascii_string_to_u32_le(s : &str) -> u32
+{
+    let datain = s.as_bytes();
+    u8s_string_to_u32_le(datain)
+}
+
+
+pub fn u8s_string_to_u32_le(datain : &[u8]) -> u32
+{
+    let mut val  : u32 = 0;
+    let mut shift = 0;
+    let mut index=0;
+    for i in 0..datain.len()/2
+    {
+        let mut octet1 : u32 = _hex(datain[index]) as u32;
+        let mut octet2 : u32 = _hex(datain[index+1]) as u32;
+        let nw : u32 = (octet1<<4)+octet2;
+        val=val+(nw<<shift);
+        shift+=8;
+        index+=2;
+    }
+    val
+}
 pub fn u8s_string_to_u32(datain : &[u8]) -> u32
 {
     let mut val  : u32 = 0;

@@ -32,7 +32,7 @@ use run::{_c,_R,_vCont,_k,_s};
 type Callback_raw  = fn(command : &str, args : &[u8] )  ->bool;
 type Callback_text = fn(command : &str, args : &Vec<&str> )->bool;
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 
 enum CallbackType
 {
