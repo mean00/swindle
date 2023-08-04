@@ -1,0 +1,13 @@
+diff --git a/src/remote.c b/src/remote.c
+index 5a853984..0e0f5cf9 100644
+--- a/src/remote.c
++++ b/src/remote.c
+@@ -303,7 +303,7 @@ static void remote_packet_process_general(char *packet, const size_t packet_len)
+ 		break;
+ 	case REMOTE_START:
+ #if defined(ENABLE_DEBUG) && defined(PLATFORM_HAS_DEBUG)
+-		debug_bmp = true;
++//		debug_bmp = true;
+ #endif
+ 		remote_respond_string(REMOTE_RESP_OK, PLATFORM_IDENT "" FIRMWARE_VERSION);
+ 		break;

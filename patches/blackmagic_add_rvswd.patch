@@ -1,0 +1,20 @@
+diff --git a/src/platforms/hosted/platform.c b/src/platforms/hosted/platform.c
+index 2f0353ae..1dfeef02 100644
+--- a/src/platforms/hosted/platform.c
++++ b/src/platforms/hosted/platform.c
+@@ -31,6 +31,7 @@
+ #include "platform.h"
+ #include "jtagtap.h"
+ #include "swd.h"
++#include "rvswd.h"
+ #include "target.h"
+ #include "target_internal.h"
+ #include "adiv5.h"
+@@ -196,6 +197,7 @@ uint32_t bmp_rvswd_scan()
+ 	info.is_jtag = false;
+ 
+ 	switch (info.bmp_type) {
++    case BMP_TYPE_BMP: // FX : temporary hack
+ 	case BMP_TYPE_WCHLINK:
+ 		return wchlink_rvswd_scan(&info);
+ 
