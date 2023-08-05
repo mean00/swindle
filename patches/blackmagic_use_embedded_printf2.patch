@@ -1,0 +1,13 @@
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index dff772c4..662125c1 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -36,7 +36,7 @@
+ #include "target_internal.h"
+ #include "gdb_reg.h"
+ #include "riscv_debug.h"
+-
++#include "printf.h"
+ #include <assert.h>
+ 
+ /*
