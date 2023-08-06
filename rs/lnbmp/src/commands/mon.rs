@@ -40,12 +40,12 @@ pub fn _rgpios(command : &str, _args : &Vec<&str>) -> bool
     let pin    = ascii_string_to_u32( &args[1]);
     
     gdb_out_rs( "mon get gin :\n");
-    let state  = bmp_pin_get(pin as u8);
+    let _state  = bmp_pin_get(pin as u8);
     encoder::reply_ok();
     return true;
 }
 //
-pub fn _test(command : &str, _args : &Vec<&str>) -> bool
+pub fn _test(_command : &str, _args : &Vec<&str>) -> bool
 {
    
     gdb_out_rs( "test :\n");
