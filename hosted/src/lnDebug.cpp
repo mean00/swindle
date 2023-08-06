@@ -92,7 +92,7 @@ void LoggerInit()
     originalTick = getTick();
 }
 
-extern void bmplogger(const char *fmt...)
+extern "C" void bmplogger(const char *fmt...)
 {
     if (!fmt[0])
         return;
@@ -101,7 +101,7 @@ extern void bmplogger(const char *fmt...)
     LoggerInternal(fmt, va);
     va_end(va);
 }
-extern void bmploggern(int n, const char *a)
+extern "C" void bmploggern(int n, const char *a)
 {
 #define MAX_DUMP 2064    
     static char bfer[MAX_DUMP];
