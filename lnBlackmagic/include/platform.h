@@ -42,7 +42,7 @@ int vasprintf_(char **strp, const char *fmt, va_list ap);
 
 // #define PLATFORM_HAS_TRACESWO 1
 #define PLATFORM_HAS_DEBUG 1
-#define ENABLE_DEBUG 1
+// #define ENABLE_DEBUG 1
 #define PLATFORM_PRINTF Logger
 // #define DEBUG(x, ...) do { ; } while (0)
 #define DEBUG Logger
