@@ -57,7 +57,7 @@ pub fn bmp_read_registers() -> Vec<u32>
     }
     let mut r : Vec<u32> = Vec::new();    
     let n= unsafe { rn_bmp_cmd_c::bmp_registers_count_c()  };
-    for i in 0..n
+    for _i in 0..n
     {
         r.push(0); // extend vector
     }
