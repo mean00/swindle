@@ -49,7 +49,17 @@ pub fn _P(command : &str, _args : &Vec<&str>) -> bool
     encoder::reply_bool(   bmp::bmp_write_register(reg,val) );
     return true;
 }
-
+// read 1 register
+pub fn _p(command : &str, _args : &Vec<&str>) -> bool
+{
+    let reg : u32 = crate::parsing_util::ascii_string_to_u32( &command[1..]);   
+    match bmp::bmp_read_register(reg)
+    {
+        Some(x) => encoder::simple_send_u32(x),
+        _            => encoder::reply_e01()
+    }
+    true
+}
 
 // Read registers
 pub fn _g(_command : &str, _args : &Vec<&str>) -> bool

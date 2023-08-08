@@ -23,7 +23,7 @@ use flash::_flashv;
 use v::_v;
 use x::_X;
 use memory::_m;
-use registers::{_P,_g};
+use registers::{_P,_p,_g};
 use breakpoints::_z;
 use breakpoints::_Z;
 
@@ -49,7 +49,7 @@ struct CommandTree
 }
 
 
-const main_command_tree: [CommandTree;20] = 
+const main_command_tree: [CommandTree;21] = 
 [
     CommandTree{ command: "!", args:    0, require_connected: false,   cb: CallbackType::text(_extendedMode) },// enable extended mode
     CommandTree{ command: "Hg",args:    0, require_connected: false,   cb: CallbackType::text(_Hg)      },          // select thread
@@ -63,6 +63,7 @@ const main_command_tree: [CommandTree;20] =
     CommandTree{ command: "X",args:     0, require_connected: true,    cb: CallbackType::text(_X)      },        // write binary    
     CommandTree{ command: "m",args:     0, require_connected: true,    cb: CallbackType::text(_m )       },        // read memory
     CommandTree{ command: "P",args:     0, require_connected: true,    cb: CallbackType::text(_P )       },         // write register
+    CommandTree{ command: "p",args:     0, require_connected: true,    cb: CallbackType::text(_p )       },         // read register
     CommandTree{ command: "z",args:     0, require_connected: true,    cb: CallbackType::text(_z )       },        // read memory
     CommandTree{ command: "Z",args:     0, require_connected: true,    cb: CallbackType::text(_Z )       },    
     CommandTree{ command: "R",args:     0, require_connected: true,    cb: CallbackType::text(_R )       },    

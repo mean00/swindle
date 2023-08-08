@@ -73,6 +73,26 @@ impl encoder
         Self::raw_send_u8(b"$E01#A6"); Self::flush();
     }
     //
+    pub fn  simple_send_u32(val : u32)
+    {
+        let mut e = Self::new();
+        let mut tmp  : [u8;8]= [0;8];
+        
+        e.begin();
+        let mut shift=24;
+        let mut offset = 0;
+        for i in 0..4
+        {
+            let digit : u8 = ((val>>shift) & 0xff) as u8;
+            crate::parsing_util::u8_to_ascii_to_buffer( digit , &mut tmp[offset..(offset+2)]);    
+            shift-=8;
+            offset+=2;
+        }
+        
+        e.add_u8( &tmp );
+        e.end();
+    }
+    //
     pub fn begin(&mut self)
     {
         self.checksum = 0;
