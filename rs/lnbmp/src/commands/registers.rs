@@ -55,7 +55,7 @@ pub fn _p(command : &str, _args : &Vec<&str>) -> bool
     let reg : u32 = crate::parsing_util::ascii_string_to_u32( &command[1..]);   
     match bmp::bmp_read_register(reg)
     {
-        Some(x) => encoder::simple_send_u32(x),
+        Some(x) => encoder::simple_send_u32_le(x),
         _            => encoder::reply_e01()
     }
     true
@@ -77,16 +77,10 @@ pub fn _g(_command : &str, _args : &Vec<&str>) -> bool
     }
     e.begin();
     for i in 0..n
-    {       
-        let mut reg = regs[i];
-        // LE first
-        for j in 0..4
-        {
-            crate::parsing_util::u8_to_ascii_to_buffer((reg &0xff) as u8 ,&mut buffer[2*j..]); 
-            reg = reg >> 8;
-        }
-        e.add_u8(&buffer);
+    {               
+        e.add_u32_le( regs[i]);
     }
+    // now read CSRs
     e.end();
     true
 }
