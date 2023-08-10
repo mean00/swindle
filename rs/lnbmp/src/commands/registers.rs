@@ -61,14 +61,13 @@ pub fn _p(command : &str, _args : &Vec<&str>) -> bool
     true
 }
 
-// Read registers
+// Read all registers
 pub fn _g(_command : &str, _args : &Vec<&str>) -> bool
 {       
 
     let regs = crate::bmp::bmp_read_registers();
     let mut e = encoder::new();
-    
-    let mut buffer : [u8;8]=[0;8];
+        
     let n: usize = regs.len();
     if n==0
     {
@@ -81,6 +80,17 @@ pub fn _g(_command : &str, _args : &Vec<&str>) -> bool
         e.add_u32_le( regs[i]);
     }
     // now read CSRs
+    // this is hackish, we should ask bmp for for the csr
+    // TODO FIXME
+    let csr = vec![   0x300,   0x301,  0x304,    0x305,       0x340,       0x341,        0x342,        0x343,               0x344];
+    for r in csr
+    {
+        match(crate::bmp::bmp_read_register(r+128))
+        {
+            Some(x) =>  e.add_u32_le(x),
+            None =>  e.add_u32_le(0),
+        };
+    }
     e.end();
     true
 }
