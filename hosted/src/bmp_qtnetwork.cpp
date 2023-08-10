@@ -148,6 +148,7 @@ void BMPTcp::readyRead()
             nb = QBUFFER_SIZE;
         int actual = _socket->read((char *)_buffer, nb);
         QBMPLOG("tcp read \n");
+        QBMPLOGN((int)actual, (char *)_buffer);
         rngdbstub_run(actual, _buffer);
     }
 }
@@ -176,7 +177,7 @@ void BMPTcp::flush()
     }
 #endif    
     QBMPLOGN((int)tcp_index, (const char *)tcp_buffer);
-    QBMPLOG("\n");
+    QBMPLOG("\n--\n");
     if (tcp_index != _socket->write(tcp_buffer, tcp_index))
     {
         printf("** incomplete send **\n");

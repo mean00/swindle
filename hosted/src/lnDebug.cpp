@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define PREFIX_BUFFER_SIZE 20
-#define OUTER_BUFFER_SIZE 127
+#define OUTER_BUFFER_SIZE 512
 
 static uint32_t originalTick = 0;
 
