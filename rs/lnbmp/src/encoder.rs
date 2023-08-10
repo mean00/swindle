@@ -80,7 +80,7 @@ impl encoder
      
         let mut shift=24;
         let mut offset = 0;
-        for i in 0..4
+        for _i in 0..4
         {
             let digit : u8 = ((val>>shift) & 0xff) as u8;
             crate::parsing_util::u8_to_ascii_to_buffer( digit , &mut tmp[offset..(offset+2)]);    
@@ -97,7 +97,7 @@ impl encoder
      
         let mut shift=0;
         let mut offset = 0;
-        for i in 0..4
+        for _i in 0..4
         {
             let digit : u8 = ((val>>shift) & 0xff) as u8;
             crate::parsing_util::u8_to_ascii_to_buffer( digit , &mut tmp[offset..(offset+2)]);    
