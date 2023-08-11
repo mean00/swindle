@@ -36,7 +36,7 @@ bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *
 bool bmp_reset_target_c();
 bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
 bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
-
+uint32_t riscv_list_csr(uint32_t start, uint32_t max_size, uint32_t *csr);
 bool bmp_target_halt_resume_c(bool step);
 bool bmp_target_halt_c();
 

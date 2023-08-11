@@ -85,7 +85,7 @@ pub fn _g(_command : &str, _args : &Vec<&str>) -> bool
     let csr = vec![   0x300,   0x301,  0x304,    0x305,       0x340,       0x341,        0x342,        0x343,               0x344];
     for r in csr
     {
-        match(crate::bmp::bmp_read_register(r+128))
+        match crate::bmp::bmp_read_register(r+128)
         {
             Some(x) =>  e.add_u32_le(x),
             None =>  e.add_u32_le(0),

@@ -207,6 +207,13 @@ extern "C" {
     ) -> bool_;
 }
 extern "C" {
+    pub fn riscv_list_csr(
+        start: core::ffi::c_uint,
+        max_size: core::ffi::c_uint,
+        csr: *mut core::ffi::c_uint,
+    ) -> core::ffi::c_uint;
+}
+extern "C" {
     pub fn bmp_target_halt_resume_c(step: bool_) -> bool_;
 }
 extern "C" {

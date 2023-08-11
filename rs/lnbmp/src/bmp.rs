@@ -175,6 +175,20 @@ pub fn bmp_read_register(reg: u32) -> Option<u32>
         return None;
     }
 }
+
+pub fn riscv_list_csr(  out :  &mut [u32]) -> Option<&[u32]>
+{
+    
+    let n =  unsafe  { rn_bmp_cmd_c::riscv_list_csr(0,0,core::ptr::null_mut()) };
+    if n > (out.len() as u32)
+    {
+        return None;
+    }
+    let out_u32 : *mut u32  = &mut out[0];
+    let r : usize = unsafe { rn_bmp_cmd_c::riscv_list_csr(0,n,out_u32) as usize };
+    return Some( &out[0..r]);
+}
+
 pub fn bmp_flash_erase(adr: u32, size: u32) -> bool
 {
     unsafe {
