@@ -1,0 +1,13 @@
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 947f741a..7d8f8f7f 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -105,7 +105,7 @@ bool riscv32_probe(target_s *const target)
+ 	case JEP106_MANUFACTURER_RV_GIGADEVICE:
+ 		PROBE(gd32vf1_probe);
+ 		break;
+-#if 0
++#if 1
+ 	case JEP106_MANUFACTURER_WCH:
+ 		PROBE(ch32v3xx_probe);
+ 		break;
