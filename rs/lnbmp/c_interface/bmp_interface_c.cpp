@@ -1,12 +1,11 @@
-#include "lnArduino.h"
+#include "lnBMP_include.h"
 extern "C"
 {
-
 #include "ctype.h"
 #include "gdb_hostio.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
-#include "general.h"
+
 #include "hex_utils.h"
 #include "target.h"
 #include "target_internal.h"
@@ -28,6 +27,20 @@ extern "C"
         {
             cur_target = NULL;
         }
+    }
+    static char tmpBuffer[128];
+    /**
+     */
+    void gdb_outf(const char *fmt, ...)
+    {
+        va_list ap;
+
+        va_start(ap, fmt);
+        char *buf;
+        // this is suboptimal
+        vsnprintf((char *)tmpBuffer, 127, fmt, ap);
+        gdb_out(tmpBuffer);
+        va_end(ap);
     }
     void gdb_target_printf(target_controller_s *tc, const char *fmt, va_list ap)
     {
@@ -85,20 +98,7 @@ extern "C"
         return true;
     }
 
-    static char tmpBuffer[128];
-    /**
-     */
-    void gdb_outf(const char *fmt, ...)
-    {
-        va_list ap;
-
-        va_start(ap, fmt);
-        char *buf;
-        // this is suboptimal
-        vsnprintf((char *)tmpBuffer, 127, fmt, ap);
-        gdb_out(tmpBuffer);
-        va_end(ap);
-    }
+   
 
     int bmp_map_count_c(int kind)
     {

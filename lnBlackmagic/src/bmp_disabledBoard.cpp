@@ -1,10 +1,9 @@
 
-#include "lnArduino.h"
+#include "lnBMP_include.h"
 extern "C"
 {
 
 #include "adiv5.h"
-#include "general.h"
 #define BOARD_STUB(x)                                                                                                  \
     bool x(adiv5_access_port_s *apb)                                                                                   \
     {                                                                                                                  \

@@ -1,7 +1,7 @@
 #include "lnArduino.h"
 extern "C"
 {
-
+#undef printf
 #include "adiv5.h"
 #include "ctype.h"
 #include "gdb_hostio.h"

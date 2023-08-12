@@ -1,11 +1,10 @@
-#include "lnArduino.h"
+#include "lnBMP_include.h"
 extern "C"
 {
 
 #include "ctype.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
-#include "general.h"
 #include "target.h"
 
     void gdb_if_putchar(char c, int flush)

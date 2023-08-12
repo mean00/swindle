@@ -28,11 +28,10 @@ Original license header
  This file implements the SW-DP interface.
 
  */
-#include "lnArduino.h"
+#include "lnBMP_include.h"
 #include "lnBMP_pinout.h"
 extern "C"
 {
-#include "general.h"
 #include "timing.h"
 #include "riscv_debug.h"
 #include "rvswd.h"
