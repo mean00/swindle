@@ -33,6 +33,9 @@ extern void deadEnd(int err);
 #include "embedded_printf/printf.h"
 #include "timing.h"
 int vasprintf_(char **strp, const char *fmt, va_list ap);
+#ifdef vasprintf
+#undef vasprintf
+#endif
 #define vasprintf vasprintf_
 #define fflush(x)                                                                                                      \
     {                                                                                                                  \
@@ -43,6 +46,9 @@ int vasprintf_(char **strp, const char *fmt, va_list ap);
 // #define PLATFORM_HAS_TRACESWO 1
 #define PLATFORM_HAS_DEBUG 1
 // #define ENABLE_DEBUG 1
+#ifdef PLATFORM_PRINTF
+#undef PLATFORM_PRINTF
+#endif
 #define PLATFORM_PRINTF Logger
 // #define DEBUG(x, ...) do { ; } while (0)
 #define DEBUG Logger
