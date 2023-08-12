@@ -5,8 +5,8 @@ typedef int bool;
 
 void bmp_set_wait_state_c(unsigned int ws); // this is used to set the clock on SWD
 
-bool cmd_swdp_scan(const target_s *t, int argc, const char **argv);
-bool cmd_rvswdp_scan(const target_s *t, int argc, const char **argv);
+bool cmd_swd_scan(const target_s *t, int argc, const char **argv);
+bool cmd_rvswd_scan(const target_s *t, int argc, const char **argv);
 
 bool bmp_attach_c(uint32_t target);
 bool bmp_detach_c(uint32_t target);
@@ -54,23 +54,15 @@ bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_sel
 bool bmp_adiv5_full_dp_low_level_c(const uint32_t device_index, const uint32_t ap_selection, const uint16_t address,
                                    const uint32_t value, int32_t *err, uint32_t *outvalue);
 
-uint32_t  bmp_adiv5_ap_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t  address);
-void   bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t  address, uint32_t value);
+uint32_t bmp_adiv5_ap_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address);
+void bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address,
+                          uint32_t value);
 
-int32_t bmp_adiv5_mem_read_c( const uint32_t  device_index,
-                                            const uint32_t  ap_selection, 
-                                            const uint32_t  csw,
-                                            const uint32_t address,
-                                            uint8_t *buffer,
-                                            uint32_t len);
+int32_t bmp_adiv5_mem_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
+                             const uint32_t address, uint8_t *buffer, uint32_t len);
 
-int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
-                                            const uint32_t  ap_selection, 
-                                            const uint32_t  csw,
-                                            const uint32_t address,
-                                            const uint32_t align,
-                                            const uint8_t *buffer,
-                                            uint32_t len);
+int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
+                              const uint32_t address, const uint32_t align, const uint8_t *buffer, uint32_t len);
 
 // platform
 void platform_nrst_set_val(bool assert);
@@ -82,9 +74,9 @@ void platform_target_clk_output_enable(bool enable);
 void Logger2(int n, const char *fmt);
 const char *list_enabled_boards();
 //
-void    bmp_pin_set(uint8_t pin, uint8_t value);
+void bmp_pin_set(uint8_t pin, uint8_t value);
 uint8_t bmp_pin_get(uint8_t pin);
-void    bmp_pin_direction(uint8_t pin, uint8_t output); // output = 1, input =0
+void bmp_pin_direction(uint8_t pin, uint8_t output); // output = 1, input =0
 //
 void bmp_test();
 

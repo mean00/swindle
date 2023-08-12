@@ -104,14 +104,14 @@ extern "C" {
     pub fn bmp_set_wait_state_c(ws: core::ffi::c_uint);
 }
 extern "C" {
-    pub fn cmd_swdp_scan(
+    pub fn cmd_swd_scan(
         t: *const target_s,
         argc: core::ffi::c_int,
         argv: *mut *const core::ffi::c_char,
     ) -> bool_;
 }
 extern "C" {
-    pub fn cmd_rvswdp_scan(
+    pub fn cmd_rvswd_scan(
         t: *const target_s,
         argc: core::ffi::c_int,
         argv: *mut *const core::ffi::c_char,

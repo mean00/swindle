@@ -1,20 +1,80 @@
-diff --git a/src/platforms/hosted/platform.c b/src/platforms/hosted/platform.c
-index 2f0353ae..1dfeef02 100644
---- a/src/platforms/hosted/platform.c
-+++ b/src/platforms/hosted/platform.c
-@@ -31,6 +31,7 @@
- #include "platform.h"
- #include "jtagtap.h"
- #include "swd.h"
-+#include "rvswd.h"
- #include "target.h"
- #include "target_internal.h"
- #include "adiv5.h"
-@@ -196,6 +197,7 @@ uint32_t bmp_rvswd_scan()
- 	info.is_jtag = false;
+diff --git a/src/command.c b/src/command.c
+index 0b39dd50..0355a66a 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -51,12 +51,16 @@
+ #else
+ #include <alloca.h>
+ #endif
++#if PC_HOSTED == 1
++extern uint32_t bmp_rvswd_scan();
++#endif
  
- 	switch (info.bmp_type) {
-+    case BMP_TYPE_BMP: // FX : temporary hack
- 	case BMP_TYPE_WCHLINK:
- 		return wchlink_rvswd_scan(&info);
+ static bool cmd_version(target_s *t, int argc, const char **argv);
+ static bool cmd_help(target_s *t, int argc, const char **argv);
  
+ static bool cmd_jtag_scan(target_s *target, int argc, const char **argv);
+-static bool cmd_swd_scan(target_s *t, int argc, const char **argv);
++/*static*/ bool cmd_swd_scan(target_s *t, int argc, const char **argv);
++/*static*/ bool cmd_rvswd_scan(target_s *t, int argc, const char **argv);
+ static bool cmd_auto_scan(target_s *t, int argc, const char **argv);
+ static bool cmd_frequency(target_s *t, int argc, const char **argv);
+ static bool cmd_targets(target_s *t, int argc, const char **argv);
+@@ -88,6 +92,7 @@ const command_s cmd_list[] = {
+ 	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
+ 	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
+ 	{"swdp_scan", cmd_swd_scan, "Deprecated: use swd_scan instead"},
++	{"rvswd_scan", cmd_swd_scan, "Scan RVSW interface for devices"},
+ 	{"auto_scan", cmd_auto_scan, "Automatically scan all chain types for devices"},
+ 	{"frequency", cmd_frequency, "set minimum high and low times: [FREQ]"},
+ 	{"targets", cmd_targets, "Display list of available targets"},
+@@ -288,6 +293,49 @@ bool cmd_swd_scan(target_s *t, int argc, const char **argv)
+ 	return true;
+ }
+ 
++bool cmd_rvswd_scan(target_s *t, int argc, const char **argv)
++{
++	(void)t;
++	(void)argc;
++	(void)argv;
++
++	if (platform_target_voltage())
++		gdb_outf("Target voltage: %s\n", platform_target_voltage());
++
++	if (connect_assert_nrst)
++		platform_nrst_set_val(true); /* will be deasserted after attach */
++
++	uint32_t devs = 0;
++	volatile exception_s e;
++	TRY_CATCH (e, EXCEPTION_ALL) {
++#if PC_HOSTED == 1
++		devs = bmp_rvswd_scan();
++#else
++		devs = 0;
++#endif
++	}
++	switch (e.type) {
++	case EXCEPTION_TIMEOUT:
++		gdb_outf("Timeout during scan.\n");
++		break;
++	case EXCEPTION_ERROR:
++		gdb_outf("Exception: %s\n", e.msg);
++		break;
++	}
++
++	if (devs == 0) {
++		platform_target_clk_output_enable(false);
++		platform_nrst_set_val(false);
++		gdb_out("RVSWD scan failed!\n");
++		return false;
++	}
++
++	cmd_targets(NULL, 0, NULL);
++	platform_target_clk_output_enable(false);
++	morse(NULL, false);
++	return true;
++}
++
+ bool cmd_auto_scan(target_s *t, int argc, const char **argv)
+ {
+ 	(void)t;

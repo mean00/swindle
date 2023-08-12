@@ -11,10 +11,10 @@ extern "C"
 #include "gdb_packet.h"
 #include "general.h"
 #include "morse.h"
+#include "printf.h"
 #include "target.h"
 #include "target_internal.h"
 #include "version.h"
-#include "printf.h"
 
     extern "C" float bmp_get_target_voltage_c();
 }
@@ -65,7 +65,6 @@ extern "C"
     }
     void bmp_test()
     {
-        
     }
     /**
      */
@@ -123,8 +122,9 @@ extern "C"
     }
     /**
      */
-    void platform_target_set_power(bool power)
+    bool platform_target_set_power(bool power)
     {
+        return false;
     }
     /**
      */
@@ -136,17 +136,17 @@ extern "C"
     extern void platform_pin_direction(uint8_t pin, uint8_t output);
     bool bmp_pin_get(uint8_t pin)
     {
-        return platform_pin_get(  pin);
+        return platform_pin_get(pin);
     }
     bool bmp_pin_set(uint8_t pin, uint8_t state)
     {
-         platform_pin_set(  pin, state);
-         return true;
+        platform_pin_set(pin, state);
+        return true;
     }
     // output = 1, input =0
-    void    bmp_pin_direction(uint8_t pin, uint8_t output)
+    void bmp_pin_direction(uint8_t pin, uint8_t output)
     {
-         platform_pin_direction(  pin, output);
+        platform_pin_direction(pin, output);
     }
 } // extern "C"
 // EOF
