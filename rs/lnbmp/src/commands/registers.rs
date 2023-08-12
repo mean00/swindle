@@ -82,15 +82,21 @@ pub fn _g(_command : &str, _args : &Vec<&str>) -> bool
     // now read CSRs
     // this is hackish, we should ask bmp for for the csr
     // TODO FIXME
-    let csr = vec![   0x300,   0x301,  0x304,    0x305,       0x340,       0x341,        0x342,        0x343,               0x344];
-    for r in csr
+    let mut csrs: [u32;16] = [0;16];
+    match  bmp::riscv_list_csr(&mut csrs) 
     {
-        match crate::bmp::bmp_read_register(r+128)
-        {
-            Some(x) =>  e.add_u32_le(x),
-            None =>  e.add_u32_le(0),
-        };
-    }
+        Some(x) => {
+                        for r in x
+                        {
+                            match crate::bmp::bmp_read_register(r+128)
+                            {
+                                Some(x) =>  e.add_u32_le(x),
+                                None =>  e.add_u32_le(0),
+                            };
+                        }
+                    },
+        _ => (),
+    }   
     e.end();
     true
 }
