@@ -79,9 +79,7 @@ pub fn _g(_command : &str, _args : &Vec<&str>) -> bool
     {               
         e.add_u32_le( regs[i]);
     }
-    // now read CSRs
-    // this is hackish, we should ask bmp for for the csr
-    // TODO FIXME
+    // now read CSRs    
     let mut csrs: [u32;16] = [0;16];
     match  bmp::riscv_list_csr(&mut csrs) 
     {
