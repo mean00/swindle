@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
-use crate::bmp::{bmp_attach,bmp_flash_erase};
+use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_mem_write};
 
 crate::setup_log!(false);
 
@@ -56,6 +56,35 @@ pub fn _m(command : &str, _args : &Vec<&str>) -> bool
     }
     return true;
   
+}
+/**
+ *  \fn write memory
+ * 
+ */
+pub fn _X(command : &str, args : &[u8]) -> bool
+{    
+    match crate::parsing_util::take_adress_length(&command[1..])
+    {
+        None                => encoder::reply_e01(),
+        Some( (addr,len) )   => 
+                            {
+                                    bmplog1("adr",addr);
+                                    bmplog1("len",len);
+                                    let mut actual_len: usize = len as usize;
+                                    if args.len()  > actual_len
+                                    {
+                                        actual_len=args.len() ;
+                                    }
+                                    if bmp_mem_write( addr,&args[0..actual_len])
+                                    {
+                                        encoder::reply_ok();
+                                    }else
+                                    {
+                                        encoder::reply_e01();
+                                    }
+                            },
+    };
+    true
 }
 
 // EOF

@@ -8,7 +8,6 @@ use crate::encoder::encoder;
 mod q;
 mod v;
 mod mon;
-mod x;
 mod registers;
 mod memory;
 mod flash;
@@ -21,8 +20,7 @@ pub mod run;
 use q::_q;
 use flash::_flashv;
 use v::_v;
-use x::_X;
-use memory::_m;
+use memory::{_m,_X};
 use registers::{_P,_p,_g};
 use breakpoints::_z;
 use breakpoints::_Z;
@@ -60,7 +58,7 @@ const main_command_tree: [CommandTree;21] =
     CommandTree{ command: "q",args:     0, require_connected: false,   cb: CallbackType::raw(_q)      },           // see q commands in commands/q.rs
     CommandTree{ command: "g",args:     0, require_connected: false,   cb: CallbackType::text(_g)      },           // read registers
     CommandTree{ command: "?",args:     0, require_connected: false,   cb: CallbackType::text(_mark)  },        // reason for halt
-    CommandTree{ command: "X",args:     0, require_connected: true,    cb: CallbackType::text(_X)      },        // write binary    
+    CommandTree{ command: "X",args:     0, require_connected: true,    cb: CallbackType::raw(_X)      },        // write binary    
     CommandTree{ command: "m",args:     0, require_connected: true,    cb: CallbackType::text(_m )       },        // read memory
     CommandTree{ command: "P",args:     0, require_connected: true,    cb: CallbackType::text(_P )       },         // write register
     CommandTree{ command: "p",args:     0, require_connected: true,    cb: CallbackType::text(_p )       },         // read register

@@ -161,12 +161,20 @@ pub fn bmp_flash_erase(adr: u32, size: u32) -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_flash_erase_c(adr, size)) }
 }
 
-pub fn bmp_flash_write(adr: u32, data: &[u8]) -> bool {
+pub fn bmp_flash_write(addr: u32, data: &[u8]) -> bool {
     unsafe {
         let ptr: *const u8 = data.as_ptr();
-        ret_to_bool(rn_bmp_cmd_c::bmp_flash_write_c(adr, data.len() as u32, ptr))
+        ret_to_bool(rn_bmp_cmd_c::bmp_flash_write_c(addr, data.len() as u32, ptr))
     }
 }
+
+pub fn bmp_mem_write(address : u32, data :&[u8]) -> bool {
+    unsafe {
+    let ptr: *const u8 = data.as_ptr();
+    return  ret_to_bool(rn_bmp_cmd_c::bmp_mem_write_c(address, data.len() as u32, ptr));
+    }
+}
+
 
 pub fn bmp_flash_complete() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_flash_complete_c()) }
