@@ -225,6 +225,13 @@ extern "C" {
     pub fn bmp_rpc_swd_out_par_c(value: core::ffi::c_uint, nb_bits: core::ffi::c_uint) -> bool_;
 }
 extern "C" {
+    pub fn bmp_mem_write_c(
+        address: core::ffi::c_uint,
+        len: core::ffi::c_uint,
+        data: *const u8,
+    ) -> bool_;
+}
+extern "C" {
     pub fn bmp_adiv5_full_dp_read_c(
         device_index: core::ffi::c_uint,
         ap_selection: core::ffi::c_uint,

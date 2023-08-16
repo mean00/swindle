@@ -45,7 +45,9 @@ bool bmp_rpc_swd_in_c(uint32_t *value, const unsigned int nb_bits);
 bool bmp_rpc_swd_in_par_c(uint32_t *value, bool *par, const unsigned int nb_bits);
 bool bmp_rpc_swd_out_c(const uint32_t value, const unsigned int nb_bits);
 bool bmp_rpc_swd_out_par_c(const uint32_t value, const unsigned int nb_bits);
-
+//
+bool bmp_mem_read_c(uint32_t address, uint32_t len, uint8_t *data);
+bool bmp_mem_write_c(uint32_t address, uint32_t len, const uint8_t *data);
 //
 bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint16_t address,
                               int32_t *err, uint32_t *value);

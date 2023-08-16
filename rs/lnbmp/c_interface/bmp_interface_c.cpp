@@ -255,6 +255,15 @@ extern "C"
 
     static uint8_t tmp[1024];
 
+    bool bmp_mem_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
+    {
+        if (!bmp_attached_c())
+            return false;
+        if (target_mem_write(cur_target, addr, data, length))
+            return false;
+        return true;
+    }
+
     bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
     {
         if (!bmp_attached_c())

@@ -59,6 +59,7 @@ fn _qSupported(_command : &str, _args : &Vec<&str>) -> bool
     e.begin();
     e.add("PacketSize=");    
     e.add(INPUT_BUFFER_SIZE.numtoa_str(16,&mut buffer));     // INPUT_BUFFER_SIZE
+    e.add(";hwbreak+;swbreak-");
     e.add(";qXfer:memory-map:read+;qXfer:features:read+;vCont+");
     e.end();
     return true;
