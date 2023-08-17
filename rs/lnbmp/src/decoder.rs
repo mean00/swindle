@@ -162,8 +162,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                                         {
                                                                             bmplog("RPC input buffer overflow\n");
                                                                             PARSER_AUTOMATON::Error
-                                                                        }else
-                                                                        {
+                                                                        }else {
                                                                             self.input_buffer[self.indx]= c;
                                                                             self.indx+=1;
                                                                             PARSER_AUTOMATON::RpcBody

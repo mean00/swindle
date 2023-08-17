@@ -16,7 +16,7 @@ macro_rules! setup_log
     ($enabled :tt ) => {
         use rnarduino::rn_os_helper::{log,log1};
         use ufmt::uDisplay;
-        use crate::util::{glog,glog1,glogx};
+        use $crate::util::{glog,glog1,glogx};
         fn bmplog(  s: &str)
         {
             if $enabled

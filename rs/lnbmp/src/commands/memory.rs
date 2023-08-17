@@ -78,8 +78,7 @@ pub fn _X(command : &str, args : &[u8]) -> bool
                                     if bmp_mem_write( addr,&args[0..actual_len])
                                     {
                                         encoder::reply_ok();
-                                    }else
-                                    {
+                                    }else{
                                         encoder::reply_e01();
                                     }
                             },

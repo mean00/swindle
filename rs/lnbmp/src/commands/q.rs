@@ -21,8 +21,6 @@ use crate::util::xmin;
 
 use numtoa::NumToA;
 
-use crc;
-
 crate::setup_log!(false);
 
 const q_command_tree: [CommandTree;10] = 
