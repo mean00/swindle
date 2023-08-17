@@ -28,6 +28,11 @@ SET(CMAKE_CXX_COMPILER /usr/bin/clang++ CACHE INTERNAL "")
 SET(CMAKE_CXX_AR /usr/bin/llvm-ar  CACHE INTERNAL "")
 SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
 #
+SET(BMP_PREFIX "../")
+SET(BMP_PREFIX2 "../../patches/")
+include(../patch_blackmagic.cmake)
+#
+#
 
 add_library(lnArduino INTERFACE)
 
