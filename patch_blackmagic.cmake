@@ -5,3 +5,4 @@ APPLY_PATCH_IF_NEEDED(patched8 ${BMP_PREFIX2}blackmagic_no_debug_bmp.patch      
 APPLY_PATCH_IF_NEEDED(patched7 ${BMP_PREFIX2}blackmagic_use_custom_target_mem_map.patch   ${BMP_PREFIX}blackmagic      "use heap based mem map")
 APPLY_PATCH_IF_NEEDED(patched9 ${BMP_PREFIX2}blackmagic_no_libopencm3.patch               ${BMP_PREFIX}blackmagic      "use heap based mem map")
 APPLY_PATCH_IF_NEEDED(patched10 ${BMP_PREFIX2}blackmagic_make_swd_scan_public.patch       ${BMP_PREFIX}blackmagic      "make swdp_scan public ")
+APPLY_PATCH_IF_NEEDED(patched11 ${BMP_PREFIX2}blackmagic_use_embedded_printf.patch       ${BMP_PREFIX}blackmagic      "make swdp_scan public ")

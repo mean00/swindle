@@ -1,4 +1,4 @@
-#include "lnArduino.h"
+#include "lnBMPArduino.h"
 extern "C"
 {
 
@@ -11,7 +11,6 @@ extern "C"
 #include "hex_utils.h"
 #include "target.h"
 #include "target_internal.h"
-#include "adiv5.h"
 }
 
 static adiv5_debug_port_s remote_dp = {
@@ -64,17 +63,16 @@ extern "C" bool bmp_rpc_swd_out_par_c(const uint32_t value, uint32_t nb_bits)
       AP/DP part
 */
 
-
-#define AP_PREAMBLE()   \
-    remote_dp.dev_index = device_index; \
-    adiv5_access_port_s remote_ap; \
-    remote_ap.apsel = ap_selection; \
+#define AP_PREAMBLE()                                                                                                  \
+    remote_dp.dev_index = device_index;                                                                                \
+    adiv5_access_port_s remote_ap;                                                                                     \
+    remote_ap.apsel = ap_selection;                                                                                    \
     remote_ap.dp = &remote_dp;
 
 extern "C" bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection,
                                          const uint16_t address, int32_t *err, uint32_t *value)
 {
-    AP_PREAMBLE() 
+    AP_PREAMBLE()
 
     *value = adiv5_dp_read(&remote_dp, address); // firmware_swdp_read 0x40010c04
     *err = remote_dp.fault;
@@ -93,41 +91,36 @@ extern "C" bool bmp_adiv5_full_dp_low_level_c(const uint32_t device_index, const
     return true;
 }
 
-extern "C" uint32_t bmp_adiv5_ap_read_c(  const uint32_t device_index, const  uint32_t ap_selection, const uint32_t address)
+extern "C" uint32_t bmp_adiv5_ap_read_c(const uint32_t device_index, const uint32_t ap_selection,
+                                        const uint32_t address)
 {
-    AP_PREAMBLE() 
+    AP_PREAMBLE()
     return adiv5_ap_read(&remote_ap, address);
 }
 
- extern "C" void bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address, const uint32_t value )
+extern "C" void bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address,
+                                     const uint32_t value)
 {
-    AP_PREAMBLE() 
-    return adiv5_ap_write(&remote_ap, address,value);
+    AP_PREAMBLE()
+    return adiv5_ap_write(&remote_ap, address, value);
 }
 
-
-extern "C" int32_t bmp_adiv5_mem_read_c( const uint32_t  device_index,
-                                            const uint32_t  ap_selection, 
-                                            const uint32_t  csw,
-                                            const uint32_t address,
-                                            uint8_t *buffer, uint32_t len)
+extern "C" int32_t bmp_adiv5_mem_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
+                                        const uint32_t address, uint8_t *buffer, uint32_t len)
 {
-    AP_PREAMBLE()  
+    AP_PREAMBLE()
     remote_ap.csw = csw;
     adiv5_mem_read(&remote_ap, buffer, address, len);
     return remote_dp.fault;
 }
 
-extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
-                                            const uint32_t  ap_selection, 
-                                            const uint32_t  csw,
-                                            const uint32_t address,
-                                            const uint32_t alin,
-                                            const uint8_t *buffer, uint32_t len)
+extern "C" int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
+                                         const uint32_t address, const uint32_t alin, const uint8_t *buffer,
+                                         uint32_t len)
 {
-    AP_PREAMBLE()  
+    AP_PREAMBLE()
     remote_ap.csw = csw;
-    adiv5_mem_write_sized(&remote_ap, address, (const void *)buffer, (size_t)len, (align_e)alin);    
+    adiv5_mem_write_sized(&remote_ap, address, (const void *)buffer, (size_t)len, (align_e)alin);
     return remote_dp.fault;
 }
 // EOF
