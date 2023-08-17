@@ -2,6 +2,11 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
+extern "C"
+{
+    #include "bmp_remote.h"
+    #include "src/remote.h"
+}
 
 void xAssert(int a)
 {
@@ -65,6 +70,7 @@ extern "C" bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint
 extern "C" bool bmp_adiv5_full_dp_low_level_c()
 {
     xAssert(0);
+    return false;
 }
 extern "C"
 {
@@ -107,4 +113,90 @@ extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
     return 0;
 }
 
+extern "C"
+{
+extern void remote_pin_set(uint8_t p, uint8_t s);
+extern void remote_pin_direction(uint8_t p, uint8_t is_direction);
+extern bool remote_pin_get(uint8_t p);
+
+void bmp_pin_set(uint8_t pin, uint8_t state)
+{
+    remote_pin_set(pin,state);
+}
+
+bool bmp_pin_get(uint8_t pin)
+{
+    return remote_pin_get(pin);
+}
+void bmp_pin_direction(uint8_t pin, uint8_t is_write)
+{
+    remote_pin_direction(pin, is_write);
+}
+
+
+// This shouold be in platform.c but we put them here to minimize the change
+// in blackmagic source tree 
+
+void remote_pin_gen(uint8_t code, uint8_t pin, uint8_t value) 
+{
+	uint8_t buffer[REMOTE_MAX_MSG_SIZE]=	{			REMOTE_SOM, REMOTE_GEN_PACKET, code, pin, value, REMOTE_EOM, 0};
+	platform_buffer_write(buffer, 6);
+	int length = platform_buffer_read(buffer,REMOTE_MAX_MSG_SIZE);
+	if(length<1) 
+	{
+		DEBUG_ERROR("Invalid pin set reply\n");
+		return ;//false;
+	}
+	bool r= buffer[0]==REMOTE_RESP_OK;
+	if(!r)
+	{
+			DEBUG_ERROR(" pin set error\n");
+	}
+	//return r;
+}
+
+
+void remote_pin_direction(uint8_t pin, uint8_t is_write) 
+{
+    remote_pin_gen('X',pin, is_write);
+}
+
+void remote_pin_set(uint8_t pin, uint8_t value) // pin 0 = clk, pin 1 = io
+{
+    remote_pin_gen('W',pin, value);
+}
+bool remote_pin_get(uint8_t pin) // pin 0 = clk, pin 1 = io
+{
+	uint8_t buffer[REMOTE_MAX_MSG_SIZE]=	{			REMOTE_SOM, REMOTE_GEN_PACKET, 'w',pin, REMOTE_EOM, 0};
+	platform_buffer_write(buffer, 5);
+	int length = platform_buffer_read(buffer,REMOTE_MAX_MSG_SIZE);
+	if(length<1) 
+	{
+		DEBUG_ERROR("Invalid pin set reply\n");
+		return false;
+	}
+	bool r= buffer[0]==REMOTE_RESP_OK;
+	if(!r)
+	{
+			DEBUG_ERROR(" pin set error\n");
+            xAssert(0);
+	}else
+	{
+        // this is hackish
+        switch(buffer[2])
+        {
+            case '0': r=0;break;
+            case '1': r=1;break;
+            default:
+                    xAssert(0);
+        }
+	}
+	return r;
+}
+
+void riscv_jtag_dtm_handler(const uint8_t dev_index)
+{
+    
+}
+}
 // -- eof --

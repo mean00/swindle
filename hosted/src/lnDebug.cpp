@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define PREFIX_BUFFER_SIZE 20
-#define OUTER_BUFFER_SIZE 127
+#define OUTER_BUFFER_SIZE 512
 
 static uint32_t originalTick = 0;
 
@@ -92,7 +92,7 @@ void LoggerInit()
     originalTick = getTick();
 }
 
-extern void bmplogger(const char *fmt...)
+extern "C" void bmplogger(const char *fmt...)
 {
     if (!fmt[0])
         return;
@@ -101,7 +101,7 @@ extern void bmplogger(const char *fmt...)
     LoggerInternal(fmt, va);
     va_end(va);
 }
-extern void bmploggern(int n, const char *a)
+extern "C" void bmploggern(int n, const char *a)
 {
 #define MAX_DUMP 2064    
     static char bfer[MAX_DUMP];
@@ -111,6 +111,10 @@ extern void bmploggern(int n, const char *a)
         if (r > MAX_DUMP)
             r = MAX_DUMP;
         memcpy(bfer, a, r);
+        for(int i=0;i<r;i++)
+        {
+                if(bfer[i]<32) bfer[i]=32;
+        }
         bfer[r] = 0;
         bmplogger("<%s>", bfer);
         n -= r;

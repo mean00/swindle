@@ -88,3 +88,8 @@ int main(int argc, char **argv)
     /* Should never get here */
     return 0;
 }
+extern "C" void rv_test(void);
+extern "C" void bmp_test(void)
+{
+    //    rv_test();
+}

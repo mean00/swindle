@@ -65,7 +65,6 @@ pub fn _g(_command: &str, _args: &Vec<&str>) -> bool {
     let regs = crate::bmp::bmp_read_registers();
     let mut e = encoder::new();
 
-    let mut buffer: [u8; 8] = [0; 8];
     let n: usize = regs.len();
     if n == 0 {
         encoder::simple_send("0000");

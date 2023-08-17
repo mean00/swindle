@@ -21,6 +21,9 @@ extern "C"
 #define BMP_PID 0x6030
 #define LNBMP_PID 0x6030
 
+#define WCHLINK_VID 0x1a86
+#define WCHLINK_PID 0x8010
+
 #define TAG 0x44
 
 #define xAssert(x)                                                                                                     \
@@ -64,7 +67,7 @@ bool waitData()
     }
 }
 
-typedef enum SER_AUTO
+enum SER_AUTO
 {
     SERIAL_IDLE,
     SERIAL_DATA,
@@ -205,14 +208,23 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
 
 extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmp_info_s *info)
 {
+#if 0
+    const int result = libusb_init(&info->libusb_ctx);
+    if (result != LIBUSB_SUCCESS)
+    {
+        printf("Failed to initialise libusb (%d): %s\n", result, libusb_error_name(result));
+        return -1;
+    }
+#endif
     const auto serialPortInfos = QSerialPortInfo::availablePorts();
     for (const QSerialPortInfo &portInfo : serialPortInfos)
     {
         if (portInfo.hasVendorIdentifier() && portInfo.hasProductIdentifier())
         {
             quint16 pid = portInfo.productIdentifier();
-            if (portInfo.vendorIdentifier() == BMP_VID)
+            switch (portInfo.vendorIdentifier())
             {
+            case BMP_VID: {
                 // take the 1st one (?)
                 if (pid == LNBMP_PID) // || pid == BMP_PID|| pid==LNBMP_PID)
                 {
@@ -221,8 +233,27 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmp_info_s *info)
                     info->bmp_type = BMP_TYPE_BMP;
                     // this is ugly, dont check anything just copy hoping it fits
                     strcpy(info->manufacturer, portInfo.systemLocation().toLatin1().constData());
+                    printf("Found LNBMP\n");
                     return 0;
                 }
+            }
+            break;
+#if 0            
+            case WCHLINK_VID:
+                if (pid == WCHLINK_PID)
+                {
+                    // take the 1st one (?)
+                    // memset(info, 0, sizeof(*info));
+                    info->bmp_type = BMP_TYPE_WCHLINK;
+                    // this is ugly, dont check anything just copy hoping it fits
+                    strcpy(info->manufacturer, "wchlink");
+                    info->pid = WCHLINK_PID;
+                    info->vid = WCHLINK_VID;
+                    printf("Found WCHLINK\n");
+                    return 0;
+                }
+                break;
+#endif
             }
         }
     }
@@ -270,5 +301,11 @@ extern "C" bool serial_open(const bmda_cli_options_s *opt, const char *serial)
     // qserial->setFlowControl(QSerialPort::NoFlowControl);
     return true;
 }
-
+#if 0
+extern "C" int bmda_usb_transfer(usb_link_s *link, const void *tx_buffer, size_t tx_len, void *rx_buffer, size_t rx_len,
+                                 uint16_t timeout)
+{
+    return -1;
+}
+#endif
 // EOF
