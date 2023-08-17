@@ -430,6 +430,10 @@ extern "C"
         }
     }
     */
-
+    extern bool cmd_swdp_scan(target_s *t, int argc, const char **argv);
+    bool cmd_swd_scan(target_s *t, int argc, const char **argv)
+    {
+        return cmd_swdp_scan(t, argc, argv);
+    }
 } // extern C
 // EOF

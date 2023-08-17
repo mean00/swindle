@@ -104,7 +104,14 @@ extern "C" {
     pub fn bmp_set_wait_state_c(ws: core::ffi::c_uint);
 }
 extern "C" {
-    pub fn cmd_swdp_scan(
+    pub fn cmd_swd_scan(
+        t: *const target_s,
+        argc: core::ffi::c_int,
+        argv: *mut *const core::ffi::c_char,
+    ) -> bool_;
+}
+extern "C" {
+    pub fn cmd_rvswd_scan(
         t: *const target_s,
         argc: core::ffi::c_int,
         argv: *mut *const core::ffi::c_char,
@@ -136,6 +143,9 @@ extern "C" {
 }
 extern "C" {
     pub fn bmp_read_register_c(reg: core::ffi::c_uint, val: *mut core::ffi::c_uint) -> bool_;
+}
+extern "C" {
+    pub fn bmp_read_registers_c(val: *mut core::ffi::c_uint) -> bool_;
 }
 extern "C" {
     pub fn bmp_target_description_c() -> *const core::ffi::c_char;
@@ -195,6 +205,13 @@ extern "C" {
         address: core::ffi::c_uint,
         len: core::ffi::c_uint,
     ) -> bool_;
+}
+extern "C" {
+    pub fn riscv_list_csr(
+        start: core::ffi::c_uint,
+        max_size: core::ffi::c_uint,
+        csr: *mut core::ffi::c_uint,
+    ) -> core::ffi::c_uint;
 }
 extern "C" {
     pub fn bmp_target_halt_resume_c(step: bool_) -> bool_;
@@ -303,4 +320,16 @@ extern "C" {
 }
 extern "C" {
     pub fn list_enabled_boards() -> *const core::ffi::c_char;
+}
+extern "C" {
+    pub fn bmp_pin_set(pin: u8, value: u8);
+}
+extern "C" {
+    pub fn bmp_pin_get(pin: u8) -> u8;
+}
+extern "C" {
+    pub fn bmp_pin_direction(pin: u8, output: u8);
+}
+extern "C" {
+    pub fn bmp_test();
 }

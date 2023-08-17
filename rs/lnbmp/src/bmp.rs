@@ -92,7 +92,7 @@ pub fn bmp_get_mapping(map: mapping) -> Vec<MemoryBlock> {
 }
 pub fn swdp_scan() -> bool {
     unsafe {
-        ret_to_bool(rn_bmp_cmd_c::cmd_swdp_scan(
+        ret_to_bool(rn_bmp_cmd_c::cmd_swd_scan(
             null(),
             0,
             null_mut() as *mut *const i8,
@@ -162,10 +162,6 @@ pub fn bmp_mem_write(address: u32, data: &[u8]) -> bool {
             ptr,
         ));
     }
-}
-
-pub fn bmp_flash_complete() -> bool {
-    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_flash_complete_c()) }
 }
 
 pub fn bmp_flash_complete() -> bool {
@@ -458,4 +454,3 @@ pub fn bmp_supported_boards() -> &'static str {
 /*
  */
 // EOF
-

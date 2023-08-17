@@ -242,31 +242,6 @@ fn _D(_command: &str, _args: &Vec<&str>) -> bool {
     true
 }
 
-// Read registers
-fn _g(_command: &str, _args: &Vec<&str>) -> bool {
-    // this one may be called while we are not connected
-    if !crate::bmp::bmp_attached() {
-        encoder::reply_e01();
-        return true;
-    }
-
-    let regs = crate::bmp::bmp_read_registers();
-    let mut e = encoder::new();
-    e.begin();
-    let mut buffer: [u8; 8] = [0; 8];
-    let n: usize = regs.len();
-    for i in 0..n {
-        let mut reg = regs[i];
-        // LE first
-        for j in 0..4 {
-            crate::parsing_util::u8_to_ascii_to_buffer((reg & 0xff) as u8, &mut buffer[2 * j..]);
-            reg = reg >> 8;
-        }
-        e.add_u8(&buffer);
-    }
-    e.end();
-    true
-}
 //
 // Request reason for halt
 fn _mark(_command: &str, _args: &Vec<&str>) -> bool {
