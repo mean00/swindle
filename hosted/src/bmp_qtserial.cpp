@@ -44,6 +44,7 @@ extern "C"
     }
 
 QSerialPort *qserial = NULL;
+ 
 /**
  */
 
@@ -206,7 +207,7 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
 /**
  */
 
-extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmp_info_s *info)
+extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
 {
 #if 0
     const int result = libusb_init(&info->libusb_ctx);
@@ -230,7 +231,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmp_info_s *info)
                 {
                     // take the 1st one (?)
                     memset(info, 0, sizeof(*info));
-                    info->bmp_type = BMP_TYPE_BMP;
+                    info->type = PROBE_TYPE_BMP;
                     // this is ugly, dont check anything just copy hoping it fits
                     strcpy(info->manufacturer, portInfo.systemLocation().toLatin1().constData());
                     printf("Found LNBMP\n");
@@ -244,7 +245,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmp_info_s *info)
                 {
                     // take the 1st one (?)
                     // memset(info, 0, sizeof(*info));
-                    info->bmp_type = BMP_TYPE_WCHLINK;
+                    info->type = BMP_TYPE_WCHLINK;
                     // this is ugly, dont check anything just copy hoping it fits
                     strcpy(info->manufacturer, "wchlink");
                     info->pid = WCHLINK_PID;
@@ -264,7 +265,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmp_info_s *info)
 /**
  */
 
-extern "C" void libusb_exit_function(bmp_info_s *info)
+extern "C" void libusb_exit_function(bmda_probe_s *info)
 {
     qWarning("Exiting libusb..\n");
     if (qserial)
@@ -276,7 +277,7 @@ extern "C" void libusb_exit_function(bmp_info_s *info)
 }
 /**
  */
-extern "C" void bmp_ident(bmp_info_s *info)
+extern "C" void bmp_ident(bmda_probe_s *info)
 {
     QBMPLOG("Probing : %s\n", info->manufacturer);
 
