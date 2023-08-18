@@ -11,6 +11,93 @@
             "program": "${workspaceFolder}/hosted/build/lnBMP_hosted",
             "args": [],
             "cwd": "${workspaceFolder}"
-        }
+        },
+           {
+            "name": "lnBMP_GDB",
+            "type": "gdb",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "target": "${workspaceRoot}/build/lnBMP_default_pinout_CH32V3x_144M_CLANG.elf",
+            "gdbpath" : "${config:riscv_gdb}",        
+            "autorun": [        
+            "target extended-remote localhost:2000",
+            "set confirm off",
+            "set mem inaccessible-by-default off",
+            "set  architecture riscv:rv32",
+            "set remotetimeout unlimited",
+            "set remote hardware-breakpoint-limit 4",
+            "set remote hardware-watchpoint-limit 0", 
+            "mon rvswdp_scan"
+            "attach 1",
+            "load ",
+            "tb main ",
+            "b deadEnd "
+            ]
+         },
+         {
+            "name": "lnBMP_attach_GDB",
+            "type": "gdb",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "target": "${workspaceRoot}/build/lnBMP_default_pinout_CH32V3x_144M_CLANG.elf",
+            "gdbpath" : "${config:riscv_gdb}",        
+            "autorun": [        
+            "target extended-remote localhost:2000",
+            "set confirm off",
+            "set mem inaccessible-by-default off",
+            "set  architecture riscv:rv32",
+            "set remotetimeout unlimited",
+            "set remote hardware-breakpoint-limit 4",
+            "set remote hardware-watchpoint-limit 0", 
+            "mon rvswdp_scan"
+            "attach 1",
+            //"mon halt",
+            //"interrupt",            
+           // "mon swreset 1",
+           // "set $pc=0 ",
+            "tb main ",
+            "b deadEnd "
+            ]
+         },
+         {
+            "name": "riscv_GDB",
+            "type": "gdb",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "target": "${workspaceRoot}/build/lnBMP_default_pinout_CH32V3x_144M_CLANG.elf",
+            "gdbpath" : "${config:riscv_gdb}",        
+            "autorun": [        
+                "target extended-remote |  ${config:riscv_openocd_path}/openocd -c \"gdb_port pipe; log_output openocd.log\" -f ${config:riscv_openocd_path}/wch-riscv.cfg",
+                "set confirm off",
+                "set mem inaccessible-by-default off",
+                "set  architecture riscv:rv32",
+                "set remotetimeout unlimited",
+                "set remote hardware-breakpoint-limit 8",
+                "set remote hardware-watchpoint-limit 2", 
+                "mon reset halt",
+                "load ",
+                "tb main ",
+                "b deadEnd "
+                ]
+             },
+             {
+            "name": "attach_riscv_GDB",
+            "type": "gdb",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "target": "${workspaceRoot}/build/lnBMP_default_pinout_CH32V3x_144M_CLANG.elf",
+            "gdbpath" : "${config:riscv_gdb}",        
+            "autorun": [        
+                "target extended-remote |  ${config:riscv_openocd_path}/openocd -c \"gdb_port pipe; log_output openocd.log\" -f ${config:riscv_openocd_path}/wch-riscv.cfg",
+                "set confirm off",
+                "set mem inaccessible-by-default off",
+                "set  architecture riscv:rv32",
+                "set remotetimeout unlimited",
+                "set remote hardware-breakpoint-limit 8",
+                "set remote hardware-watchpoint-limit 2",                       
+                ]
+             }
+        
+
     ]
 }

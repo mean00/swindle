@@ -9,6 +9,8 @@
         "--extra-arg=--target=arm"
     ],
     "cmake.generator": "Unix Makefiles",
-    "cortex-debug.variableUseNaturalFormat": false
-    
+    "cortex-debug.variableUseNaturalFormat": false,
+    "riscv_gdb" : "/riscv/tools2/bin/riscv64-unknown-elf-gdb",    
+    "riscv_openocd_path" : "/opt/wch/MounRiver_Studio_Community_Linux_x64_V130/MRS_Community/toolchain/OpenOCD/bin",
+
 }
