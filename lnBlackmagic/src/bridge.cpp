@@ -17,7 +17,8 @@ extern "C"
 
     extern "C" float bmp_get_target_voltage_c();
 }
-
+#undef snprintf
+#define snprintf snprintf_
 lnStopWatch stopWatch(1);
 
 extern "C" int gdb_if_init(void);
@@ -119,8 +120,9 @@ extern "C"
     }
     /**
      */
-    void platform_target_set_power(bool power)
+    bool platform_target_set_power(bool power)
     {
+        return false;
     }
     /**
      */

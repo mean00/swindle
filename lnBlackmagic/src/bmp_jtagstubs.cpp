@@ -41,9 +41,9 @@ extern "C"
         return;
     }
     // uint32_t jtag_scan(const uint8_t *irlens)
-    uint32_t jtag_scan()
+    bool jtag_scan()
     {
-        return -1;
+        return false;
     }
     void adiv5_jtagdp_abort(adiv5_debug_port_s *dp, uint32_t abort)
     {

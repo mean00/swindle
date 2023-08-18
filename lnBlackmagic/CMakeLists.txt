@@ -74,6 +74,10 @@ DECLARE_MCU( STM32H7 stm32h7.c  stm32h7_probe )
 DECLARE_MCU( STM32L0 stm32l0.c  stm32l0_probe )
 DECLARE_MCU( STM32L4 stm32l4.c  stm32l4_probe )
 
+DECLARE_MCU( MSP432P4  msp432p4.c  msp432p4_probe  )
+DECLARE_MCU( HC32L110 hc32l110.c  hc32l110_probe  )
+DECLARE_MCU( MSP432E4  msp432e4.c  msp432e4_probe  )
+   
 FILE(APPEND  ${BOARD_STUB_FILE} "#define LN_BOARDS_ENABLED \"${STR_BOARD_ENABLED}\"\n")
 
 SET(BOARDS      ${enabled_sources}
