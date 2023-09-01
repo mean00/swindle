@@ -4,7 +4,7 @@
 #define LED2 PA8
 
 extern "C" void user_init();
-
+FILE *const stdout = NULL;
 /**
  */
 void setup()
