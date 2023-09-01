@@ -409,7 +409,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "lnBMP_ch32.kicad_pro",
+    "filename": "lnBMP_ch32revC.kicad_pro",
     "version": 1
   },
   "net_settings": {
@@ -444,8 +444,11 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
+      "plot": "",
+      "pos_files": "",
       "specctra_dsn": "",
       "step": "",
+      "svg": "",
       "vrml": ""
     },
     "page_layout_descr_file": ""
@@ -520,6 +523,7 @@
       "operating_point_overlay_i_range": "~A",
       "operating_point_overlay_v_precision": 3,
       "operating_point_overlay_v_range": "~V",
+      "overbar_offset_ratio": 1.23,
       "pin_symbol_size": 25.0,
       "text_offset_ratio": 0.15
     },

@@ -1,11 +1,11 @@
-(kicad_sch (version 20230620) (generator eeschema)
+(kicad_sch (version 20230808) (generator eeschema)
 
   (uuid fbe443d6-6d74-4abc-9dee-16e0160553bc)
 
   (paper "A4")
 
   (lib_symbols
-    (symbol "Connector:Conn_01x04_Male" (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
+    (symbol "Connector:Conn_01x04_Male" (pin_names (offset 1.016) hide) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "J" (at 0 5.08 0)
         (effects (font (size 1.27 1.27)))
       )
@@ -94,7 +94,7 @@
         )
       )
     )
-    (symbol "Connector:Conn_01x05_Male" (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
+    (symbol "Connector:Conn_01x05_Male" (pin_names (offset 1.016) hide) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "J" (at 0 7.62 0)
         (effects (font (size 1.27 1.27)))
       )
@@ -199,7 +199,7 @@
         )
       )
     )
-    (symbol "Connector:USB_OTG" (pin_names (offset 1.016)) (in_bom yes) (on_board yes)
+    (symbol "Connector:USB_OTG" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "J" (at -5.08 11.43 0)
         (effects (font (size 1.27 1.27)) (justify left))
       )
@@ -350,7 +350,7 @@
         )
       )
     )
-    (symbol "Device:C_Polarized" (pin_numbers hide) (pin_names (offset 0.254)) (in_bom yes) (on_board yes)
+    (symbol "Device:C_Polarized" (pin_numbers hide) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "C" (at 0.635 2.54 0)
         (effects (font (size 1.27 1.27)) (justify left))
       )
@@ -409,7 +409,7 @@
         )
       )
     )
-    (symbol "Device:C_Small" (pin_numbers hide) (pin_names (offset 0.254) hide) (in_bom yes) (on_board yes)
+    (symbol "Device:C_Small" (pin_numbers hide) (pin_names (offset 0.254) hide) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "C" (at 0.254 1.778 0)
         (effects (font (size 1.27 1.27)) (justify left))
       )
@@ -460,7 +460,7 @@
         )
       )
     )
-    (symbol "Device:Crystal" (pin_numbers hide) (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
+    (symbol "Device:Crystal" (pin_numbers hide) (pin_names (offset 1.016) hide) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "Y" (at 0 3.81 0)
         (effects (font (size 1.27 1.27)))
       )
@@ -531,7 +531,7 @@
         )
       )
     )
-    (symbol "Device:LED" (pin_numbers hide) (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
+    (symbol "Device:LED" (pin_numbers hide) (pin_names (offset 1.016) hide) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "D" (at 0 2.54 0)
         (effects (font (size 1.27 1.27)))
       )
@@ -614,7 +614,7 @@
         )
       )
     )
-    (symbol "Device:R_Small" (pin_numbers hide) (pin_names (offset 0.254) hide) (in_bom yes) (on_board yes)
+    (symbol "Device:R_Small" (pin_numbers hide) (pin_names (offset 0.254) hide) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "R" (at 0.762 0.508 0)
         (effects (font (size 1.27 1.27)) (justify left))
       )
@@ -653,7 +653,7 @@
         )
       )
     )
-    (symbol "MCU_ST_STM32F3:STM32F303RCTx" (in_bom yes) (on_board yes)
+    (symbol "MCU_ST_STM32F3:STM32F303RCTx" (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "U" (at -15.24 44.45 0)
         (effects (font (size 1.27 1.27)) (justify left))
       )
@@ -940,7 +940,7 @@
         )
       )
     )
-    (symbol "Regulator_Linear:LM1117-3.3" (pin_names (offset 0.254)) (in_bom yes) (on_board yes)
+    (symbol "Regulator_Linear:LM1117-3.3" (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "U" (at -3.81 3.175 0)
         (effects (font (size 1.27 1.27)))
       )
@@ -983,7 +983,7 @@
         )
       )
     )
-    (symbol "Switch:SW_DIP_x01" (pin_names (offset 0) hide) (in_bom yes) (on_board yes)
+    (symbol "Switch:SW_DIP_x01" (pin_names (offset 0) hide) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "SW" (at 0 3.81 0)
         (effects (font (size 1.27 1.27)))
       )
@@ -1040,7 +1040,7 @@
         )
       )
     )
-    (symbol "power:+3.3V" (power) (pin_names (offset 0)) (in_bom yes) (on_board yes)
+    (symbol "power:+3.3V" (power) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "#PWR" (at 0 -3.81 0)
         (effects (font (size 1.27 1.27)) hide)
       )
@@ -1092,7 +1092,7 @@
         )
       )
     )
-    (symbol "power:GND" (power) (pin_names (offset 0)) (in_bom yes) (on_board yes)
+    (symbol "power:GND" (power) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes)
       (property "Reference" "#PWR" (at 0 -6.35 0)
         (effects (font (size 1.27 1.27)) hide)
       )
@@ -1327,6 +1327,10 @@
     (stroke (width 0) (type default))
     (uuid 6346707d-7d2d-466c-964c-e0202fef0ca6)
   )
+  (wire (pts (xy 105.41 146.05) (xy 109.22 146.05))
+    (stroke (width 0) (type default))
+    (uuid 6479c258-86ef-4af9-a668-2de6e98b083e)
+  )
   (wire (pts (xy 102.87 41.91) (xy 102.87 43.18))
     (stroke (width 0) (type default))
     (uuid 695a4ea8-eef6-48fe-b6f5-b29bc2e0ee15)
@@ -1458,6 +1462,10 @@
   (wire (pts (xy 86.36 102.87) (xy 100.33 102.87))
     (stroke (width 0) (type default))
     (uuid c99c8a81-8b90-480a-9138-d9217bdf5493)
+  )
+  (wire (pts (xy 109.22 161.29) (xy 109.22 162.56))
+    (stroke (width 0) (type default))
+    (uuid cbda25a7-b229-4b00-bd8d-fef04ef77bce)
   )
   (wire (pts (xy 251.46 24.13) (xy 252.73 24.13))
     (stroke (width 0) (type default))
@@ -1671,7 +1679,7 @@
   )
 
   (symbol (lib_id "Device:C_Small") (at 106.68 39.37 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid 032cccb0-2aff-4042-b319-f76b78665e11)
     (property "Reference" "C8" (at 104.14 36.83 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -1691,7 +1699,7 @@
     (pin "1" (uuid 9f612556-1ed3-4495-9d8a-a9d3f5e98df7))
     (pin "2" (uuid 29a0d557-dfa6-4dd2-a4f8-b4591e75b6a9))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C8") (unit 1)
         )
@@ -1700,7 +1708,7 @@
   )
 
   (symbol (lib_id "Device:C_Small") (at 39.37 100.33 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid 03eeaae9-e975-48a3-9b39-82fb23663e19)
     (property "Reference" "C3" (at 38.1 106.68 90)
       (effects (font (size 1.27 1.27)))
@@ -1720,7 +1728,7 @@
     (pin "1" (uuid dbc22642-707c-4ce8-9a3c-7dd880ff1c56))
     (pin "2" (uuid 23596b18-3c66-45e6-a2b8-1fe9b9231ed2))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C3") (unit 1)
         )
@@ -1729,7 +1737,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 213.36 41.91 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 070f75bb-e3b3-4e1c-b106-3d79aafc64b4)
     (property "Reference" "#PWR013" (at 213.36 48.26 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -1748,7 +1756,7 @@
     )
     (pin "1" (uuid 5eb47558-b79f-46e7-8912-fe0286af6680))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR013") (unit 1)
         )
@@ -1757,7 +1765,7 @@
   )
 
   (symbol (lib_id "Switch:SW_DIP_x01") (at 38.1 52.07 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 157e8597-0dfe-461a-be75-d90ba0ece56b)
     (property "Reference" "RST1" (at 41.91 50.8 90)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -1777,7 +1785,7 @@
     (pin "1" (uuid e3e95f4e-aaf3-4461-950f-a72de78dcb95))
     (pin "2" (uuid a2a49d75-056d-416a-b3e0-22333b5724d8))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "RST1") (unit 1)
         )
@@ -1786,7 +1794,7 @@
   )
 
   (symbol (lib_id "Device:R_Small") (at 20.32 54.61 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 1f29626b-032b-4c3a-81e4-7db7583d1261)
     (property "Reference" "R1" (at 22.86 53.3399 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -1806,7 +1814,7 @@
     (pin "1" (uuid 3ee5c57d-2be3-4ce1-8552-ec745751452d))
     (pin "2" (uuid 3b566126-745d-4b04-ae21-1153c3b4ce84))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R1") (unit 1)
         )
@@ -1815,7 +1823,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 135.89 87.63 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 24acf269-461d-49c7-b6cb-2765f4ee980e)
     (property "Reference" "#PWR011" (at 135.89 93.98 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -1834,7 +1842,7 @@
     )
     (pin "1" (uuid 15a7b901-3b68-4592-b16b-0d7678083dde))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR011") (unit 1)
         )
@@ -1843,7 +1851,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 243.84 34.29 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 34c7357d-e157-4204-a8e9-c9afd983156f)
     (property "Reference" "#PWR014" (at 243.84 40.64 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -1862,7 +1870,7 @@
     )
     (pin "1" (uuid 1c9a22d8-c2e7-455d-b465-913fbf0f3fc5))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR014") (unit 1)
         )
@@ -1871,7 +1879,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 135.89 71.12 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 361cabc2-f029-4fc4-a05b-6251e2953d28)
     (property "Reference" "#PWR010" (at 135.89 77.47 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -1890,7 +1898,7 @@
     )
     (pin "1" (uuid 06f8c930-3eec-45ee-bb55-dd9da45c793d))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR010") (unit 1)
         )
@@ -1899,7 +1907,7 @@
   )
 
   (symbol (lib_id "Device:C_Small") (at 113.03 39.37 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid 36b3696d-5e24-4d3b-90ff-c360305437f9)
     (property "Reference" "C9" (at 110.49 36.83 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -1919,7 +1927,7 @@
     (pin "1" (uuid 89f674c8-3e7e-4980-9433-830884ec9020))
     (pin "2" (uuid de8d070a-2faf-40c7-bdc6-56ff33ddfa18))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C9") (unit 1)
         )
@@ -1928,7 +1936,7 @@
   )
 
   (symbol (lib_id "Connector:Conn_01x04_Male") (at 140.97 82.55 0) (mirror y) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 3710451f-15c3-46db-892b-800671097bf8)
     (property "Reference" "J2" (at 142.24 82.5499 0)
       (effects (font (size 1.27 1.27)) (justify right))
@@ -1950,7 +1958,7 @@
     (pin "3" (uuid 14187602-c5f6-4038-8992-0a2e39536200))
     (pin "4" (uuid 21218d6f-bf03-4fc0-923e-6de940caecd3))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J2") (unit 1)
         )
@@ -1959,7 +1967,7 @@
   )
 
   (symbol (lib_id "Device:C_Small") (at 265.43 26.67 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 3bf99785-1b23-4143-ae31-0311fe7bab69)
     (property "Reference" "C5" (at 267.97 25.4062 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -1979,7 +1987,7 @@
     (pin "1" (uuid 80e7cc28-01d2-4306-aa42-510725762cd8))
     (pin "2" (uuid 2be9af49-b3f1-4d6d-adb3-0465286512a0))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C5") (unit 1)
         )
@@ -1988,7 +1996,7 @@
   )
 
   (symbol (lib_id "Device:LED") (at 33.02 143.51 0) (mirror y) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 413e0bca-3a84-4717-805f-3c7b19839ead)
     (property "Reference" "D1" (at 34.6075 138.43 0)
       (effects (font (size 1.27 1.27)))
@@ -2008,7 +2016,7 @@
     (pin "1" (uuid 0ba653a1-aa09-44b0-ad44-18940895571f))
     (pin "2" (uuid cfcf8c23-f7d9-4fab-9576-f198ffad0e8b))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "D1") (unit 1)
         )
@@ -2017,7 +2025,7 @@
   )
 
   (symbol (lib_id "power:+3.3V") (at 269.24 24.13 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 42532da8-6d63-41b4-9444-f3de5aacd54a)
     (property "Reference" "#PWR015" (at 269.24 27.94 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2036,7 +2044,7 @@
     )
     (pin "1" (uuid 62a131c8-a5c4-4c1d-ac87-db60010e035d))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR015") (unit 1)
         )
@@ -2045,7 +2053,7 @@
   )
 
   (symbol (lib_id "Regulator_Linear:LM1117-3.3") (at 243.84 24.13 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 528deb37-9582-40e9-bb55-e6d64f2d7e75)
     (property "Reference" "U2" (at 243.84 16.51 0)
       (effects (font (size 1.27 1.27)))
@@ -2066,7 +2074,7 @@
     (pin "2" (uuid c5a76c31-66c2-46f0-8653-6c14c5baebe4))
     (pin "3" (uuid 2a6522c4-2fc7-4b5e-a6c3-ee5ded748b42))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "U2") (unit 1)
         )
@@ -2075,7 +2083,7 @@
   )
 
   (symbol (lib_id "Device:C_Polarized") (at 252.73 27.94 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 53062742-c0bf-4199-93d2-08c396a159f2)
     (property "Reference" "C4" (at 256.54 25.7809 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2095,7 +2103,7 @@
     (pin "1" (uuid ca56b2c3-5ed3-4228-8031-20be50cdc21c))
     (pin "2" (uuid 0460185c-16f1-4b1c-9b0c-9a80a91dcad5))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C4") (unit 1)
         )
@@ -2104,7 +2112,7 @@
   )
 
   (symbol (lib_id "Device:C_Small") (at 99.06 39.37 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid 55470a0d-e185-4344-9d3c-2b1145cd5c36)
     (property "Reference" "C7" (at 96.52 36.83 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2124,7 +2132,7 @@
     (pin "1" (uuid d8d4b080-4683-4896-af0e-22c275d93aae))
     (pin "2" (uuid b5a2c5b2-1e6b-4bb9-8797-76928f6433e6))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C7") (unit 1)
         )
@@ -2133,7 +2141,7 @@
   )
 
   (symbol (lib_id "power:+3.3V") (at 102.87 36.83 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 5a53b1f0-f929-4da3-999d-046d10b6b08c)
     (property "Reference" "#PWR016" (at 102.87 40.64 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2152,7 +2160,7 @@
     )
     (pin "1" (uuid 40e81ab7-3643-4d21-988c-4cdac92234d4))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR016") (unit 1)
         )
@@ -2161,7 +2169,7 @@
   )
 
   (symbol (lib_id "power:+3.3V") (at 25.4 143.51 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 5d11e89f-5755-4148-9e08-22a5eff151bd)
     (property "Reference" "#PWR02" (at 25.4 147.32 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2180,7 +2188,7 @@
     )
     (pin "1" (uuid 36416fe8-068b-43d4-9247-0a399382e329))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR02") (unit 1)
         )
@@ -2189,7 +2197,7 @@
   )
 
   (symbol (lib_id "Device:R_Small") (at 38.1 38.1 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 681914d8-9e88-478d-be33-555282944aae)
     (property "Reference" "R2" (at 40.64 36.8299 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2209,7 +2217,7 @@
     (pin "1" (uuid e46f590d-8d3c-4e48-90ad-8a5ecb9887e6))
     (pin "2" (uuid e6353a4b-53b8-40e2-b561-9c9af518354d))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R2") (unit 1)
         )
@@ -2218,7 +2226,7 @@
   )
 
   (symbol (lib_id "MCU_ST_STM32F3:STM32F303RCTx") (at 68.58 107.95 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 6eac1c40-1660-4020-b76d-adbffc46460b)
     (property "Reference" "U1" (at 75.6794 153.67 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2300,7 +2308,7 @@
     (pin "8" (uuid b058eb66-6391-4a11-9876-1218b5fa6d0e))
     (pin "9" (uuid c35a4097-8f43-4d1f-aaa0-306add562006))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "U1") (unit 1)
         )
@@ -2309,7 +2317,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 69.85 156.21 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 711fd09c-38f5-4328-bb04-78e6e59e6879)
     (property "Reference" "#PWR07" (at 69.85 162.56 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2328,7 +2336,7 @@
     )
     (pin "1" (uuid 764871cd-e98d-4cd5-8505-2f3652e529ae))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR07") (unit 1)
         )
@@ -2337,7 +2345,7 @@
   )
 
   (symbol (lib_id "Connector:Conn_01x04_Male") (at 140.97 66.04 0) (mirror y) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 80cec748-ba34-4c2e-9909-cd467e6a26f9)
     (property "Reference" "J1" (at 142.24 66.0399 0)
       (effects (font (size 1.27 1.27)) (justify right))
@@ -2359,7 +2367,7 @@
     (pin "3" (uuid 1cf5c3fb-81e2-48fd-a74f-d937828553c7))
     (pin "4" (uuid 96157f79-37f5-4790-8e49-d2c5bd56d0d9))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J1") (unit 1)
         )
@@ -2368,7 +2376,7 @@
   )
 
   (symbol (lib_id "Device:C_Small") (at 92.71 39.37 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid 850ae47a-941b-465f-9513-8ac385a4a3aa)
     (property "Reference" "C6" (at 90.17 36.83 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2388,7 +2396,7 @@
     (pin "1" (uuid 2f6f7919-7cf7-45e4-a04f-5c6d6ee981fc))
     (pin "2" (uuid c92c3320-258c-4c01-8af9-5a4ecedbed1c))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C6") (unit 1)
         )
@@ -2397,7 +2405,7 @@
   )
 
   (symbol (lib_id "Connector:Conn_01x05_Male") (at 142.24 140.97 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid 85e16401-6108-4ce0-9aa2-8deb4de22228)
     (property "Reference" "J3" (at 142.24 135.89 90)
       (effects (font (size 1.27 1.27)))
@@ -2420,7 +2428,7 @@
     (pin "4" (uuid aa303a18-0b93-45fa-b0eb-5d2da897996e))
     (pin "5" (uuid 19ed2ebb-98bc-4f1b-aa42-9cb3201c0fa5))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J3") (unit 1)
         )
@@ -2429,7 +2437,7 @@
   )
 
   (symbol (lib_id "Device:C_Small") (at 30.48 52.07 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid 95aa6824-2380-44c0-8122-0686c4ede3de)
     (property "Reference" "C1" (at 27.94 49.53 0)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2449,7 +2457,7 @@
     (pin "1" (uuid 13933959-f690-4746-88b1-f5678c80dc27))
     (pin "2" (uuid 7bc46e1d-8a42-4805-89a7-10db0c563ce9))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C1") (unit 1)
         )
@@ -2458,7 +2466,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 33.02 92.71 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid a57c479e-67ea-4440-b3e7-e5f8174f38a9)
     (property "Reference" "#PWR03" (at 33.02 99.06 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2477,7 +2485,7 @@
     )
     (pin "1" (uuid 39c5bbad-5b3f-4cb8-9e7f-3714a3e4a777))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR03") (unit 1)
         )
@@ -2486,7 +2494,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 33.02 100.33 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid a87c97fa-ba6d-41ca-a518-2696b4e2ff3a)
     (property "Reference" "#PWR04" (at 33.02 106.68 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2505,7 +2513,7 @@
     )
     (pin "1" (uuid d2efc1c3-1725-4c2c-bfcb-a08cb1e1922e))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR04") (unit 1)
         )
@@ -2514,7 +2522,7 @@
   )
 
   (symbol (lib_id "Device:Crystal") (at 41.91 96.52 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid b12e65f0-09f6-4bd1-a1c0-733f1bbf19cc)
     (property "Reference" "Y1" (at 45.72 95.2499 90)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2534,7 +2542,7 @@
     (pin "1" (uuid ffded00c-ef35-430b-adfb-f27257f56028))
     (pin "2" (uuid 3a580a07-3cce-4395-9f0a-5660cc810169))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "Y1") (unit 1)
         )
@@ -2543,7 +2551,7 @@
   )
 
   (symbol (lib_id "Device:R_Small") (at 91.44 77.47 180) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid ba1855e9-d148-40ee-ba64-5574c8462282)
     (property "Reference" "R4" (at 92.71 77.47 0)
       (effects (font (size 1.27 1.27)) (justify right))
@@ -2563,7 +2571,7 @@
     (pin "1" (uuid 5743fa73-e952-4ef9-a7ff-d204b9989023))
     (pin "2" (uuid 913781ac-401c-4959-b2c9-da3d83473d10))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R4") (unit 1)
         )
@@ -2572,7 +2580,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 91.44 80.01 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid babcada7-9572-4b74-bda5-efcb24966f5a)
     (property "Reference" "#PWR09" (at 91.44 86.36 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2591,7 +2599,7 @@
     )
     (pin "1" (uuid 9753f9bf-6913-41c6-a37d-5ef3792218c9))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR09") (unit 1)
         )
@@ -2600,7 +2608,7 @@
   )
 
   (symbol (lib_id "Connector:USB_OTG") (at 214.63 29.21 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid c7502e4f-8686-4e5a-819d-f0c8bc2a5dcc)
     (property "Reference" "J4" (at 214.63 16.51 0)
       (effects (font (size 1.27 1.27)))
@@ -2624,7 +2632,7 @@
     (pin "5" (uuid 94c11841-1c5e-4355-8fa8-8e833f08b613))
     (pin "6" (uuid bb353208-14b0-4c08-9168-35b485371462))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J4") (unit 1)
         )
@@ -2633,7 +2641,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 102.87 43.18 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid c7872b67-5532-4600-98b2-cd821e64d8ec)
     (property "Reference" "#PWR017" (at 102.87 49.53 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2652,7 +2660,7 @@
     )
     (pin "1" (uuid 27757f43-ec7f-4a03-8c4c-2e4e8be37c6a))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR017") (unit 1)
         )
@@ -2661,7 +2669,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 38.1 59.69 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid c8f06c19-b88f-45dc-8569-1e336ed34746)
     (property "Reference" "#PWR06" (at 38.1 66.04 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2680,7 +2688,7 @@
     )
     (pin "1" (uuid d200fc11-779e-4bf8-84eb-a80104a379c2))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR06") (unit 1)
         )
@@ -2689,7 +2697,7 @@
   )
 
   (symbol (lib_id "Device:R_Small") (at 43.18 143.51 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid c9e215f6-7d50-4fb7-961d-1e6c48f6750e)
     (property "Reference" "R3" (at 43.18 137.16 90)
       (effects (font (size 1.27 1.27)))
@@ -2709,7 +2717,7 @@
     (pin "1" (uuid ab9bfbee-0bb7-461c-89ed-1f2dea925b80))
     (pin "2" (uuid 53e8706f-2006-4947-b6ac-af39fa88d330))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R3") (unit 1)
         )
@@ -2718,7 +2726,7 @@
   )
 
   (symbol (lib_id "power:+3.3V") (at 20.32 52.07 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid d58d94d3-63f7-45c3-b8c5-cf0e94ae85cf)
     (property "Reference" "#PWR01" (at 20.32 55.88 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2737,7 +2745,7 @@
     )
     (pin "1" (uuid 503f3ddb-8bf2-4c39-af4d-e6e6c74dc037))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR01") (unit 1)
         )
@@ -2745,8 +2753,36 @@
     )
   )
 
+  (symbol (lib_id "power:GND") (at 109.22 162.56 0) (unit 1)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+    (uuid da7f2f7c-9723-4c2e-a831-3ddd46ab766f)
+    (property "Reference" "#PWR018" (at 109.22 168.91 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND" (at 113.03 166.37 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "" (at 109.22 162.56 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (at 109.22 162.56 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Description" "" (at 109.22 162.56 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid ee04f9d8-3f87-4148-afb3-291cd1658f54))
+    (instances
+      (project "lnBMP_ch32.pro"
+        (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+          (reference "#PWR018") (unit 1)
+        )
+      )
+    )
+  )
+
   (symbol (lib_id "Device:C_Small") (at 39.37 92.71 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid e0e60351-1378-4ccb-b9bf-a3a4cc500bc2)
     (property "Reference" "C2" (at 39.3636 86.36 90)
       (effects (font (size 1.27 1.27)))
@@ -2766,7 +2802,7 @@
     (pin "1" (uuid 03ab510d-7221-43bc-8dc9-fb96f3c76a12))
     (pin "2" (uuid 18dca30f-406b-4663-a1dd-3c5b25af913b))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C2") (unit 1)
         )
@@ -2775,7 +2811,7 @@
   )
 
   (symbol (lib_id "Switch:SW_DIP_x01") (at 20.32 64.77 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid e744e66d-5453-4cdc-b72e-0e66c1b9fbb1)
     (property "Reference" "BOT1" (at 24.13 63.5 90)
       (effects (font (size 1.27 1.27)) (justify left))
@@ -2795,7 +2831,7 @@
     (pin "1" (uuid d3cb76f6-8263-4fa8-9ef8-44ca09365cd3))
     (pin "2" (uuid 44d5d058-fe0a-4d07-bd95-a8df80f75a17))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "BOT1") (unit 1)
         )
@@ -2804,7 +2840,7 @@
   )
 
   (symbol (lib_id "power:GND") (at 147.32 149.86 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid ebcbcfac-946b-47c8-9ae4-12cb890c2012)
     (property "Reference" "#PWR012" (at 147.32 156.21 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2823,7 +2859,7 @@
     )
     (pin "1" (uuid 7ed66578-1f14-4282-82fa-a414d699cb77))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR012") (unit 1)
         )
@@ -2832,7 +2868,7 @@
   )
 
   (symbol (lib_id "Device:R_Small") (at 93.98 74.93 270) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (uuid ec1e9184-2829-4a0c-b23d-b678c7ab127f)
     (property "Reference" "R5" (at 93.98 69.85 90)
       (effects (font (size 1.27 1.27)))
@@ -2852,7 +2888,7 @@
     (pin "1" (uuid b34b9499-bd05-499d-89b4-956c068b5d64))
     (pin "2" (uuid 1f39ca97-e231-48c3-977d-e7845c0b0dc5))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R5") (unit 1)
         )
@@ -2861,7 +2897,7 @@
   )
 
   (symbol (lib_id "power:+3.3V") (at 38.1 35.56 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid ec8908a0-da12-47b2-b0d8-b9976a5b4d1f)
     (property "Reference" "#PWR05" (at 38.1 39.37 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2880,7 +2916,7 @@
     )
     (pin "1" (uuid 2fb0553e-4707-4f9d-82ea-99bcb19e5c21))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR05") (unit 1)
         )
@@ -2888,8 +2924,37 @@
     )
   )
 
+  (symbol (lib_id "Switch:SW_DIP_x01") (at 109.22 153.67 270) (unit 1)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (uuid f0d7d6f7-cc51-4669-8a0a-ce527a150111)
+    (property "Reference" "DFU" (at 113.03 152.3999 90)
+      (effects (font (size 1.27 1.27)) (justify left))
+    )
+    (property "Value" "SWDFU" (at 113.03 154.9399 90)
+      (effects (font (size 1.27 1.27)) (justify left))
+    )
+    (property "Footprint" "Button_Switch_SMD:SW_SPST_CK_RS282G05A3" (at 109.22 153.67 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "~" (at 109.22 153.67 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Description" "" (at 109.22 153.67 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid feb0e55a-a9d7-4044-bd88-cbaad7a19e33))
+    (pin "2" (uuid 157ba9f9-489c-4177-96cd-a0ef60c67f34))
+    (instances
+      (project "lnBMP_ch32.pro"
+        (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+          (reference "DFU") (unit 1)
+        )
+      )
+    )
+  )
+
   (symbol (lib_id "power:+3.3V") (at 82.55 62.23 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid fdd1d0a3-d95d-4873-8fa6-4442da787d62)
     (property "Reference" "#PWR08" (at 82.55 66.04 0)
       (effects (font (size 1.27 1.27)) hide)
@@ -2908,7 +2973,7 @@
     )
     (pin "1" (uuid c63f4eb2-d716-4bb6-9627-1a4893601e3b))
     (instances
-      (project "lnBMP_ch32"
+      (project "lnBMP_ch32.pro"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR08") (unit 1)
         )
