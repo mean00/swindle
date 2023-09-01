@@ -58,6 +58,7 @@ DECLARE_MCU( LPC546XX lpc546xx.c  lpc546xx_probe )
 DECLARE_MCU( LPC55XX lpc55xx.c  lpc55xx_probe lpc55_dp_prepare lpc55_dmap_probe )
 DECLARE_MCU( MSP432  msp432.c   msp432_probe)
 DECLARE_MCU( NRF51 nrf51.c      nrf51_probe nrf51_mdm_probe )
+DECLARE_MCU( NRF91 nrf91.c      nrf91_probe )
 DECLARE_MCU( NXPKE04 nxpke04.c  ke04_probe )
 DECLARE_MCU( RENESAS renesas.c  renesas_probe )
 DECLARE_MCU( RP rp.c            rp_probe rp_rescue_probe)
@@ -145,8 +146,10 @@ ELSE()
         # "Normal" /Standalone mode
         #----------------------------
         MESSAGE(STATUS "Building for embedded mode (${LN_BMP_HOSTED})")
+        ADD_DEFINITIONS("-DENABLE_DEBUG=1")
         ADD_DEFINITIONS("-DPLATFORM_IDENT=\"lnBMP\"")
-        ADD_DEFINITIONS("-DPC_HOSTED=0")
+        ADD_DEFINITIONS("-DPC_HOSTED=0")        
+        ADD_DEFINITIONS("-include miniplatform.h")       
         include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
         #  add lnBlackmagic target code and host connection stuff
         SET(BRIDGE_SRCS 
@@ -176,7 +179,8 @@ SET(BM_SRC      ${S}/command.c
 #------                    
 SET(BM_TARGET   ${T}/adiv5.c    
                 ${T}/adiv5_swd.c   
-                ${T}/cortexm.c    
+                ${T}/cortex.c
+                ${T}/cortexm.c
                 #${T}/cortexa.c    
                 ${T}/target_flash.c 
                 #${T}/target_probe.c 

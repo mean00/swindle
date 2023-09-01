@@ -27,8 +27,6 @@
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state)
 
-extern void Logger(const char *fmt, ...);
-extern void deadEnd(int err);
 #undef sprintf
 #undef snprintf
 #undef vaprintf
@@ -37,19 +35,13 @@ extern void deadEnd(int err);
 #include "timing.h"
 int vasprintf_(char **strp, const char *fmt, va_list ap);
 #define vasprintf vasprintf_
+
+#include "miniplatform.h"
+
 #define fflush(x)                                                                                                      \
     {                                                                                                                  \
     }
 
-// #define BOARD_IDENT "Black Magic Probe (ln), (Firmware 0.1)"
-
-// #define PLATFORM_HAS_TRACESWO 1
-#define PLATFORM_HAS_DEBUG 1
-#define ENABLE_DEBUG 1
-#undef PLATFORM_PRINTF
-#define PLATFORM_PRINTF Logger
-// #define DEBUG(x, ...) do { ; } while (0)
-#define DEBUG Logger
 
 #define TMS_SET_MODE()                                                                                                 \
     do                                                                                                                 \
