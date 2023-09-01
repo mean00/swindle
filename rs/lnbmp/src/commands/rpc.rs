@@ -140,7 +140,7 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
 
     if input[0] == rpc_commands::RPC_HL_CHECK {
         bmplog("\t\tget version\n");
-        const force_version: u8 = 2; //rpc_commands::RPC_HL_VERSION ; // Force version 1
+        const force_version: u8 = 3; //rpc_commands::RPC_HL_VERSION ; // Force version 1
         rpc_reply(rpc_commands::RPC_RESP_OK, force_version); // Force version 1
                                                              /*
                                                              rpc_message_
@@ -541,17 +541,17 @@ fn rpc_adiv5_packet(input: &[u8]) -> bool {
 
     match input[0] {
         rpc_commands::RPC_REMOTE_MEM_READ => {
-            bmplog("\tMEM_READ\n");
+            bmplog("\tMEM_READ UNIMPLEMENTED\n");
         }
         rpc_commands::RPC_REMOTE_MEM_WRITE => {
-            bmplog("\tMEM_WRITE\n");
+            bmplog("\tMEM_WRITE UNIMPLEMENTED\n");
         }
 
         rpc_commands::RPC_REMOTE_AP_READ => {
-            bmplog("\tAP_READ\n");
+            bmplog("\tAP_READ UNIMPLEMENTED\n");
         }
         rpc_commands::RPC_REMOTE_AP_WRITE => {
-            bmplog("\tAP_WRITE\n");
+            bmplog("\tAP_WRITE UNIMPLEMENTED\n");
         }
         rpc_commands::RPC_REMOTE_ADIV5_RAW_ACCESS => {
             // 'R'
