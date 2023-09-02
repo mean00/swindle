@@ -198,5 +198,11 @@ void riscv_jtag_dtm_handler(const uint8_t dev_index)
 {
     
 }
+
+float bmp_get_target_voltage_c()
+{
+    return 0.0;
+}
+
 }
 // -- eof --
