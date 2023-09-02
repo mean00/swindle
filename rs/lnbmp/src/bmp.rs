@@ -442,6 +442,17 @@ pub fn bmp_supported_boards() -> &'static str {
     let placeholder = "--error--";
     return placeholder;
 }
+/**
+ * 
+ */
+pub fn bmp_get_version() -> &'static str {
+    unsafe {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string()).to_str() {
+            Ok(x) => x,
+            _ => "??"
+        }
+    }
+}
 
 /*
  pub fn bmp_platform_target_voltage() ->

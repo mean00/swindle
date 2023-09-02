@@ -12,6 +12,7 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 }
+#include "lnBMP_version.h"
 
 static adiv5_debug_port_s remote_dp = {
     .ap_read = firmware_ap_read,
@@ -123,4 +124,10 @@ extern "C" int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint
     adiv5_mem_write_sized(&remote_ap, address, (const void *)buffer, (size_t)len, (align_e)alin);
     return remote_dp.fault;
 }
+
+extern "C" const char *bmp_get_version_string(void)
+{
+    return "Version " LN_BMP_VERSION" Generated on " LN_BMP_GEN_DATE" (hash " LN_BMP_GIT_HASH")\n";
+}
+
 // EOF

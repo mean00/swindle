@@ -81,5 +81,5 @@ uint8_t bmp_pin_get(uint8_t pin);
 void bmp_pin_direction(uint8_t pin, uint8_t output); // output = 1, input =0
 //
 void bmp_test();
-
+const char *bmp_get_version_string(void);
 //

@@ -12,12 +12,14 @@ use numtoa::NumToA;
 //
 crate::setup_log!(false);
 //
-const mon_command_tree: [CommandTree;4] = 
+const mon_command_tree: [CommandTree;5] = 
 [
     CommandTree{ command: "help",args: 0,      require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
     CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
     CommandTree{ command: "voltage",args: 0,      require_connected: false ,cb: CallbackType::text( _voltage) },      // 
     CommandTree{ command: "boards",args: 0,      require_connected: false ,cb: CallbackType::text( _boards) },      // 
+    CommandTree{ command: "version",args: 0,      require_connected: false ,cb: CallbackType::text( _get_version) },      // 
+    
 ];
 
 //
@@ -97,6 +99,17 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     exec_one(&mon_command_tree,as_string, args)
     
 }
+
+/**
+ * 
+ */
+pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
+{
+    crate::glue::gdb_out_rs( bmp::bmp_get_version() );
+    encoder::reply_ok();
+    true
+}
+
 /*
     Detect stuff connected to the SWD interface
     Try to use the fastest speed
