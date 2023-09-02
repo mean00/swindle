@@ -40,6 +40,10 @@ extern "C"
 uint32_t swd_delay_cnt = 4;
 
 #include "lnBMP_swdio.h"
+#if PC_HOSTED == 0
+#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
+#include "lnADC.h"
+#endif
 
 static uint32_t SwdRead(size_t ticks);
 static bool SwdRead_parity(uint32_t *ret, size_t ticks);
@@ -47,10 +51,10 @@ static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
 static void swdioSetAsOutput(bool output);
-
-SwdPin pSWDIO(TSWDIO_PIN);
-SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
-SwdPin pReset(TRESET_PIN);
+static lnSimpleADC *adc = NULL;
+static SwdPin pSWDIO(TSWDIO_PIN);
+static SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
+static SwdPin pReset(TRESET_PIN);
 
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
@@ -67,6 +71,10 @@ void bmp_gpio_init()
     pSWCLK.clockOn();
     pSWCLK.output();
     pReset.input();
+    lnPeripherals::enable(Peripherals::pADC0);
+    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);
+    adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO);
+    adc->setSmpt( LN_ADC_SMPT_239_5);
 }
 /**
  */
@@ -185,12 +193,39 @@ extern "C" bool platform_srst_get_val(void)
     return pReset.read();
 }
 
+    /*
+     */
+  
+  
+    /*
+     */
+    extern "C"  float bmp_get_target_voltage_c()
+    {       
+        float vcc = 3300.; // lnBaseAdc::getVcc();
+        if (vcc < 2600)
+        {
+            Logger("Invalid ADC Vref\n");
+            return 0.0;
+        }
+        int sample = 0;
+        for (int i = 0; i < 16; i++)
+        {
+            sample += adc->simpleRead();
+        }
+        sample /= 16;
+
+        vcc = (float)sample * vcc * PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER
+        vcc = vcc / 4095000.;
+        return vcc;
+    }
+
+
 swd_proc_s swd_proc;
 /**
 
 */
 extern "C" void swdptap_init()
-{
+{  
     swd_proc.seq_in = SwdRead;
     swd_proc.seq_in_parity = SwdRead_parity;
     swd_proc.seq_out = SwdWrite;
