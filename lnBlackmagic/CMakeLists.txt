@@ -1,12 +1,12 @@
 #include_directories( ${CMAKE_BINARY_DIR})
 
-SET(S ${BMP}/src)
-SET(T ${BMP}/src/target )
-SET(P ${BMP}/src/platforms )
+SET(S ${BMP}/src CACHE INTERNAL "")
+SET(T ${BMP}/src/target CACHE INTERNAL "")
+SET(P ${BMP}/src/platforms CACHE INTERNAL "")
 
-SET(myB ${CMAKE_CURRENT_SOURCE_DIR}/ )
+SET(myB ${CMAKE_CURRENT_SOURCE_DIR}/ CACHE INTERNAL "")
 
-SET(B ${myB}/src )
+SET(B ${myB}/src CACHE INTERNAL "")
 
 OPTION(LN_BMP_HOSTED  "Enable Hosted mode" OFF)
 
@@ -84,6 +84,7 @@ FILE(APPEND  ${BOARD_STUB_FILE} "#define LN_BOARDS_ENABLED \"${STR_BOARD_ENABLED
 SET(BOARDS      ${enabled_sources}
                 ${B}/bmp_disabledBoard.cpp
                 ${T}/lpc_common.c                
+                CACHE INTERNAL ""
         )
 
 include_directories(${CMAKE_SOURCE_DIR}/blackmagic/libopencm3/include)
@@ -98,8 +99,8 @@ IF (LN_BMP_HOSTED)
     #    ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
     # Set a dummy configuration for lnArduino so it builds
-    SET(LN_EXT "arm_gd32fx")
-    SET(LN_MCU "M3")
+    SET(LN_EXT "arm_gd32fx" CACHE INTERNAL "")
+    SET(LN_MCU "M3" CACHE INTERNAL "")
     ADD_DEFINITIONS("-DLN_ARCH=LN_ARCH_ARM")
     include(${ARDUINO_GD32_FREERTOS}/setup.cmake)
 
@@ -107,8 +108,8 @@ IF (LN_BMP_HOSTED)
     include_directories(../)
     include_directories(../lnArduino/arm_gd32fx/boards/bluepill)
 
-    SET(HOSTED ${BMP}/src/platforms/hosted )
-    SET(PC ${BMP}/src/platforms/hosted )
+    SET(HOSTED ${BMP}/src/platforms/hosted CACHE INTERNAL "")
+    SET(PC ${BMP}/src/platforms/hosted CACHE INTERNAL "")
 
     include_directories( ${HOSTED})
     SET(BM_HOSTED
@@ -140,6 +141,7 @@ IF (LN_BMP_HOSTED)
             ${T}/adiv5_jtag.c
             ${T}/spi.c
             #!!${B}/stubs.cpp
+            CACHE INTERNAL ""
             )
 ELSE()  
         #----------------------------
@@ -162,6 +164,7 @@ ELSE()
                 #!!${B}/stubs.cpp
                 #${B}/bmp_gdb.cpp
                 #!!${B}/bmp_stubs.cpp
+                CACHE INTERNAL ""
                 )
         include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
 ENDIF()
@@ -175,6 +178,7 @@ SET(BM_SRC      ${S}/command.c
                 ${S}/timing.c 
                 ${S}/maths_utils.c 
                 #${S}/gdb_main.c ${S}/gdb_packet.c
+                CACHE INTERNAL ""
                 )
 #------                    
 SET(BM_TARGET   ${T}/adiv5.c    
@@ -191,6 +195,7 @@ SET(BM_TARGET   ${T}/adiv5.c
                 ${T}/spi.c
                 # ${S}/gdb_hostio.c 
                 #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
+                CACHE INTERNAL ""
                 )
 #----------
 
@@ -211,3 +216,4 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rs/lnbmp/c_interface bmp_c_inter
 MESSAGE(STATUS "Enabled boards  : ${enabled_boards}")
 MESSAGE(STATUS "Enabled sources : ${BOARDS}")
 MESSAGE(STATUS "Disabled boards : ${disabled_boards}")
+ 
