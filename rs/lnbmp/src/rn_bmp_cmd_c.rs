@@ -333,3 +333,6 @@ extern "C" {
 extern "C" {
     pub fn bmp_test();
 }
+extern "C" {
+    pub fn bmp_get_version_string() -> *const core::ffi::c_char;
+}
