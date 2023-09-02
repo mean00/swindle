@@ -13,7 +13,7 @@
             "cwd": "${workspaceFolder}"
         },
            {
-            "name": "lnBMP_GDB",
+            "name": "riscv_BMP",
             "type": "gdb",
             "request": "launch",
             "cwd": "${workspaceRoot}",
@@ -35,7 +35,7 @@
             ]
          },
          {
-            "name": "lnBMP_attach_GDB",
+            "name": "riscv_attach_BMP",
             "type": "gdb",
             "request": "launch",
             "cwd": "${workspaceRoot}",
@@ -60,7 +60,7 @@
             ]
          },
          {
-            "name": "riscv_GDB",
+            "name": "riscv_OCD",
             "type": "gdb",
             "request": "launch",
             "cwd": "${workspaceRoot}",
@@ -81,7 +81,7 @@
                 ]
              },
              {
-            "name": "attach_riscv_GDB",
+            "name": "riscv_attach_OCD",
             "type": "gdb",
             "request": "launch",
             "cwd": "${workspaceRoot}",
@@ -96,7 +96,58 @@
                 "set remote hardware-breakpoint-limit 8",
                 "set remote hardware-watchpoint-limit 2",                       
                 ]
-             }
+             },
+             {
+                "name": "Arm",
+                "cwd": "${workspaceFolder}",
+                "svdFile" : "${workspaceRoot}/.vscode/STM32F103.svd",              
+                "executable": "build/lnBMP_default_pinout_M4_96M_CLANG.elf",
+      
+                "request": "launch",
+                "type": "cortex-debug",
+                "runToEntryPoint": "main",
+                "servertype": "bmp",
+                "interface": "swd",
+                "device": "STM32F103",
+                "BMPGDBSerialPort" : "/dev/ttyBmpGdb",
+                "runToMain": true,
+                "preLaunchCommands":[
+                "b deadEnd",
+                "set mem inaccessible-by-default off",
+                "set confirm off"
+                ],
+                "preRestartCommands": [
+                "enable breakpoint",
+                "break main"
+                ]
+      
+            },
+            {
+              "name": "Arm-attach",
+              "cwd": "${workspaceFolder}",              
+              "svdFile" : "${workspaceRoot}/.vscode/STM32F103.svd",              
+              "executable": "build/lnBMP_default_pinout_M4_96M_CLANG.elf",
+      
+              "request": "attach",
+              "type": "cortex-debug",
+              "runToEntryPoint": "main",
+              "servertype": "bmp",
+              "interface": "swd",
+              "device": "STM32F103",
+              "BMPGDBSerialPort" : "/dev/ttyBmpGdb",
+              "runToMain": true,
+              "preLaunchCommands":[
+              "b deadEnd",
+              "set mem inaccessible-by-default off",
+              "set confirm off"
+              ],
+              "preRestartCommands": [
+              "enable breakpoint",
+              "break main"
+              ]
+      
+          }
+      
         
 
     ]
