@@ -1,4 +1,4 @@
-(kicad_sch (version 20230808) (generator eeschema)
+(kicad_sch (version 20230819) (generator eeschema)
 
   (uuid fbe443d6-6d74-4abc-9dee-16e0160553bc)
 
@@ -1182,9 +1182,6 @@
   (junction (at 265.43 24.13) (diameter 0) (color 0 0 0 0)
     (uuid 9f95a499-1361-4ead-ab34-710ce1faf193)
   )
-  (junction (at 91.44 74.93) (diameter 0) (color 0 0 0 0)
-    (uuid a19653a2-9b6e-4e8b-b787-c0296a4ec0a7)
-  )
   (junction (at 252.73 31.75) (diameter 0) (color 0 0 0 0)
     (uuid afc16ad4-608e-4dee-b612-926d3b5da1cd)
   )
@@ -1699,7 +1696,7 @@
     (pin "1" (uuid 9f612556-1ed3-4495-9d8a-a9d3f5e98df7))
     (pin "2" (uuid 29a0d557-dfa6-4dd2-a4f8-b4591e75b6a9))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C8") (unit 1)
         )
@@ -1728,7 +1725,7 @@
     (pin "1" (uuid dbc22642-707c-4ce8-9a3c-7dd880ff1c56))
     (pin "2" (uuid 23596b18-3c66-45e6-a2b8-1fe9b9231ed2))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C3") (unit 1)
         )
@@ -1756,7 +1753,7 @@
     )
     (pin "1" (uuid 5eb47558-b79f-46e7-8912-fe0286af6680))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR013") (unit 1)
         )
@@ -1785,7 +1782,7 @@
     (pin "1" (uuid e3e95f4e-aaf3-4461-950f-a72de78dcb95))
     (pin "2" (uuid a2a49d75-056d-416a-b3e0-22333b5724d8))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "RST1") (unit 1)
         )
@@ -1814,7 +1811,7 @@
     (pin "1" (uuid 3ee5c57d-2be3-4ce1-8552-ec745751452d))
     (pin "2" (uuid 3b566126-745d-4b04-ae21-1153c3b4ce84))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R1") (unit 1)
         )
@@ -1842,7 +1839,7 @@
     )
     (pin "1" (uuid 15a7b901-3b68-4592-b16b-0d7678083dde))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR011") (unit 1)
         )
@@ -1870,7 +1867,7 @@
     )
     (pin "1" (uuid 1c9a22d8-c2e7-455d-b465-913fbf0f3fc5))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR014") (unit 1)
         )
@@ -1898,7 +1895,7 @@
     )
     (pin "1" (uuid 06f8c930-3eec-45ee-bb55-dd9da45c793d))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR010") (unit 1)
         )
@@ -1927,7 +1924,7 @@
     (pin "1" (uuid 89f674c8-3e7e-4980-9433-830884ec9020))
     (pin "2" (uuid de8d070a-2faf-40c7-bdc6-56ff33ddfa18))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C9") (unit 1)
         )
@@ -1958,7 +1955,7 @@
     (pin "3" (uuid 14187602-c5f6-4038-8992-0a2e39536200))
     (pin "4" (uuid 21218d6f-bf03-4fc0-923e-6de940caecd3))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J2") (unit 1)
         )
@@ -1987,7 +1984,7 @@
     (pin "1" (uuid 80e7cc28-01d2-4306-aa42-510725762cd8))
     (pin "2" (uuid 2be9af49-b3f1-4d6d-adb3-0465286512a0))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C5") (unit 1)
         )
@@ -2016,7 +2013,7 @@
     (pin "1" (uuid 0ba653a1-aa09-44b0-ad44-18940895571f))
     (pin "2" (uuid cfcf8c23-f7d9-4fab-9576-f198ffad0e8b))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "D1") (unit 1)
         )
@@ -2044,7 +2041,7 @@
     )
     (pin "1" (uuid 62a131c8-a5c4-4c1d-ac87-db60010e035d))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR015") (unit 1)
         )
@@ -2074,7 +2071,7 @@
     (pin "2" (uuid c5a76c31-66c2-46f0-8653-6c14c5baebe4))
     (pin "3" (uuid 2a6522c4-2fc7-4b5e-a6c3-ee5ded748b42))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "U2") (unit 1)
         )
@@ -2103,7 +2100,7 @@
     (pin "1" (uuid ca56b2c3-5ed3-4228-8031-20be50cdc21c))
     (pin "2" (uuid 0460185c-16f1-4b1c-9b0c-9a80a91dcad5))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C4") (unit 1)
         )
@@ -2132,7 +2129,7 @@
     (pin "1" (uuid d8d4b080-4683-4896-af0e-22c275d93aae))
     (pin "2" (uuid b5a2c5b2-1e6b-4bb9-8797-76928f6433e6))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C7") (unit 1)
         )
@@ -2160,7 +2157,7 @@
     )
     (pin "1" (uuid 40e81ab7-3643-4d21-988c-4cdac92234d4))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR016") (unit 1)
         )
@@ -2188,7 +2185,7 @@
     )
     (pin "1" (uuid 36416fe8-068b-43d4-9247-0a399382e329))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR02") (unit 1)
         )
@@ -2217,7 +2214,7 @@
     (pin "1" (uuid e46f590d-8d3c-4e48-90ad-8a5ecb9887e6))
     (pin "2" (uuid e6353a4b-53b8-40e2-b561-9c9af518354d))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R2") (unit 1)
         )
@@ -2308,7 +2305,7 @@
     (pin "8" (uuid b058eb66-6391-4a11-9876-1218b5fa6d0e))
     (pin "9" (uuid c35a4097-8f43-4d1f-aaa0-306add562006))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "U1") (unit 1)
         )
@@ -2336,7 +2333,7 @@
     )
     (pin "1" (uuid 764871cd-e98d-4cd5-8505-2f3652e529ae))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR07") (unit 1)
         )
@@ -2367,7 +2364,7 @@
     (pin "3" (uuid 1cf5c3fb-81e2-48fd-a74f-d937828553c7))
     (pin "4" (uuid 96157f79-37f5-4790-8e49-d2c5bd56d0d9))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J1") (unit 1)
         )
@@ -2396,7 +2393,7 @@
     (pin "1" (uuid 2f6f7919-7cf7-45e4-a04f-5c6d6ee981fc))
     (pin "2" (uuid c92c3320-258c-4c01-8af9-5a4ecedbed1c))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C6") (unit 1)
         )
@@ -2428,7 +2425,7 @@
     (pin "4" (uuid aa303a18-0b93-45fa-b0eb-5d2da897996e))
     (pin "5" (uuid 19ed2ebb-98bc-4f1b-aa42-9cb3201c0fa5))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J3") (unit 1)
         )
@@ -2457,7 +2454,7 @@
     (pin "1" (uuid 13933959-f690-4746-88b1-f5678c80dc27))
     (pin "2" (uuid 7bc46e1d-8a42-4805-89a7-10db0c563ce9))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C1") (unit 1)
         )
@@ -2485,7 +2482,7 @@
     )
     (pin "1" (uuid 39c5bbad-5b3f-4cb8-9e7f-3714a3e4a777))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR03") (unit 1)
         )
@@ -2513,7 +2510,7 @@
     )
     (pin "1" (uuid d2efc1c3-1725-4c2c-bfcb-a08cb1e1922e))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR04") (unit 1)
         )
@@ -2542,66 +2539,9 @@
     (pin "1" (uuid ffded00c-ef35-430b-adfb-f27257f56028))
     (pin "2" (uuid 3a580a07-3cce-4395-9f0a-5660cc810169))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "Y1") (unit 1)
-        )
-      )
-    )
-  )
-
-  (symbol (lib_id "Device:R_Small") (at 91.44 77.47 180) (unit 1)
-    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
-    (uuid ba1855e9-d148-40ee-ba64-5574c8462282)
-    (property "Reference" "R4" (at 92.71 77.47 0)
-      (effects (font (size 1.27 1.27)) (justify right))
-    )
-    (property "Value" "10k" (at 92.71 80.01 0)
-      (effects (font (size 1.27 1.27)) (justify right))
-    )
-    (property "Footprint" "Resistor_SMD:R_0603_1608Metric" (at 91.44 77.47 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Datasheet" "~" (at 91.44 77.47 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Description" "" (at 91.44 77.47 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (pin "1" (uuid 5743fa73-e952-4ef9-a7ff-d204b9989023))
-    (pin "2" (uuid 913781ac-401c-4959-b2c9-da3d83473d10))
-    (instances
-      (project "lnBMP_ch32.pro"
-        (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
-          (reference "R4") (unit 1)
-        )
-      )
-    )
-  )
-
-  (symbol (lib_id "power:GND") (at 91.44 80.01 0) (unit 1)
-    (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
-    (uuid babcada7-9572-4b74-bda5-efcb24966f5a)
-    (property "Reference" "#PWR09" (at 91.44 86.36 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Value" "GND" (at 91.44 85.09 0)
-      (effects (font (size 1.27 1.27)))
-    )
-    (property "Footprint" "" (at 91.44 80.01 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Datasheet" "" (at 91.44 80.01 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Description" "" (at 91.44 80.01 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (pin "1" (uuid 9753f9bf-6913-41c6-a37d-5ef3792218c9))
-    (instances
-      (project "lnBMP_ch32.pro"
-        (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
-          (reference "#PWR09") (unit 1)
         )
       )
     )
@@ -2632,7 +2572,7 @@
     (pin "5" (uuid 94c11841-1c5e-4355-8fa8-8e833f08b613))
     (pin "6" (uuid bb353208-14b0-4c08-9168-35b485371462))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "J4") (unit 1)
         )
@@ -2660,7 +2600,7 @@
     )
     (pin "1" (uuid 27757f43-ec7f-4a03-8c4c-2e4e8be37c6a))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR017") (unit 1)
         )
@@ -2688,7 +2628,7 @@
     )
     (pin "1" (uuid d200fc11-779e-4bf8-84eb-a80104a379c2))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR06") (unit 1)
         )
@@ -2717,7 +2657,7 @@
     (pin "1" (uuid ab9bfbee-0bb7-461c-89ed-1f2dea925b80))
     (pin "2" (uuid 53e8706f-2006-4947-b6ac-af39fa88d330))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R3") (unit 1)
         )
@@ -2745,7 +2685,7 @@
     )
     (pin "1" (uuid 503f3ddb-8bf2-4c39-af4d-e6e6c74dc037))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR01") (unit 1)
         )
@@ -2773,7 +2713,7 @@
     )
     (pin "1" (uuid ee04f9d8-3f87-4148-afb3-291cd1658f54))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR018") (unit 1)
         )
@@ -2802,7 +2742,7 @@
     (pin "1" (uuid 03ab510d-7221-43bc-8dc9-fb96f3c76a12))
     (pin "2" (uuid 18dca30f-406b-4663-a1dd-3c5b25af913b))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "C2") (unit 1)
         )
@@ -2831,7 +2771,7 @@
     (pin "1" (uuid d3cb76f6-8263-4fa8-9ef8-44ca09365cd3))
     (pin "2" (uuid 44d5d058-fe0a-4d07-bd95-a8df80f75a17))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "BOT1") (unit 1)
         )
@@ -2859,7 +2799,7 @@
     )
     (pin "1" (uuid 7ed66578-1f14-4282-82fa-a414d699cb77))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR012") (unit 1)
         )
@@ -2873,7 +2813,7 @@
     (property "Reference" "R5" (at 93.98 69.85 90)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Value" "10k" (at 93.98 72.39 90)
+    (property "Value" "1k" (at 93.98 72.39 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Footprint" "Resistor_SMD:R_0603_1608Metric" (at 93.98 74.93 0)
@@ -2888,7 +2828,7 @@
     (pin "1" (uuid b34b9499-bd05-499d-89b4-956c068b5d64))
     (pin "2" (uuid 1f39ca97-e231-48c3-977d-e7845c0b0dc5))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "R5") (unit 1)
         )
@@ -2916,7 +2856,7 @@
     )
     (pin "1" (uuid 2fb0553e-4707-4f9d-82ea-99bcb19e5c21))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR05") (unit 1)
         )
@@ -2927,7 +2867,7 @@
   (symbol (lib_id "Switch:SW_DIP_x01") (at 109.22 153.67 270) (unit 1)
     (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid f0d7d6f7-cc51-4669-8a0a-ce527a150111)
-    (property "Reference" "DFU" (at 113.03 152.3999 90)
+    (property "Reference" "DFU1" (at 113.03 152.3999 90)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "SWDFU" (at 113.03 154.9399 90)
@@ -2945,9 +2885,9 @@
     (pin "1" (uuid feb0e55a-a9d7-4044-bd88-cbaad7a19e33))
     (pin "2" (uuid 157ba9f9-489c-4177-96cd-a0ef60c67f34))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
-          (reference "DFU") (unit 1)
+          (reference "DFU1") (unit 1)
         )
       )
     )
@@ -2973,7 +2913,7 @@
     )
     (pin "1" (uuid c63f4eb2-d716-4bb6-9627-1a4893601e3b))
     (instances
-      (project "lnBMP_ch32.pro"
+      (project "lnBMP_ch32revC"
         (path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
           (reference "#PWR08") (unit 1)
         )
