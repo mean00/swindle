@@ -203,6 +203,9 @@ float bmp_get_target_voltage_c()
 {
     return 0.0;
 }
-
+const char *bmp_get_version_string()
+{
+    return "lnbmpa";
+}
 }
 // -- eof --

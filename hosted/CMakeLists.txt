@@ -19,7 +19,7 @@ SET(LN_MCU                  "M4" CACHE INTERNAL "")
 SET(LN_TOOLCHAIN_EXT        "arm_gd32fx_clang" CACHE INTERNAL "")
 SET(LN_ENABLE_RUST          ON   CACHE INTERNAL "")
 set(AF_FOLDER               ${CMAKE_SOURCE_DIR}/../lnArduino CACHE INTERNAL "")
-set(CMAKE_MODULE_PATH       ${CMAKE_MODULE_PATH} ${AF_FOLDER}/cmake CACHE INTERNAL "")
+set(CMAKE_MODULE_PATH       ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../cmake ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
 
 SET(Rust_CARGO_TARGET "" CACHE INTERNAL "")
@@ -28,9 +28,12 @@ SET(CMAKE_CXX_COMPILER /usr/bin/clang++ CACHE INTERNAL "")
 SET(CMAKE_CXX_AR /usr/bin/llvm-ar  CACHE INTERNAL "")
 SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
 #
+include(lnBMP_version)
+GEN_VERSION_FILE()
+#
 SET(BMP_PREFIX "../")
 SET(BMP_PREFIX2 "../../patches/")
-include(../patch_blackmagic.cmake)
+include(patch_blackmagic)
 #
 #
 
@@ -81,7 +84,7 @@ ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-g3")
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
-include(../enabled_board.cmake)
+include(enabled_board)
 
 ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
 
