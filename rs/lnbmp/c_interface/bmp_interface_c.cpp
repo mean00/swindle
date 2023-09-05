@@ -12,6 +12,8 @@ extern "C"
 #include "target_internal.h"
 #include "platform.h"
 
+extern "C" int command_process(target_s *const t, const char *cmd_buffer);
+
     bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
     target_s *cur_target;
@@ -357,7 +359,12 @@ extern "C"
         *watchpoint = watch;
         return reason;
     }
-
+    bool bmp_mon_c( const char *str)
+    {
+        if(command_process(cur_target, str)==0)
+            return true;
+        return false;
+    }
     /*
 
     z1,addr,kind’ insert hw breakpoint

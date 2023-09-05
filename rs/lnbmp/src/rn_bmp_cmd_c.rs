@@ -336,3 +336,6 @@ extern "C" {
 extern "C" {
     pub fn bmp_get_version_string() -> *const core::ffi::c_char;
 }
+extern "C" {
+    pub fn bmp_mon_c(str_: *const core::ffi::c_uchar) -> bool_;
+}

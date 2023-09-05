@@ -1,10 +1,11 @@
 use crate::commands;
 use crate::rn_bmp_cmd_c;
-use alloc::vec::Vec;
 use core::ffi::CStr;
 use core::ptr::null;
 use core::ptr::null_mut;
-
+use alloc::vec;
+use alloc::vec::Vec;
+use cty::c_char;
 use crate::commands::run::HaltState;
 
 pub enum mapping {
@@ -454,6 +455,12 @@ pub fn bmp_get_version() -> &'static str {
     }
 }
 
+pub fn bmp_mon( input_as_string: &str) -> bool
+{
+    unsafe {
+        ret_to_bool(rn_bmp_cmd_c::bmp_mon_c(input_as_string.as_ptr()))
+    }
+}
 /*
  pub fn bmp_platform_target_voltage() ->
  {

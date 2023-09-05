@@ -12,15 +12,24 @@ use numtoa::NumToA;
 //
 crate::setup_log!(false);
 //
-const mon_command_tree: [CommandTree;5] = 
+const mon_command_tree: [CommandTree;6] = 
 [
-    CommandTree{ command: "help",args: 0,      require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
-    CommandTree{ command: "swdp_scan",args: 0,      require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
-    CommandTree{ command: "voltage",args: 0,      require_connected: false ,cb: CallbackType::text( _voltage) },      // 
-    CommandTree{ command: "boards",args: 0,      require_connected: false ,cb: CallbackType::text( _boards) },      // 
-    CommandTree{ command: "version",args: 0,      require_connected: false ,cb: CallbackType::text( _get_version) },      // 
-    
+    CommandTree{ command: "help",args: 0,     require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
+    CommandTree{ command: "swdp_scan",args: 0,require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
+    CommandTree{ command: "voltage",args: 0,  require_connected: false ,cb: CallbackType::text( _voltage) },      // 
+    CommandTree{ command: "boards",args: 0,   require_connected: false ,cb: CallbackType::text( _boards) },      // 
+    CommandTree{ command: "version",args: 0,  require_connected: false ,cb: CallbackType::text( _get_version) },      // 
+    CommandTree{ command: "bmp",args: 0,      require_connected: false ,cb: CallbackType::text( _bmp_mon) },      //     
 ];
+
+
+pub fn _bmp_mon(command : &str, _args : &Vec<&str>) -> bool
+{
+    // the input is bmp actual_bmp_mon_command
+    // we have to remove the bmp
+    encoder::reply_bool(bmp::bmp_mon(&command[4..]));
+    return true;
+}
 
 //
 pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
@@ -117,9 +126,10 @@ pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
 pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
 {
     bmplog("swdp_scan:\n");
-    
-
     let mut pivot = 8;
+    if false
+    {
+    
     let mut inc = 4;
     // is there anything at all ?
     bmp::bmp_set_wait_state(4); // starts slow..
@@ -150,7 +160,10 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
             break;
         }
     }
-    
+    }else
+    {
+        pivot=0;
+    }
     // final check
     
     bmp::bmp_set_wait_state(pivot);
