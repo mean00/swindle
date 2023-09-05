@@ -32,3 +32,4 @@ kicad/ch32v3x/lnBMP_ch32/lnBMP_ch32-backups/
 *-cache
 *.log
 *.zip
+build_default.cmake
