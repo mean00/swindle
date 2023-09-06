@@ -84,3 +84,5 @@ void bmp_test();
 const char *bmp_get_version_string(void);
 //
 bool bmp_mon_c(const unsigned char *str);
+uint32_t free_heap_c();
+uint32_t min_free_heap_c();

@@ -339,3 +339,9 @@ extern "C" {
 extern "C" {
     pub fn bmp_mon_c(str_: *const core::ffi::c_uchar) -> bool_;
 }
+extern "C" {
+    pub fn free_heap_c() -> core::ffi::c_uint;
+}
+extern "C" {
+    pub fn min_free_heap_c() -> core::ffi::c_uint;
+}

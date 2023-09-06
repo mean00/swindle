@@ -207,5 +207,13 @@ const char *bmp_get_version_string()
 {
     return "lnbmpa";
 }
+size_t xPortGetFreeHeapSize( void )
+{
+    return 33;
+}
+size_t xPortGetMinimumEverFreeHeapSize( void )
+{
+    return 2;;
+}
 }
 // -- eof --

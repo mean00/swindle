@@ -12,6 +12,8 @@ extern "C"
 #include "target_internal.h"
 #include "platform.h"
 
+extern "C" size_t xPortGetFreeHeapSize( void );
+extern "C" size_t xPortGetMinimumEverFreeHeapSize( void );
 extern "C" int command_process(target_s *const t, const char *cmd_buffer);
 
     bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
@@ -365,6 +367,20 @@ extern "C" int command_process(target_s *const t, const char *cmd_buffer);
             return true;
         return false;
     }
+    /**
+    */
+    uint32_t free_heap_c()
+    {
+        return (uint32_t)xPortGetFreeHeapSize();
+    }
+    /**
+    */
+    uint32_t min_free_heap_c()
+    {
+        return (uint32_t)xPortGetMinimumEverFreeHeapSize();
+    }
+
+    
     /*
 
     z1,addr,kind’ insert hw breakpoint

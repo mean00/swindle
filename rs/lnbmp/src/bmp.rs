@@ -454,13 +454,39 @@ pub fn bmp_get_version() -> &'static str {
         }
     }
 }
-
+/**
+ * 
+ */
 pub fn bmp_mon( input_as_string: &str) -> bool
 {
     unsafe {
         ret_to_bool(rn_bmp_cmd_c::bmp_mon_c(input_as_string.as_ptr()))
     }
 }
+/**
+ * 
+ */
+pub fn free_heap() -> u32
+{
+    unsafe {
+        rn_bmp_cmd_c::free_heap_c() as u32
+    }    
+}
+/**
+ * 
+ */
+pub fn min_free_heap() -> u32
+{
+    unsafe {
+        rn_bmp_cmd_c::min_free_heap_c() as u32
+    }    
+}
+
+pub fn get_heap_stats() -> (u32, u32)
+{
+    (min_free_heap(), free_heap())
+}
+
 /*
  pub fn bmp_platform_target_voltage() ->
  {

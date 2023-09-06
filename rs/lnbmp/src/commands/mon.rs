@@ -12,7 +12,7 @@ use numtoa::NumToA;
 //
 crate::setup_log!(false);
 //
-const mon_command_tree: [CommandTree;6] = 
+const mon_command_tree: [CommandTree;7] = 
 [
     CommandTree{ command: "help",args: 0,     require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
     CommandTree{ command: "swdp_scan",args: 0,require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
@@ -20,8 +20,26 @@ const mon_command_tree: [CommandTree;6] =
     CommandTree{ command: "boards",args: 0,   require_connected: false ,cb: CallbackType::text( _boards) },      // 
     CommandTree{ command: "version",args: 0,  require_connected: false ,cb: CallbackType::text( _get_version) },      // 
     CommandTree{ command: "bmp",args: 0,      require_connected: false ,cb: CallbackType::text( _bmp_mon) },      //     
+    CommandTree{ command: "ram",args: 0,      require_connected: false ,cb: CallbackType::text( _ram) },      //     
 ];
 
+
+pub fn _ram(_command : &str, _args : &Vec<&str>) -> bool
+{
+    let (min_heap, heap) = bmp::get_heap_stats();
+    let mut buffer: [u8;20] = [0; 20]; 
+
+    gdb_out_rs(&"Min Free Heap:");
+    gdb_out_rs(min_heap.numtoa_str(10,&mut buffer));
+    gdb_out_rs(&"\n");
+
+    gdb_out_rs(&"Free Heap:");
+    gdb_out_rs(heap.numtoa_str(10,&mut buffer));
+    gdb_out_rs(&"\n");
+
+    encoder::reply_ok();
+    return true;
+}
 
 pub fn _bmp_mon(command : &str, _args : &Vec<&str>) -> bool
 {
