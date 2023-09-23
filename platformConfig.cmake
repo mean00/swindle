@@ -53,10 +53,12 @@ ELSE()
       #SET(PLATFORM_CLANG_PATH  /opt/llvm_arm/LLVMEmbeddedToolchainForArm-14.0.0/bin)
       #SET(PLATFORM_CLANG_VERSION "")
       SET(PLATFORM_CLANG_PATH /arm/tools_llvm/bin)
-      SET(PLATFORM_CLANG_VERSION "-17")
+      SET(PLATFORM_CLANG_VERSION "-18")
       #SET(PLATFORM_CLANG_PATH  /opt/llvm_arm/14/bin)
       #SET(PLATFORM_CLANG_VERSION "")
       SET(PLATFORM_TOOLCHAIN_PATH "/home/fx/Arduino_stm32/arm-gcc-2021q4/bin")
+      SET(PICO_SDK_PATH /pico/pico-sdk CACHE INTERNAL "") # For PICO2040
+
    ENDIF()
 ENDIF()
 
