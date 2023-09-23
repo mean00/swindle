@@ -48,6 +48,10 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 SET(LN_ENABLE_RUST ON CACHED "")
+IF(USE_RP2040)
+       ADD_DEFINITIONS("-DUSE_RP2040")
+ENDIF()       
+
 IF(USE_STLINK_PINOUT)
     SET(LN_DEBUG_UART 1 CACHE INTERNAL "")
 ENDIF()
