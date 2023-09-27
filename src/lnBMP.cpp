@@ -1,7 +1,12 @@
 #include "lnArduino.h"
 
+#ifdef USE_RP2040
+#define LED GPIO25
+#define LED2 GPIO25
+#else
 #define LED PC13
 #define LED2 PA8
+#endif
 
 extern "C" void user_init();
 FILE *const stdout = NULL;
