@@ -201,6 +201,10 @@ SET(BM_TARGET   ${T}/adiv5.c
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
 target_link_libraries( lnBlackmagic lnArduino)
+IF (LN_BMP_HOSTED) 
+ELSE()
+    target_link_libraries( lnBlackmagic tinyUsb)
+ENDIF()
 IF(USE_STLINK_PINOUT)
         target_compile_definitions(lnBlackmagic PRIVATE USE_STLINK_PINOUT)
 ENDIF(USE_STLINK_PINOUT)
