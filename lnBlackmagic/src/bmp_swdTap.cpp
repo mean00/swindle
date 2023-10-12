@@ -54,7 +54,7 @@ static void swdioSetAsOutput(bool output);
 static lnSimpleADC *adc = NULL;
 static SwdPin pSWDIO(TSWDIO_PIN);
 static SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
-static SwdPin pReset(TRESET_PIN);
+static SwdReset pReset(TRESET_PIN);
 
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
@@ -70,11 +70,17 @@ void bmp_gpio_init()
     pSWDIO.output();
     pSWCLK.clockOn();
     pSWCLK.output();
-    pReset.input();
+    pReset.off(); // hi-z by default
     lnPeripherals::enable(Peripherals::pADC0);
     lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);
     adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO);
-    adc->setSmpt( LN_ADC_SMPT_239_5);
+    adc->setSmpt(LN_ADC_SMPT_239_5);
+#if 0
+    while(1)
+    {
+        __asm__("nop");
+    }
+#endif
 }
 /**
  */
@@ -171,61 +177,55 @@ void swdioSetAsOutput(bool output)
 
 /**
  */
-extern "C" void platform_srst_set_val(bool assert)
+extern "C" void platform_nrst_set_val(bool assert)
 {
     if (assert) // force reset to low
     {
-        pReset.off();
-        swait();
-        pReset.output();
+        pReset.on();
     }
     else // release reset
     {
-        pReset.input();
+        pReset.off();
     }
 }
 /**
  */
-extern "C" bool platform_srst_get_val(void)
+extern "C" bool platform_nrst_get_val(void)
 {
-    pReset.input();
-    swait();
-    return pReset.read();
+    return pReset.state();
 }
 
-    /*
-     */
-  
-  
-    /*
-     */
-    extern "C"  float bmp_get_target_voltage_c()
-    {       
-        float vcc = 3300.; // lnBaseAdc::getVcc();
-        if (vcc < 2600)
-        {
-            Logger("Invalid ADC Vref\n");
-            return 0.0;
-        }
-        int sample = 0;
-        for (int i = 0; i < 16; i++)
-        {
-            sample += adc->simpleRead();
-        }
-        sample /= 16;
+/*
+ */
 
-        vcc = (float)sample * vcc * PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER
-        vcc = vcc / 4095000.;
-        return vcc;
+/*
+ */
+extern "C" float bmp_get_target_voltage_c()
+{
+    float vcc = 3300.; // lnBaseAdc::getVcc();
+    if (vcc < 2600)
+    {
+        Logger("Invalid ADC Vref\n");
+        return 0.0;
     }
+    int sample = 0;
+    for (int i = 0; i < 16; i++)
+    {
+        sample += adc->simpleRead();
+    }
+    sample /= 16;
 
+    vcc = (float)sample * vcc * PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER
+    vcc = vcc / 4095000.;
+    return vcc;
+}
 
 swd_proc_s swd_proc;
 /**
 
 */
 extern "C" void swdptap_init()
-{  
+{
     swd_proc.seq_in = SwdRead;
     swd_proc.seq_in_parity = SwdRead_parity;
     swd_proc.seq_out = SwdWrite;
