@@ -18,7 +18,7 @@ extern "C"
 #include "bmp_logger.h"
 
 #define BMP_VID 0x1d50
-#define BMP_PID 0x6030
+#define BMP_PID 0x6018
 #define LNBMP_PID 0x6030
 
 #define WCHLINK_VID 0x1a86
@@ -44,7 +44,7 @@ extern "C"
     }
 
 QSerialPort *qserial = NULL;
- 
+
 /**
  */
 
@@ -227,7 +227,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
             {
             case BMP_VID: {
                 // take the 1st one (?)
-                if (pid == LNBMP_PID) // || pid == BMP_PID|| pid==LNBMP_PID)
+                if ((pid == LNBMP_PID) || pid == BMP_PID || pid == LNBMP_PID)
                 {
                     // take the 1st one (?)
                     memset(info, 0, sizeof(*info));
