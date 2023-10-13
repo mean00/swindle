@@ -1,0 +1,13 @@
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index e3f338cb..8bd6f7c4 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -37,7 +37,7 @@
+ #include "gdb_reg.h"
+ #include "riscv_debug.h"
+ #include <assert.h>
+-
++#include "printf.h"
+ /*
+  * Links to exact specifications used in this code are listed here for ease:
+  * riscv-debug-spec v0.11 as used by SiFive:

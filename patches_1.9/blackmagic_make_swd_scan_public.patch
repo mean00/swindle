@@ -1,0 +1,26 @@
+diff --git a/src/command.c b/src/command.c
+index e2854f8c..67b0f586 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -52,9 +52,9 @@
+ static bool cmd_version(target_s *t, int argc, const char **argv);
+ static bool cmd_help(target_s *t, int argc, const char **argv);
+ 
+-static bool cmd_jtag_scan(target_s *t, int argc, const char **argv);
+-static bool cmd_swdp_scan(target_s *t, int argc, const char **argv);
+-static bool cmd_auto_scan(target_s *t, int argc, const char **argv);
++/* static */ bool cmd_jtag_scan(target_s *t, int argc, const char **argv);
++/* static */ bool cmd_swdp_scan(target_s *t, int argc, const char **argv);
++/* static */ bool cmd_auto_scan(target_s *t, int argc, const char **argv);
+ static bool cmd_frequency(target_s *t, int argc, const char **argv);
+ static bool cmd_targets(target_s *t, int argc, const char **argv);
+ static bool cmd_morse(target_s *t, int argc, const char **argv);
+@@ -194,7 +194,7 @@ bool cmd_help(target_s *t, int argc, const char **argv)
+ 	return true;
+ }
+ 
+-static bool cmd_jtag_scan(target_s *t, int argc, const char **argv)
++/* static */ bool cmd_jtag_scan(target_s *t, int argc, const char **argv)
+ {
+ 	(void)t;
+ 	uint8_t irlens[argc];
