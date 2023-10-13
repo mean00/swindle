@@ -202,6 +202,14 @@ pub fn bmp_set_wait_state(ws: u32) {
         rn_bmp_cmd_c::bmp_set_wait_state_c(ws);
     }
 }
+/**
+ * 
+ */
+pub fn bmp_get_wait_state() ->u32 {
+    unsafe {
+        return rn_bmp_cmd_c::bmp_get_wait_state_c();
+    }
+}
 
 /*
 
