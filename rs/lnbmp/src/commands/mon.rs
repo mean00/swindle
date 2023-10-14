@@ -11,6 +11,13 @@ use numtoa::NumToA;
 //
 //
 crate::setup_log!(false);
+
+struct HelpTree {
+    command: &'static str,
+    help: &'static str,
+}
+
+
 //
 const mon_command_tree: [CommandTree;8] = 
 [
@@ -23,7 +30,18 @@ const mon_command_tree: [CommandTree;8] =
     CommandTree{ command: "ram",args: 0,      require_connected: false ,cb: CallbackType::text( _ram) },      //     
     CommandTree{ command: "ws",args: 0,       require_connected: false ,cb: CallbackType::text( _ws) },      //     
 ];
-
+//
+const help_tree : [HelpTree;8]=
+[
+    HelpTree{ command: "help",help :"Display help." },
+    HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
+    HelpTree{ command: "voltage",help :"Display target voltage." },
+    HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
+    HelpTree{ command: "version",help :"Display version." },
+    HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
+    HelpTree{ command: "ram",help :"Display stats about Ram usage." },
+    HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
+];
 
 pub fn _ram(_command : &str, _args : &Vec<&str>) -> bool
 {
@@ -53,12 +71,14 @@ pub fn _bmp_mon(command : &str, _args : &Vec<&str>) -> bool
 //
 pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
 {
-    gdb_out_rs( "mon commands :\n");
-    for i in 0..mon_command_tree.len()
+    gdb_out_rs( "Help, use mon [cmd] [params] :\n");
+    for i in 0..help_tree.len()
     {
-        gdb_out_rs( "   ");
-        gdb_out_rs( &(mon_command_tree[i].command));
-        gdb_out_rs( ":\n");
+        gdb_out_rs( "mon ");
+        gdb_out_rs( &(help_tree[i].command));
+        gdb_out_rs( ":\n\t");
+        gdb_out_rs( &(help_tree[i].help));
+        gdb_out_rs( "\n");
     }
     encoder::reply_ok();
     return true;
@@ -67,8 +87,14 @@ pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
 //
 fn _boards(_command : &str, _args : &Vec<&str>) -> bool
 {
-    gdb_out_rs( "Support enabled for :\n");
-    gdb_out_rs( bmp::bmp_supported_boards());
+    gdb_out_rs( "Support enabled for :\n\t");
+    let boards = bmp::bmp_supported_boards();
+    let b : Vec <&str>= boards.split(":").collect();
+    for i in 0..b.len()
+    {
+        gdb_out_rs( b[i]);
+        gdb_out_rs( "\n\t");
+    }
     gdb_out_rs( "\n");
     encoder::reply_ok();
     return true;
@@ -134,6 +160,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
 pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
 {
     crate::glue::gdb_out_rs( bmp::bmp_get_version() );
+    gdb_out_rs( "\n");
     encoder::reply_ok();
     true
 }
