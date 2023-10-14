@@ -4,7 +4,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use crate::bmp;
 use crate::encoder::encoder;
-use crate::parsing_util::ascii_hex_string_to_u8s;
+use crate::parsing_util::{ascii_hex_string_to_u8s,ascii_string_to_u32};
 use crate::commands::{CallbackType,exec_one,CommandTree};
 use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
@@ -157,11 +157,20 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
     
 }
 
-/*
-    get/set wait state
+/**
+ * 
  */
 pub fn _ws(_command : &str, _args : &Vec<&str>) -> bool
 {  
+    let len=_command.len();    
+    if len>3
+    { // ok we have an input
+        let ws = ascii_string_to_u32(&_command[3..]);
+        bmp::bmp_set_wait_state(ws);
+    }
+    let w : u32 = bmp::bmp_get_wait_state();
+    crate::glue::gdb_out_rs_u32("wait state is now ",w);
+    crate::glue::gdb_out_rs("\n");
     encoder::reply_ok();
     return true;
     

@@ -5,9 +5,9 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Hosted",
             "type": "lldb",
-            "request": "launch",
-            "name": "Debug",
+            "request": "launch",            
             "program": "${workspaceFolder}/hosted/build/lnBMP_hosted",
             "args": [],
             "cwd": "${workspaceFolder}"

@@ -22,9 +22,24 @@ extern "C" void do_assert(const char *z)
     exit(-1);
 }
 extern "C" void _putchar(char){};
+/**
+ * @brief 
+ * 
+ */
 extern "C" void bmp_set_wait_state_c(unsigned int ws)
 {
+        printf("Stubbed : set ws %d\n",ws);
 }
+/**
+ * @brief 
+ * 
+ */
+extern "C" unsigned int bmp_get_wait_state_c(void)
+{
+    printf("Stubbed : get ws %d\n", 5);
+    return 5;
+}
+
 //
 //  Stubs for RPC mode
 //
