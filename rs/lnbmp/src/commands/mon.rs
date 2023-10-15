@@ -4,15 +4,22 @@ use alloc::vec;
 use alloc::vec::Vec;
 use crate::bmp;
 use crate::encoder::encoder;
-use crate::parsing_util::ascii_hex_string_to_u8s;
+use crate::parsing_util::{ascii_hex_string_to_u8s,ascii_string_to_u32};
 use crate::commands::{CallbackType,exec_one,CommandTree};
 use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
 //
 //
 crate::setup_log!(false);
+
+struct HelpTree {
+    command: &'static str,
+    help: &'static str,
+}
+
+
 //
-const mon_command_tree: [CommandTree;7] = 
+const mon_command_tree: [CommandTree;8] = 
 [
     CommandTree{ command: "help",args: 0,     require_connected: false ,cb: CallbackType::text( _mon_help) },      // 
     CommandTree{ command: "swdp_scan",args: 0,require_connected: false ,cb: CallbackType::text( _swdp_scan) },      // 
@@ -21,8 +28,20 @@ const mon_command_tree: [CommandTree;7] =
     CommandTree{ command: "version",args: 0,  require_connected: false ,cb: CallbackType::text( _get_version) },      // 
     CommandTree{ command: "bmp",args: 0,      require_connected: false ,cb: CallbackType::text( _bmp_mon) },      //     
     CommandTree{ command: "ram",args: 0,      require_connected: false ,cb: CallbackType::text( _ram) },      //     
+    CommandTree{ command: "ws",args: 0,       require_connected: false ,cb: CallbackType::text( _ws) },      //     
 ];
-
+//
+const help_tree : [HelpTree;8]=
+[
+    HelpTree{ command: "help",help :"Display help." },
+    HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
+    HelpTree{ command: "voltage",help :"Display target voltage." },
+    HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
+    HelpTree{ command: "version",help :"Display version." },
+    HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
+    HelpTree{ command: "ram",help :"Display stats about Ram usage." },
+    HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
+];
 
 pub fn _ram(_command : &str, _args : &Vec<&str>) -> bool
 {
@@ -52,12 +71,14 @@ pub fn _bmp_mon(command : &str, _args : &Vec<&str>) -> bool
 //
 pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
 {
-    gdb_out_rs( "mon commands :\n");
-    for i in 0..mon_command_tree.len()
+    gdb_out_rs( "Help, use mon [cmd] [params] :\n");
+    for i in 0..help_tree.len()
     {
-        gdb_out_rs( "   ");
-        gdb_out_rs( &(mon_command_tree[i].command));
-        gdb_out_rs( ":\n");
+        gdb_out_rs( "mon ");
+        gdb_out_rs( &(help_tree[i].command));
+        gdb_out_rs( ":\n\t");
+        gdb_out_rs( &(help_tree[i].help));
+        gdb_out_rs( "\n");
     }
     encoder::reply_ok();
     return true;
@@ -66,8 +87,14 @@ pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
 //
 fn _boards(_command : &str, _args : &Vec<&str>) -> bool
 {
-    gdb_out_rs( "Support enabled for :\n");
-    gdb_out_rs( bmp::bmp_supported_boards());
+    gdb_out_rs( "Support enabled for :\n\t");
+    let boards = bmp::bmp_supported_boards();
+    let b : Vec <&str>= boards.split(":").collect();
+    for i in 0..b.len()
+    {
+        gdb_out_rs( b[i]);
+        gdb_out_rs( "\n\t");
+    }
     gdb_out_rs( "\n");
     encoder::reply_ok();
     return true;
@@ -133,6 +160,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
 pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
 {
     crate::glue::gdb_out_rs( bmp::bmp_get_version() );
+    gdb_out_rs( "\n");
     encoder::reply_ok();
     true
 }
@@ -144,56 +172,34 @@ pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
 pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
 {
     bmplog("swdp_scan:\n");
-    let mut pivot = 8;
-    if false
-    {
-    
-    let mut inc = 4;
-    // is there anything at all ?
-    bmp::bmp_set_wait_state(4); // starts slow..
-    if !bmp::swdp_scan()
-    {
-        bmpwarning("fail ws=8!\n",0);
-        return false;     // nope
-    }
 
-    loop
-    {        
-        bmplog1("swdp_scan: pivot",pivot);
-        bmplog("\n");
-        bmplog1("swdp_scan: inc",inc);
-        bmplog("\n");
-        bmp::bmp_set_wait_state(pivot);
-        if !bmp::swdp_scan()
-        {
-            pivot+=inc;        
-        } 
-        else
-        {
-            pivot-=inc;
-        }   
-        inc=inc>>1;
-        if inc==0 || pivot==0
-        {
-            break;
-        }
-    }
-    }else
-    {
-        pivot=0;
-    }
-    // final check
-    
-    bmp::bmp_set_wait_state(pivot);
     if !bmp::swdp_scan()
     {
-        bmpwarning("swdp fail!\n",pivot);
+        bmpwarning("swdp fail!\n",0);
         return false;
     }
     
-    crate::glue::gdb_out_rs_u32("Using ", pivot) ;
-    crate::glue::gdb_out_rs(" wait state\n");    
     encoder::reply_ok();
     return true;
     
 }
+
+/**
+ * 
+ */
+pub fn _ws(_command : &str, _args : &Vec<&str>) -> bool
+{  
+    let len=_command.len();    
+    if len>3
+    { // ok we have an input
+        let ws = ascii_string_to_u32(&_command[3..]);
+        bmp::bmp_set_wait_state(ws);
+    }
+    let w : u32 = bmp::bmp_get_wait_state();
+    crate::glue::gdb_out_rs_u32("wait state is now ",w);
+    crate::glue::gdb_out_rs("\n");
+    encoder::reply_ok();
+    return true;
+    
+}
+//-- EOF --

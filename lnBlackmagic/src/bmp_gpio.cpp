@@ -27,26 +27,23 @@ int bmp_gpio_read(int pin)
     xAssert(0);
     return 0;
 }
-
+/*
 void platform_nrst_set_val(bool assert)
 {
-    lnPin pin = _mapping[TRESET_PIN];
-    if (assert)
+    if (assert) // force reset to low
     {
-        lnPinMode(pin, lnOUTPUT);
-        lnDigitalWrite(pin, 0);
+        pReset.on();
     }
-    else
+    else // release reset
     {
-        lnPinMode(pin, lnINPUT_FLOATING);
+        pReset.off();
     }
 }
 bool platform_nrst_get_val(void)
 {
-
-    return lnDigitalRead(_mapping[TRESET_PIN]);
+   return pReset.state();
 }
-
+*/
 void platform_target_clk_output_enable(bool enable)
 {
     (void)enable;

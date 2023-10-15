@@ -104,6 +104,9 @@ extern "C" {
     pub fn bmp_set_wait_state_c(ws: core::ffi::c_uint);
 }
 extern "C" {
+    pub fn bmp_get_wait_state_c() -> core::ffi::c_uint;
+}
+extern "C" {
     pub fn cmd_swd_scan(
         t: *const target_s,
         argc: core::ffi::c_int,

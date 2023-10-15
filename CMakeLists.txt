@@ -10,6 +10,13 @@ MESSAGE(STATUS "======================")
 OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 OPTION(USE_GD32F3        "Target GD32F303 chip with 256 flash" OFF)
 OPTION(USE_CH32V3x       "Target USE_CH32V3x chip with 256 flash" OFF)
+
+#
+SET(BMP_VERSION_BRANCH 1.10)
+
+
+SET(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
+
 #-------------
 # Options
 #-------------

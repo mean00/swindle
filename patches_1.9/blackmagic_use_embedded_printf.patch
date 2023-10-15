@@ -1,0 +1,23 @@
+diff --git a/src/target/target.c b/src/target/target.c
+index db4376b5..6a2a7889 100644
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -25,6 +25,9 @@
+ #include <stdarg.h>
+ #include <unistd.h>
+ 
++#define snprintf snprintf_
++int snprintf_(char *buffer, size_t count, const char *format, ...);
++
+ target_s *target_list = NULL;
+ 
+ #define STDOUT_READ_BUF_SIZE 64
+@@ -556,7 +559,7 @@ void tc_printf(target_s *t, const char *fmt, ...)
+ 
+ 	va_start(ap, fmt);
+ 	t->tc->printf(t->tc, fmt, ap);
+-	fflush(stdout);
++	//fflush(stdout);
+ 	va_end(ap);
+ }
+ 
