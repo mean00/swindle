@@ -19,15 +19,15 @@ const lnPin _mapping[8] = {
 #else
 
 const lnPin _mapping[8] = {
-    GPIO25,        // 0 TMS_PIN
-    GPIO25,        // 1 TDI_PIN
-    GPIO25,        // 2 TDO_PIN
-    GPIO25,        // 3 TCK_PIN
-    GPIO25,        // 4 TRACESWO_PIN
-    GPIO25, // 5 SWDIO_PIN
-    GPIO25,        // 6 SWCLK_PIN
+    GPIO24,        // 0 TMS_PIN
+    GPIO24,        // 1 TDI_PIN
+    GPIO24,        // 2 TDO_PIN
+    GPIO24,        // 3 TCK_PIN
+    GPIO24,        // 4 TRACESWO_PIN
+    GPIO12,        // 5 SWDIO_PIN
+    GPIO13,        // 6 SWCLK_PIN
 
-    GPIO25, // 7 RST
+    GPIO11,        // 7 RST
 };
 
 #endif

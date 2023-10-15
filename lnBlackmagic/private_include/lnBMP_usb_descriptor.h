@@ -3,13 +3,25 @@
 #define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
 
 #define USB_VID 0x1d50
-#define USB_PID 0x6030
+#define USB_PID 0x6040
 
 #define USB_BCD 0x0200
 
 /**
  *
  */
+// RP2040
+#if 1
+const char *descriptor[] = {
+    (const char[]){0x09, 0x04},     // 0: is supported language is English (0x0409)
+    "picolnBlackMagic",             // 1: Manufacturer
+    "Custom implementation of BMP", // 2: Product
+    "45678",                        // 3: Serials, should use chip ID
+    "plnBMP GDB Server",            // 4: CDC Interface
+    "plnBMP GDB Uart",              // 5: CDC Interface
+    "plnBMP DFU",                   // 6: DFU Interface
+};
+#else
 const char *descriptor[] = {
     (const char[]){0x09, 0x04},     // 0: is supported language is English (0x0409)
     "lnBlackMagic",                 // 1: Manufacturer
@@ -19,7 +31,7 @@ const char *descriptor[] = {
     "lnBMP GDB Uart",               // 5: CDC Interface
     "lnBMP DFU",                    // 6: DFU Interface
 };
-
+#endif
 const tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
