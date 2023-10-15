@@ -9,7 +9,6 @@
 #endif
 
 extern "C" void user_init();
-FILE *const stdout = NULL;
 /**
  */
 void setup()
