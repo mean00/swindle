@@ -16,13 +16,13 @@ lnBmp is made of 3 layers :
 
 Why ?
 =====
-
+Because it is not tied to Arm (same code fine for CH32V3x/RISCV)
 Because it's fun to play with rust.
 
 Additionnaly, the structure of the gdb rust parser is simpler than the one
 from blackmagic and easier to modify to add support for things.
 
-Since under the hood FreeRTOS is used, you can connect a LCD screen or whatever.
+Since under the hood FreeRTOS is used, you can spawn threads and use them to handle a LCD screen or whatever.
 
 Quick FAQ
 ==================
@@ -31,7 +31,7 @@ Quick FAQ
 * Can i run it on xyz board ? : No, only STM32F103, GD32F103, GD32F303 and CH32V3x (WIP, USB not working).
 * Can i debug all the boards : No, only some are enabled, but you can easily change that.
 * Can i use a DFU update on a regular BMP software ? : Yes but /!\ be careful of the pinout used /!\
-* Is Jtag supported ? : No, only SWD. 
+* Is Jtag supported ? : No, only SWD. You can reactivate it if you really need it.
 
 How to build
 ------------
