@@ -146,7 +146,32 @@
               "break main"
               ]
       
-          }
+          },
+          {
+            "name": "pico-attach",
+            "cwd": "${workspaceFolder}",              
+            "svdFile" : "${workspaceRoot}/.vscode/rp2040.svd",              
+            "executable": "build/lnBMP_default_pinout_RP2040_72M_CLANG.elf",
+    
+            "request": "attach",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "bmp",
+            "interface": "swd",
+            "device": "rp2040",
+            "BMPGDBSerialPort" : "/dev/ttyBmpGdb2",
+            "runToMain": true,
+            "preLaunchCommands":[
+            "b deadEnd",
+            "set mem inaccessible-by-default off",
+            "set confirm off"
+            ],
+            "preRestartCommands": [
+            "enable breakpoint",
+            "break main"
+            ]
+    
+        },
       
         
 
