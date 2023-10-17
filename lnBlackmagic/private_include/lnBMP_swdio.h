@@ -37,6 +37,11 @@ class SwdPin
     {
         lnPinMode(_me, lnOUTPUT);
     }
+    void hiZ()
+    {
+        lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_HIZ);
+        lnPinMode(_me, lnOUTPUT_OPEN_DRAIN);
+    }
     void set(bool x)
     {
         if (x)
@@ -77,6 +82,10 @@ class SwdReset
     {
         _state = true;
        lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_GND);
+    }
+    void hiZ()
+    {
+        off();
     }
     void off()
     {

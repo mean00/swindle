@@ -18,6 +18,8 @@ extern "C"
 }
 extern "C" void pins_init();
 extern void serialInit();
+extern void bmp_io_begin_session();
+extern void bmp_io_end_session();
 
 #define GDB_CDC_DATA_AVAILABLE (1 << 0)
 #define GDB_SESSION_START (1 << 1)
@@ -108,11 +110,13 @@ class BufferGdb
             _eventGroup->setEvents(GDB_CDC_DATA_AVAILABLE);
             break;
         case lnUsbCDC::CDC_SESSION_START:
+            bmp_io_begin_session();
             _inSession = true;
             xAssert(_eventGroup);
             _eventGroup->setEvents(GDB_SESSION_START);
             break;
         case lnUsbCDC::CDC_SESSION_END:
+            bmp_io_end_session();
             _inSession = false;
             xAssert(_eventGroup);
             _eventGroup->setEvents(GDB_SESSION_END);

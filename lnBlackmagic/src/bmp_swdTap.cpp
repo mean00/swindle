@@ -78,13 +78,14 @@ extern "C" uint32_t  bmp_get_wait_state_c()
 */
 void bmp_gpio_init()
 {
-    pSWDIO.on();
-    pSWDIO.output();
-    pSWCLK.clockOn();
-    pSWCLK.output();
+    pSWDIO.hiZ();
+    pSWDIO.hiZ();
+    pSWCLK.hiZ();
+    pSWCLK.hiZ();
+    pReset.hiZ(); // hi-z by default
     pReset.off(); // hi-z by default
-    lnPeripherals::enable(Peripherals::pADC0);
-    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);
+
+    lnPeripherals::enable(Peripherals::pADC0);    
     adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO);
     adc->setSmpt(LN_ADC_SMPT_239_5);
 #if 0
@@ -94,6 +95,35 @@ void bmp_gpio_init()
     }
 #endif
 }
+/**
+ * @brief 
+ * 
+ */
+void bmp_io_begin_session()
+{
+    pSWDIO.on();
+    pSWDIO.output();
+    pSWCLK.clockOn();
+    pSWCLK.output();
+    pReset.off(); // hi-z by default
+    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
+}
+/**
+ * @brief 
+ * 
+ */
+void bmp_io_end_session()
+{
+    pSWDIO.hiZ();
+    pSWDIO.hiZ();
+    pSWCLK.hiZ();
+    pSWCLK.hiZ();
+    pReset.off(); // hi-z by default
+    
+    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
+}
+
+
 /**
  */
 static uint32_t SwdRead(size_t len)
