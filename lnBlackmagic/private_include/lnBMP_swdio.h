@@ -1,5 +1,5 @@
 #pragma once
-
+#define SWD_IO_SPEED 10 // 10mhz is more than enough (?)
 #include "lnGPIO.h"
 #define swait()                                                                                                        \
     {                                                                                                                  \
@@ -35,7 +35,12 @@ class SwdPin
     }
     void output()
     {
-        lnPinMode(_me, lnOUTPUT);
+        lnPinMode(_me, lnOUTPUT,SWD_IO_SPEED); // 10 Mhz
+    }
+    void hiZ()
+    {
+        lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_HIZ);
+        lnPinMode(_me, lnOUTPUT_OPEN_DRAIN, 1);
     }
     void set(bool x)
     {
@@ -70,13 +75,17 @@ class SwdReset
         // 1: Hi Z
         // 0: GND
         lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_HIZ); // hi Z
-        lnPinMode(_me, lnOUTPUT_OPEN_DRAIN);
+        lnPinMode(_me, lnOUTPUT_OPEN_DRAIN,SWD_IO_SPEED);
     }
 
     void on()
     {
         _state = true;
        lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_GND);
+    }
+    void hiZ()
+    {
+        off();
     }
     void off()
     {

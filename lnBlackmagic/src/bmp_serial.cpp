@@ -8,6 +8,7 @@
 #include "lnArduino.h"
 #include "lnBmpTask.h"
 #include "lnSerial.h"
+#include "lnBMP_pinout.h"
 #define BMP_SERIAL_BUFFER_SIZE 256
 /**
 
@@ -176,14 +177,8 @@ class BMPSerial : public xTask
 
 void serialInit()
 {
-#ifdef USE_STLINK_PINOUT
-    BMPSerial *serial = new BMPSerial(1, 0); // bridge CDC ACM1 to Serial port 0 PB6/PB7
-    // Remap the uart pins
-    lnPinMode(PA9, lnOUTPUT);
-    lnPinMode(PA10, lnOUTPUT);
-    lnPinMode(PB6, lnALTERNATE_PP);
-    lnPinMode(PB7, lnALTERNATE_PP);
-#else
-    BMPSerial *serial = new BMPSerial(1, 2); // bridge CDC ACM1 to Serial port 2 PB10/PB11
-#endif
+
+// bridge CDC ACMxxx to Serial port yy
+    BMPSerial *serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE); 
+    EXTRA_SETUP();
 }
