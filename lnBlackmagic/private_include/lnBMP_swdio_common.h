@@ -1,13 +1,6 @@
 
 #include "lnGPIO.h"
 
-#define SWD_IO_SPEED 10 // 10mhz is more than enough (?)
-
-#define swait()                                                                                                        \
-    {                                                                                                                  \
-        for (int lop = swd_delay_cnt; --lop > 0;)                                                                      \
-            __asm__("nop");                                                                                            \
-    }
 
 
 /**
@@ -23,14 +16,15 @@ class SwdReset
         _state = false;
         // 1: Hi Z
         // 0: GND
-        lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_HIZ); // hi Z
+        lnOpenDrainClose(_me,false);
         lnPinMode(_me, lnOUTPUT_OPEN_DRAIN,SWD_IO_SPEED);
+        
     }
 
     void on()
     {
         _state = true;
-       lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_GND);
+        lnOpenDrainClose(_me,true);       
     }
     void hiZ()
     {
@@ -39,7 +33,7 @@ class SwdReset
     void off()
     {
         _state = false;
-       lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_HIZ);
+        lnOpenDrainClose(_me,false);       
     }   
     bool state() { return _state;}
   protected:

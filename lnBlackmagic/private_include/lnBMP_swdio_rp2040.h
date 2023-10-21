@@ -35,7 +35,7 @@ class SwdPin
     }
     void hiZ()
     {
-        lnDigitalWrite(_me,LN_GPIO_OUTPUT_OD_HIZ);
+        lnOpenDrainClose(_me,false);        
         lnPinMode(_me, lnOUTPUT_OPEN_DRAIN, 1);
     }
     void set(bool x)
