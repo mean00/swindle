@@ -99,7 +99,7 @@ void bmp_io_begin_session()
     pSWCLK.clockOn();
     pSWCLK.output();
     pReset.off(); // hi-z by default
-    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
+    
 }
 /**
  * @brief 
@@ -112,8 +112,7 @@ void bmp_io_end_session()
     pSWCLK.hiZ();
     pSWCLK.hiZ();
     pReset.off(); // hi-z by default
-    
-    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
+        
 }
 
 

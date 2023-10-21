@@ -11,11 +11,11 @@
  *
  */
 // RP2040
-#if 1
+#ifdef USE_RP2040
 const char *descriptor[] = {
     (const char[]){0x09, 0x04},     // 0: is supported language is English (0x0409)
     "picolnBlackMagic",             // 1: Manufacturer
-    "Custom implementation of BMP", // 2: Product
+    "Custom implementation of BMP (pico)", // 2: Product
     "45678",                        // 3: Serials, should use chip ID
     "plnBMP GDB Server",            // 4: CDC Interface
     "plnBMP GDB Uart",              // 5: CDC Interface

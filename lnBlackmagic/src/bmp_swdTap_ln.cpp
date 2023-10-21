@@ -9,7 +9,7 @@ static lnSimpleADC *adc = NULL;
  */
 void    gmp_gpio_init_adc()
 {
-
+    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
     lnPeripherals::enable(Peripherals::pADC0);    
     adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO);
     adc->setSmpt(LN_ADC_SMPT_239_5);
