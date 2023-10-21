@@ -14,8 +14,8 @@ FILE *const stdout = NULL;
  */
 void setup()
 {
-    lnPinMode(LED, lnOUTPUT);
-    lnPinMode(LED2, lnOUTPUT);
+    lnPinMode(LED, lnOUTPUT,1); // 1Mhz is enough
+    lnPinMode(LED2, lnOUTPUT,1); // 1Mhz is enough
 }
 void loop()
 {
