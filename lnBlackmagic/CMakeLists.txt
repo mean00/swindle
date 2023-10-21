@@ -158,10 +158,16 @@ ELSE()
         ADD_DEFINITIONS("-include miniplatform.h")       
         include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
         #  add lnBlackmagic target code and host connection stuff
+        IF(USE_RP2040)
+            SET(EXTRA _rp2040)
+        ELSE()
+            SET(EXTRA _ln)
+        ENDIF()
         SET(BRIDGE_SRCS 
                 ${B}/bridge.cpp 
                 ${B}/bmp_gpio.cpp  
                 ${B}/bmp_swdTap.cpp   
+                ${B}/bmp_swdTap${EXTRA}.cpp   
                 ${B}/bmp_serial.cpp  
                 ${B}/bmp_rs_gdb.cpp                
                 ${B}/bmp_jtagstubs.cpp  

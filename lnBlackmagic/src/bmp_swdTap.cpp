@@ -36,13 +36,13 @@ extern "C"
 #include "general.h"
 #include "timing.h"
 }
+extern  void gmp_gpio_init_adc();
 
 uint32_t swd_delay_cnt = 4;
 
 #include "lnBMP_swdio.h"
 #if PC_HOSTED == 0
 #include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
-#include "lnADC.h"
 #endif
 
 static uint32_t SwdRead(size_t ticks);
@@ -51,7 +51,7 @@ static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
 static void swdioSetAsOutput(bool output);
-static lnSimpleADC *adc = NULL;
+
 static SwdPin pSWDIO(TSWDIO_PIN);
 static SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
 static SwdReset pReset(TRESET_PIN);
@@ -85,15 +85,8 @@ void bmp_gpio_init()
     pReset.hiZ(); // hi-z by default
     pReset.off(); // hi-z by default
 
-    lnPeripherals::enable(Peripherals::pADC0);    
-    adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO);
-    adc->setSmpt(LN_ADC_SMPT_239_5);
-#if 0
-    while(1)
-    {
-        __asm__("nop");
-    }
-#endif
+    gmp_gpio_init_adc();
+
 }
 /**
  * @brief 
@@ -106,7 +99,7 @@ void bmp_io_begin_session()
     pSWCLK.clockOn();
     pSWCLK.output();
     pReset.off(); // hi-z by default
-    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
+    
 }
 /**
  * @brief 
@@ -119,8 +112,7 @@ void bmp_io_end_session()
     pSWCLK.hiZ();
     pSWCLK.hiZ();
     pReset.off(); // hi-z by default
-    
-    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
+        
 }
 
 
@@ -237,30 +229,6 @@ extern "C" bool platform_nrst_get_val(void)
     return pReset.state();
 }
 
-/*
- */
-
-/*
- */
-extern "C" float bmp_get_target_voltage_c()
-{
-    float vcc = 3300.; // lnBaseAdc::getVcc();
-    if (vcc < 2600)
-    {
-        Logger("Invalid ADC Vref\n");
-        return 0.0;
-    }
-    int sample = 0;
-    for (int i = 0; i < 16; i++)
-    {
-        sample += adc->simpleRead();
-    }
-    sample /= 16;
-
-    vcc = (float)sample * vcc * PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER
-    vcc = vcc / 4095000.;
-    return vcc;
-}
 
 swd_proc_s swd_proc;
 /**
