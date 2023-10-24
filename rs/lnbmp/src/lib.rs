@@ -14,7 +14,7 @@ mod commands;
 mod rn_bmp_cmd_c;
 mod bmp;
 mod glue;
-mod lnlogger;
+mod bmplogger;
 mod poppingbuffer;
 
 
@@ -26,6 +26,7 @@ use decoder::RESULT_AUTOMATON;
 use numtoa::NumToA;
 
 crate::setup_log!(false);
+//use crate::{bmplog,bmpwarning};
 
 //
 
@@ -109,7 +110,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
             match data_as_slice[0]
             {
                 3  => crate::commands::run::target_halt() ,
-                _  => bmplog("Warning : garbage received")
+                _  => bmplog!("Warning : garbage received")
             }
         }
         return;
@@ -124,34 +125,34 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                         {
                             let consumed : usize;
                             let state : RESULT_AUTOMATON;
-                            bmplog("Parsing..\n");
+                            bmplog!("Parsing..\n");
                             (consumed, state) =  x.parse(data_as_slice);
-                            bmplog("Parsed..\n");
+                            bmplog!("Parsed..\n");
                             match state
                             {
                                 RESULT_AUTOMATON::RpcReady => 
                                     {
-                                        bmplog("Rpc....\n");
+                                        bmplog!("Rpc....\n");
                                         let s = x.get_result(); // s is a RPC command block
                                         if s.len() > 0
                                         {
-                                            //bmplog("--> ACK\n");
+                                            //bmplog!("--> ACK\n");
                                             //rngdb_send_data( CHAR_ACK ); 
                                             commands::rpc::rpc(s);
-                                            bmplog("Rpc done\n");
+                                            bmplog!("Rpc done\n");
                                         }
                                     },
                                 RESULT_AUTOMATON::Ready => 
                                     {
                                         // ok we have a full string...
-                                        bmplog("Gdb call\n");
+                                        bmplog!("Gdb call\n");
                                         let s = x.get_result();
                                         let command : &[u8];
                                         let args : &[u8];
                                         match crate::parsing_util::split_command(s)
                                         {
                                             None => {
-                                                        bmplog("Cannot convert string");
+                                                        bmplog!("Cannot convert string");
                                                         command = empty;
                                                         args = empty;                                                        
                                                     },
@@ -163,19 +164,19 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                         }
                                         if command.len()==0
                                         {
-                                            bmplog("Cannot read string");                                            
+                                            bmplog!("Cannot read string");                                            
                                         }
                                         else
                                         {               
-                                            bmplog("--> ACK\n");
+                                            bmplog!("--> ACK\n");
                                             rngdb_send_data_u8( &[CHAR_ACK] );
                                             rngdb_output_flush( );
                                             let as_string = core::str::from_utf8_unchecked(command);
-                                            bmplog("Exec..:");
-                                            bmplog(as_string);
-                                            bmplog("\n");
+                                            bmplog!("Exec..:");
+                                            bmplog!(as_string);
+                                            bmplog!("\n");
                                             commands::exec(as_string, args);
-                                            bmplog("Exec done\n");
+                                            bmplog!("Exec done\n");
                                         }
                                     },
                                 RESULT_AUTOMATON::Error => {rngdb_send_data_u8( &[CHAR_NACK] ); rngdb_output_flush( );},

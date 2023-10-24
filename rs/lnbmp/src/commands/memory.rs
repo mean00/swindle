@@ -11,7 +11,7 @@ use super::{CommandTree,exec_one};
 use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_mem_write};
 
 crate::setup_log!(false);
-
+use crate::{bmplog,bmpwarning};
 
 // memory read m80070f6,4
 pub fn _m(command : &str, _args : &Vec<&str>) -> bool
@@ -68,8 +68,8 @@ pub fn _X(command : &str, args : &[u8]) -> bool
         None                => encoder::reply_e01(),
         Some( (addr,len) )   => 
                             {
-                                    bmplog1("adr",addr);
-                                    bmplog1("len",len);
+                                    bmplog!("adr:{}\n",addr);
+                                    bmplog!("len:{}\n",len);
                                     let mut actual_len: usize = len as usize;
                                     if args.len()  > actual_len
                                     {

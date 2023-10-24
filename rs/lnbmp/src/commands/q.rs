@@ -22,6 +22,7 @@ use crate::util::xmin;
 use numtoa::NumToA;
 
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 
 const q_command_tree: [CommandTree;10] = 
 [
@@ -291,8 +292,8 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
     let mut digest = crc32_cksum.digest();
     let mut buffer: [u8;CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
 
-    bmplogx("CRC : Adr",address as u32);
-    bmplogx("len",length as u32);
+    bmplog!("CRC : Adr {}",address as u32);
+    bmplog!("len {}",length as u32);
 //
     //let crc = bmp_crc32(address,length);
     // preamble if any
@@ -311,7 +312,7 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         let rd: u32 = xmin((tail-adr) as u32,buffer.len() as u32);
         if crate::bmp::bmp_read_mem(adr, &mut buffer[0..(rd as usize)]) == false
         {
-            bmpwarning("CRC : cant read memory",adr);
+            bmpwarning!("CRC : cant read memory {}",adr);
             encoder::error(1);
             return true;
         }
@@ -319,7 +320,7 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
         adr+=rd;
     }   
     let crc=digest.finalize();   
-    bmplogx("crc::<",crc);bmplog(">\n");
+    bmplog!("crc::<{}>\n",crc);
     {
         let mut e = encoder::new();
         e.begin();

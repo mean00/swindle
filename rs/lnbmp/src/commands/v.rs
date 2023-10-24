@@ -12,6 +12,7 @@ use crate::commands::CallbackType;
 use crate::commands::_vCont;
 
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 
 const v_command_tree: [CommandTree;3] = 
 [

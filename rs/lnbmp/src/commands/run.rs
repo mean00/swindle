@@ -10,6 +10,7 @@ use crate::bmp;
 static mut running :bool  = false;
 
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 
 pub enum HaltState
 {

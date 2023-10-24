@@ -18,6 +18,7 @@ use crate::bmp;
 use numtoa::NumToA;
 
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 
 // write register
 // Pf=40000008
@@ -26,7 +27,7 @@ crate::setup_log!(false);
 fn pp_prefix(command: &str) -> Option<(u32, u32)> {
     let args: Vec<&str> = command.split('=').collect();
     if args.len() != 2 {
-        bmplog("Pxxx wrong args");
+        bmplog!("Pxxx wrong args");
         return None;
     }
     let reg = ascii_string_to_u32(args[0]);

@@ -11,6 +11,7 @@ use numtoa::NumToA;
 //
 //
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 
 struct HelpTree {
     command: &'static str,
@@ -140,7 +141,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
     match crate::parsing_util::split_command(rcmd)
     {
         None => {
-                    bmpwarning("Cannot convert string (rcmd)",0);
+                    bmpwarning!("Cannot convert string (rcmd)\n");
                     return false;                                                       
                 },
         Some( (x,y) ) =>
@@ -171,11 +172,11 @@ pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
  */
 pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
 {
-    bmplog("swdp_scan:\n");
+    bmplog!("swdp_scan:\n");
 
     if !bmp::swdp_scan()
     {
-        bmpwarning("swdp fail!\n",0);
+        bmpwarning!("swdp fail!\n");
         return false;
     }
     

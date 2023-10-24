@@ -11,42 +11,7 @@ use numtoa::NumToA;
 extern crate std;
 #[cfg(feature = "hosted")]
 use std::print;
-#[cfg(feature = "hosted")]
-pub fn glog (s : &str)
-{
-    print!("<<{:?}",s);
-}
-#[cfg(feature = "hosted")]
-pub fn glog1<T: core::fmt::Display> (s : &str, v: T)
-{
-    print!("<<{:?}:{}",s,v);
-}
-#[cfg(feature = "hosted")]
-pub fn glogx (s : &str, v: u32)
-{
-    print!("<<{:?}:{:#x}",s,v);
-}
 
-#[cfg(feature = "native")]
-use rnarduino::rn_os_helper::{log,log1,logx};
-
-#[cfg(feature = "native")]
-pub fn glog1<T: uDisplay> (s : &str, v: T)
-{
-    log1(s,v);
-}
-
-use ufmt::uDisplay;
-#[cfg(feature = "native")]
-pub fn glog (s : &str)
-{
-    log(s);
-}
-#[cfg(feature = "native")]
-pub fn glogx (s : &str, v: u32)
-{
-    logx(s,v);
-}
 
 pub fn xswap( a: &mut isize, b : &mut isize)
 {

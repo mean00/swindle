@@ -17,6 +17,7 @@ use crate::parsing_util::ascii_string_to_u32;
 use crate::bmp;
 
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 /*
 Same value as bmp internal
 	TARGET_BREAK_SOFT 0 ,

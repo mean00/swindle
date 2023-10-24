@@ -14,6 +14,7 @@ use crate::parsing_util::ascii_octet_to_hex;
 use crate::packet_symbols::{ CHAR_RESET_04,CHAR_START, CHAR_END,CHAR_ESCAPE,RPC_START, RPC_END, RPC_START_SESSION};
 //
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 //
 //
 #[derive(PartialEq,Clone,Copy)]
@@ -96,7 +97,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
         let mut sz = data.len();
         let mut consumed = 0;
 
-        bmplog1("In size ",data.len() as u32);
+        bmplog!("In size {} ",data.len() as u32);
 
         // auto clear errors
         if  self.automaton  ==    PARSER_AUTOMATON::Error
@@ -108,12 +109,12 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
         {
             
             let c : u8 = data[dex];
-            bmplog1("InputChar, ",c as char);            
+            bmplog!("InputChar, {}",c as char);            
             //let _d : char = c as char;
-            //bmplog1("c",d);
-            //bmplog1("u",c);
-            //bmplog1("S",self.automaton as usize);
-            //bmplog1("i",self.indx);
+            //bmplog!("c",d);
+            //bmplog!("u",c);
+            //bmplog!("S",self.automaton as usize);
+            //bmplog!("i",self.indx);
             consumed+=1;
             sz-=1;
             dex+=1;
@@ -127,13 +128,13 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             }
                                             ,
                 PARSER_AUTOMATON::Idle =>  {
-                                            bmplog("Idle\n");
+                                            bmplog!("Idle\n");
                                             match c
                                             {
                                                // RPC_START_SESSION /* + */ => PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1,
                                                 CHAR_START /*'$'*/      => {self.indx = 0;self.checksum=0;PARSER_AUTOMATON::Body}, 
                                                 RPC_START  /* '!' */    => {
-                                                                            bmplog("rpc start\n");
+                                                                            bmplog!("rpc start\n");
                                                                             self.indx=0;
                                                                             PARSER_AUTOMATON::RpcBody
                                                                             },
@@ -141,7 +142,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             }},
                 PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1 => 
                                             {
-                                            bmplog("RPC_H1\n");
+                                            bmplog!("RPC_H1\n");
                                             match c
                                             {
                                                 RPC_END => PARSER_AUTOMATON::Idle, /* Skip + EOM so we get a vanilla RPC string */
@@ -149,18 +150,18 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             }},
                 PARSER_AUTOMATON::RpcBody => 
                                             {
-                                            bmplog("RPC_body\n");
+                                            bmplog!("RPC_body\n");
                                             match c
                                             {
                                                 RPC_END /*'$'*/         => {
-                                                                        bmplog1("rpc done(",self.indx);bmplog(")\n");
+                                                                        bmplog!("rpc done( {} )\n",self.indx);
                                                                         PARSER_AUTOMATON::RpcDone
                                                                         }, 
                                                 RPC_START /*'#'*/       => {self.indx=0;PARSER_AUTOMATON::RpcBody},  // restart ? wtf ?
                                                 _                       => {
                                                                         if self.indx > INPUT_BUFFER_SIZE
                                                                         {
-                                                                            bmplog("RPC input buffer overflow\n");
+                                                                            bmplog!("RPC input buffer overflow\n");
                                                                             PARSER_AUTOMATON::Error
                                                                         }else {
                                                                             self.input_buffer[self.indx]= c;
@@ -171,11 +172,11 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             }},                                             
                 PARSER_AUTOMATON::Body => 
                                             {
-                                            bmplog("GDB_body\n");
+                                            bmplog!("GDB_body\n");
                                             match c
                                             {
                                                 CHAR_START /*'$'*/  => {
-                                                            bmplog("RESTARTING DECODER\n");
+                                                            bmplog!("RESTARTING DECODER\n");
                                                             self.indx = 0;
                                                             self.checksum=0;
                                                             PARSER_AUTOMATON::Body}, 
@@ -183,7 +184,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                                 CHAR_ESCAPE /*'}'*/     => PARSER_AUTOMATON::Escape, 
                                             //    CHAR_RESET_04           => PARSER_AUTOMATON::Reset,
                                                 _                       => {
-                                                                        bmplog1("T:<",c);bmplog(">");
+                                                                        bmplog!("T:<{}>",c);
                                                                         self.checksum+=c as usize;
                                                                         self.input_buffer[self.indx]= match c
                                                                         {
@@ -205,13 +206,13 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                         },
                 PARSER_AUTOMATON::End1 => 
                                         {
-                                            bmplog("CHK1\n");
+                                            bmplog!("CHK1\n");
                                             self.checksum_received[0]=c;
                                             PARSER_AUTOMATON::End2
                                         },
                 PARSER_AUTOMATON::End2 => 
                                         {
-                                            bmplog("CHK2\n");
+                                            bmplog!("CHK2\n");
                                             self.checksum_received[1]=c;
                                             // Verify checksum 
                                             let chk=ascii_octet_to_hex(self.checksum_received[0],self.checksum_received[1]);
@@ -221,7 +222,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                                             }
                                             else
                                             {
-                                                bmplog("Wrong checksum\n");
+                                                bmplog!("Wrong checksum\n");
                                                 PARSER_AUTOMATON::Error
                                             }
                                         },
@@ -236,7 +237,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                 PARSER_AUTOMATON::Error => {self.automaton=PARSER_AUTOMATON::Idle; return (consumed, RESULT_AUTOMATON::Error);},
                 PARSER_AUTOMATON::Done  =>   {return (consumed, RESULT_AUTOMATON::Ready);},
                 PARSER_AUTOMATON::RpcDone  =>   {return (consumed, RESULT_AUTOMATON::RpcReady);},
-                PARSER_AUTOMATON::Reset =>   {bmplog("RESET");self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
+                PARSER_AUTOMATON::Reset =>   {bmplog!("RESET");self.automaton=PARSER_AUTOMATON::Idle;return (consumed, RESULT_AUTOMATON::Reset);},
                 _                         => (),
             }
         }

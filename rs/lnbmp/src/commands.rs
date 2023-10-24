@@ -29,6 +29,7 @@ type Callback_raw = fn(command: &str, args: &[u8]) -> bool;
 type Callback_text = fn(command: &str, args: &Vec<&str>) -> bool;
 
 crate::setup_log!(false);
+use crate::{bmplog,bmpwarning};
 
 enum CallbackType {
     text(Callback_text),
@@ -167,8 +168,8 @@ const main_command_tree: [CommandTree; 20] = [
 
 fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
     let connected: bool = crate::bmp::bmp_attached();
-    bmplog(command);
-    bmplog("\n");
+    bmplog!(command);
+    bmplog!("\n");
     let empty: &str = "";
     for i in 0..tree.len() {
         let c = &tree[i];
@@ -179,8 +180,8 @@ fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
                 crate::glue::gdb_out_rs("Command ");
                 crate::glue::gdb_out_rs(c.command);
                 crate::glue::gdb_out_rs("cannot be used while not connected\n");
-                bmplog("Command not ok while not connected");
-                bmplog(c.command);
+                bmplog!("Command not ok while not connected");
+                bmplog!(c.command);
                 encoder::reply_e01();
                 return true;
             } else {
@@ -208,8 +209,7 @@ pub fn exec(command: &str, args: &[u8]) {
     if !exec_one(&main_command_tree, command, args) {
         {
             encoder::simple_send(""); // unsupported
-            bmplog1("Unsupported cmd :", command);
-            bmplog("\n");
+            bmplog!("Unsupported cmd :{} \n", command);
             crate::glue::gdb_out_rs(">>>Command [");
             crate::glue::gdb_out_rs(command);
             crate::glue::gdb_out_rs("] is not supported\n");

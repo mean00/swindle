@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use cty::size_t;
 
 crate::setup_log!(false);
-
+use crate::{bmplog,bmpwarning};
 //
 //
 //
@@ -95,7 +95,7 @@ pub fn take_adress_length( xin : &str ) -> Option< (u32, u32) >
     let args : Vec <&str>= xin.split(",").collect();
     if args.len()!=2
     {
-        bmplog("take_adress_length : wrong param");
+        bmplog!("take_adress_length : wrong param");
         return None;
     }
     let address = crate::parsing_util::ascii_string_to_u32(args[0]);
