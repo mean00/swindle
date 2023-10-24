@@ -46,13 +46,13 @@ fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
     }
 
     let xin = &args[0];
-    bmplog!("Input : {}",xin);
+    bmplog!("Input : {}\n",xin );
     match crate::parsing_util::take_adress_length(xin)
     {
         None =>   encoder::reply_e01(),
         Some( (adr,len) ) => 
             {   
-                bmplog!("Erase : Adr {}",adr);
+                bmplog!("Erase : Adr 0x{:x}",adr);
                 bmplog!("len {}",len);
                 encoder::reply_bool(bmp_flash_erase(adr,len));
             },
@@ -99,9 +99,9 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
 
     let adr  =crate::parsing_util::u8s_string_to_u32( &block[..prefix] );
     let data: &[u8] = &block[(prefix+1)..];
-    bmplog!("adr:{}",adr);
+    bmplog!("adr:0x{:x}",adr);
     bmplog!("len:{}",data.len());
-    bmplog!("write : Adr {}",adr as u32);
+    bmplog!("write : Adr 0x{:x}",adr as u32);
     bmplog!("len {}",len as u32);
 
     encoder::reply_bool( bmp_flash_write(adr, data) );

@@ -107,8 +107,7 @@ fn hex16_to_u32(input: &[u8]) -> u32 {
  */
 fn reply_adiv5_32(fault: i32, value: u32) {
     if fault != 0 {
-        bmplog!("\tAdiv error   : {}", fault as u32);
-        bmplog!("\n");
+        bmplog!("\tAdiv error   : 0x{:x}\n", fault as u32);
         rpc_reply32_le(
             rpc_commands::RPC_RESP_ERR,
             ((fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32),
@@ -122,8 +121,7 @@ fn reply_adiv5_32(fault: i32, value: u32) {
  */
 fn reply_adiv5_block(fault: i32, buffer: &[u8]) {
     if fault != 0 {
-        bmplog!("\reply_adiv5_block error   : {}", fault as u32);
-        bmplog!("\n");
+        bmplog!("\reply_adiv5_block error   : 0x{:x}", fault as u32);
         rpc_reply32_le(
             rpc_commands::RPC_RESP_ERR,
             ((fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32),
@@ -183,15 +181,13 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
             let value: u32;
             let fault: i32;
 
-            bmplog!("\t\t DP_READ:{}", input[0] as u32);
-            bmplog!("\n");
+            bmplog!("\t\t DP_READ:0x{:x}\n", input[0] as u32);
             bmplog!("\t\t device_index  {}", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
-            bmplog!(" dp_read at {}", address);
+            bmplog!(" dp_read at 0x{:x}", address);
             (fault, value) =
                 bmp::bmp_adiv5_full_dp_read(device_index, ap_selection, address as u16);
-            bmplog!("\t\tvalue :{}", value);
-            bmplog!("\n");
+            bmplog!("\t\tvalue :{}\n", value);
             reply_adiv5_32(fault, value);
             return true;
         }
@@ -201,19 +197,15 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
             let address: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
             let value: u32 = crate::parsing_util::u8s_string_to_u32(pop.leftover());
             let fault: i32;
-            bmplog!("\t\t LOW_ACCESS: {}", input[0] as u32);
-            bmplog!("\n");
+            bmplog!("\t\t LOW_ACCESS: {}\n", input[0] as u32);
             bmplog!("\t\t device_index {} ", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
-            bmplog!("\t\taddress :{}", address);
-            bmplog!("\n");
-            bmplog!("\t\tvalue :{}", value);
-            bmplog!("\n");
+            bmplog!("\t\taddress :0x{:x}\n", address);
+            bmplog!("\t\tvalue :{}\n", value);
             let outvalue: u32;
             (fault, outvalue) =
                 bmp::bmp_adiv5_full_dp_low_level(device_index, ap_selection, address as u16, value);
-            bmplog!("\t\toutvalue :{}", outvalue);
-            bmplog!("\n");
+            bmplog!("\t\toutvalue :{} \n", outvalue);
             reply_adiv5_32(fault, outvalue);
             return true;
         }
@@ -222,10 +214,8 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
         {
             let address: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
             let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
-            bmplog!("\t\t AP_READ addr:{}", address);
-            bmplog!("\n");
-            bmplog!("\t\t value {} ", value);
-            bmplog!("\n");
+            bmplog!("\t\t AP_READ addr:{}\n", address);
+            bmplog!("\t\t value {} \n", value);
             reply_adiv5_32(0, value);
             return true;
         }
@@ -235,10 +225,8 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
             let address: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(4));
             let value: u32 = crate::parsing_util::u8s_string_to_u32(pop.leftover());
             bmp::bmp_adiv5_ap_write(device_index, ap_selection, address, value);
-            bmplog!("\t\t AP_WRITE addr:{}", address);
-            bmplog!("\n");
-            bmplog!("\t\t value {} ", value);
-            bmplog!("\n");
+            bmplog!("\t\t AP_WRITE addr:0x{:x}\n", address);
+            bmplog!("\t\t value 0x{:x} \n", value);
             reply_adiv5_32(0, 0);
             return true;
         }
@@ -248,12 +236,9 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
             let csw1: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
             let address: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
             let length: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
-            bmplog!("\t\t MEM READ CSW : {}", csw1);
-            bmplog!("\n");
-            bmplog!("\t\t adr  :{}", address);
-            bmplog!("\n");
-            bmplog!("\t\t len  :{}", length);
-            bmplog!("\n");
+            bmplog!("\t\t MEM READ CSW : 0x{:x} \n", csw1);            
+            bmplog!("\t\t adr  :0x{:x}\n", address);
+            bmplog!("\t\t len  :{}\n", length);
             if length > 1024 {
                 rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
                 return true;
@@ -277,14 +262,10 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
             let align: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(2));
             let address: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
             let length: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
-            bmplog!("\t\t RPC_MEM_WRITE CSW :{}", csw1);
-            bmplog!("\n");
-            bmplog!("\t\t adr  :{}", address);
-            bmplog!("\n");
-            bmplog!("\t\t len  :{}", length);
-            bmplog!("\n");
-            bmplog!("\t\t align  :{}", align);
-            bmplog!("\n");
+            bmplog!("\t\t RPC_MEM_WRITE CSW :0x{:x}\n", csw1);
+            bmplog!("\t\t adr  :0x{:x}\n", address);
+            bmplog!("\t\t len  :{}\n", length);
+            bmplog!("\t\t align  :{}\n", align);
             if length > 1024 {
                 rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
                 return true;
@@ -446,16 +427,14 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
         }
         rpc_commands::RPC_IN => {
             let tick = nbTick(&input[1..=2]);
-            bmplog!("\tIn bits  : {}", tick);
-            bmplog!("\n");
+            bmplog!("\tIn bits  : {}\n", tick);
             if tick == 0 {
                 return false;
             }
             let mut value: u32 = 0;
             match bmp::bmp_rpc_swd_in(&mut value, tick) {
                 true => {
-                    bmplog!("\t\t value {}", value);
-                    bmplog!("\n");
+                    bmplog!("\t\t value {}\n", value);
                     rpc_reply32(rpc_commands::RPC_RESP_OK, value);
                 }
                 false => {
@@ -472,8 +451,7 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
                 return false;
             }
             let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
-            bmplog!("\tOut_par value  : {}", param);
-            bmplog!("\n");
+            bmplog!("\tOut_par value  : {}\n", param);
 
             bmp::bmp_rpc_swd_out_par(param, tick);
             rpc_reply(rpc_commands::RPC_RESP_OK, 0);
@@ -484,24 +462,21 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
             if tick == 0 {
                 return false;
             }
-            bmplog!("\tOut bits  :{} ", tick);
-            bmplog!("\n");
+            bmplog!("\tOut bits  :{} \n", tick);
             // total should be 1 (cmd) + 2 (size) + 2*x
             if input.len() < 4 {
-                bmplog!("RPC_out wrong len:{}", input.len());
-                bmplog!("\n");
+                bmplog!("RPC_out wrong len:{}\n", input.len());
                 return false;
             }
 
             let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
-            bmplog!("\tOut_par value  : {}", param);
-            bmplog!("\n");
+            bmplog!("\tOut_par value  : {}\n", param);
 
             bmp::bmp_rpc_swd_out(param, tick);
             rpc_reply(rpc_commands::RPC_RESP_OK, 0);
             return true;
         }
-        _ => bmplog!("Unsupported SWP RPC command {}", input[0]),
+        _ => bmplog!("Unsupported SWP RPC command 0x{:x}\n", input[0]),
     };
     bmplog!("unmanaged swdp packet\n");
     false
@@ -562,16 +537,14 @@ fn rpc_adiv5_packet(input: &[u8]) -> bool {
             let fault: i32;
             bmplog!("\t\t device_index {} ", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
-            bmplog!("\taddress : {}", address);
-            bmplog!(" value : {}", value);
-            bmplog!("\n");
+            bmplog!("\taddress : 0x{:x}", address);
+            bmplog!(" value : {}\n", value);
             let outvalue: u32;
             //pub fn  bmp_adiv5_full_dp_low_level( device_index : u32, ap_selection :u32, address : u16, value : u32) -> ( i32 , u32)
             (fault, outvalue) =
                 bmp::bmp_adiv5_full_dp_low_level(device_index, ap_selection, address as u16, value);
             bmplog!("\t\toutvalue : {}", outvalue);
-            bmplog!(" fault : {}", fault as u32);
-            bmplog!("\n");
+            bmplog!(" fault : {}\n", fault as u32);
             reply_adiv5_32(fault, outvalue);
             return true;
         }
@@ -582,15 +555,13 @@ fn rpc_adiv5_packet(input: &[u8]) -> bool {
             let value: u32;
             let fault: i32;
 
-            bmplog!("\t\t RPC_REMOTE_DP_READ: {}", input[0] as u32);
-            bmplog!("\n");
+            bmplog!("\t\t RPC_REMOTE_DP_READ: {}\n", input[0] as u32);
             bmplog!("\t\t device_index {} ", device_index);
             bmplog!(" ap_selection at {} ", ap_selection);
             bmplog!(" dp_read at  {}", address);
             (fault, value) =
                 bmp::bmp_adiv5_full_dp_read(device_index, ap_selection, address as u16);
-            bmplog!("\t\tvalue : {}", value);
-            bmplog!("\n");
+            bmplog!("\t\tvalue : {}\n", value);
             reply_adiv5_32(fault, value);
             return true;
         }
