@@ -1,5 +1,7 @@
 
 #[allow(unused_imports)]
+
+#[cfg(feature = "native")]
 #[macro_export]
 macro_rules! bmplog
         {
@@ -18,6 +20,7 @@ macro_rules! bmplog
             };            
         }
         //--
+#[cfg(feature = "native")]        
 #[macro_export]
 macro_rules! bmpwarning
         {
@@ -30,7 +33,7 @@ macro_rules! bmpwarning
             };            
         }       
 
-//#[cfg(feature = "native")]
+#[cfg(feature = "native")]
 #[macro_export]
 macro_rules! setup_log
 {
@@ -46,3 +49,46 @@ macro_rules! setup_log
 //#[cfg(feature = "hosted")]
 ////#[macro_export]
 //-------------
+
+#[cfg(feature = "hosted")]
+#[macro_export]
+macro_rules! bmplog
+        {
+            ($x:expr) => {
+                if(log_enabled)
+                {
+                    print!("{}",($x))
+                }
+            };
+        
+            ($x:expr, $($y:expr),+) => {
+                if(log_enabled)
+                {
+                    print!( $x, $($y),+)
+                }
+            };            
+        }
+        //--
+#[cfg(feature = "hosted")]        
+#[macro_export]
+macro_rules! bmpwarning
+        {
+            ($x:expr) => {
+                print!($x)
+            };
+
+            ($x:expr, $($y:expr),+) => {
+                print!( $x, $($y),+)
+            };            
+        }       
+
+#[cfg(feature = "hosted")]
+#[macro_export]
+macro_rules! setup_log
+{
+    ($x:expr) => {      
+        static log_enabled : bool = $x;       
+        extern crate std;
+        use std::print;     
+    }
+}
