@@ -4,11 +4,17 @@
 macro_rules! bmplog
         {
             ($x:expr) => {
-                lnLogger!($x)
+                if(log_enabled)
+                {
+                    lnLogger!($x)
+                }
             };
         
             ($x:expr, $($y:expr),+) => {
-                lnLogger!( $x, $($y),+)
+                if(log_enabled)
+                {
+                    lnLogger!( $x, $($y),+)
+                }
             };            
         }
         //--
@@ -16,11 +22,11 @@ macro_rules! bmplog
 macro_rules! bmpwarning
         {
             ($x:expr) => {
-                lnLogger!($x)
+                    lnLogger!($x)
             };
 
             ($x:expr, $($y:expr),+) => {
-                lnLogger!( $x, $($y),+)
+                    lnLogger!( $x, $($y),+)
             };            
         }       
 
@@ -31,6 +37,7 @@ macro_rules! setup_log
     ($x:expr) => {      
         use rnarduino::{lnLogger,lnLogger_init};     
         lnLogger_init!();
+        static log_enabled : bool = $x;
        
     }
 }
