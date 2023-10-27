@@ -33,3 +33,4 @@ kicad/ch32v3x/lnBMP_ch32/lnBMP_ch32-backups/
 *.log
 *.zip
 build_default.cmake
+lnBlackmagic/rs/lnbmp/target/

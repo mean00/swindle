@@ -82,7 +82,6 @@ GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
 
 
 ADD_SUBDIRECTORY(lnBlackmagic)
-ADD_SUBDIRECTORY(rs)
 target_link_libraries(lnBMP lnarduino_c_bindings)
 target_link_libraries(lnBMP lnBlackmagic )
 #target_link_libraries(lnBMP gd32_usb_usbd )
