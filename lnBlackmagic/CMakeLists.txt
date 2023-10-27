@@ -225,7 +225,8 @@ include_directories( ${BMP}/src/include)
 include_directories( ${BMP}/src)
 include_directories( ${BMP}/src/target)
 #---------
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rs/lnbmp/c_interface bmp_c_interface)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/lnbmp/c_interface bmp_c_interface)
+add_subdirectory( rs )
 #
 MESSAGE(STATUS "Enabled boards  : ${enabled_boards}")
 MESSAGE(STATUS "Enabled sources : ${BOARDS}")
