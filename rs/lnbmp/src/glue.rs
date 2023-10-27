@@ -1,7 +1,6 @@
 
 use crate::encoder::encoder;
 use core::ffi::CStr;
-use numtoa::NumToA;
 // Send data to the host...
 #[no_mangle]
 pub extern "C" fn gdb_out(fmt : *const i8) 

@@ -10,7 +10,6 @@ use super::{CommandTree,exec_one};
 
 use crate::bmp::{bmp_attach,bmp_flash_erase,bmp_flash_write, bmp_flash_complete};
 use crate::commands::CallbackType;
-use numtoa::NumToA;
 
 use crate::parsing_util::ascii_string_to_u32;
 

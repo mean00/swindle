@@ -1,8 +1,6 @@
 use alloc::alloc::Layout as Layout;
 use alloc::alloc::alloc as alloc;
-use alloc::vec::Vec;
 use cty::size_t;
-use numtoa::NumToA;
 
 /**
  * 

@@ -15,7 +15,6 @@ use crate::parsing_util::ascii_string_to_u32;
 
 use crate::bmp;
 
-use numtoa::NumToA;
 
 crate::setup_log!(false);
 use crate::{bmplog,bmpwarning};

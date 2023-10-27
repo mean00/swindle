@@ -6,7 +6,6 @@ use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util::{ascii_hex_string_to_u8s,ascii_string_to_u32};
 use crate::commands::{CallbackType,exec_one,CommandTree};
-use numtoa::NumToA;
 //
 //
 crate::setup_log!(false);
