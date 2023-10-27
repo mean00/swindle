@@ -13,9 +13,7 @@ use std::print;
 
 pub fn xswap( a: &mut isize, b : &mut isize)
 {
-    let z: isize = *a;
-    *a = *b;
-    *b = z;
+    core::mem::swap( &mut (*a), &mut (*b));
 }
 pub fn xmin<T : core::cmp::PartialOrd >(a : T, b: T) -> T
 {
@@ -73,7 +71,6 @@ pub fn unsafe_box_allocate<T>() ->  *mut T
     
     let layout = Layout::new::<T>();
     unsafe {           
-        let ptr = alloc(layout) as *mut T;             
-        ptr
+        alloc(layout) as *mut T
     }
 }

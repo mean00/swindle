@@ -2,8 +2,6 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use alloc::vec;
-use alloc::vec::Vec;
 
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
@@ -22,7 +20,7 @@ const v_command_tree: [CommandTree;3] =
 ];
 //
 //
-fn vRun(_command : &str, _args : &Vec<&str>) -> bool
+fn vRun(_command : &str, _args :&[&str]) -> bool
 {
    // _vCont("vCont",args)
    encoder::reply_ok();
@@ -34,13 +32,13 @@ fn vRun(_command : &str, _args : &Vec<&str>) -> bool
 
 pub fn _v(command : &str, args : &[u8]) -> bool
 {
-    return exec_one(&v_command_tree,command,args);
+    exec_one(&v_command_tree,command,args)
 }
 
 //
 //
 //
-fn _vMustReply(_command : &str, _args : &Vec<&str>) -> bool
+fn _vMustReply(_command : &str, _args :&[&str]) -> bool
 {
     encoder::simple_send("");    
     true
@@ -48,7 +46,7 @@ fn _vMustReply(_command : &str, _args : &Vec<&str>) -> bool
 //
 //
 //
-fn _vAttach(_command : &str, _args : &Vec<&str>) -> bool
+fn _vAttach(_command : &str, _args : &[&str]) -> bool
 {
     if bmp_attach(1)
     {

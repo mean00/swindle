@@ -35,7 +35,7 @@ pub struct encoder {
 
 fn get_temp_buffer() -> &'static mut [u8] {
     unsafe {
-        return &mut temp_buffer;
+        &mut temp_buffer
     }
 }
 //
@@ -109,7 +109,7 @@ impl encoder {
     pub fn hexify_and_raw_send(str: &[u8]) {
         let buffer = get_temp_buffer();
         let mut byt = str;
-        while byt.len() > 0 {
+        while !byt.is_empty()  {
             let n = core::cmp::min(byt.len(), TEMP_BUFFER_SIZE / 2);
             for i in 0..n {
                 u8_to_ascii_to_buffer(byt[i], &mut buffer[2 * i..]);
@@ -122,7 +122,7 @@ impl encoder {
     pub fn hex_and_add(&mut self, data: &str) {
         let mut byt = data.as_bytes();
         let buffer = get_temp_buffer();
-        while byt.len() > 0 {
+        while !byt.is_empty()  {
             let n = core::cmp::min(byt.len(), TEMP_BUFFER_SIZE / 2);
             for i in 0..n {
                 u8_to_ascii_to_buffer(byt[i], &mut buffer[2 * i..]);
@@ -133,27 +133,25 @@ impl encoder {
     }
     //
     pub fn add_u8(&mut self, byt: &[u8]) {
-        let l = byt.len();
         let mut n = 0;
         let buffer = get_temp_buffer();
 
-        for i in 0..l {
-            let c = byt[i];
-            match c {
+        for c in byt {            
+            match *c {
                 packet_symbols::CHAR_ESCAPE2
                 | packet_symbols::CHAR_ESCAPE
                 | packet_symbols::CHAR_START
                 | packet_symbols::CHAR_END => {
                     buffer[n] = packet_symbols::CHAR_ESCAPE;
-                    buffer[n + 1] = c ^ 0x20;
+                    buffer[n + 1] = *c ^ 0x20;
                     n += 2;
-                    self.checksum += (c ^ 0x20) as usize;
+                    self.checksum += (*c ^ 0x20) as usize;
                     self.checksum += packet_symbols::CHAR_ESCAPE as usize;
                 }
                 _ => {
-                    buffer[n] = c;
+                    buffer[n] = *c;
                     n += 1;
-                    self.checksum += c as usize;
+                    self.checksum += *c as usize;
                 }
             };
             if n > TEMP_BUFFER_SIZE - 2 {

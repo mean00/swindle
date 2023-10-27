@@ -9,8 +9,8 @@ use cty::c_char;
 use crate::commands::run::HaltState;
 
 pub enum mapping {
-    FLASH = 0,
-    RAM = 1,
+    Flash = 0,
+    Ram = 1,
 }
 
 fn ret_to_bool(ret: core::ffi::c_int) -> bool {
@@ -53,7 +53,7 @@ pub fn bmp_read_registers() -> Vec<u32> {
             }
         }
     }
-    return r;
+    r
 }
 pub fn bmp_get_mapping(map: mapping) -> Vec<MemoryBlock> {
     if !bmp_attached() {
@@ -81,15 +81,15 @@ pub fn bmp_get_mapping(map: mapping) -> Vec<MemoryBlock> {
                 ) != 0
                 {
                     r.push(MemoryBlock {
-                        start_address: start as u32,
-                        length: size as u32,
-                        block_size: block_size as u32,
+                        start_address: start,
+                        length: size ,
+                        block_size ,
                     });
                 }
             }
         }
     }
-    return r;
+    r
 }
 pub fn swdp_scan() -> bool {
     unsafe {
@@ -125,7 +125,7 @@ pub fn bmp_read_register(reg: u32) -> Option<u32> {
         if rn_bmp_cmd_c::bmp_read_reg_c(reg, ptr) != 0 {
             return Some(val);
         }
-        return None;
+        None
     }
 }
 
@@ -136,7 +136,7 @@ pub fn riscv_list_csr(out: &mut [u32]) -> Option<&[u32]> {
     }
     let out_u32: *mut u32 = &mut out[0];
     let r: usize = unsafe { rn_bmp_cmd_c::riscv_list_csr(0, n, out_u32) as usize };
-    return Some(&out[0..r]);
+    Some(&out[0..r])
 }
 
 pub fn bmp_flash_erase(adr: u32, size: u32) -> bool {
@@ -157,11 +157,11 @@ pub fn bmp_flash_write(addr: u32, data: &[u8]) -> bool {
 pub fn bmp_mem_write(address: u32, data: &[u8]) -> bool {
     unsafe {
         let ptr: *const u8 = data.as_ptr();
-        return ret_to_bool(rn_bmp_cmd_c::bmp_mem_write_c(
+        ret_to_bool(rn_bmp_cmd_c::bmp_mem_write_c(
             address,
             data.len() as u32,
             ptr,
-        ));
+        ))
     }
 }
 
@@ -176,7 +176,7 @@ pub fn bmp_crc32(address: u32, length: u32) -> Option<u32> {
         if rn_bmp_cmd_c::bmp_crc32_c(address, length, crc_ptr) != 0 {
             return Some(crc);
         }
-        return None;
+        None
     }
 }
 
@@ -207,7 +207,7 @@ pub fn bmp_set_wait_state(ws: u32) {
  */
 pub fn bmp_get_wait_state() ->u32 {
     unsafe {
-        return rn_bmp_cmd_c::bmp_get_wait_state_c();
+        rn_bmp_cmd_c::bmp_get_wait_state_c()
     }
 }
 
@@ -283,12 +283,7 @@ pub fn bmp_rpc_swd_in_par(value: &mut u32, xparity: &mut bool, nb_bits: u32) -> 
         let ptr_bool: *mut i32 = &mut pari32;
 
         let r = ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_in_par_c(ptr, ptr_bool, nb_bits));
-
-        if pari32 != 0 {
-            *xparity = true;
-        } else {
-            *xparity = false;
-        }
+        *xparity = pari32 !=0;
         r
     }
 }
@@ -296,10 +291,7 @@ pub fn bmp_rpc_swd_in_par(value: &mut u32, xparity: &mut bool, nb_bits: u32) -> 
 pub fn bmp_rpc_swd_in(value: &mut u32, nb_bits: u32) -> bool {
     unsafe {
         let ptr: *mut u32 = value;
-
-        let r = ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_in_c(ptr, nb_bits));
-
-        r
+        ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_in_c(ptr, nb_bits))
     }
 }
 /*
@@ -352,14 +344,14 @@ pub fn bmp_adiv5_mem_read(
     buffer: &mut [u8],
 ) -> i32 {
     unsafe {
-        return rn_bmp_cmd_c::bmp_adiv5_mem_read_c(
+        rn_bmp_cmd_c::bmp_adiv5_mem_read_c(
             device_index,
             ap_selection,
             csw,
             address,
             buffer.as_ptr() as *mut u8,
             buffer.len() as u32,
-        );
+        )
     }
 }
 /**
@@ -374,7 +366,7 @@ pub fn bmp_adiv5_mem_write(
     buffer: &[u8],
 ) -> i32 {
     unsafe {
-        return rn_bmp_cmd_c::bmp_adiv5_mem_write_c(
+        rn_bmp_cmd_c::bmp_adiv5_mem_write_c(
             device_index,
             ap_selection,
             csw,
@@ -382,7 +374,7 @@ pub fn bmp_adiv5_mem_write(
             align,
             buffer.as_ptr() as *const u8,
             buffer.len() as u32,
-        );
+        )
     }
 }
 /**
@@ -417,7 +409,7 @@ pub fn bmp_adiv5_full_dp_low_level(
             ret_ptr,
             ptr,
         );
-        return (ret, outvalue);
+        (ret, outvalue)
     }
 }
 
@@ -430,7 +422,7 @@ pub fn bmp_adiv5_full_dp_read(device_index: u32, ap_selection: u32, address: u16
         let ret_ptr: *mut i32 = &mut ret;
 
         rn_bmp_cmd_c::bmp_adiv5_full_dp_read_c(device_index, ap_selection, address, ret_ptr, ptr);
-        return (ret, value);
+        (ret, value)
     }
 }
 /**
@@ -441,15 +433,9 @@ pub fn bmp_supported_boards() -> &'static str {
         let boards = rn_bmp_cmd_c::list_enabled_boards();
 
         let output = CStr::from_ptr(boards).to_str();
-        match output {
-            Ok(x) => return x,
-            _ => (),
-        }
+        if let Ok(x) = output { return x;}
     }
-    // convert to &str
-
-    let placeholder = "--error--";
-    return placeholder;
+    "--error--"    
 }
 /**
  * 
@@ -477,7 +463,7 @@ pub fn bmp_mon( input_as_string: &str) -> bool
 pub fn free_heap() -> u32
 {
     unsafe {
-        rn_bmp_cmd_c::free_heap_c() as u32
+        rn_bmp_cmd_c::free_heap_c()
     }    
 }
 /**
@@ -486,7 +472,7 @@ pub fn free_heap() -> u32
 pub fn min_free_heap() -> u32
 {
     unsafe {
-        rn_bmp_cmd_c::min_free_heap_c() as u32
+        rn_bmp_cmd_c::min_free_heap_c()
     }    
 }
 

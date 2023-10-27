@@ -8,7 +8,7 @@ use crate::packet_symbols::INPUT_BUFFER_SIZE;
 use super::mon::_swdp_scan;
 use crate::bmp::bmp_attached;
 use crate::bmp::bmp_get_mapping;
-use crate::bmp::mapping::{FLASH, RAM};
+use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
 
 use crate::parsing_util::ascii_string_to_u32;
@@ -31,10 +31,10 @@ fn pp_prefix(command: &str) -> Option<(u32, u32)> {
     }
     let reg = ascii_string_to_u32(args[0]);
     let value = ascii_string_to_u32(args[1]);
-    return Some((reg, value));
+    Some((reg, value))
 }
 // Write reg
-pub fn _P(command: &str, _args: &Vec<&str>) -> bool {
+pub fn _P(command: &str, _args: &[&str]) -> bool {
     let reg: u32;
     let val: u32;
     match pp_prefix(&command[1..]) {
@@ -48,10 +48,10 @@ pub fn _P(command: &str, _args: &Vec<&str>) -> bool {
         }
     }
     encoder::reply_bool(bmp::bmp_write_register(reg, val));
-    return true;
+    true
 }
 // read 1 register
-pub fn _p(command: &str, _args: &Vec<&str>) -> bool {
+pub fn _p(command: &str, _args: &[&str]) -> bool {
     let reg: u32 = crate::parsing_util::ascii_string_to_u32(&command[1..]);
     match bmp::bmp_read_register(reg) {
         Some(x) => encoder::simple_send_u32_le(x),
@@ -61,18 +61,18 @@ pub fn _p(command: &str, _args: &Vec<&str>) -> bool {
 }
 
 // Read registers
-pub fn _g(_command: &str, _args: &Vec<&str>) -> bool {
+pub fn _g(_command: &str, _args: &[&str]) -> bool {
     let regs = crate::bmp::bmp_read_registers();
     let mut e = encoder::new();
 
-    let n: usize = regs.len();
-    if n == 0 {
+    if regs.is_empty()
+    {
         encoder::simple_send("0000");
-        true;
+        return true;
     }
     e.begin();
-    for i in 0..n {
-        e.add_u32_le(regs[i]);
+    for i in regs{
+        e.add_u32_le(i);
     }
     // now read CSRs
     e.end();

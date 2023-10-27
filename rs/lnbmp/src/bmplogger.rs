@@ -134,7 +134,7 @@ macro_rules! gdb_print_init {
     () => {
 #[cfg(feature = "hosted")]  
             use ufmt::uwrite;
-            use crate::bmplogger::G;
+            use $crate::bmplogger::G;
     }    
 }
 

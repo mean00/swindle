@@ -14,7 +14,7 @@ use crate::bmp::bmp_attached;
 use crate::bmp::bmp_get_mapping;
 use crate::bmp::MemoryBlock;
 use crate::bmp::bmp_crc32;
-use crate::bmp::mapping::{ FLASH,RAM};
+use crate::bmp::mapping::{ Flash,Ram};
 use crate::commands::CallbackType;
 use crate::commands::mon::_qRcmd;
 use crate::util::xmin;
@@ -45,12 +45,12 @@ const q_command_tree: [CommandTree;10] =
 
 pub fn _q(command : &str, args : &[u8]) -> bool
 {
-    return exec_one(&q_command_tree,command, args);
+    exec_one(&q_command_tree,command, args)
 }
 //
 //
 //
-fn _qSupported(_command : &str, _args : &Vec<&str>) -> bool
+fn _qSupported(_command : &str, _args : &[&str]) -> bool
 {
     let mut buffer: [u8;20] = [0; 20]; // should be big enough!    
 
@@ -61,7 +61,7 @@ fn _qSupported(_command : &str, _args : &Vec<&str>) -> bool
     e.add(";hwbreak+;swbreak-");
     e.add(";qXfer:memory-map:read+;qXfer:features:read+;vCont+");
     e.end();
-    return true;
+    true
 }
 //
 // Read memory map
@@ -80,7 +80,7 @@ fn hex8(digit : u32, buffer : &mut [u8], e: &mut encoder)
 }
 //
 //
-fn _qXfer(_command : &str, args : &Vec<&str>) -> bool
+fn _qXfer(_command : &str, args : &[&str]) -> bool
 {
     
     if args.len() < 3
@@ -91,9 +91,9 @@ fn _qXfer(_command : &str, args : &Vec<&str>) -> bool
 
     match args[0]
     {
-        "memory-map" => return _qXfer_memory_map(&args[1..]),
-        "features"   => return _qXfer_features_regs(&args[1..]),
-        _            => return false,
+        "memory-map" =>  _qXfer_memory_map(&args[1..]),
+        "features"   =>  _qXfer_features_regs(&args[1..]),
+        _            =>  false,
     }    
 }
 
@@ -117,7 +117,7 @@ fn validate_q_query(args : &[&str], header1 : &str, header2 : &str ) -> Option<(
     //
     let start_address : usize = crate::parsing_util::ascii_string_to_u32(conf[0]) as usize;
     let length : usize = crate::parsing_util::ascii_string_to_u32(conf[1]) as usize;
-    return Some((start_address, length));
+    Some((start_address, length))
 }
 //
 //  read target.xml [offset,size]
@@ -186,75 +186,75 @@ fn _qXfer_memory_map(args : &[&str]) -> bool
     e.add("m<memory-map>");
 
     {
-        let ram : Vec<MemoryBlock> = bmp_get_mapping(RAM);
-        for i in 0..ram.len()
+        let ram : Vec<MemoryBlock> = bmp_get_mapping(Ram);
+        for i in ram 
         {
             e.add("<memory type=\"ram\" start=\"0x");
-            hex8(ram[i].start_address, &mut buffer, &mut e);
+            hex8(i.start_address, &mut buffer, &mut e);
             e.add("\" length=\"0x");
-            hex8(ram[i].length, &mut buffer, &mut e);            
+            hex8(i.length, &mut buffer, &mut e);            
             e.add("\"/>");
         }
     }
     {
-        let flash : Vec<MemoryBlock> = bmp_get_mapping(FLASH );
-        for i in 0..flash.len()
+        let flash : Vec<MemoryBlock> = bmp_get_mapping(Flash );
+        for i in flash
         {
             e.add("<memory type=\"flash\" start=\"0x");
-            hex8(flash[i].start_address, &mut buffer, &mut e);
+            hex8(i.start_address, &mut buffer, &mut e);
             e.add("\" length=\"0x");            
-            hex8(flash[i].length, &mut buffer, &mut e);
+            hex8(i.length, &mut buffer, &mut e);
             e.add("\">");
             e.add("<property name=\"blocksize\">0x");
-            hex8(flash[i].block_size, &mut buffer, &mut e);            
+            hex8(i.block_size, &mut buffer, &mut e);            
             e.add("</property></memory>");
         }
     }
     e.add("</memory-map>");
     e.end();
-    return true;
+    true
 }
 //
 // Trace
 //
-fn _qTStatus(_command : &str, _args : &Vec<&str>) -> bool
+fn _qTStatus(_command : &str, _args :&[&str]) -> bool
 {    
-    return false;
+    false
 }
 
 //
 // Execute command
 //
-fn _qAttached(_command : &str, _args : &Vec<&str>) -> bool
+fn _qAttached(_command : &str, _args :&[&str]) -> bool
 {    
     encoder::simple_send("1");    
-    return true;
+    true
 }
 //
 //
-fn _qfThreadInfo(_command : &str, _args : &Vec<&str>) -> bool
+fn _qfThreadInfo(_command : &str, _args :&[&str]) -> bool
 {    
     encoder::simple_send("m1");    
-    return true;
+    true
 }
 //
 //
-fn _qsThreadInfo(_command : &str, _args : &Vec<&str>) -> bool
+fn _qsThreadInfo(_command : &str, _args : &[&str]) -> bool
 {    
     encoder::simple_send("1");    
-    return true;
+    true
 }
 // get current thread I
-fn _qC(_command : &str, _args : &Vec<&str>) -> bool
+fn _qC(_command : &str, _args : &[&str]) -> bool
 {    
     encoder::simple_send("QC1");    
-    return true;
+    true
 }
 // get offset
-fn _qOffsets(_command : &str, _args : &Vec<&str>) -> bool
+fn _qOffsets(_command : &str, _args :&[&str]) -> bool
 {    
     encoder::simple_send("Text=0;Data=0;Bss=0");    
-    return true;
+    true
 }
 // qCRC:addr hex,length hex’
 // return Ccrc32 hex
@@ -270,9 +270,9 @@ const GDB_CRC_ALG: crc::Algorithm<u32> = crc::Algorithm {
 };
 const CRC_BUFFER_SIZE : usize = 64;
 
-fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
+fn _qCRC(_command : &str, args :&[&str]) -> bool
 {
-    if args.len()==0
+    if args.is_empty()
     {
         encoder::reply_e01();
         return true;
@@ -292,8 +292,8 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
     let mut digest = crc32_cksum.digest();
     let mut buffer: [u8;CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
 
-    bmplog!("CRC : Adr 0x{:x}",address as u32);
-    bmplog!("len {}\n",length as u32);
+    bmplog!("CRC : Adr 0x{:x}",address );
+    bmplog!("len {}\n",length );
 //
     //let crc = bmp_crc32(address,length);
     // preamble if any
@@ -302,15 +302,15 @@ fn _qCRC(_command : &str, args : &Vec<&str>) -> bool
     let mut block=0;
     while adr<tail
     {
-        block = block +1;
+        block += 1;
         if block > 64 // every 2k bytes or so
         {
             block = 0;
 //            encoder::raw_send_u8(&[0]);
 //            encoder::flush();
         }
-        let rd: u32 = xmin((tail-adr) as u32,buffer.len() as u32);
-        if crate::bmp::bmp_read_mem(adr, &mut buffer[0..(rd as usize)]) == false
+        let rd: u32 = xmin(tail-adr ,buffer.len() as u32);
+        if !crate::bmp::bmp_read_mem(adr, &mut buffer[0..(rd as usize)])
         {
             bmpwarning!("CRC : cant read memory 0x{:x}\n",adr);
             encoder::error(1);

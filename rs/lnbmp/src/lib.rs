@@ -121,7 +121,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
     {
         Some(ref mut x) => 
                     {
-                        while data_as_slice.len() > 0
+                        while !data_as_slice.is_empty()
                         {
                             let consumed : usize;
                             let state : RESULT_AUTOMATON;
@@ -134,7 +134,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                     {
                                         bmplog!("Rpc....\n");
                                         let s = x.get_result(); // s is a RPC command block
-                                        if s.len() > 0
+                                        if !s.is_empty()
                                         {
                                             //bmplog!("--> ACK\n");
                                             //rngdb_send_data( CHAR_ACK ); 
@@ -162,7 +162,7 @@ extern "C" fn rngdbstub_run(l : usize, d : *const cty::c_uchar )
                                                         args = y;
                                                     }
                                         }
-                                        if command.len()==0
+                                        if command.is_empty()
                                         {
                                             bmplog!("Cannot read string");                                            
                                         }

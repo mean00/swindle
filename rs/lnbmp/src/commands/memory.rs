@@ -2,9 +2,6 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use alloc::vec;
-use alloc::vec::Vec;
-
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
@@ -14,7 +11,7 @@ crate::setup_log!(false);
 use crate::{bmplog,bmpwarning};
 
 // memory read m80070f6,4
-pub fn _m(command : &str, _args : &Vec<&str>) -> bool
+pub fn _m(command : &str, _args :  &[&str]) -> bool
 {
     if !crate::bmp::bmp_attached()
     {
@@ -39,7 +36,7 @@ pub fn _m(command : &str, _args : &Vec<&str>) -> bool
 
                 while left!=0
                 {
-                    let chunk : usize  = core::cmp::min(16,left) as usize;
+                    let chunk : usize  = core::cmp::min(16,left);
                     crate::bmp::bmp_read_mem(current_address,&mut tmp[0..chunk]);
                     current_address += chunk as u32;
                     left -= chunk;
@@ -54,8 +51,7 @@ pub fn _m(command : &str, _args : &Vec<&str>) -> bool
                 
             }
     }
-    return true;
-  
+    true  
 }
 /**
  *  \fn write memory

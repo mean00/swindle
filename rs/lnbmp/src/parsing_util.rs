@@ -8,7 +8,7 @@ use crate::{bmplog,bmpwarning};
 //
 //
 //
-pub fn ascii_hex_string_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Result<&'b [u8],i32>
+pub fn ascii_hex_string_to_u8s<'a>(sin : &'a str, sout: &'a mut [u8]) -> Result<&'a [u8],i32>
 {
     let datain = sin.as_bytes();
 
@@ -17,11 +17,11 @@ pub fn ascii_hex_string_to_u8s<'a,'b>(sin : &'a str, sout: &'b mut [u8]) -> Resu
     {
         sout[i]=ascii_octet_to_hex( datain[i*2],datain[i*2+1]);
     }
-    return Ok(&sout[..s]);
+    Ok(&sout[..s])
 }
 //
 //
-pub fn u8_hex_string_to_u8s<'a,'b>(sin : &'a [u8], sout: &'b mut [u8]) -> &'b [u8]
+pub fn u8_hex_string_to_u8s<'a>(sin : &'a [u8], sout: &'a mut [u8]) -> &'a [u8]
 {
     let s= sin.len()/2;
     for i in 0..s
@@ -36,7 +36,7 @@ pub fn u8_hex_string_to_u8s<'a,'b>(sin : &'a [u8], sout: &'b mut [u8]) -> &'b [u
  */
 fn _hex( digit : u8 ) -> u8
 {
-    return match digit
+    match digit
     {
         b'0'..=b'9' =>  digit -b'0',
         b'a'..=b'f' =>  digit +10 -b'a',
@@ -57,7 +57,7 @@ pub fn _tohex( v: u8) -> u8
     {
         return b'A' +v -10;
     }
-    return b'0'+v;
+    b'0'+v
 }
 //---
 pub fn ascii_string_to_u32(s : &str) -> u32
@@ -68,9 +68,9 @@ pub fn ascii_string_to_u32(s : &str) -> u32
 pub fn u8s_string_to_u32(datain : &[u8]) -> u32
 {
     let mut val  : u32 = 0;
-    for i in 0..datain.len()
+    for i in datain
     {
-        val=(val<<4)+_hex(datain[i]) as u32;
+        val=(val<<4)+_hex(*i) as u32;
     }
     val
 }
@@ -92,7 +92,7 @@ pub fn u8_to_ascii_to_buffer( value : u8 , out : &mut [u8])
 
 pub fn take_adress_length( xin : &str ) -> Option< (u32, u32) >
 {
-    let args : Vec <&str>= xin.split(",").collect();
+    let args : Vec <&str>= xin.split(',').collect();
     if args.len()!=2
     {
         bmplog!("take_adress_length : wrong param");
@@ -103,7 +103,7 @@ pub fn take_adress_length( xin : &str ) -> Option< (u32, u32) >
     Some ( (address,len) )
 }
 
-pub fn  split_command<'a>( incoming : &'a [u8]) -> Option< (&'a [u8], &'a [u8]) >
+pub fn  split_command( incoming : & [u8]) -> Option< (& [u8], & [u8]) >
 {
     let size =incoming.len();
     // look up for the first ':' if any
@@ -120,5 +120,5 @@ pub fn  split_command<'a>( incoming : &'a [u8]) -> Option< (&'a [u8], &'a [u8]) 
             return Some( (&incoming[..i],&incoming[(i+1)..] ) );            
         }
     }
-    return Some( (incoming,&incoming[0..0]));
+    Some( (incoming,&incoming[0..0]))
 }

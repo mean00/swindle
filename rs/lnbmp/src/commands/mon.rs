@@ -43,50 +43,50 @@ const help_tree : [HelpTree;8]=
     HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
 ];
 
-pub fn _ram(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _ram(_command : &str, _args : &[&str]) -> bool
 {
     let (min_heap, heap) = bmp::get_heap_stats();
     gdb_print!("Min Free Heap\t: {} kB \nFree Heap\t: {} kB\n", min_heap, heap);
     encoder::reply_ok();
-    return true;
+    true
 }
 
-pub fn _bmp_mon(command : &str, _args : &Vec<&str>) -> bool
+pub fn _bmp_mon(command : &str, _args : &[&str]) -> bool
 {
     // the input is bmp actual_bmp_mon_command
     // we have to remove the bmp
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
-    return true;
+    true
 }
 
 //
-pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _mon_help(_command : &str, _args :&[&str]) -> bool
 {
     gdb_print!( "Help, use mon [cmd] [params] :\n");
-    for i in 0..help_tree.len()
+    for i in help_tree
     {
-        gdb_print!("mon {} \t: {}\n",&(help_tree[i].command), &(help_tree[i].help)); 
+        gdb_print!("mon {} \t: {}\n",&(i.command), &(i.help)); 
     }
     encoder::reply_ok();
-    return true;
+    true
 }
 
 //
-fn _boards(_command : &str, _args : &Vec<&str>) -> bool
+fn _boards(_command : &str, _args : &[&str]) -> bool
 {
     gdb_print!( "Support enabled for :\n");
     let boards = bmp::bmp_supported_boards();
-    let b : Vec <&str>= boards.split(":").collect();
-    for i in 0..b.len()
+    let b : Vec <&str>= boards.split(':').collect();
+    for i in b
     {
-        gdb_print!("\t{}\n", b[i]);        
+        gdb_print!("\t{}\n", i);        
     }    
     encoder::reply_ok();
-    return true;
+    true
 }
 
 //
-pub fn _voltage(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _voltage(_command : &str, _args : &[&str]) -> bool
 {
 
     let voltage = bmp::bmp_get_target_voltage();
@@ -94,15 +94,15 @@ pub fn _voltage(_command : &str, _args : &Vec<&str>) -> bool
     
     gdb_print!("Voltage (mv) : {}\n",voltage32);
     encoder::reply_ok();
-    return true;
+    true
 }
 
 //
 // Execute command
 //
-pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
+pub fn _qRcmd(command : &str, _args :&[&str]) -> bool
 {    
-    let largs : Vec <&str>= command.split(",").collect();
+    let largs : Vec <&str>= command.split(',').collect();
     //NOTARGET
     let ln = largs.len();
     if ln !=2
@@ -139,7 +139,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
 /**
  * 
  */
-pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _get_version(_command : &str, _args :&[&str]) -> bool
 {
     gdb_print!("{}\n", bmp::bmp_get_version());
     encoder::reply_ok();
@@ -150,7 +150,7 @@ pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
     Detect stuff connected to the SWD interface
     Try to use the fastest speed
  */
-pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _swdp_scan(_command : &str, _args : &[&str]) -> bool
 {
     bmplog!("swdp_scan:\n");
 
@@ -161,14 +161,13 @@ pub fn _swdp_scan(_command : &str, _args : &Vec<&str>) -> bool
     }
     
     encoder::reply_ok();
-    return true;
-    
+    true    
 }
 
 /**
  * 
  */
-pub fn _ws(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _ws(_command : &str, _args : &[&str]) -> bool
 {  
     let len=_command.len();    
     if len>3
@@ -179,7 +178,6 @@ pub fn _ws(_command : &str, _args : &Vec<&str>) -> bool
     let w : u32 = bmp::bmp_get_wait_state();
     gdb_print!("wait states are now {}\n", w);
     encoder::reply_ok();
-    return true;
-    
+    true    
 }
 //-- EOF --

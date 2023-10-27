@@ -26,7 +26,7 @@ use v::_v;
 use run::{_c, _k, _s, _vCont, _R};
 
 type Callback_raw = fn(command: &str, args: &[u8]) -> bool;
-type Callback_text = fn(command: &str, args: &Vec<&str>) -> bool;
+type Callback_text = fn(command: &str, args: &[&str]) -> bool;
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
@@ -172,8 +172,8 @@ fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
     bmplog!(command);
     bmplog!("\n");
     let empty: &str = "";
-    for i in 0..tree.len() {
-        let c = &tree[i];
+    for c in tree {
+       // let c = &tree[i];
         if command.starts_with(c.command)
         // if the expected command begins with the receive command..
         {
@@ -200,7 +200,7 @@ fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
             }
         }
     }
-    return false;
+    false
 }
 
 pub fn exec(command: &str, args: &[u8]) {
@@ -214,23 +214,23 @@ pub fn exec(command: &str, args: &[u8]) {
 }
 //
 //
-fn _extendedMode(_command: &str, _args: &Vec<&str>) -> bool {
+fn _extendedMode(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
 // select thread
-fn _Hg(_command: &str, _args: &Vec<&str>) -> bool {
+fn _Hg(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
 // select thread
-fn _Hc(_command: &str, _args: &Vec<&str>) -> bool {
+fn _Hc(_command: &str, _args:&[&str]) -> bool {
     encoder::reply_ok();
     true
 }
 
 // detach
-fn _D(_command: &str, _args: &Vec<&str>) -> bool {
+fn _D(_command: &str, _args: &[&str]) -> bool {
     if crate::bmp::bmp_attached() {
         crate::bmp::bmp_detach();
     }
@@ -240,7 +240,7 @@ fn _D(_command: &str, _args: &Vec<&str>) -> bool {
 
 //
 // Request reason for halt
-fn _mark(_command: &str, _args: &Vec<&str>) -> bool {
+fn _mark(_command: &str, _args: &[&str]) -> bool {
     //NOTARGET
     encoder::simple_send("W00");
     true

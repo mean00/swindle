@@ -90,7 +90,7 @@ extern "C" fn rngdbstub_poll()
             HaltState::Error        => reply_2("X", 29),    // SIGLOST
             HaltState::Stepping     => reply_2("T", 5), // SIGTRAP
             HaltState::Request      => reply_2("T", 2),     // SIGINT
-            HaltState::Watchpoint(wp)  => reply_wp("T", 5, "watch:",wp as u32 ), // SIGTRAP
+            HaltState::Watchpoint(wp)  => reply_wp("T", 5, "watch:",wp ), // SIGTRAP
             HaltState::Fault        => reply_2("T", 11),  // SIGSEGV
             HaltState::Breakpoint   => reply_2("T", 5), // SIGTRAP
   //          _ => panic!("unsupported halt state"),
@@ -100,28 +100,28 @@ extern "C" fn rngdbstub_poll()
 }
 
 //
-pub fn _R(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _R(_command : &str, _args : &[&str]) -> bool
 {
    encoder::reply_bool( crate::bmp::bmp_reset_target());
    true
 }
-pub fn _k(_command : &str, _args : &Vec<&str>) -> bool
+pub fn _k(_command : &str, _args : &[&str]) -> bool
 {
     encoder::reply_bool( crate::bmp::bmp_reset_target());
     true
 }
 //vCont[;action[:thread-id]]…’
 //
-pub fn _c(_command : &str, args : &Vec<&str>) -> bool
+pub fn _c(_command : &str, args : &[&str]) -> bool
 {
     _vCont("vCont",args)
 }
-pub fn _s(_command : &str, args : &Vec<&str>) -> bool
+pub fn _s(_command : &str, args : &[&str]) -> bool
 {
     _vCont("vCont;s",args)
 }
 
-pub fn _vCont(command : &str, _args : &Vec<&str>) -> bool
+pub fn _vCont(command : &str, _args : &[&str]) -> bool
 {
     
     if command.starts_with("vCont?")
@@ -140,7 +140,7 @@ pub fn _vCont(command : &str, _args : &Vec<&str>) -> bool
         return true;
     }
     let command_bytes = command.as_bytes();
-    return match command_bytes[6]
+    match command_bytes[6]
     {
         b'c' => 
         {
@@ -160,6 +160,6 @@ pub fn _vCont(command : &str, _args : &Vec<&str>) -> bool
             true
         },
         _ => false,
-    };
+    }
     
 }

@@ -2,10 +2,6 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use alloc::vec;
-use alloc::vec::Vec;
-
-
 use crate::encoder::encoder;
 use super::{CommandTree,exec_one};
 
@@ -32,12 +28,12 @@ const DISABLE_FLASH: bool = false;
 
 pub fn _flashv(command : &str, args : &[u8]) -> bool
 {
-    return exec_one(&vflash_command_tree,command,args);
+    exec_one(&vflash_command_tree,command,args)
 }
 
 //
 //vFlashErase:08000000,00005000
-fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
+fn _vFlashErase(_command : &str, args :&[&str]) -> bool
 {   
     if DISABLE_FLASH
     {
@@ -56,7 +52,7 @@ fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
                 encoder::reply_bool(bmp_flash_erase(adr,len));
             },
     };
-    return true;
+    true
 }
 //
 //vFlashWrite:08000000,data
@@ -99,13 +95,13 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
     let adr  =crate::parsing_util::u8s_string_to_u32( &block[..prefix] );
     let data: &[u8] = &block[(prefix+1)..];
     bmplog!("adr:0x{:x} en:{}\n",adr,data.len());
-    bmplog!("write : Adr 0x{:x} len {}\n",adr as u32,len as u32);
+    bmplog!("write : Adr 0x{:x} len {}\n",adr ,len );
 
     encoder::reply_bool( bmp_flash_write(adr, data) );
     true
 }
 //vFlashDone
-fn _vFlashDone(_command : &str, _args : &Vec<&str>) -> bool
+fn _vFlashDone(_command : &str, _args :&[&str]) -> bool
 {    
     if DISABLE_FLASH
     {

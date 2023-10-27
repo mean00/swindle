@@ -22,11 +22,11 @@ use crate::{bmplog,bmpwarning};
  *
  */
 fn rpc_message_out(message: &[u8]) {
-    encoder::raw_send_u8(&message);
+    encoder::raw_send_u8(message);
     encoder::flush();
 }
 fn rpc_message_out_no_flush(message: &[u8]) {
-    encoder::raw_send_u8(&message);
+    encoder::raw_send_u8(message);
 }
 
 /**
@@ -100,7 +100,7 @@ fn rpc_reply_hex_string(code: u8, s: &[u8]) {
 fn hex16_to_u32(input: &[u8]) -> u32 {
     let left: u32 = ascii_octet_to_hex(input[0], input[1]) as u32;
     let right: u32 = ascii_octet_to_hex(input[2], input[3]) as u32;
-    return (left << 8) + right;
+    (left << 8) + right
 }
 /**
  *
@@ -164,7 +164,7 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
     // 0   1    2    3    4    5    6    7    8
     // CMD INDEXX    AP_SEL    ADDREEEEEEEEESSS
     // [...]
-    let mut pop = popping_buffer::new(&input);
+    let mut pop = popping_buffer::new(input);
     let cmd = pop.pop(1)[0];
     let device_index: u32 = ascii_octet_to_hex(input[1], input[2]) as u32;
     let ap_selection: u32 = ascii_octet_to_hex(input[3], input[4]) as u32;
@@ -244,9 +244,8 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
                 return true;
             }
             let mut buffer: [u8; 1024] = [0; 1024];
-            let fault: i32;
             let l: usize = length as usize;
-            fault = bmp::bmp_adiv5_mem_read(
+            let fault: i32 = bmp::bmp_adiv5_mem_read(
                 device_index,
                 ap_selection,
                 csw1,
@@ -270,11 +269,9 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
                 rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
                 return true;
             }
-            let mut buffer: [u8; 1024] = [0; 1024];
-            let fault: i32;
+            let mut buffer: [u8; 1024] = [0; 1024];            
             let decoded = crate::parsing_util::u8_hex_string_to_u8s(pop.leftover(), &mut buffer);
-            fault =
-                bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
+            let fault: i32 = bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
             reply_adiv5_32(fault, 0);
             return true;
         } // m
@@ -367,7 +364,7 @@ fn rpc_gen_packet(input: &[u8]) -> bool {
         // b'A' REMOTE_START  => {},     remote_respond_string(REMOTE_RESP_OK, PLATFORM_IDENT "" FIRMWARE_VERSION);
     };
     rpc_reply(rpc_commands::RPC_RESP_NOTSUP, 0);
-    return true;
+    true
 }
 /*
  */
@@ -588,7 +585,7 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         bmplog!("Cmd : {}", input[1]);
         bmplog!("\n");
     }
-    return match input[0] {
+    match input[0] {
         rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&input[1..]),
         rpc_commands::RPC_JTAG_PACKET => rpc_jtag_packet(&input[1..]),
         rpc_commands::RPC_SWDP_PACKET => rpc_swdp_packet(&input[1..]),
@@ -596,9 +593,9 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         rpc_commands::RPC_HL_PACKET => rpc_hl_packet(&input[1..]),
         _ => {
             bmplog!("wrong RPC header\n");
-            return false;
+            false
         }
-    };
+    }
 }
 
 /**

@@ -241,7 +241,7 @@ impl <const INPUT_BUFFER_SIZE: usize>gdb_stream <INPUT_BUFFER_SIZE>
                 _                         => (),
             }
         }
-        return (consumed, RESULT_AUTOMATON::Continue);
+        (consumed, RESULT_AUTOMATON::Continue)
     }
 
 }
