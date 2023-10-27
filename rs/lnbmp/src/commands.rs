@@ -180,8 +180,7 @@ fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
                 crate::glue::gdb_out_rs("Command ");
                 crate::glue::gdb_out_rs(c.command);
                 crate::glue::gdb_out_rs("cannot be used while not connected\n");
-                bmplog!("Command not ok while not connected");
-                bmplog!(c.command);
+                bmplog!("Command not ok while not connected {} \n",c.command);
                 encoder::reply_e01();
                 return true;
             } else {

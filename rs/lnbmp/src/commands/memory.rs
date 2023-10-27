@@ -68,8 +68,7 @@ pub fn _X(command : &str, args : &[u8]) -> bool
         None                => encoder::reply_e01(),
         Some( (addr,len) )   => 
                             {
-                                    bmplog!("adr: 0x{:x}\n",addr);
-                                    bmplog!("len:{}\n",len);
+                                    bmplog!("adr: 0x{:x} en:{}\n",addr,len);
                                     let mut actual_len: usize = len as usize;
                                     if args.len()  > actual_len
                                     {

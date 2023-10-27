@@ -11,7 +11,8 @@ use numtoa::NumToA;
 //
 //
 crate::setup_log!(false);
-use crate::{bmplog,bmpwarning};
+crate::gdb_print_init!();
+use crate::{bmplog,bmpwarning,gdb_print};
 
 struct HelpTree {
     command: &'static str,
@@ -47,16 +48,7 @@ const help_tree : [HelpTree;8]=
 pub fn _ram(_command : &str, _args : &Vec<&str>) -> bool
 {
     let (min_heap, heap) = bmp::get_heap_stats();
-    let mut buffer: [u8;20] = [0; 20]; 
-
-    gdb_out_rs(&"Min Free Heap:");
-    gdb_out_rs(min_heap.numtoa_str(10,&mut buffer));
-    gdb_out_rs(&"\n");
-
-    gdb_out_rs(&"Free Heap:");
-    gdb_out_rs(heap.numtoa_str(10,&mut buffer));
-    gdb_out_rs(&"\n");
-
+    gdb_print!("Min Free Heap\t: {} kB \nFree Heap\t: {} kB\n", min_heap, heap);
     encoder::reply_ok();
     return true;
 }
@@ -75,11 +67,7 @@ pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
     gdb_out_rs( "Help, use mon [cmd] [params] :\n");
     for i in 0..help_tree.len()
     {
-        gdb_out_rs( "mon ");
-        gdb_out_rs( &(help_tree[i].command));
-        gdb_out_rs( ":\n\t");
-        gdb_out_rs( &(help_tree[i].help));
-        gdb_out_rs( "\n");
+        gdb_print!("mon {} \t: {}\n",&(help_tree[i].command), &(help_tree[i].help)); 
     }
     encoder::reply_ok();
     return true;
@@ -88,15 +76,13 @@ pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
 //
 fn _boards(_command : &str, _args : &Vec<&str>) -> bool
 {
-    gdb_out_rs( "Support enabled for :\n\t");
+    gdb_print!( "Support enabled for :\n");
     let boards = bmp::bmp_supported_boards();
     let b : Vec <&str>= boards.split(":").collect();
     for i in 0..b.len()
     {
-        gdb_out_rs( b[i]);
-        gdb_out_rs( "\n\t");
-    }
-    gdb_out_rs( "\n");
+        gdb_print!("\t{}\n", b[i]);        
+    }    
     encoder::reply_ok();
     return true;
 }
@@ -107,11 +93,8 @@ pub fn _voltage(_command : &str, _args : &Vec<&str>) -> bool
 
     let voltage = bmp::bmp_get_target_voltage();
     let voltage32 : u32 = (voltage * 1000.) as u32;
-    let mut buffer: [u8;20] = [0; 20]; 
     
-    gdb_out_rs(&"Voltage (mv):");
-    gdb_out_rs(voltage32.numtoa_str(10,&mut buffer));
-    gdb_out_rs(&"\n");
+    gdb_print!("Voltage (mv) : {}\n",voltage32);
     encoder::reply_ok();
     return true;
 }
@@ -160,8 +143,7 @@ pub fn _qRcmd(command : &str, _args : &Vec<&str>) -> bool
  */
 pub fn _get_version(_command : &str, _args : &Vec<&str>) -> bool
 {
-    crate::glue::gdb_out_rs( bmp::bmp_get_version() );
-    gdb_out_rs( "\n");
+    gdb_print!("{}\n", bmp::bmp_get_version());
     encoder::reply_ok();
     true
 }
@@ -197,8 +179,7 @@ pub fn _ws(_command : &str, _args : &Vec<&str>) -> bool
         bmp::bmp_set_wait_state(ws);
     }
     let w : u32 = bmp::bmp_get_wait_state();
-    crate::glue::gdb_out_rs_u32("wait state is now ",w);
-    crate::glue::gdb_out_rs("\n");
+    gdb_print!("wait states are now {}\n", w);
     encoder::reply_ok();
     return true;
     

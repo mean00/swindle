@@ -52,8 +52,7 @@ fn _vFlashErase(_command : &str, args : &Vec<&str>) -> bool
         None =>   encoder::reply_e01(),
         Some( (adr,len) ) => 
             {   
-                bmplog!("Erase : Adr 0x{:x}",adr);
-                bmplog!("len {}",len);
+                bmplog!("Erase : Adr 0x{:x} len {}\n",adr,len);
                 encoder::reply_bool(bmp_flash_erase(adr,len));
             },
     };
@@ -74,7 +73,7 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
 
     if len<9
     {
-        bmplog!("flashWrite: invalid arg1");
+        bmplog!("flashWrite: invalid arg1 \n");
         encoder::reply_e01();
         return true; 
     }
@@ -99,10 +98,8 @@ fn _vFlashWrite(_command : &str, args : &[u8]) -> bool
 
     let adr  =crate::parsing_util::u8s_string_to_u32( &block[..prefix] );
     let data: &[u8] = &block[(prefix+1)..];
-    bmplog!("adr:0x{:x}",adr);
-    bmplog!("len:{}",data.len());
-    bmplog!("write : Adr 0x{:x}",adr as u32);
-    bmplog!("len {}",len as u32);
+    bmplog!("adr:0x{:x} en:{}\n",adr,data.len());
+    bmplog!("write : Adr 0x{:x} len {}\n",adr as u32,len as u32);
 
     encoder::reply_bool( bmp_flash_write(adr, data) );
     true
