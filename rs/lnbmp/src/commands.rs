@@ -29,7 +29,8 @@ type Callback_raw = fn(command: &str, args: &[u8]) -> bool;
 type Callback_text = fn(command: &str, args: &Vec<&str>) -> bool;
 
 crate::setup_log!(false);
-use crate::{bmplog,bmpwarning};
+crate::gdb_print_init!();
+use crate::{bmplog,bmpwarning,gdb_print};
 
 enum CallbackType {
     text(Callback_text),
@@ -177,9 +178,7 @@ fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
         // if the expected command begins with the receive command..
         {
             if !connected && c.require_connected {
-                crate::glue::gdb_out_rs("Command ");
-                crate::glue::gdb_out_rs(c.command);
-                crate::glue::gdb_out_rs("cannot be used while not connected\n");
+                gdb_print!("Command {} cannot be used while not connected\n", c.command);
                 bmplog!("Command not ok while not connected {} \n",c.command);
                 encoder::reply_e01();
                 return true;
@@ -209,9 +208,7 @@ pub fn exec(command: &str, args: &[u8]) {
         {
             encoder::simple_send(""); // unsupported
             bmplog!("Unsupported cmd :{} \n", command);
-            crate::glue::gdb_out_rs(">>>Command [");
-            crate::glue::gdb_out_rs(command);
-            crate::glue::gdb_out_rs("] is not supported\n");
+            gdb_print!("!!!Command {} is not supported!!\n", command);
         }
     }
 }

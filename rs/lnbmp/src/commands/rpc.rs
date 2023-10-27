@@ -2,7 +2,7 @@ use crate::bmp;
 use crate::commands::rpc_commands;
 use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::*;
-use crate::glue::gdb_out_rs;
+
 use crate::bmplogger::*;
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::parsing_util::ascii_octet_to_hex;

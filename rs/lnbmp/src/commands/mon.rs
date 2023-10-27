@@ -6,7 +6,6 @@ use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util::{ascii_hex_string_to_u8s,ascii_string_to_u32};
 use crate::commands::{CallbackType,exec_one,CommandTree};
-use crate::glue::gdb_out_rs;
 use numtoa::NumToA;
 //
 //
@@ -64,7 +63,7 @@ pub fn _bmp_mon(command : &str, _args : &Vec<&str>) -> bool
 //
 pub fn _mon_help(_command : &str, _args : &Vec<&str>) -> bool
 {
-    gdb_out_rs( "Help, use mon [cmd] [params] :\n");
+    gdb_print!( "Help, use mon [cmd] [params] :\n");
     for i in 0..help_tree.len()
     {
         gdb_print!("mon {} \t: {}\n",&(help_tree[i].command), &(help_tree[i].help)); 

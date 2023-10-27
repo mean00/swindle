@@ -30,16 +30,4 @@ pub fn gdb_out_rs(fmt : &str)
     e.hex_and_add(fmt);    
     e.end(); 
 }
-// send string str + value to gdb
-pub fn gdb_out_rs_u32(fmt : &str, value : u32) 
-{    
-    let mut buffer: [u8;12] = [0; 12]; 
-    let mut e = encoder::new();
-    e.begin();
-    e.add("O");    
-    e.hex_and_add(fmt);   
-    e.hex_and_add(value.numtoa_str(10,&mut buffer));      
-    e.end(); 
-}
-
 
