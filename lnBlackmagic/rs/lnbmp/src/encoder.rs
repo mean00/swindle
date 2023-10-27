@@ -23,7 +23,7 @@ const TEMP_BUFFER_SIZE: usize = 64;
 static mut temp_buffer: [u8; TEMP_BUFFER_SIZE] = [0; TEMP_BUFFER_SIZE];
 
 crate::setup_log!(false);
-use crate::{bmplog,bmpwarning};
+use crate::{bmplog, bmpwarning};
 
 pub struct encoder {
     checksum: usize,
@@ -34,9 +34,7 @@ pub struct encoder {
 // only in a single shot
 
 fn get_temp_buffer() -> &'static mut [u8] {
-    unsafe {
-        &mut temp_buffer
-    }
+    unsafe { &mut temp_buffer }
 }
 //
 //
@@ -109,7 +107,7 @@ impl encoder {
     pub fn hexify_and_raw_send(str: &[u8]) {
         let buffer = get_temp_buffer();
         let mut byt = str;
-        while !byt.is_empty()  {
+        while !byt.is_empty() {
             let n = core::cmp::min(byt.len(), TEMP_BUFFER_SIZE / 2);
             for i in 0..n {
                 u8_to_ascii_to_buffer(byt[i], &mut buffer[2 * i..]);
@@ -122,7 +120,7 @@ impl encoder {
     pub fn hex_and_add(&mut self, data: &str) {
         let mut byt = data.as_bytes();
         let buffer = get_temp_buffer();
-        while !byt.is_empty()  {
+        while !byt.is_empty() {
             let n = core::cmp::min(byt.len(), TEMP_BUFFER_SIZE / 2);
             for i in 0..n {
                 u8_to_ascii_to_buffer(byt[i], &mut buffer[2 * i..]);
@@ -136,7 +134,7 @@ impl encoder {
         let mut n = 0;
         let buffer = get_temp_buffer();
 
-        for c in byt {            
+        for c in byt {
             match *c {
                 packet_symbols::CHAR_ESCAPE2
                 | packet_symbols::CHAR_ESCAPE

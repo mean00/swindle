@@ -226,7 +226,13 @@ include_directories( ${BMP}/src)
 include_directories( ${BMP}/src/target)
 #---------
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/lnbmp/c_interface bmp_c_interface)
+IF (LN_BMP_HOSTED) 
+    include(rnCmake)
+    corrosion_import_crate(MANIFEST_PATH rs/lnbmp/Cargo.toml    NO_DEFAULT_FEATURES      CFLAGS ${LN_LTO_RUST_FLAGS} )
+    corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
+ELSE (LN_BMP_HOSTED) 
 add_subdirectory( rs )
+ENDIF (LN_BMP_HOSTED) 
 #
 MESSAGE(STATUS "Enabled boards  : ${enabled_boards}")
 MESSAGE(STATUS "Enabled sources : ${BOARDS}")

@@ -90,9 +90,9 @@ include(enabled_board)
 ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
 
 #
-include(rnCmake)
-corrosion_import_crate(MANIFEST_PATH ../rs/lnbmp/Cargo.toml    NO_DEFAULT_FEATURES      CFLAGS ${LN_LTO_RUST_FLAGS} )
-corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
+#include(rnCmake)
+#corrosion_import_crate(MANIFEST_PATH ../lnBlackmagic/rs/lnbmp/Cargo.toml    NO_DEFAULT_FEATURES      CFLAGS ${LN_LTO_RUST_FLAGS} )
+#corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 
 SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/bmp_qtnetwork.h ${H}/bmp_qtserial.cpp ${H}/bmp_qtnetwork.cpp)

@@ -1,12 +1,12 @@
 use crate::commands;
+use crate::commands::run::HaltState;
 use crate::rn_bmp_cmd_c;
+use alloc::vec;
+use alloc::vec::Vec;
 use core::ffi::CStr;
 use core::ptr::null;
 use core::ptr::null_mut;
-use alloc::vec;
-use alloc::vec::Vec;
 use cty::c_char;
-use crate::commands::run::HaltState;
 
 pub enum mapping {
     Flash = 0,
@@ -82,8 +82,8 @@ pub fn bmp_get_mapping(map: mapping) -> Vec<MemoryBlock> {
                 {
                     r.push(MemoryBlock {
                         start_address: start,
-                        length: size ,
-                        block_size ,
+                        length: size,
+                        block_size,
                     });
                 }
             }
@@ -203,12 +203,10 @@ pub fn bmp_set_wait_state(ws: u32) {
     }
 }
 /**
- * 
+ *
  */
-pub fn bmp_get_wait_state() ->u32 {
-    unsafe {
-        rn_bmp_cmd_c::bmp_get_wait_state_c()
-    }
+pub fn bmp_get_wait_state() -> u32 {
+    unsafe { rn_bmp_cmd_c::bmp_get_wait_state_c() }
 }
 
 /*
@@ -283,7 +281,7 @@ pub fn bmp_rpc_swd_in_par(value: &mut u32, xparity: &mut bool, nb_bits: u32) -> 
         let ptr_bool: *mut i32 = &mut pari32;
 
         let r = ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_in_par_c(ptr, ptr_bool, nb_bits));
-        *xparity = pari32 !=0;
+        *xparity = pari32 != 0;
         r
     }
 }
@@ -433,51 +431,43 @@ pub fn bmp_supported_boards() -> &'static str {
         let boards = rn_bmp_cmd_c::list_enabled_boards();
 
         let output = CStr::from_ptr(boards).to_str();
-        if let Ok(x) = output { return x;}
+        if let Ok(x) = output {
+            return x;
+        }
     }
-    "--error--"    
+    "--error--"
 }
 /**
- * 
+ *
  */
 pub fn bmp_get_version() -> &'static str {
     unsafe {
         match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string()).to_str() {
             Ok(x) => x,
-            _ => "??"
+            _ => "??",
         }
     }
 }
 /**
- * 
+ *
  */
-pub fn bmp_mon( input_as_string: &str) -> bool
-{
-    unsafe {
-        ret_to_bool(rn_bmp_cmd_c::bmp_mon_c(input_as_string.as_ptr()))
-    }
+pub fn bmp_mon(input_as_string: &str) -> bool {
+    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_mon_c(input_as_string.as_ptr())) }
 }
 /**
- * 
+ *
  */
-pub fn free_heap() -> u32
-{
-    unsafe {
-        rn_bmp_cmd_c::free_heap_c()
-    }    
+pub fn free_heap() -> u32 {
+    unsafe { rn_bmp_cmd_c::free_heap_c() }
 }
 /**
- * 
+ *
  */
-pub fn min_free_heap() -> u32
-{
-    unsafe {
-        rn_bmp_cmd_c::min_free_heap_c()
-    }    
+pub fn min_free_heap() -> u32 {
+    unsafe { rn_bmp_cmd_c::min_free_heap_c() }
 }
 
-pub fn get_heap_stats() -> (u32, u32)
-{
+pub fn get_heap_stats() -> (u32, u32) {
     (min_free_heap(), free_heap())
 }
 

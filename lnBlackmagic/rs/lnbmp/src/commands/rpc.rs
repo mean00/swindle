@@ -14,9 +14,8 @@ use crate::poppingbuffer::popping_buffer;
 use alloc::vec;
 use alloc::vec::Vec;
 
-
 crate::setup_log!(false);
-use crate::{bmplog,bmpwarning};
+use crate::{bmplog, bmpwarning};
 //-------------------------------
 /**
  *
@@ -236,7 +235,7 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
             let csw1: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
             let address: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
             let length: u32 = crate::parsing_util::u8s_string_to_u32(pop.pop(8));
-            bmplog!("\t\t MEM READ CSW : 0x{:x} \n", csw1);            
+            bmplog!("\t\t MEM READ CSW : 0x{:x} \n", csw1);
             bmplog!("\t\t adr  :0x{:x}\n", address);
             bmplog!("\t\t len  :{}\n", length);
             if length > 1024 {
@@ -269,9 +268,10 @@ fn rpc_hl_packet(input: &[u8]) -> bool {
                 rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
                 return true;
             }
-            let mut buffer: [u8; 1024] = [0; 1024];            
+            let mut buffer: [u8; 1024] = [0; 1024];
             let decoded = crate::parsing_util::u8_hex_string_to_u8s(pop.leftover(), &mut buffer);
-            let fault: i32 = bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
+            let fault: i32 =
+                bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
             reply_adiv5_32(fault, 0);
             return true;
         } // m

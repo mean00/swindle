@@ -1,11 +1,9 @@
-
+use core::convert::Infallible;
+use cty::c_char;
 #[allow(unused_imports)]
 #[cfg(feature = "native")]
 use rnarduino as rn;
-use cty::c_char;
 use ufmt::uWrite;
-use core::convert::Infallible;
-
 
 #[cfg(feature = "native")]
 #[macro_export]
@@ -17,16 +15,16 @@ macro_rules! bmplog
                     lnLogger!($x)
                 }
             };
-        
+
             ($x:expr, $($y:expr),+) => {
                 if(log_enabled)
                 {
                     lnLogger!( $x, $($y),+)
                 }
-            };            
+            };
         }
-        //--
-#[cfg(feature = "native")]        
+//--
+#[cfg(feature = "native")]
 #[macro_export]
 macro_rules! bmpwarning
         {
@@ -36,19 +34,17 @@ macro_rules! bmpwarning
 
             ($x:expr, $($y:expr),+) => {
                     lnLogger!( $x, $($y),+)
-            };            
-        }       
+            };
+        }
 
 #[cfg(feature = "native")]
 #[macro_export]
-macro_rules! setup_log
-{
-    ($x:expr) => {      
-        use rnarduino::{lnLogger,lnLogger_init};     
+macro_rules! setup_log {
+    ($x:expr) => {
+        use rnarduino::{lnLogger, lnLogger_init};
         lnLogger_init!();
-        static log_enabled : bool = $x;
-       
-    }
+        static log_enabled: bool = $x;
+    };
 }
 
 // ------------Hosted mode ------------
@@ -66,16 +62,16 @@ macro_rules! bmplog
                     print!("{}",($x))
                 }
             };
-        
+
             ($x:expr, $($y:expr),+) => {
                 if(log_enabled)
                 {
                     print!( $x, $($y),+)
                 }
-            };            
+            };
         }
-        //--
-#[cfg(feature = "hosted")]        
+//--
+#[cfg(feature = "hosted")]
 #[macro_export]
 macro_rules! bmpwarning
         {
@@ -85,26 +81,22 @@ macro_rules! bmpwarning
 
             ($x:expr, $($y:expr),+) => {
                 print!( $x, $($y),+)
-            };            
-        }       
+            };
+        }
 
 #[cfg(feature = "hosted")]
 #[macro_export]
-macro_rules! setup_log
-{
-    ($x:expr) => {      
-        static log_enabled : bool = $x;       
+macro_rules! setup_log {
+    ($x:expr) => {
+        static log_enabled: bool = $x;
         extern crate std;
-        use std::print;     
-    }
+        use std::print;
+    };
 }
-
-
 
 //---------------------------------
 //
 //---------------------------------
-
 
 pub struct G;
 
@@ -112,14 +104,14 @@ impl uWrite for G {
     type Error = Infallible;
 
     fn write_str(&mut self, s: &str) -> Result<(), Infallible> {
-            crate::glue::gdb_out_rs(s);
-            Ok(())
+        crate::glue::gdb_out_rs(s);
+        Ok(())
     }
 }
 
 #[macro_export]
-macro_rules! gdb_print {    
-    
+macro_rules! gdb_print {
+
     ($x:expr) => {
         uwrite!(&mut G, "{}", $x).unwrap()
     };
@@ -130,11 +122,10 @@ macro_rules! gdb_print {
 }
 
 #[macro_export]
-macro_rules! gdb_print_init {    
+macro_rules! gdb_print_init {
     () => {
-#[cfg(feature = "hosted")]  
-            use ufmt::uwrite;
-            use $crate::bmplogger::G;
-    }    
+        #[cfg(feature = "hosted")]
+        use ufmt::uwrite;
+        use $crate::bmplogger::G;
+    };
 }
-

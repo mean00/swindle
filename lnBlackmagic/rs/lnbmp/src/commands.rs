@@ -30,7 +30,7 @@ type Callback_text = fn(command: &str, args: &[&str]) -> bool;
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog,bmpwarning,gdb_print};
+use crate::{bmplog, bmpwarning, gdb_print};
 
 enum CallbackType {
     text(Callback_text),
@@ -173,13 +173,13 @@ fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
     bmplog!("\n");
     let empty: &str = "";
     for c in tree {
-       // let c = &tree[i];
+        // let c = &tree[i];
         if command.starts_with(c.command)
         // if the expected command begins with the receive command..
         {
             if !connected && c.require_connected {
                 gdb_print!("Command {} cannot be used while not connected\n", c.command);
-                bmplog!("Command not ok while not connected {} \n",c.command);
+                bmplog!("Command not ok while not connected {} \n", c.command);
                 encoder::reply_e01();
                 return true;
             } else {
@@ -224,7 +224,7 @@ fn _Hg(_command: &str, _args: &[&str]) -> bool {
     true
 }
 // select thread
-fn _Hc(_command: &str, _args:&[&str]) -> bool {
+fn _Hc(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }

@@ -15,9 +15,8 @@ use crate::parsing_util::ascii_string_to_u32;
 
 use crate::bmp;
 
-
 crate::setup_log!(false);
-use crate::{bmplog,bmpwarning};
+use crate::{bmplog, bmpwarning};
 
 // write register
 // Pf=40000008
@@ -65,13 +64,12 @@ pub fn _g(_command: &str, _args: &[&str]) -> bool {
     let regs = crate::bmp::bmp_read_registers();
     let mut e = encoder::new();
 
-    if regs.is_empty()
-    {
+    if regs.is_empty() {
         encoder::simple_send("0000");
         return true;
     }
     e.begin();
-    for i in regs{
+    for i in regs {
         e.add_u32_le(i);
     }
     // now read CSRs
