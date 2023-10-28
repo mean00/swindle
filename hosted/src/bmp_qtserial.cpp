@@ -19,7 +19,7 @@ extern "C"
 
 #define BMP_VID 0x1d50
 #define BMP_PID 0x6018
-#define LNBMP_PID 0x6040
+#define LNBMP_PID 0x6050
 
 #define WCHLINK_VID 0x1a86
 #define WCHLINK_PID 0x8010
@@ -111,7 +111,7 @@ bool readChar(uint8_t *data)
             }
             if (nb < 0)
             {
-                printf("Error on serial\n");
+                QBMPERROR("Error on serial\n");
                 return false;
             }
         }
@@ -147,7 +147,7 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
             }
             else
             {
-                QBMPLOG("*************Warning : invalid resp \n");
+                QBMPERROR("*************Warning : invalid resp \n");
             }
             break;
         case SERIAL_DATA: {
@@ -171,7 +171,7 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
         break;
         case SERIAL_DONE:
         default:
-            printf("Invalid state\n");
+            QBMPERROR("Invalid state\n");
             xAssert(0);
             break;
         }
@@ -188,7 +188,7 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
         int nb = qserial->write((const char *)data, size);
         if (nb <= 0)
         {
-            printf("***** WRITE FAILURE\n");
+            QBMPERROR("***** WRITE FAILURE\n");
             exit(-1);
             break;
         }
@@ -258,7 +258,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
             }
         }
     }
-    printf("-- Cannot find valid debugger --\n");
+    QBMPERROR("-- Cannot find valid debugger --\n");
     xAssert(0);
     return 0;
 }
@@ -267,7 +267,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
 
 extern "C" void libusb_exit_function(bmda_probe_s *info)
 {
-    qWarning("Exiting libusb..\n");
+    QBMPERROR("Exiting libusb..\n");
     if (qserial)
     {
         qserial->close();
@@ -292,7 +292,7 @@ extern "C" bool serial_open(const bmda_cli_options_s *opt, const char *serial)
     QBMPLOG("Serial open\n");
     if (!qserial->open(QIODevice::ReadWrite))
     {
-        QBMPLOG("cannot open\n");
+        QBMPERROR("cannot open\n");
         return false;
     }
     qserial->setFlowControl(QSerialPort::NoFlowControl);

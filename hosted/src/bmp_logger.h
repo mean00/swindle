@@ -6,4 +6,5 @@
 extern "C" void bmplogger(const char *a...);
 extern "C" void bmploggern(int n, const char *a);
 #define QBMPLOG bmplogger
+#define QBMPERROR bmplogger
 #define QBMPLOGN(sz, data) bmploggern(sz, data);
