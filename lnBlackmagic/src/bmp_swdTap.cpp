@@ -42,7 +42,7 @@ uint32_t swd_delay_cnt = 4;
 
 #include "lnBMP_swdio.h"
 #if PC_HOSTED == 0
-#include "../../../lnBlackmagic/private_include/lnBMP_pinout.h"
+#include "lnBMP_pinout.h"
 #endif
 
 static uint32_t SwdRead(size_t ticks);

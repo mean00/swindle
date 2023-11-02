@@ -31,7 +31,7 @@ class BMPSerial : public xTask
         _serialInstance = serialInstance;
         _evGroup = new xFastEventGroup;
         _usb = new lnUsbCDC(_usbInstance);
-        _serial = new lnSerial(_serialInstance, 512);
+        _serial =  createLnSerial(_serialInstance, 512);
         _connected = 0;
         start();
     }
@@ -42,7 +42,7 @@ class BMPSerial : public xTask
     {
         _evGroup->takeOwnership();
         lnDelayMs(50); // let the gdb part start first
-        _serial->init();
+        _serial->init(lnSerialCore::txRx);
         _serial->setSpeed(115200);
         _serial->setCallback(_serialCallback, this);
         _serial->enableRx(true);
@@ -110,7 +110,7 @@ class BMPSerial : public xTask
      *
      *
      */
-    static void _serialCallback(void *cookie, lnSerial::Event event)
+    static void _serialCallback(void *cookie, lnSerialCore::Event event)
     {
         BMPSerial *me = (BMPSerial *)cookie;
         me->serialCallback(event);
@@ -119,11 +119,11 @@ class BMPSerial : public xTask
      *
      *
      */
-    void serialCallback(lnSerial::Event event)
+    void serialCallback(lnSerialCore::Event event)
     {
         switch (event)
         {
-        case lnSerial::dataAvailable:
+        case lnSerialCore::dataAvailable:
             _evGroup->setEvents(SERIAL_EVENT);
             break;
         default:
@@ -170,7 +170,7 @@ class BMPSerial : public xTask
     int _connected;
     int _usbInstance, _serialInstance;
     uint8_t _usbBuffer[BMP_SERIAL_BUFFER_SIZE];
-    lnSerial *_serial;
+    lnSerialCore *_serial;
     xFastEventGroup *_evGroup;
     lnUsbCDC *_usb;
 };
