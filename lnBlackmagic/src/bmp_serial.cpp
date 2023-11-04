@@ -31,7 +31,7 @@ class BMPSerial : public xTask
         _serialInstance = serialInstance;
         _evGroup = new xFastEventGroup;
         _usb = new lnUsbCDC(_usbInstance);
-        _serial =  createLnSerial(_serialInstance, 512);
+        _serial =  createLnSerial(_serialInstance, lnSerialCore::txRx, 512);
         _connected = 0;
         start();
     }
@@ -42,7 +42,7 @@ class BMPSerial : public xTask
     {
         _evGroup->takeOwnership();
         lnDelayMs(50); // let the gdb part start first
-        _serial->init(lnSerialCore::txRx);
+        _serial->init();
         _serial->setSpeed(115200);
         _serial->setCallback(_serialCallback, this);
         _serial->enableRx(true);
