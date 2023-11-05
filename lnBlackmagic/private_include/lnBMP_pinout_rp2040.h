@@ -18,4 +18,4 @@ const lnPin _mapping[8] = {
 #define LN_USB_INSTANCE         1
 #define LN_SERIAL_INSTANCE      1
 
-#define EXTRA_SETUP() {}
+#define EXTRA_SETUP() {   lnPinMode(GPIO20, lnUART);    lnPinMode(GPIO21, lnUART); }// RX
