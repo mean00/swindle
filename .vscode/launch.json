@@ -81,6 +81,28 @@
                 ]
              },
              {
+                "name": "riscv_fast_OCD",
+                "type": "gdb",
+                "request": "launch",
+                "cwd": "${workspaceRoot}",
+                "target": "${workspaceRoot}/build/lnBMP_default_pinout_CH32V3x_144M_CLANG.elf",
+                "gdbpath" : "${config:riscv_gdb}",   
+                "preLaunchTask"      : "CH32Flash",
+                "autorun": [        
+                    "target extended-remote |  ${config:riscv_openocd_path}/openocd -c \"gdb_port pipe; log_output openocd.log\" -f ${config:riscv_openocd_path}/wch-riscv.cfg",
+                    "set confirm off",
+                    "set mem inaccessible-by-default off",
+                    "set  architecture riscv:rv32",
+                    "set remotetimeout unlimited",
+                    "set remote hardware-breakpoint-limit 8",
+                    "set remote hardware-watchpoint-limit 2", 
+                    "mon reset halt",
+                    "tb main ",
+                    "b deadEnd ",
+                    "r"
+                    ]
+                 },
+             {
             "name": "riscv_attach_OCD",
             "type": "gdb",
             "request": "launch",
