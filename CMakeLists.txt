@@ -142,14 +142,18 @@ IF(USE_CH32V3x)
     )
 ELSE()
 IF(USE_RP2040)
+   find_program ( elf2uf2      NAMES elf2uf2-rs)
+    MESSAGE(STATUS "**** elf2uf2 : ${elf2uf2}")
+    if( "x${elf2uf2}" STREQUAL "xelf2uf2-NOTFOUND")
+        MESSAGE(WARNING "elf2uf2-rs not found, install it trough cargo install elf2uf2-rs" )
+    else()
      add_custom_command(TARGET lnBMP
-        POST_BUILD
-        #COMMAND echo "--"
-        COMMAND cp $<TARGET_FILE:lnBMP> $<TARGET_FILE:lnBMP>.tmp
-        #COMMAND elf2uf2 -v $<TARGET_FILE:lnBMP>.tmp $<TARGET_FILE:lnBMP>.uf2
+        POST_BUILD                
+        COMMAND elf2uf2-rs -v $<TARGET_FILE:lnBMP> $<TARGET_FILE:lnBMP>.uf2
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Generating uf2 files"
-    )
+        COMMENT "Generating uf2 files"        
+        )
+    endif()
 ELSE()
     add_custom_command(TARGET lnBMP
     POST_BUILD
