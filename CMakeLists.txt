@@ -55,9 +55,6 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 SET(LN_ENABLE_RUST ON CACHED "")
-IF(USE_RP2040)
-       ADD_DEFINITIONS("-DUSE_RP2040")
-ENDIF()       
 
 IF(USE_STLINK_PINOUT)
     SET(LN_DEBUG_UART 1 CACHE INTERNAL "")
@@ -128,41 +125,10 @@ ELSE()
     SET(LN_COMPILER "_GCC" CACHE STRING "")
 ENDIF()    
 
-set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
-#
-#   Checksum the file...
-#
-#
-IF(USE_CH32V3x)
-    add_custom_command(TARGET lnBMP
-    POST_BUILD
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/lnCH32Checksum.py  $<TARGET_FILE:lnBMP>.bin $<TARGET_FILE:lnBMP>.ck_bin
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Generating checksumed file"
-    )
-ELSE()
 IF(USE_RP2040)
-   find_program ( elf2uf2      NAMES elf2uf2-rs)
-    MESSAGE(STATUS "**** elf2uf2 : ${elf2uf2}")
-    if( "x${elf2uf2}" STREQUAL "xelf2uf2-NOTFOUND")
-        MESSAGE(WARNING "elf2uf2-rs not found, install it trough cargo install elf2uf2-rs" )
-    else()
-     add_custom_command(TARGET lnBMP
-        POST_BUILD                
-        COMMAND elf2uf2-rs -v $<TARGET_FILE:lnBMP> $<TARGET_FILE:lnBMP>.uf2
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Generating uf2 files"        
-        )
-    endif()
+    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_RP2040${LN_COMPILER} )
 ELSE()
-    add_custom_command(TARGET lnBMP
-    POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:lnBMP> $<TARGET_FILE:lnBMP>.tmp
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/lnARMChecksum.py  $<TARGET_FILE:lnBMP>.tmp $<TARGET_FILE:lnBMP>.ck_bin
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Generating checksumed bin file"
-    )
- ENDIF()
-ENDIF(USE_CH32V3x) # Create checksum
+    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
+ENDIF()    
 
 #---
