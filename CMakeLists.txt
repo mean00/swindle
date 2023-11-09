@@ -129,36 +129,5 @@ ELSE()
 ENDIF()    
 
 set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
-#
-#   Checksum the file...
-#
-#
-IF(USE_CH32V3x)
-    add_custom_command(TARGET lnBMP
-    POST_BUILD
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/lnCH32Checksum.py  $<TARGET_FILE:lnBMP>.bin $<TARGET_FILE:lnBMP>.ck_bin
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Generating checksumed file"
-    )
-ELSE()
-IF(USE_RP2040)
-     add_custom_command(TARGET lnBMP
-        POST_BUILD
-        #COMMAND echo "--"
-        COMMAND cp $<TARGET_FILE:lnBMP> $<TARGET_FILE:lnBMP>.tmp
-        #COMMAND elf2uf2 -v $<TARGET_FILE:lnBMP>.tmp $<TARGET_FILE:lnBMP>.uf2
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Generating uf2 files"
-    )
-ELSE()
-    add_custom_command(TARGET lnBMP
-    POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:lnBMP> $<TARGET_FILE:lnBMP>.tmp
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/lnARMChecksum.py  $<TARGET_FILE:lnBMP>.tmp $<TARGET_FILE:lnBMP>.ck_bin
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Generating checksumed bin file"
-    )
- ENDIF()
-ENDIF(USE_CH32V3x) # Create checksum
 
 #---
