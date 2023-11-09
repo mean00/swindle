@@ -22,7 +22,7 @@ const char *descriptor[] = {
     "plnBMP DFU",                   // 6: DFU Interface
 };
 #else
-#define USB_PID 0x6040
+#define USB_PID 0x6030
 const char *descriptor[] = {
     (const char[]){0x09, 0x04},     // 0: is supported language is English (0x0409)
     "lnBlackMagic",                 // 1: Manufacturer
