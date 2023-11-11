@@ -17,13 +17,20 @@ use crate::bmp::MemoryBlock;
 use crate::commands::mon::_qRcmd;
 use crate::commands::CallbackType;
 use crate::util::xmin;
+use crate::parsing_util;
 
 use numtoa::NumToA;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
-const q_command_tree: [CommandTree; 10] = [
+const q_command_tree: [CommandTree; 11] = [
+    CommandTree {
+        command: "qSymbol",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_qSymbol),
+    }, // read symbol 
     CommandTree {
         command: "qSupported",
         args: 0,
@@ -361,5 +368,50 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
     }
     true
 }
+/**
+ * \brief : ask gdb for pxCurrentTCB address
+ */
+const PX_CURRENT_TCB : &str = "pxCurrentTCB";
+static mut pxCurrentTCB: Option<u32> = None;
 
+fn _qSymbol(_command: &str, args: &[&str]) -> bool {
+
+    unsafe {
+    if pxCurrentTCB.is_some()
+    {
+        encoder::reply_ok();
+        return true;
+    }}
+    if args.len()!=2
+    {
+        encoder::reply_e01();
+        return true;
+    }
+    // is it an empty one ?, if so ask for pxCurrentTcb
+    if args[0].is_empty() && args[1].is_empty()
+    {
+        let mut e=encoder::new();
+        e.begin();
+        e.add("qSymbol:");
+        e.hex_and_add(PX_CURRENT_TCB);
+        e.end();
+        return true;
+    }
+    // Ok what is the symbol ?
+    let mut symbol : [u8;32] = [0;32];     
+    let clear_text  = parsing_util::ascii_hex_string_to_u8s(args[1], &mut symbol);
+    if let Ok(text ) = clear_text   {
+        if (text.eq(PX_CURRENT_TCB.as_bytes()))  && (!args[0].is_empty())    {
+            let  address: u32 = parsing_util::ascii_string_to_u32(args[0]);
+            bmplog!("pxCurrentCB : 0x{:x}", address);
+            unsafe {
+            pxCurrentTCB=Some(address);
+            encoder::reply_ok();
+            return true;        
+            }
+        }
+    }
+    bmpwarning!("Invalid qsymbol reply\n");
+    false
+}
 // EOF

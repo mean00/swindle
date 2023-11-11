@@ -107,10 +107,11 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
             sz -= 1;
             dex += 1;
             self.automaton = match self.automaton {
-                PARSER_AUTOMATON::Init => match c {
+                PARSER_AUTOMATON::Init =>  PARSER_AUTOMATON::Init,
+                //PARSER_AUTOMATON::Init => match c {
                     //   CHAR_RESET_04   => PARSER_AUTOMATON::Reset,
-                    _ => PARSER_AUTOMATON::Init,
-                },
+                  //  _ => PARSER_AUTOMATON::Init,
+                //},
                 PARSER_AUTOMATON::Idle => {
                     bmplog!("Idle\n");
                     match c
@@ -169,11 +170,12 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
                                                 _                       => {
                                                                         bmplog!("T:<{}>",c);
                                                                         self.checksum+=c as usize;
-                                                                        self.input_buffer[self.indx]= match c
-                                                                        {
+                                                                        self.input_buffer[self.indx] = c;
+//                                                                        self.input_buffer[self.indx]= match c
+//                                                                        {
 //                                                                            b'\t' => b' ',
-                                                                            _     => c,
-                                                                        };
+//                                                                            _     => c,
+//                                                                        };
                                                                         self.indx+=1;
                                                                         PARSER_AUTOMATON::Body
                                                                     },
