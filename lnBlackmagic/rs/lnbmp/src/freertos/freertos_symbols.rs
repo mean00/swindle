@@ -47,7 +47,8 @@ unsafe fn ask_for_next_symbol() -> bool
 }
 /**
  * \fn freertos_crawl_list
- * \brief crawl a list of TCBs and popup the individual PCB, the out is a pointer disguised as a u32
+ * \brief crawl a list of TCBs and popup the individual TCB.
+ * /!\ Depending if MPU is enabled or not, the offset to data could be different!
  */
 fn freertos_crawl_list(address: u32) -> Vec<u32>
 {
@@ -60,15 +61,14 @@ fn freertos_crawl_list(address: u32) -> Vec<u32>
         bmplog!("Fail to parse list at address 0x{:x}\n",address);
         return v;
     }
-   
     
-    let mut count = list_header[0];
+    let count = list_header[0];
     let mut next = list_header[1];
-    let mut end = list_header[2];
+    //let mut end = list_header[2];
     
     let mut items : [u32;5]=[0,0,0,0,0];
 
-    for i in 0..count
+    for _i in 0..count
     {
         // Read item
         // 0 number
@@ -82,16 +82,22 @@ fn freertos_crawl_list(address: u32) -> Vec<u32>
             return v;
         }       
         next=items[1];
+
+        let state_list_item = items[3];
         // owner is a StateListeItem
-        if !bmp_read_mem32(items[3], &mut items) 
+        // 0 Item
+        // 1 next
+        // 2 Prev
+        // 3 owner <= the TCB is the actual owner
+        if !bmp_read_mem32(state_list_item, &mut items) 
         {
             bmplog!("Fail to parse list at address 0x{:x}\n",next);
             return v;
-        }
-        v.push(items[3]); // go back 4 
-        
+        }        
+        let top_of_stack = items[3];
+        v.push( top_of_stack); 
     }
-    return v;
+    v
 }
 /**
  * 
@@ -102,19 +108,25 @@ pub unsafe fn freertos_collect_information() -> bool
     {
         return false;
     }
-    let mut index : usize;
-    let list_of_tcb : Vec<u32> = Vec::new();
-    for index in 1..5
+    //let mut index : usize;
+    
+    let mut list_of_tcb : [Vec<u32>;5]= [Vec::new(),Vec::new(),Vec::new(),Vec::new(),Vec::new()];
+
+    // Read pcCurrentTcb
+    let mut data : [u32;1] = [0];
+    if !bmp_read_mem32(freeRtosSymbols.symbols[0], &mut data) 
     {
-        let this_list = freertos_crawl_list( freeRtosSymbols.symbols[index]);
-        // Merge into master list
-        bmpwarning!(" {} \n", FreeRTOSSymbolName[index]);
-        for i in this_list
-        {
-            bmpwarning!("\t {:x}  \n", i);
-        }
-        
+        bmpwarning!("cannot read value of pxCurrentTCB\n");
+        return false;
     }
+    // pxCurrentTCB
+    list_of_tcb[0].push(data[0]);
+    // read other lists
+    for index in 1..5
+    {        
+        list_of_tcb [index] = freertos_crawl_list( freeRtosSymbols.symbols[index]);            
+    }
+    // ok we have all the TCBs
     true
 }
 /**

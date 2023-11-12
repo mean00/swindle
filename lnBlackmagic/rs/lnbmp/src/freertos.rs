@@ -40,6 +40,6 @@ pub fn read_fos(address : u32) -> Option<freertos_task_info>
     unsafe {
     crate::freertos::freertos_symbols::freertos_collect_information();    
     }
-    return None;
+    None
 }
  //
