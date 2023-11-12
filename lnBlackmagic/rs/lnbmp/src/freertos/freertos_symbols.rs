@@ -1,5 +1,7 @@
 use crate::parsing_util;
 use crate::encoder::encoder;
+use alloc::vec::Vec;
+use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
@@ -42,6 +44,78 @@ unsafe fn ask_for_next_symbol() -> bool
     e.end();
     true
 
+}
+/**
+ * \fn freertos_crawl_list
+ * \brief crawl a list of TCBs and popup the individual PCB, the out is a pointer disguised as a u32
+ */
+fn freertos_crawl_list(address: u32) -> Vec<u32>
+{
+    let mut v: Vec<u32>=Vec::new();    
+    let mut list_header : [u32;3]=[0,0,0];
+
+    // Read the list head
+    if !bmp_read_mem32(address, &mut list_header) 
+    {
+        bmplog!("Fail to parse list at address 0x{:x}\n",address);
+        return v;
+    }
+   
+    
+    let mut count = list_header[0];
+    let mut next = list_header[1];
+    let mut end = list_header[2];
+    
+    let mut items : [u32;5]=[0,0,0,0,0];
+
+    for i in 0..count
+    {
+        // Read item
+        // 0 number
+        // 1 next
+        // 2 previous
+        // 3 owner <- tcv
+        // 4 container
+        if !bmp_read_mem32(address, &mut items) 
+        {
+            bmplog!("Fail to parse list at address 0x{:x}\n",next);
+            return v;
+        }       
+        next=items[1];
+        // owner is a StateListeItem
+        if !bmp_read_mem32(items[3], &mut items) 
+        {
+            bmplog!("Fail to parse list at address 0x{:x}\n",next);
+            return v;
+        }
+        v.push(items[3]); // go back 4 
+        
+    }
+    return v;
+}
+/**
+ * 
+ */
+pub unsafe fn freertos_collect_information() -> bool
+{    
+    if !freeRtosSymbols.valid   
+    {
+        return false;
+    }
+    let mut index : usize;
+    let list_of_tcb : Vec<u32> = Vec::new();
+    for index in 1..5
+    {
+        let this_list = freertos_crawl_list( freeRtosSymbols.symbols[index]);
+        // Merge into master list
+        bmpwarning!(" {} \n", FreeRTOSSymbolName[index]);
+        for i in this_list
+        {
+            bmpwarning!("\t {:x}  \n", i);
+        }
+        
+    }
+    true
 }
 /**
  * 
@@ -103,6 +177,8 @@ pub unsafe fn q_freertos_symbols(args: &[&str]) -> bool {
  */
 pub fn get_pxCurrentTCB() -> Option <u32>
 {
+    unsafe {  freertos_collect_information(); }
+
   None
 }
 

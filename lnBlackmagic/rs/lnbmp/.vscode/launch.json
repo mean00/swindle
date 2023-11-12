@@ -5,11 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Hosted",
+            "name": "lldb_hosted",
+            "type": "lldb",
+            "request": "launch",            
+            "program": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted", 
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "gdb_hosted",
             "type": "gdb",
             "request": "launch",            
             "target": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted",            
             "cwd": "${workspaceFolder}"
-        },           
+        },      
     ]
 }

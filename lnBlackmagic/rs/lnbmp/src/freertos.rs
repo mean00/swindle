@@ -14,6 +14,8 @@ pub fn spawn_freertos_handler() -> Option<&'static dyn freertos_handler>
 
 pub fn fos_taist() 
 {
+    read_fos(0);
+    /*
     let tcb = crate::commands::q::get_pxCurrentTCB();
     if let Some(x) = tcb
     {
@@ -21,25 +23,23 @@ pub fn fos_taist()
     }else   {
         bmplog!("pxCurrentTcb not available \n");
     }
+    */
 }
 /**
  * 
  */
 pub fn read_fos(address : u32) -> Option<freertos_task_info>
 {
+
     // the common part of TCB is 5 registers
     // pxTopOfStack
     // *State
     // *EventList
     // priority
     // stack
-    let mut header : [u32;5] = [0;5];
-    if !bmp_read_mem32(address, &mut header) 
-    {
-        bmplog!("Fail to read pxCurrentTcb at address 0x{:x}\n",address);
-        return None;
+    unsafe {
+    crate::freertos::freertos_symbols::freertos_collect_information();    
     }
-   
     return None;
 }
  //
