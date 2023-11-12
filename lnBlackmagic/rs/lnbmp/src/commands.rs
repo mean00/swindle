@@ -8,7 +8,7 @@ pub mod breakpoints;
 mod flash;
 mod memory;
 mod mon;
-mod q;
+pub mod q;
 mod registers;
 pub mod rpc;
 pub mod rpc_commands;

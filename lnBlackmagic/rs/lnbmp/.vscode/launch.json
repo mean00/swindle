@@ -6,10 +6,9 @@
     "configurations": [
         {
             "name": "Hosted",
-            "type": "lldb",
+            "type": "gdb",
             "request": "launch",            
-            "program": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted",
-            "args": [],
+            "target": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted",            
             "cwd": "${workspaceFolder}"
         },           
     ]

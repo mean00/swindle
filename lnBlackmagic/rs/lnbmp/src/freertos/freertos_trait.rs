@@ -3,11 +3,22 @@
  * 
  */
 
-pub struct freertos_info <'a>
+ enum freertos_task_state
+ {
+    running     = b'X' as isize,
+    blocked     = b'B' as isize,
+    ready       = b'R' as isize,
+    deleted     = b'D' as isize,
+    suspended   = b'S' as isize,
+ }
+pub struct freertos_task_info 
 {
-    name        : &'a str,
-    tcb_no      : u32,
-    registers   : [u32;36],
+    name         : [u8;16],
+    tcb_no       : u32,
+    registers    : [u32;36],
+    top_of_stack : u32,
+    priority     : u32,
+    state        : freertos_task_state,
 }
 /**
  * 
@@ -22,9 +33,10 @@ pub trait freertos_handler
     {
         false
     }
-    fn get_info(&mut self, index: usize) -> Option<&freertos_info>
+    fn get_info(&mut self, index: usize) -> Option<&freertos_task_info>
     {
         None
     }
 }
+
 //

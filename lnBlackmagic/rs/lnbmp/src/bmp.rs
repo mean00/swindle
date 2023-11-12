@@ -190,7 +190,16 @@ pub fn bmp_read_mem(address: u32, data: &mut [u8]) -> bool {
         ))
     }
 }
-
+pub fn bmp_read_mem32(address: u32, data: &mut [u32]) -> bool {
+    unsafe {
+        // mem_read_c returns flase if ok (WTF)
+        !ret_to_bool(rn_bmp_cmd_c::bmp_mem_read_c(
+            address,
+            (data.len() as u32)*4,
+            data.as_mut_ptr() as *mut u8,
+        ))
+    }
+}
 pub fn bmp_reset_target() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_reset_target_c()) }
 }

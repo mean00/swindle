@@ -17,6 +17,20 @@ pub fn ascii_hex_string_to_u8s<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&
     }
     Ok(&sout[..s])
 }
+/**
+ * 
+ */
+pub fn ascii_hex_string_to_str<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&'a str, i32> {
+    let datain = sin.as_bytes();
+
+    let s = datain.len() / 2;
+    for i in 0..s {
+        sout[i] = ascii_octet_to_hex(datain[i * 2], datain[i * 2 + 1]);
+    }
+    unsafe {
+    return Ok(core::str::from_utf8_unchecked(&sout[..s]));
+    }
+}
 //
 //
 pub fn u8_hex_string_to_u8s<'a>(sin: &'a [u8], sout: &'a mut [u8]) -> &'a [u8] {
