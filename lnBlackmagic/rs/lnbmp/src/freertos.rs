@@ -18,8 +18,7 @@ pub fn fos_taist()
     if let Some(x) = tcb
     {
         read_fos(x);
-    }else
-    {
+    }else   {
         bmplog!("pxCurrentTcb not available \n");
     }
 }

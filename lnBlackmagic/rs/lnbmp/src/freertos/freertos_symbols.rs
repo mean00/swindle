@@ -77,8 +77,7 @@ pub unsafe fn q_freertos_symbols(args: &[&str]) -> bool {
                 bmpwarning!("cannot find symbol {}\n", text);
                 encoder::reply_ok();
                 return true;       
-            }else // next
-            {
+            }else {// next            
                 let  address: u32 = parsing_util::ascii_string_to_u32(args[0]);
                 bmplog!("Found symbol {} : 0x{:x}\n", FreeRTOSSymbolName[freeRtosSymbols.index], address);
                 freeRtosSymbols.symbols[freeRtosSymbols.index] = address;
@@ -92,8 +91,7 @@ pub unsafe fn q_freertos_symbols(args: &[&str]) -> bool {
                 }
                 return ask_for_next_symbol();   
             }
-        }  else
-        {
+        }  else    {
             bmpwarning!("Inconsistent reply for index {}, reply is {}\n",freeRtosSymbols.index, text);
         }                              
     }
