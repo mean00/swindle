@@ -102,6 +102,41 @@ fn freertos_crawl_list(address: u32) -> Vec<u32>
 /**
  * 
  */
+const OFFSET_TO_SIZE : u32 = 44;
+
+fn print_tcb(tcb : u32) -> bool
+{
+    let mut data : [u32;16] = [0;16];
+    if !bmp_read_mem32(tcb, &mut data[0..1]) 
+    {
+        bmpwarning!("cannot read TCB\n");
+        return false;
+    }
+    let topOfStack : u32 = data[0];
+    if !bmp_read_mem32(tcb+OFFSET_TO_SIZE, &mut data[0..2]) 
+    {
+        bmpwarning!("cannot read TCB\n");
+        return false;
+    }
+    let priority = data[0];
+    let stack = data[1];
+
+
+    let mut name : [u8;8]  = [b' ';8];
+    if !bmp_read_mem(tcb+OFFSET_TO_SIZE+8, &mut name) 
+    {
+        bmpwarning!("cannot read name\n");
+        return false; 
+    }
+    let name_as_string = unsafe { core::str::from_utf8_unchecked(&name) };
+
+    bmplog!("Found thread {}: top of stack = {:x} priority = {:x} stack = {:x}\n",name_as_string, topOfStack, priority, stack);
+    true
+}
+
+/**
+ * 
+ */
 pub unsafe fn freertos_collect_information() -> bool
 {    
     if !freeRtosSymbols.valid   
@@ -127,6 +162,16 @@ pub unsafe fn freertos_collect_information() -> bool
         list_of_tcb [index] = freertos_crawl_list( freeRtosSymbols.symbols[index]);            
     }
     // ok we have all the TCBs
+    for i in 0..5
+    {
+        bmplog!("List {}\n",i);
+        for tcb in 0..list_of_tcb[i].len()
+        {
+            let tcb_adr = list_of_tcb[i][tcb];
+            bmplog!("\tTCB 0x{:x}\n",tcb_adr);
+            print_tcb(tcb_adr);
+        }
+    }
     true
 }
 /**
