@@ -1,9 +1,13 @@
+crate::setup_log!(true);
+use crate::{bmplog, bmpwarning};
+
 
 /**
  * 
  */
 
- enum freertos_task_state
+ #[derive(Clone,Copy)]
+ pub enum freertos_task_state
  {
     running     = b'X' as isize,
     blocked     = b'B' as isize,
@@ -11,15 +15,30 @@
     deleted     = b'D' as isize,
     suspended   = b'S' as isize,
  }
-pub struct freertos_task_info 
+ 
+ pub struct freertos_task_info 
 {
-    name         : [u8;16],
-    tcb_no       : u32,
-    registers    : [u32;36],
-    top_of_stack : u32,
-    priority     : u32,
-    state        : freertos_task_state,
+    pub name            : [u8;8],
+    pub tcb_addr        : u32,
+    pub tcb_no          : u32,    
+    pub top_of_stack    : u32,
+    pub bottom_of_stack : u32,
+    pub priority        : u32,
+    pub state           : freertos_task_state,
 }
+
+impl freertos_task_info
+{
+    pub fn print_tcb(&self)
+    {
+        let name_as_string = unsafe { core::str::from_utf8_unchecked(&self.name) };
+        bmplog!("TCB 0x{:x} name [{}]\n", self.tcb_addr, name_as_string);
+        bmplog!("\t top of stack 0x{:x}\n", self.top_of_stack);
+        bmplog!("\t priority {}\n", self.priority);
+        bmplog!("\t state {}\n", self.state as usize);
+    }
+}
+
 /**
  * 
  */

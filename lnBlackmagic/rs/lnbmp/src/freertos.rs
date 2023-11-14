@@ -1,4 +1,4 @@
-
+use alloc::vec::Vec;
 pub mod freertos_trait;
 pub mod freertos_symbols;
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
@@ -37,8 +37,13 @@ pub fn read_fos(address : u32) -> Option<freertos_task_info>
     // *EventList
     // priority
     // stack
-    unsafe {
-    crate::freertos::freertos_symbols::freertos_collect_information();    
+    unsafe {        
+    let r=crate::freertos::freertos_symbols::freertos_collect_information(); 
+    for i in r
+    {
+        i.print_tcb();
+    }
+
     }
     None
 }

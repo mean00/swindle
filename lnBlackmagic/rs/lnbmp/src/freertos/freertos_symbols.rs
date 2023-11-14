@@ -3,6 +3,8 @@ use crate::encoder::encoder;
 use alloc::vec::Vec;
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 
+use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state};
+
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
@@ -25,6 +27,14 @@ pub struct FreeRTOSSymbols
     index : usize,
     symbols : [u32;5],    
 }
+const map_state  : [freertos_task_state;5] = [ 
+    freertos_task_state::running, 
+    freertos_task_state::suspended, 
+    freertos_task_state::blocked, 
+    freertos_task_state::blocked, 
+    freertos_task_state::ready
+];
+
 
 /**
  * \brief : ask gdb for pxCurrentTCB address
@@ -104,19 +114,19 @@ fn freertos_crawl_list(address: u32) -> Vec<u32>
  */
 const OFFSET_TO_SIZE : u32 = 44;
 
-fn print_tcb(tcb : u32) -> bool
+fn read_tcb(tcb : u32, state : freertos_task_state) -> Option<freertos_task_info>
 {
     let mut data : [u32;16] = [0;16];
     if !bmp_read_mem32(tcb, &mut data[0..1]) 
     {
         bmpwarning!("cannot read TCB\n");
-        return false;
+        return None;
     }
     let topOfStack : u32 = data[0];
     if !bmp_read_mem32(tcb+OFFSET_TO_SIZE, &mut data[0..2]) 
     {
         bmpwarning!("cannot read TCB\n");
-        return false;
+        return None;
     }
     let priority = data[0];
     let stack = data[1];
@@ -126,53 +136,62 @@ fn print_tcb(tcb : u32) -> bool
     if !bmp_read_mem(tcb+OFFSET_TO_SIZE+8, &mut name) 
     {
         bmpwarning!("cannot read name\n");
-        return false; 
+        return None; 
     }
-    let name_as_string = unsafe { core::str::from_utf8_unchecked(&name) };
-
-    bmplog!("Found thread {}: top of stack = {:x} priority = {:x} stack = {:x}\n",name_as_string, topOfStack, priority, stack);
-    true
+    //let name_as_string = unsafe { core::str::from_utf8_unchecked(&name) };
+    //
+    //bmplog!("Found thread {}: top of stack = {:x} priority = {:x} stack = {:x}\n",name_as_string, topOfStack, priority, stack);
+    Some( freertos_task_info {
+        tcb_addr        : tcb,
+                          name,
+        tcb_no          : 0,    
+        top_of_stack    : topOfStack,
+        bottom_of_stack : stack,
+                          priority,
+                          state,
+    }   )
 }
 
 /**
  * 
  */
-pub unsafe fn freertos_collect_information() -> bool
-{    
+pub unsafe fn freertos_collect_information() -> Vec<freertos_task_info>
+{   
+    let mut output: Vec<freertos_task_info>=Vec::new();     
     if !freeRtosSymbols.valid   
     {
-        return false;
+        return output;
     }
-    //let mut index : usize;
     
-    let mut list_of_tcb : [Vec<u32>;5]= [Vec::new(),Vec::new(),Vec::new(),Vec::new(),Vec::new()];
-
     // Read pcCurrentTcb
     let mut data : [u32;1] = [0];
     if !bmp_read_mem32(freeRtosSymbols.symbols[0], &mut data) 
     {
         bmpwarning!("cannot read value of pxCurrentTCB\n");
-        return false;
+        return output;
     }
     // pxCurrentTCB
-    list_of_tcb[0].push(data[0]);
+    let current = data[0];    
     // read other lists
     for index in 1..5
     {        
-        list_of_tcb [index] = freertos_crawl_list( freeRtosSymbols.symbols[index]);            
-    }
-    // ok we have all the TCBs
-    for i in 0..5
-    {
-        bmplog!("List {}\n",i);
-        for tcb in 0..list_of_tcb[i].len()
+        for i in freertos_crawl_list( freeRtosSymbols.symbols[index])
         {
-            let tcb_adr = list_of_tcb[i][tcb];
-            bmplog!("\tTCB 0x{:x}\n",tcb_adr);
-            print_tcb(tcb_adr);
+            bmplog!("\tTCB 0x{:x}\n",i);
+            if i!=current
+            {
+                // read the task info for each of the TCBs
+                if let Some(x) = read_tcb(i,map_state[index]) {
+                    output.push(x);
+                }
+            }
         }
+    }     
+    // add current TCB
+    if let Some(x) = read_tcb(current,map_state[0]) {
+        output.push(x);
     }
-    true
+    output
 }
 /**
  * 
@@ -234,8 +253,7 @@ pub unsafe fn q_freertos_symbols(args: &[&str]) -> bool {
  */
 pub fn get_pxCurrentTCB() -> Option <u32>
 {
-    unsafe {  freertos_collect_information(); }
-
+   
   None
 }
 
