@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 pub mod freertos_trait;
 pub mod freertos_symbols;
+pub mod freertos_tcb;
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 use freertos_trait::{freertos_task_info, freertos_handler};
 crate::setup_log!(false);
@@ -14,23 +15,6 @@ pub fn spawn_freertos_handler() -> Option<&'static dyn freertos_handler>
 
 pub fn fos_taist() 
 {
-    read_fos(0);
-    /*
-    let tcb = crate::commands::q::get_pxCurrentTCB();
-    if let Some(x) = tcb
-    {
-        read_fos(x);
-    }else   {
-        bmplog!("pxCurrentTcb not available \n");
-    }
-    */
-}
-/**
- * 
- */
-pub fn read_fos(address : u32) -> Option<freertos_task_info>
-{
-
     // the common part of TCB is 5 registers
     // pxTopOfStack
     // *State
@@ -38,13 +22,13 @@ pub fn read_fos(address : u32) -> Option<freertos_task_info>
     // priority
     // stack
     unsafe {        
-    let r=crate::freertos::freertos_symbols::freertos_collect_information(); 
-    for i in r
-    {
-        i.print_tcb();
-    }
-
-    }
-    None
+        let r=crate::freertos::freertos_tcb::freertos_collect_information(); 
+        for i in r
+        {
+            i.print_tcb();
+        }
+    
+        }
 }
+
  //
