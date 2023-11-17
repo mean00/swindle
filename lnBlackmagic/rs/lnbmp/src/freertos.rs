@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 pub mod freertos_trait;
+pub mod freertos_list;
 pub mod freertos_symbols;
 pub mod freertos_tcb;
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
