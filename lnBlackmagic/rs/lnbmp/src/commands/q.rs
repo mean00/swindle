@@ -373,7 +373,7 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
  * 
  */
 fn _qSymbol(_command: &str, args: &[&str]) -> bool {
-    unsafe {crate::freertos::freertos_symbols::q_freertos_symbols(args)}
+    crate::freertos::freertos_symbols::q_freertos_symbols(args)
 }
 /**
  * \fn return a copy of pxCurrentTCB

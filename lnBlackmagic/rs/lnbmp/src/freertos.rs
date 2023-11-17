@@ -21,14 +21,12 @@ pub fn fos_taist()
     // *EventList
     // priority
     // stack
-    unsafe {        
-        let r=crate::freertos::freertos_tcb::freertos_collect_information(); 
-        for i in r
-        {
-            i.print_tcb();
-        }
-    
-        }
+            
+    let r=crate::freertos::freertos_tcb::freertos_collect_information(); 
+    for i in r
+    {
+        i.print_tcb();
+    }    
 }
 
  //

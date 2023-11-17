@@ -51,7 +51,7 @@ static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
 pub fn get_symbols() ->  &'static mut FreeRTOSSymbols
 {
     unsafe {
-            return &mut freeRtosSymbols_internal;
+            &mut freeRtosSymbols_internal
     }
 }
 
