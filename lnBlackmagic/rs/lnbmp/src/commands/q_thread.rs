@@ -5,6 +5,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::{exec_one, CommandTree};
+use crate::bmp::{bmp_write_mem32,bmp_read_mem32};
 use crate::encoder::encoder;
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
@@ -23,7 +24,7 @@ use numtoa::NumToA;
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
-use crate::freertos::freertos_trait::freertos_switch_handler;
+use crate::freertos::freertos_trait::{freertos_switch_handler,freertos_task_info};
 use crate::freertos::freertos_tcb::{get_current_thread_id,freertos_collect_information, get_tcb_info_from_id};
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_tcb::{set_pxCurrentTCB, get_pxCurrentTCB};
@@ -94,36 +95,47 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool
 pub fn _Hg(command: &str, _args: &[&str]) -> bool {
 
     let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[2..]);
-    let new_info = get_tcb_info_from_id(thread_id);
-    if new_info.is_none() {
-        encoder::reply_e01();
-        return true;
-    }
-    let old_current_tcb : u32;
-    if let Some(x) = get_pxCurrentTCB()
-    {
-        if x == new_info.unwrap().tcb_addr { // already right TCB
-            encoder::reply_ok();
-            return true;
-        }
-        old_current_tcb = x;
-    }
-    let cortex : &dyn freertos_switch_handler;
 
-    let m0 =  freertos_switch_handler_m0::new();
-    cortex = &m0 ;
+    let new_info = get_tcb_info_from_id(thread_id);
+    let new_tcb : freertos_task_info;
+    // read new tcb 
+    match new_info {
+        None =>  {  encoder::reply_e01();   return true;  },
+        Some(x) => new_tcb =x,
+    };
+    // read old tcb, exit if it is actually the same as the new one
+    let old_current_tcb_adr : u32;
+    match get_pxCurrentTCB()
+    {
+        None => {  encoder::reply_e01();   return true;  },
+        Some(x) => { if x==new_tcb.tcb_addr  {  encoder::reply_ok();return true;}  old_current_tcb_adr = x; },
+    }
+
+    let cortex : &mut dyn freertos_switch_handler;
+
+    let mut m0 =  freertos_switch_handler_m0::new();
+    cortex = &mut m0 ;
 
     // read current reg
     cortex.read_current_registers();
     // save on to tcb
-    cortex.write_registers_to_addr(0);
-    // switch to new tcb
-    cortex.read_registers_from_addr(0);
+    cortex.write_registers_to_stack();
+    let saved_stack = cortex.get_sp();
+    // write new top of stack
+    let mut item : [u32;1] = [old_current_tcb_adr];
+    bmp_write_mem32(old_current_tcb_adr, &item );
+
+    // ok , old thread has been saved, now restore new thread
+    // top of stack is still 1st item in tcb
+    bmp_read_mem32(new_tcb.top_of_stack, &mut item );    
+    // restore registers
+    cortex.read_registers_from_addr(item[0]);
+    // update actual reg from copy in cortex
+    cortex.write_current_registers();
     // restore register
     // switch to that thread..  
-    set_pxCurrentTCB(00);
-    bmplog!("Hey there\n");
-    encoder::reply_e01();
+    set_pxCurrentTCB(new_tcb.tcb_addr);    
+    encoder::reply_ok();
     true
 }
 
