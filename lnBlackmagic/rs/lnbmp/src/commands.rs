@@ -9,6 +9,7 @@ mod flash;
 mod memory;
 mod mon;
 pub mod q;
+pub mod q_thread;
 mod registers;
 pub mod rpc;
 pub mod rpc_commands;

@@ -15,6 +15,7 @@ use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
 use crate::commands::mon::_qRcmd;
+use crate::commands::q_thread::{_qSymbol, _qfThreadInfo, _qsThreadInfo, _qC};
 use crate::commands::CallbackType;
 use crate::util::xmin;
 use crate::parsing_util;
@@ -270,23 +271,7 @@ fn _qAttached(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("1");
     true
 }
-//
-//
-fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
-    encoder::simple_send("m1");
-    true
-}
-//
-//
-fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
-    encoder::simple_send("1");
-    true
-}
-// get current thread I
-fn _qC(_command: &str, _args: &[&str]) -> bool {
-    encoder::simple_send("QC1");
-    true
-}
+
 // get offset
 fn _qOffsets(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("Text=0;Data=0;Bss=0");
@@ -369,20 +354,5 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
     }
     true
 }
-/**
- * 
- */
-fn _qSymbol(_command: &str, args: &[&str]) -> bool {
-    crate::freertos::freertos_symbols::q_freertos_symbols(args)
-}
-/**
- * \fn return a copy of pxCurrentTCB
- */
-pub fn get_pxCurrentTCB() -> Option <u32>
-{
-  None
-}
-
-
 
 // EOF

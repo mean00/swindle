@@ -31,14 +31,6 @@ pub struct FreeRTOSSymbols
     pub index   : usize,
     pub symbols : [u32;NB_FREERTOS_SYMBOLS],    
 }
-const map_state  : [freertos_task_state;5] = [ 
-    freertos_task_state::running, 
-    freertos_task_state::suspended, 
-    freertos_task_state::blocked, 
-    freertos_task_state::blocked, 
-    freertos_task_state::ready
-];
-
 
 static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
     valid: false,

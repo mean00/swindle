@@ -95,6 +95,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
     }
     // pxCurrentTCB
     let current = data[0];    
+    let mut tcb_number : u32 = 0;
     // read other lists
     for index in 1..5
     {        
@@ -104,15 +105,36 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
             if i!=current
             {
                 // read the task info for each of the TCBs
-                if let Some(x) = read_tcb(i,map_state[index]) {
+                if let Some(mut x) = read_tcb(i,map_state[index]) {
+                    x.tcb_no=tcb_number;
+                    tcb_number+=1;
                     output.push(x);
                 }
             }
         }
     }     
     // add current TCB
-    if let Some(x) = read_tcb(current,map_state[0]) {
+    if let Some(mut x) = read_tcb(current,map_state[0]) {
+        x.tcb_no=tcb_number;
         output.push(x);
+    }
+    output
+}
+/**
+ * 
+ */
+pub fn get_threads() -> Vec<u32>
+{
+    let mut output: Vec<u32>=Vec::new();     
+    let symbol = get_symbols();
+    if !symbol.valid   
+    {
+        return output;
+    }
+    let t = freertos_collect_information();
+    for i in t
+    {
+        output.push(i.tcb_no);
     }
     output
 }
