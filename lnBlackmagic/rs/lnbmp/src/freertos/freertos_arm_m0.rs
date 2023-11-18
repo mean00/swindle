@@ -1,39 +1,56 @@
+
+use crate::freertos::freertos_trait::freertos_switch_handler;
 /**
  * 
  */
-pub struct freertos_cortex_m0;
+pub struct freertos_switch_handler_m0
+{
+    registers : [u32;15],
+}
+
+impl freertos_switch_handler_m0 {
+    pub fn new() -> Self
+    {
+        freertos_switch_handler_m0 
+        {
+            registers : [0;15],
+        }
+    }
+}
+
+
 /**
  * 
  */
-impl freertos_handler for freertos_cortex_m0
+impl freertos_switch_handler for freertos_switch_handler_m0
 {
     /**
      * 
      */
-    fn read_tcbs(&mut self) -> bool
+    fn write_current_registers(&self ) -> bool
     {
         false
     }
     /**
      * 
      */
-    fn switch_to(&mut self, _tcb : usize ) -> bool
+    fn read_current_registers(&self )->bool
     {
         false
     }
     /**
      * 
      */
-    fn get_info_size(&mut self) -> usize
+    fn write_registers_to_addr(&self,  address : u32) -> bool
     {
-        0
+        false
     }
     /**
      * 
      */
-    fn get_info(&mut self, index: usize) -> Option<&freertos_info>
+    fn read_registers_from_addr(&self, address : u32)->bool
     {
-        None
+        false
     }
 }
 // EOF

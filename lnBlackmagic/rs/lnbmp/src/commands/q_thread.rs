@@ -18,13 +18,15 @@ use crate::commands::mon::_qRcmd;
 use crate::commands::CallbackType;
 use crate::util::xmin;
 use crate::parsing_util;
-
 use numtoa::NumToA;
 
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
+use crate::freertos::freertos_trait::freertos_switch_handler;
 use crate::freertos::freertos_tcb::{get_current_thread_id,freertos_collect_information, get_tcb_info_from_id};
+use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
+use crate::freertos::freertos_tcb::{set_pxCurrentTCB, get_pxCurrentTCB};
 
 //
 // ‘m thread-id’
@@ -86,16 +88,40 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool
 
     true
 }
-// select thread
+/**
+ *  switch thread
+ */
 pub fn _Hg(command: &str, _args: &[&str]) -> bool {
 
     let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[2..]);
-    let info = get_tcb_info_from_id(thread_id);
-    if info.is_none() {
+    let new_info = get_tcb_info_from_id(thread_id);
+    if new_info.is_none() {
         encoder::reply_e01();
         return true;
     }
-    // switch to that thread..    
+    let old_current_tcb : u32;
+    if let Some(x) = get_pxCurrentTCB()
+    {
+        if x == new_info.unwrap().tcb_addr { // already right TCB
+            encoder::reply_ok();
+            return true;
+        }
+        old_current_tcb = x;
+    }
+    let cortex : &dyn freertos_switch_handler;
+
+    let m0 =  freertos_switch_handler_m0::new();
+    cortex = &m0 ;
+
+    // read current reg
+    cortex.read_current_registers();
+    // save on to tcb
+    cortex.write_registers_to_addr(0);
+    // switch to new tcb
+    cortex.read_registers_from_addr(0);
+    // restore register
+    // switch to that thread..  
+    set_pxCurrentTCB(00);
     bmplog!("Hey there\n");
     encoder::reply_e01();
     true
@@ -146,13 +172,6 @@ pub fn _qC(_command: &str, _args: &[&str]) -> bool {
  */
 pub fn _qSymbol(_command: &str, args: &[&str]) -> bool {
     crate::freertos::freertos_symbols::q_freertos_symbols(args)
-}
-/**
- * \fn return a copy of pxCurrentTCB
- */
-pub fn get_pxCurrentTCB() -> Option <u32>
-{
-  None
 }
 
 

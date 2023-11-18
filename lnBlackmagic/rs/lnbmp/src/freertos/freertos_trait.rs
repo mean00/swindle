@@ -60,20 +60,12 @@ impl freertos_task_info
 /**
  * 
  */
-pub trait freertos_handler
+pub trait freertos_switch_handler
 {
-    fn read_tcbs(&mut self) -> bool
-    {
-        false
-    }
-    fn switch_to(&mut self, _tcb : usize ) -> bool
-    {
-        false
-    }
-    fn get_info(&mut self, _index: usize) -> Option<&freertos_task_info>
-    {
-        None
-    }
+    fn write_current_registers(&self) -> bool;
+    fn read_current_registers(&self)->bool;
+    fn write_registers_to_addr(&self, address : u32) -> bool;
+    fn read_registers_from_addr(&self, address : u32)->bool;
 }
 
 //

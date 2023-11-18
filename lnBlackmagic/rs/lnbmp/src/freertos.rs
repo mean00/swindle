@@ -1,18 +1,18 @@
 use alloc::vec::Vec;
 pub mod freertos_trait;
-pub mod freertos_list;
+mod freertos_list;
 pub mod freertos_symbols;
 pub mod freertos_tcb;
+pub mod freertos_arm_m0;
+
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
-use freertos_trait::{freertos_task_info, freertos_handler};
+use freertos_trait::{freertos_task_info};
+
 crate::setup_log!(false);
 crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning};
 
-pub fn spawn_freertos_handler() -> Option<&'static dyn freertos_handler>
-{
-    None
-}
+
 
 pub fn fos_taist() 
 {

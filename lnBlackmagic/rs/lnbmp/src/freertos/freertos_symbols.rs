@@ -61,7 +61,6 @@ fn ask_for_next_symbol() -> bool
     e.hex_and_add(FreeRTOSSymbolName[symbol.index]);
     e.end();
     true
-
 }
 /**
  * 
@@ -117,6 +116,16 @@ pub fn q_freertos_symbols(args: &[&str]) -> bool {
     }
     bmpwarning!("Invalid qsymbol reply\n");
     false
+}
+
+/**
+ * 
+ */
+pub fn get_current_tcb_address() -> u32
+{
+    let all_symbols = get_symbols();
+    let px_adr :u32  = all_symbols.symbols[ freeRtosSymbolIndex::pxCurrentTCB as usize];
+    px_adr
 }
 
 // EOF

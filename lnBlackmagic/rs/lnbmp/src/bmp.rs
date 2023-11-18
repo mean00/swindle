@@ -165,6 +165,17 @@ pub fn bmp_mem_write(address: u32, data: &[u8]) -> bool {
     }
 }
 
+pub fn bmp_write_mem32(address: u32, data: & [u32]) -> bool {
+    unsafe {
+        // mem_read_c returns flase if ok (WTF)
+        !ret_to_bool(rn_bmp_cmd_c::bmp_mem_write_c(
+            address,
+            (data.len() as u32)*4,
+            data.as_ptr() as *const  u8,
+        ))
+    }
+}
+
 pub fn bmp_flash_complete() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_flash_complete_c()) }
 }

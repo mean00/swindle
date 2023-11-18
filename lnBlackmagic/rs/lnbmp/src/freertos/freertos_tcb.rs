@@ -1,10 +1,10 @@
 use crate::parsing_util;
 use crate::encoder::encoder;
 use alloc::vec::Vec;
-use crate::bmp::{bmp_read_mem,bmp_read_mem32};
+use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 
 use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state};
-use crate::freertos::freertos_symbols::get_symbols;
+use crate::freertos::freertos_symbols::{get_symbols,get_current_tcb_address};
 use crate::freertos::freertos_list::freertos_crawl_list;
 
 crate::setup_log!(true);
@@ -175,8 +175,23 @@ pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info>
  */
 pub fn get_pxCurrentTCB() -> Option <u32>
 {
-   
-  None
+    let px_adr = get_current_tcb_address();
+    let mut data : [u32;1] = [0;1];
+    if !bmp_read_mem32(px_adr , &mut data[0..1])
+    {
+        return None;
+    }
+    Some(data[0])
+}
+/**
+ * 
+ */
+pub fn set_pxCurrentTCB( tcb : u32) -> bool
+{
+    let px_adr = get_current_tcb_address();
+    let mut data : [u32;1] = [0;1];
+    data[0]= tcb;
+    bmp_write_mem32(px_adr , &data)
 }
 
 
