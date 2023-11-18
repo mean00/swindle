@@ -56,7 +56,7 @@ const main_command_tree: [CommandTree; 20] = [
         command: "Hg",
         args: 0,
         require_connected: false,
-        cb: CallbackType::text(_Hg),
+        cb: CallbackType::text(q_thread::_Hg),
     }, // select thread
     CommandTree {
         command: "Hc",
@@ -216,11 +216,6 @@ pub fn exec(command: &str, args: &[u8]) {
 //
 //
 fn _extendedMode(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_ok();
-    true
-}
-// select thread
-fn _Hg(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }

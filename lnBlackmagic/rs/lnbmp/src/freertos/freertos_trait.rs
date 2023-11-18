@@ -27,6 +27,22 @@ use crate::{bmplog, bmpwarning};
     pub state           : freertos_task_state,
 }
 
+impl freertos_task_state
+{
+    pub fn as_str(&self) -> &str
+    {
+        match self
+        {
+            freertos_task_state::running => "running",
+            freertos_task_state::blocked => "blocked",
+            freertos_task_state::ready => "ready",
+            freertos_task_state::deleted => "deleted",
+            freertos_task_state::suspended => "suspended",
+          // _ => "???",
+        }
+    }
+}
+
 impl freertos_task_info
 {
     pub fn print_tcb(&self)
@@ -38,6 +54,8 @@ impl freertos_task_info
         bmplog!("\t state {}\n", self.state as usize);
     }
 }
+
+
 
 /**
  * 
@@ -52,7 +70,7 @@ pub trait freertos_handler
     {
         false
     }
-    fn get_info(&mut self, index: usize) -> Option<&freertos_task_info>
+    fn get_info(&mut self, _index: usize) -> Option<&freertos_task_info>
     {
         None
     }

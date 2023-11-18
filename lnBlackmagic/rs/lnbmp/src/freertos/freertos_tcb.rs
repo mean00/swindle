@@ -95,7 +95,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
     }
     // pxCurrentTCB
     let current = data[0];    
-    let mut tcb_number : u32 = 0;
+    let mut tcb_number : u32 = 1;
     // read other lists
     for index in 1..5
     {        
@@ -137,6 +137,37 @@ pub fn get_threads() -> Vec<u32>
         output.push(i.tcb_no);
     }
     output
+}
+/**
+ * 
+ */
+pub fn get_current_thread_id() -> Option<u32>
+{    
+    let symbol = get_symbols();
+    if !symbol.valid   
+    {
+        return None;
+    }
+    let t = freertos_collect_information();
+    if t.is_empty() {
+        return None;
+    }
+    let last = t.len()-1;
+    Some(t[last].tcb_no)
+    
+}
+
+/**
+ * 
+ */
+pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info>
+{
+    let t = freertos_collect_information();
+    if t.is_empty() {
+        return None;
+    }
+
+    t.into_iter().find(|i| i.tcb_no == id)
 }
 
 /**
