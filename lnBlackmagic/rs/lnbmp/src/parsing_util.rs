@@ -64,6 +64,26 @@ pub fn _tohex(v: u8) -> u8 {
     b'0' + v
 }
 //---
+pub fn ascii_string_to_u32_le(s: &str) -> u32 {
+    let datain = s.as_bytes();
+    u8s_string_to_u32_le(datain)
+}
+
+pub fn u8s_string_to_u32_le(datain: &[u8]) -> u32 {
+    let mut val: u32 = 0;
+    let mut shift = 0;
+    let number = datain.len() >> 1;
+    
+    for i in 0..number {
+        let hi: u32 = _hex(datain[i*2]) as u32;
+        let lo: u32 = _hex(datain[i*2+1]) as u32;
+        val = val + (( (hi<<4)+lo) << shift);
+        shift+=8;
+    }
+    val
+}
+
+
 pub fn ascii_string_to_u32(s: &str) -> u32 {
     let datain = s.as_bytes();
     u8s_string_to_u32(datain)
