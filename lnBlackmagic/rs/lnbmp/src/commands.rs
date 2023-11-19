@@ -55,13 +55,13 @@ const main_command_tree: [CommandTree; 20] = [
     CommandTree {
         command: "Hg",
         args: 0,
-        require_connected: false,
+        require_connected: true,
         cb: CallbackType::text(q_thread::_Hg),
     }, // select thread
     CommandTree {
         command: "Hc",
         args: 0,
-        require_connected: false,
+        require_connected: true,
         cb: CallbackType::text(_Hc),
     }, //
     CommandTree {
@@ -221,7 +221,7 @@ fn _extendedMode(_command: &str, _args: &[&str]) -> bool {
 }
 // select thread
 fn _Hc(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_ok();
+    encoder::reply_e01();
     true
 }
 

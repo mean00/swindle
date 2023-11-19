@@ -28,12 +28,14 @@ const FreeRTOSSymbolName: [&str;NB_FREERTOS_SYMBOLS] = ["pxCurrentTCB",
 pub struct FreeRTOSSymbols
 {
     pub valid   : bool,    
+    pub loaded  : bool,
     pub index   : usize,
     pub symbols : [u32;NB_FREERTOS_SYMBOLS],    
 }
 
 static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
     valid: false,
+    loaded: false,
     index : 0,
     symbols : [0;NB_FREERTOS_SYMBOLS],
 };
@@ -104,7 +106,7 @@ pub fn q_freertos_symbols(args: &[&str]) -> bool {
                 if all_symbols.index==NB_FREERTOS_SYMBOLS 
                 {
                     bmplog!("Got all symbols\n");
-                    all_symbols.valid=true;
+                    all_symbols.loaded=true;
                     encoder::reply_ok();
                     return true;        
                 }
@@ -127,5 +129,12 @@ pub fn get_current_tcb_address() -> u32
     let px_adr :u32  = all_symbols.symbols[ freeRtosSymbolIndex::pxCurrentTCB as usize];
     px_adr
 }
-
+/**
+ * 
+ */
+pub fn freertos_symbol_valid() -> bool
+{
+    let all_symbols = get_symbols();
+    all_symbols.valid
+}
 // EOF

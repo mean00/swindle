@@ -7,11 +7,22 @@ pub mod freertos_arm_m0;
 
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 use freertos_trait::{freertos_task_info};
+use freertos_symbols::{get_symbols};
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning};
 
+
+/**
+ * 
+ */
+pub fn enable_freertos() -> bool
+{
+    let all_symbols = get_symbols();
+    all_symbols.valid = all_symbols.loaded;
+    return all_symbols.valid;
+}
 
 
 pub fn fos_taist() 

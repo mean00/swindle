@@ -27,8 +27,8 @@ use crate::{bmplog, bmpwarning};
 use crate::freertos::freertos_trait::{freertos_switch_handler,freertos_task_info};
 use crate::freertos::freertos_tcb::{get_current_thread_id,freertos_collect_information, get_tcb_info_from_id};
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
-use crate::freertos::freertos_tcb::{set_pxCurrentTCB, get_pxCurrentTCB};
-
+use crate::freertos::freertos_tcb::{set_pxCurrentTCB, get_pxCurrentTCB, freertos_switch_task};
+use crate::freertos::freertos_symbols::freertos_symbol_valid;
 //
 // ‘m thread-id’
 // A single thread ID
@@ -95,47 +95,17 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool
 pub fn _Hg(command: &str, _args: &[&str]) -> bool {
 
     let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[2..]);
-
-    let new_info = get_tcb_info_from_id(thread_id);
-    let new_tcb : freertos_task_info;
-    // read new tcb 
-    match new_info {
-        None =>  {  encoder::reply_e01();   return true;  },
-        Some(x) => new_tcb =x,
-    };
-    // read old tcb, exit if it is actually the same as the new one
-    let old_current_tcb_adr : u32;
-    match get_pxCurrentTCB()
+    if !freertos_symbol_valid()
     {
-        None => {  encoder::reply_e01();   return true;  },
-        Some(x) => { if x==new_tcb.tcb_addr  {  encoder::reply_ok();return true;}  old_current_tcb_adr = x; },
+        encoder::reply_ok();
+        return true;
     }
-
-    let cortex : &mut dyn freertos_switch_handler;
-
-    let mut m0 =  freertos_switch_handler_m0::new();
-    cortex = &mut m0 ;
-
-    // read current reg
-    cortex.read_current_registers();
-    // save on to tcb
-    cortex.write_registers_to_stack();
-    let saved_stack = cortex.get_sp();
-    // write new top of stack
-    let mut item : [u32;1] = [old_current_tcb_adr];
-    bmp_write_mem32(old_current_tcb_adr, &item );
-
-    // ok , old thread has been saved, now restore new thread
-    // top of stack is still 1st item in tcb
-    bmp_read_mem32(new_tcb.top_of_stack, &mut item );    
-    // restore registers
-    cortex.read_registers_from_addr(item[0]);
-    // update actual reg from copy in cortex
-    cortex.write_current_registers();
-    // restore register
-    // switch to that thread..  
-    set_pxCurrentTCB(new_tcb.tcb_addr);    
-    encoder::reply_ok();
+    if  freertos_switch_task(thread_id) {
+        encoder::reply_ok();
+    }
+    else {
+        encoder::reply_e01();
+    }
     true
 }
 
@@ -161,14 +131,20 @@ pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
    // }
     true
 }
+
 /**
  * ‘qC’ Return the current thread ID.
  */
 
-pub fn _qC(_command: &str, _args: &[&str]) -> bool {
+ pub fn _qC(_command: &str, _args: &[&str]) -> bool {
     let mut current_thread_id =1;
-    if let Some(x) = get_current_thread_id() {
-        current_thread_id = x;
+    if!freertos_symbol_valid() {
+        current_thread_id=1;
+    }
+    else {    
+        if let Some(x) = get_current_thread_id() {
+            current_thread_id = x;
+        }
     }
     let mut e = encoder::new();
     e.begin();

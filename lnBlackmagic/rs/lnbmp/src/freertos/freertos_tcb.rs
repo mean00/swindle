@@ -3,9 +3,10 @@ use crate::encoder::encoder;
 use alloc::vec::Vec;
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 
-use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state};
+use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state,freertos_switch_handler};
 use crate::freertos::freertos_symbols::{get_symbols,get_current_tcb_address};
 use crate::freertos::freertos_list::freertos_crawl_list;
+use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
@@ -96,6 +97,12 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
     // pxCurrentTCB
     let current = data[0];    
     let mut tcb_number : u32 = 1;
+     // add current TCB as number 1
+     if let Some(mut x) = read_tcb(current,map_state[0]) {
+        x.tcb_no=tcb_number;
+        tcb_number+=1;
+        output.push(x);
+    }
     // read other lists
     for index in 1..5
     {        
@@ -112,12 +119,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
                 }
             }
         }
-    }     
-    // add current TCB
-    if let Some(mut x) = read_tcb(current,map_state[0]) {
-        x.tcb_no=tcb_number;
-        output.push(x);
-    }
+    }        
     output
 }
 /**
@@ -152,9 +154,14 @@ pub fn get_current_thread_id() -> Option<u32>
     if t.is_empty() {
         return None;
     }
-    let last = t.len()-1;
-    Some(t[last].tcb_no)
-    
+    // lookup which one is current thread
+    let tcb = get_pxCurrentTCB()?;
+    for i in t {
+        if i.tcb_addr == tcb {
+            return Some(i.tcb_no);
+        }
+    }
+    None
 }
 
 /**
@@ -194,6 +201,47 @@ pub fn set_pxCurrentTCB( tcb : u32) -> bool
     bmp_write_mem32(px_adr , &data)
 }
 
+pub fn freertos_switch_task( thread_id  : u32 ) -> bool
+{
 
+    let new_info = get_tcb_info_from_id(thread_id);
+    let new_tcb : freertos_task_info;
+    // read new tcb 
+    match new_info {
+        None =>  {   return false;  },
+        Some(x) => new_tcb =x,
+    };
+    // read old tcb, exit if it is actually the same as the new one
+    let old_current_tcb_adr : u32;
+    match get_pxCurrentTCB()
+    {
+        None => {    return false;  },
+        Some(x) => { if x==new_tcb.tcb_addr  { return true;}  old_current_tcb_adr = x; },
+    }
 
+    let cortex : &mut dyn freertos_switch_handler;
+
+    let mut m0 =  freertos_switch_handler_m0::new();
+    cortex = &mut m0 ;
+
+    // read current reg
+    cortex.read_current_registers();
+    // save on to tcb
+    cortex.write_registers_to_stack();
+    let saved_stack = cortex.get_sp();
+    // write new top of stack
+    let mut item : [u32;1] = [saved_stack];
+    bmp_write_mem32(old_current_tcb_adr, &item );
+
+    // ok , old thread has been saved, now restore new thread
+    // restore registers
+    let top_of_stack = new_tcb.top_of_stack;
+    cortex.read_registers_from_addr(top_of_stack);
+    // update actual reg from copy in cortex
+    cortex.write_current_registers();
+    // restore register
+    // switch to that thread..  
+    set_pxCurrentTCB(new_tcb.tcb_addr);        
+    true
+}
 // EOF

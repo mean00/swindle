@@ -4,13 +4,13 @@ use crate::bmp::{bmp_read_registers, bmp_write_register};
 use crate::bmp::{bmp_read_mem,bmp_read_mem32, bmp_write_mem32};
 
 const STACKED_REGISTER_SIZE : u32 = 64;
-
+const M0_REGISTER_COUNT: usize  = 17;
 /**
  * 
  */
 pub struct freertos_switch_handler_m0
 {
-    registers : [u32;17], // R0..R15 + PSR
+    registers : [u32;M0_REGISTER_COUNT], // R0..R15 + PSR
     pointer   : u32, // pseudo stack
 }
 
@@ -19,7 +19,7 @@ impl freertos_switch_handler_m0 {
     {
         freertos_switch_handler_m0 
         {
-            registers : [0;17],  // R0..R15 + PSR
+            registers : [0;M0_REGISTER_COUNT],  // R0..R15 + PSR
             pointer : 0,
         }
     }
@@ -61,7 +61,7 @@ impl freertos_switch_handler for freertos_switch_handler_m0
      */
     fn write_current_registers(&self ) -> bool
     {        
-        for i  in 0..17 {
+        for i  in 0..M0_REGISTER_COUNT {
             bmp_write_register(i as u32, self.registers[i]);
         }
         true
@@ -72,11 +72,11 @@ impl freertos_switch_handler for freertos_switch_handler_m0
     fn read_current_registers(&mut self )->bool
     {
         let regs = bmp_read_registers();
-        if regs.len() != 17
+        if regs.len() < M0_REGISTER_COUNT
         {
             return false;
         }
-        self.registers[..17].copy_from_slice(&regs[..17]);
+        self.registers[..M0_REGISTER_COUNT].copy_from_slice(&regs[..M0_REGISTER_COUNT]);
         true
     }
     /**
@@ -104,12 +104,12 @@ impl freertos_switch_handler for freertos_switch_handler_m0
         self.registers[13] = address + STACKED_REGISTER_SIZE;
         // rewind by 16 *4=64 bytes, we dont save SP on SP but on TCP
         self.pointer=address;
-        // now write the registers onto the stack
+        // now read the registers onto the stack
         self.pop(4,12);    // push  R4 to R12 excluded
         self.pop(0,4);     // push  R0 to R4 excluded
-        self.push(14,15);  // R14 LR
-        self.push(15,16);  // R15 PPC
-        self.push(16,17);  // R16 PSR
+        self.pop(14,15);  // R14 LR
+        self.pop(15,16);  // R15 PPC
+        self.pop(16,17);  // R16 PSR
         true
     }
 

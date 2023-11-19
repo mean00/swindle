@@ -4,7 +4,7 @@ use crate::encoder::encoder;
 use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_to_u32};
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::freertos::fos_taist;
+use crate::freertos::enable_freertos;
 //
 //
 crate::setup_log!(false);
@@ -74,7 +74,7 @@ const mon_command_tree: [CommandTree; 9] = [
     }, //
 ];
 //
-const help_tree : [HelpTree;8]=
+const help_tree : [HelpTree;9]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
@@ -83,13 +83,23 @@ const help_tree : [HelpTree;8]=
     HelpTree{ command: "version",help :"Display version." },
     HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
     HelpTree{ command: "ram",help :"Display stats about Ram usage." },
+    HelpTree{ command: "fos",help :"Enable FreeRTOS support." },
     HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
 ];
 
-
+/**
+ * 
+ */
 pub fn _fos(_command: &str, _args: &[&str]) -> bool {
-    fos_taist();
-    encoder::reply_ok();
+    if enable_freertos() {
+        gdb_print!("FreeRTOS support enabled\n");
+        encoder::reply_ok();
+    }
+    else  {
+        gdb_print!("FreeRTOS not available\n");
+        encoder::reply_e01();
+    }
+    
     true
 }
 
