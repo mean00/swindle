@@ -114,20 +114,16 @@ pub fn _Hg(command: &str, _args: &[&str]) -> bool {
 pub fn _T(command: &str, _args: &[&str]) -> bool {
 
     let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[1..]);
-    let mut ok = false;
-    if !freertos_symbol_valid()
-    {
-        if thread_id==1 {      ok = true;  }
-        else {  ok = false;      }        
-    }else
-    {
-        if  freertos_is_thread_present(thread_id) { ok = true; }
-        else { ok = false;  }
+    let  ok: bool ;
+    if !freertos_symbol_valid()    {
+        ok = thread_id==1;
     }
+    else    {
+        ok =  freertos_is_thread_present(thread_id) ;
+    };
     if ok {
         encoder::reply_ok();
-    }else
-    {
+    }else  {
         encoder::reply_e01();
     }
     true
@@ -164,11 +160,10 @@ pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
     if!freertos_symbol_valid() {
         current_thread_id=1;
     }
-    else {    
-        if let Some(x) = get_current_thread_id() {
+    else if let Some(x) = get_current_thread_id() {
             current_thread_id = x;
-        }
     }
+    
     let mut e = encoder::new();
     e.begin();
     e.add("QC");    
