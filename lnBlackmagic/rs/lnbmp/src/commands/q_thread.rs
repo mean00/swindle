@@ -114,13 +114,12 @@ pub fn _Hg(command: &str, _args: &[&str]) -> bool {
 pub fn _T(command: &str, _args: &[&str]) -> bool {
 
     let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[1..]);
-    let  ok: bool ;
-    if !freertos_symbol_valid()    {
-        ok = thread_id==1;
-    }
-    else    {
-        ok =  freertos_is_thread_present(thread_id) ;
+    
+    let ok = match freertos_symbol_valid()    {
+        true => freertos_is_thread_present(thread_id),
+        false =>  thread_id==1,
     };
+
     if ok {
         encoder::reply_ok();
     }else  {
