@@ -212,19 +212,17 @@ pub fn freertos_switch_task( thread_id  : u32 ) -> bool
 {
 
     let new_info = get_tcb_info_from_id(thread_id);
-    let new_tcb : freertos_task_info;
     // read new tcb 
-    match new_info {
+    let new_tcb =    match new_info {
         None =>  {   return false;  },
-        Some(x) => new_tcb =x,
+        Some(x) => x,
     };
     // read old tcb, exit if it is actually the same as the new one
-    let old_current_tcb_adr : u32;
-    match get_pxCurrentTCB()
+    let old_current_tcb_adr = match get_pxCurrentTCB()
     {
         None => {    return false;  },
-        Some(x) => { if x==new_tcb.tcb_addr  { return true;}  old_current_tcb_adr = x; },
-    }
+        Some(x) => { if x==new_tcb.tcb_addr  { return true;}   x },
+    };
 
     let cortex : &mut dyn freertos_switch_handler;
 
@@ -237,7 +235,7 @@ pub fn freertos_switch_task( thread_id  : u32 ) -> bool
     cortex.write_registers_to_stack();
     let saved_stack = cortex.get_sp();
     // write new top of stack
-    let mut item : [u32;1] = [saved_stack];
+    let item : [u32;1] = [saved_stack];
     bmp_write_mem32(old_current_tcb_adr, &item );
 
     // ok , old thread has been saved, now restore new thread

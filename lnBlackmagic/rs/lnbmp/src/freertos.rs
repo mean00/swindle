@@ -23,7 +23,7 @@ pub fn enable_freertos() -> bool
 {
     let all_symbols = get_symbols();
     all_symbols.valid = all_symbols.loaded;
-    return all_symbols.valid;
+    all_symbols.valid
 }
 
 
