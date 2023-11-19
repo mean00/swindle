@@ -1,3 +1,5 @@
+// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
+
 use alloc::vec::Vec;
 pub mod freertos_trait;
 mod freertos_list;

@@ -200,7 +200,14 @@ pub fn set_pxCurrentTCB( tcb : u32) -> bool
     data[0]= tcb;
     bmp_write_mem32(px_adr , &data)
 }
-
+pub fn freertos_is_thread_present( thread_id : u32) -> bool
+{
+    let new_info = get_tcb_info_from_id(thread_id);
+    if new_info.is_some() {
+        return true;
+    }
+    false
+}
 pub fn freertos_switch_task( thread_id  : u32 ) -> bool
 {
 

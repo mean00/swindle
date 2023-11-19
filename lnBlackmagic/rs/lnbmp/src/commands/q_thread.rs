@@ -27,7 +27,7 @@ use crate::{bmplog, bmpwarning};
 use crate::freertos::freertos_trait::{freertos_switch_handler,freertos_task_info};
 use crate::freertos::freertos_tcb::{get_current_thread_id,freertos_collect_information, get_tcb_info_from_id};
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
-use crate::freertos::freertos_tcb::{set_pxCurrentTCB, get_pxCurrentTCB, freertos_switch_task};
+use crate::freertos::freertos_tcb::{set_pxCurrentTCB, get_pxCurrentTCB, freertos_switch_task,freertos_is_thread_present};
 use crate::freertos::freertos_symbols::freertos_symbol_valid;
 //
 // ‘m thread-id’
@@ -108,7 +108,30 @@ pub fn _Hg(command: &str, _args: &[&str]) -> bool {
     }
     true
 }
+/**
+ *  is thread alive ?
+ */
+pub fn _T(command: &str, _args: &[&str]) -> bool {
 
+    let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[1..]);
+    let mut ok = false;
+    if !freertos_symbol_valid()
+    {
+        if thread_id==1 {      ok = true;  }
+        else {  ok = false;      }        
+    }else
+    {
+        if  freertos_is_thread_present(thread_id) { ok = true; }
+        else { ok = false;  }
+    }
+    if ok {
+        encoder::reply_ok();
+    }else
+    {
+        encoder::reply_e01();
+    }
+    true
+}
 /**
  * get a human readable attributes  "qThreadExtraInfo,id"
  */

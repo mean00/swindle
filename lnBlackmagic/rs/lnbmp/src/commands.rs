@@ -45,12 +45,18 @@ struct CommandTree {
     cb: CallbackType, // string + strings
 }
 
-const main_command_tree: [CommandTree; 20] = [
+const main_command_tree: [CommandTree; 21] = [
     CommandTree {
         command: "!",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_extendedMode),
+    }, // enable extended mode
+    CommandTree {
+        command: "T",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(q_thread::_T),
     }, // enable extended mode
     CommandTree {
         command: "Hg",
