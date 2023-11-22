@@ -104,11 +104,13 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
         output.push(x);
     }
     // read other lists
+    bmplog!("---- scanning ----\n");
     for index in 1..5
     {        
+        bmplog!(" list {}\n",index);
         for i in freertos_crawl_list( symbol.symbols[index])
         {
-            bmplog!("\tTCB 0x{:x}\n",i);
+            bmplog!("\t\t found TCB 0x{:x} indexed as {}\n",i,FreeRTOSSymbolName[index]);
             if i!=current
             {
                 // read the task info for each of the TCBs
@@ -117,7 +119,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
                     tcb_number+=1;
                     output.push(x);
                 }
-            }
+            }            
         }
     }        
     output
