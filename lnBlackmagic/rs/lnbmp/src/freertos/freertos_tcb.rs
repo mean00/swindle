@@ -1,3 +1,4 @@
+
 use crate::parsing_util;
 use crate::encoder::encoder;
 use alloc::vec::Vec;
@@ -7,6 +8,8 @@ use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state,fre
 use crate::freertos::freertos_symbols::{get_symbols,get_current_tcb_address};
 use crate::freertos::freertos_list::freertos_crawl_list;
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
+use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
+use crate::freertos::freertos_hashtcb::{hashed_tcb,get_hashtcb};
 
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
@@ -35,6 +38,8 @@ const FreeRTOSSymbolName: [&str;5] = ["pxCurrentTCB",
                                     "xDelayedTaskList1",
                                     "xDelayedTaskList2",
                                     "pxReadyTasksLists"];
+
+//--
 /**
  * 
  */
@@ -96,11 +101,11 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
     }
     // pxCurrentTCB
     let current = data[0];    
-    let mut tcb_number : u32 = 1;
+    
      // add current TCB as number 1
      if let Some(mut x) = read_tcb(current,map_state[0]) {
-        x.tcb_no=tcb_number;
-        tcb_number+=1;
+        let tid = get_hashtcb().get(x.tcb_addr);
+        x.tcb_no=tid;
         output.push(x);
     }
     // read other lists
@@ -115,8 +120,9 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
             {
                 // read the task info for each of the TCBs
                 if let Some(mut x) = read_tcb(i,map_state[index]) {
-                    x.tcb_no=tcb_number;
-                    tcb_number+=1;
+                    
+                    let tid = get_hashtcb().get(x.tcb_addr);
+                    x.tcb_no=tid;
                     output.push(x);
                 }
             }            
