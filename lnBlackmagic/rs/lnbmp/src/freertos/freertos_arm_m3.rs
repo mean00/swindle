@@ -1,7 +1,4 @@
-/**
- *  This is normally the same thing as cortex m3
- * 
- */
+
 use crate::freertos::freertos_trait::freertos_switch_handler;
 use crate::bmp::{bmp_read_registers, bmp_write_register};
 use crate::bmp::{bmp_read_mem,bmp_read_mem32, bmp_write_mem32};
@@ -13,8 +10,7 @@ const M0_REGISTER_COUNT: usize  = 17;
  *  Stack layout for cortex M3 (or M4 without FPU)
 Newer stack
     Extra
-        r8--r11
-        r4--r7
+        r4--r11
     Interrupt
         r0--r3
         r12
@@ -27,16 +23,16 @@ Original stack
 /**
  * 
  */
-pub struct freertos_switch_handler_m0
+pub struct freertos_switch_handler_m3
 {
     registers : [u32;M0_REGISTER_COUNT], // R0..R15 + PSR
     pointer   : u32, // pseudo stack
 }
 
-impl freertos_switch_handler_m0 {
+impl freertos_switch_handler_m3 {
     pub fn new() -> Self
     {
-        freertos_switch_handler_m0 
+        freertos_switch_handler_m3 
         {
             registers : [0;M0_REGISTER_COUNT],  // R0..R15 + PSR
             pointer : 0,
@@ -76,7 +72,7 @@ impl freertos_switch_handler_m0 {
 /**
  * 
  */
-impl freertos_switch_handler for freertos_switch_handler_m0
+impl freertos_switch_handler for freertos_switch_handler_m3
 {
     /**
      * write internal to actual registers
@@ -113,8 +109,7 @@ impl freertos_switch_handler for freertos_switch_handler_m0
         self.push(14,17);  // r14/r15/R16 PSR
         self.push(12,13);  // R12
         self.push(0,4);    // push  R0 to R4 excluded
-        self.push(4,8);   // push  R4..r8 excluded
-        self.push(8,12);   // push  R8..r12 excluded
+        self.push(4,12);   // push  R4..r12 excluded
         
         true
     }
@@ -127,8 +122,7 @@ impl freertos_switch_handler for freertos_switch_handler_m0
         // rewind by 16 *4=64 bytes, we dont save SP on SP but on TCP
         self.pointer=address;
         // now read the registers onto the stack
-        self.pop(8,12);   // push  R8..r12 excluded
-        self.pop(4,8);   // push  R4..r8 excluded
+        self.pop(4,12);   // push  R4..r12 excluded
         self.pop(0,4);    //
         self.pop(12,13);  // R12
         self.pop(14,17);  // r14/r15/R16 PSR
