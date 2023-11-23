@@ -4,8 +4,10 @@ use alloc::vec::Vec;
 pub mod freertos_trait;
 mod freertos_list;
 pub mod freertos_symbols;
+pub mod freertos_hashtcb;
 pub mod freertos_tcb;
 pub mod freertos_arm_m0;
+pub mod freertos_arm_m3;
 
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 use freertos_trait::{freertos_task_info};
