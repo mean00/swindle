@@ -2,10 +2,12 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
 use super::{exec_one, CommandTree};
-use crate::bmp::bmp_attach;
+use crate::bmp::{bmp_attach, bmp_cpuid};
 use crate::commands::CallbackType;
 use crate::commands::_vCont;
 use crate::encoder::encoder;
+use crate::freertos::os_attach;
+use crate::freertos::os_detach;
 
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
@@ -66,9 +68,11 @@ fn _vAttach(_command: &str, _args: &[&str]) -> bool {
          * https://sourceware.org/pipermail/gdb-patches/2022-April/188058.html
          * https://sourceware.org/pipermail/gdb-patches/2022-July/190869.html
          */
+        os_attach( bmp_cpuid());
         encoder::simple_send("T05thread:1;");
         return true;
     }
+    os_detach();
     encoder::reply_e01();
     true
 }

@@ -24,7 +24,7 @@ void bmp_target_description_clear_c();
 
 bool bmp_write_reg_c(const unsigned int reg, const unsigned int value);
 bool bmp_read_reg_c(const unsigned int reg, unsigned int *value);
-
+uint32_t bmp_get_cpuid_c();
 bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length);
 bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data);
 bool bmp_flash_complete_c();

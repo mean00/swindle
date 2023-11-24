@@ -135,7 +135,30 @@ extern "C" int command_process(target_s *const t, const char *cmd_buffer);
         }
         return 0;
     }
-
+    /**
+     * @brief 
+     * 
+     * @return uint32_t 
+     */
+    uint32_t bmp_get_cpuid_c()
+    {
+        if (!bmp_attached_c())
+        {
+            return 0; // DF ?
+        }
+        return cur_target->cpuid;
+    }
+    /**
+     * @brief 
+     * 
+     * @param kind 
+     * @param index 
+     * @param start 
+     * @param size 
+     * @param blockSize 
+     * @return true 
+     * @return false 
+     */
     bool bmp_map_get_c(int kind, int index, uint32_t *start, uint32_t *size, uint32_t *blockSize)
     {
         if (!bmp_attached_c())

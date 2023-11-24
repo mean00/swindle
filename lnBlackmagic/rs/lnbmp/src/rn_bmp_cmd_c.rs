@@ -163,6 +163,9 @@ extern "C" {
     pub fn bmp_read_reg_c(reg: core::ffi::c_uint, value: *mut core::ffi::c_uint) -> bool_;
 }
 extern "C" {
+    pub fn bmp_get_cpuid_c() -> core::ffi::c_uint;
+}
+extern "C" {
     pub fn bmp_flash_erase_c(addr: core::ffi::c_uint, length: core::ffi::c_uint) -> bool_;
 }
 extern "C" {

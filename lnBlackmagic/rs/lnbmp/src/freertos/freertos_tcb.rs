@@ -7,9 +7,13 @@ use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state,freertos_switch_handler};
 use crate::freertos::freertos_symbols::{get_symbols,get_current_tcb_address};
 use crate::freertos::freertos_list::freertos_crawl_list;
+use crate::freertos::freertos_hashtcb::{hashed_tcb,get_hashtcb};
+
+use crate::freertos::{freertos_switch_task_action,os_can_switch};
+
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
-use crate::freertos::freertos_hashtcb::{hashed_tcb,get_hashtcb};
+
 
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
@@ -218,7 +222,10 @@ pub fn freertos_is_thread_present( thread_id : u32) -> bool
 }
 pub fn freertos_switch_task( thread_id  : u32 ) -> bool
 {
-
+    // if we cant switch no need to go further
+    if !os_can_switch() {
+        return false;
+    }
     let new_info = get_tcb_info_from_id(thread_id);
     // read new tcb 
     let new_tcb =    match new_info {
@@ -232,27 +239,11 @@ pub fn freertos_switch_task( thread_id  : u32 ) -> bool
         Some(x) => { if x==new_tcb.tcb_addr  { return true;}   x },
     };
 
-    let cortex : &mut dyn freertos_switch_handler;
-
-    let mut m0 =  freertos_switch_handler_m0::new();
-    cortex = &mut m0 ;
-
-    // read current reg
-    cortex.read_current_registers();
-    // save on to tcb
-    cortex.write_registers_to_stack();
-    let saved_stack = cortex.get_sp();
+    // let's switch
+    let old_stack = freertos_switch_task_action(new_tcb.top_of_stack);   
     // write new top of stack
-    let item : [u32;1] = [saved_stack];
+    let item : [u32;1] = [old_stack];
     bmp_write_mem32(old_current_tcb_adr, &item );
-
-    // ok , old thread has been saved, now restore new thread
-    // restore registers
-    let top_of_stack = new_tcb.top_of_stack;
-    cortex.read_registers_from_addr(top_of_stack);
-    // update actual reg from copy in cortex
-    cortex.write_current_registers();
-    // restore register
     // switch to that thread..  
     set_pxCurrentTCB(new_tcb.tcb_addr);        
     true

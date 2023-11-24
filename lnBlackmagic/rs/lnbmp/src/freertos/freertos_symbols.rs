@@ -31,6 +31,7 @@ pub struct FreeRTOSSymbols
     pub loaded  : bool,
     pub index   : usize,
     pub symbols : [u32;NB_FREERTOS_SYMBOLS],    
+    pub cpuid   : u32,
 }
 
 static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
@@ -38,6 +39,7 @@ static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
     loaded: false,
     index : 0,
     symbols : [0;NB_FREERTOS_SYMBOLS],
+    cpuid : 0,    
 };
 /**
  * 
@@ -48,7 +50,6 @@ pub fn get_symbols() ->  &'static mut FreeRTOSSymbols
             &mut freeRtosSymbols_internal
     }
 }
-
 /**
  * \brief : ask gdb for pxCurrentTCB address
  */

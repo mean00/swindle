@@ -175,7 +175,13 @@ pub fn bmp_write_mem32(address: u32, data: & [u32]) -> bool {
         ))
     }
 }
-
+/**
+ * 
+ */
+pub fn bmp_cpuid() -> u32
+{
+    unsafe { rn_bmp_cmd_c::bmp_get_cpuid_c() }
+}
 pub fn bmp_flash_complete() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_flash_complete_c()) }
 }

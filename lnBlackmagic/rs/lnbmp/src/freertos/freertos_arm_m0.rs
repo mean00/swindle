@@ -13,8 +13,8 @@ const M0_REGISTER_COUNT: usize  = 17;
  *  Stack layout for cortex M3 (or M4 without FPU)
 Newer stack
     Extra
-        r8--r11
         r4--r7
+        r8--r11        
     Interrupt
         r0--r3
         r12
@@ -113,8 +113,9 @@ impl freertos_switch_handler for freertos_switch_handler_m0
         self.push(14,17);  // r14/r15/R16 PSR
         self.push(12,13);  // R12
         self.push(0,4);    // push  R0 to R4 excluded
-        self.push(4,8);   // push  R4..r8 excluded
         self.push(8,12);   // push  R8..r12 excluded
+        self.push(4,8);   // push  R4..r8 excluded
+        
         
         true
     }
@@ -127,8 +128,8 @@ impl freertos_switch_handler for freertos_switch_handler_m0
         // rewind by 16 *4=64 bytes, we dont save SP on SP but on TCP
         self.pointer=address;
         // now read the registers onto the stack
-        self.pop(8,12);   // push  R8..r12 excluded
         self.pop(4,8);   // push  R4..r8 excluded
+        self.pop(8,12);   // push  R8..r12 excluded
         self.pop(0,4);    //
         self.pop(12,13);  // R12
         self.pop(14,17);  // r14/r15/R16 PSR
