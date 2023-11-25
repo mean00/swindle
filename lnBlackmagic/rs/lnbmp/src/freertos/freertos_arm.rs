@@ -70,19 +70,19 @@ pub fn freertos_switch_task_action_arm( new_stack : u32) -> u32{
 /**
  * 
  */
-pub fn freertos_attach_arm(cpu : u32) ->bool {
-
-    unsafe {FreeRTOS_switcher_internal.switcher = Some(
-        match cpu & ARM_PARTNO_MASK
+const mul: u32 = 0;
+pub fn freertos_attach_arm(cpu : u32) ->bool {    
+    unsafe {        
+        let switcher: Box<dyn freertos_switch_handler> = match (mul*ARM_CM33 +(1-mul)*cpu) & ARM_PARTNO_MASK
         {
             ARM_CM0  =>  Box::new( freertos_switch_handler_m0::new()),
             ARM_CM0P =>  Box::new( freertos_switch_handler_m0::new()),
             ARM_CM3  =>  Box::new( freertos_switch_handler_m3::new()),
             ARM_CM4  =>  Box::new( freertos_switch_handler_m3::new()),
-            _ => { gdb_print!("FreeRTOS: unsupported cortex\n");return false;},
-        }
-    ); // end Some
-  }
+            _ => { return false;},
+        };
+        FreeRTOS_switcher_internal.switcher = Some(switcher);    
+  } // unsafe 
   true
 }
 
