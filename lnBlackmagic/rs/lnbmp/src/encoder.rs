@@ -73,8 +73,33 @@ impl encoder {
             shift -= 8;
             offset += 2;
         }
-
         self.add_u8(&tmp);
+    }
+    pub fn add_u32_no_padding(&mut self, val: u32) {
+        let mut tmp: [u8; 8] = [0; 8];
+
+        let mut shift = 24;
+        let mut offset = 0;        
+        let mut nb_digit: usize = 0;
+
+        for _i in 0..4 {
+            let digit: u8 = ((val >> shift) & 0xff) as u8;
+            if digit ==0 && nb_digit ==0   {
+
+            }
+            else {
+                crate::parsing_util::u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
+                nb_digit +=2;                
+            }
+            shift -= 8;
+            offset += 2;
+        }
+        if nb_digit == 0 {
+            nb_digit=2;
+            tmp[0]=b'0';
+            tmp[1]=b'0';
+        }
+        self.add_u8(&tmp[(8-nb_digit)..8]);        
     }
     pub fn add_u32_le(&mut self, val: u32) {
         let mut tmp: [u8; 8] = [0; 8];

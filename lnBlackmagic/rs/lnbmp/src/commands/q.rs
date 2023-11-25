@@ -15,15 +15,24 @@ use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
 use crate::commands::mon::_qRcmd;
+use crate::commands::q_thread::{_qSymbol, _qfThreadInfo, _qsThreadInfo, _qC,_qThreadExtraInfo,_qP};
 use crate::commands::CallbackType;
 use crate::util::xmin;
+use crate::parsing_util;
 
 use numtoa::NumToA;
 
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
-const q_command_tree: [CommandTree; 10] = [
+
+const q_command_tree: [CommandTree; 13] = [
+    CommandTree {
+        command: "qSymbol",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_qSymbol),
+    }, // read symbol 
     CommandTree {
         command: "qSupported",
         args: 0,
@@ -57,15 +66,27 @@ const q_command_tree: [CommandTree; 10] = [
     CommandTree {
         command: "qfThreadInfo",
         args: 0,
-        require_connected: false,
+        require_connected: true,
         cb: CallbackType::text(_qfThreadInfo),
     }, // thread info begin
     CommandTree {
         command: "qsThreadInfo",
         args: 0,
-        require_connected: false,
+        require_connected: true,
         cb: CallbackType::text(_qsThreadInfo),
     }, // List threads
+    CommandTree {
+        command: "qThreadExtraInfo",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_qThreadExtraInfo),
+    }, // List threads    
+    CommandTree {
+        command: "qP",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_qP),
+    }, // List threads    
     CommandTree {
         command: "qCRC",
         args: 0,
@@ -262,23 +283,7 @@ fn _qAttached(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("1");
     true
 }
-//
-//
-fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
-    encoder::simple_send("m1");
-    true
-}
-//
-//
-fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
-    encoder::simple_send("1");
-    true
-}
-// get current thread I
-fn _qC(_command: &str, _args: &[&str]) -> bool {
-    encoder::simple_send("QC1");
-    true
-}
+
 // get offset
 fn _qOffsets(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("Text=0;Data=0;Bss=0");

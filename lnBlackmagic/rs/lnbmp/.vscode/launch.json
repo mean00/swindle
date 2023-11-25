@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "lldb_hosted",
+            "type": "lldb",
+            "request": "launch",            
+            "program": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted", 
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "gdb_hosted",
+            "type": "gdb",
+            "request": "launch",            
+            "target": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted",            
+            "cwd": "${workspaceFolder}"
+        },      
+    ]
+}

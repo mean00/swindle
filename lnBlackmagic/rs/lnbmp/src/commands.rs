@@ -8,7 +8,8 @@ pub mod breakpoints;
 mod flash;
 mod memory;
 mod mon;
-mod q;
+pub mod q;
+pub mod q_thread;
 mod registers;
 pub mod rpc;
 pub mod rpc_commands;
@@ -44,7 +45,7 @@ struct CommandTree {
     cb: CallbackType, // string + strings
 }
 
-const main_command_tree: [CommandTree; 20] = [
+const main_command_tree: [CommandTree; 21] = [
     CommandTree {
         command: "!",
         args: 0,
@@ -52,15 +53,21 @@ const main_command_tree: [CommandTree; 20] = [
         cb: CallbackType::text(_extendedMode),
     }, // enable extended mode
     CommandTree {
+        command: "T",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(q_thread::_T),
+    }, // enable extended mode
+    CommandTree {
         command: "Hg",
         args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_Hg),
+        require_connected: true,
+        cb: CallbackType::text(q_thread::_Hg),
     }, // select thread
     CommandTree {
         command: "Hc",
         args: 0,
-        require_connected: false,
+        require_connected: true,
         cb: CallbackType::text(_Hc),
     }, //
     CommandTree {
@@ -219,13 +226,8 @@ fn _extendedMode(_command: &str, _args: &[&str]) -> bool {
     true
 }
 // select thread
-fn _Hg(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_ok();
-    true
-}
-// select thread
 fn _Hc(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_ok();
+    encoder::reply_e01();
     true
 }
 
