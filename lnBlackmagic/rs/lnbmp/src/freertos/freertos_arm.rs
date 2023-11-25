@@ -4,7 +4,7 @@
     ARM core / FreeRTOS implementation
 
 */
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::{bmplog, bmpwarning, gdb_print};
 
 crate::gdb_print_init!();

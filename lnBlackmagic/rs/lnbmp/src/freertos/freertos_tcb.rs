@@ -15,7 +15,7 @@ use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
 
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
 const OFFSET_TO_SIZE : u32 = 44;

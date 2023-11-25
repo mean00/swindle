@@ -21,7 +21,7 @@ use crate::util::xmin;
 use crate::parsing_util;
 use numtoa::NumToA;
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
 use crate::freertos::freertos_trait::{freertos_switch_handler,freertos_task_info};

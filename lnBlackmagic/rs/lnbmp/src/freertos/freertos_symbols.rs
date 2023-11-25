@@ -5,7 +5,7 @@ use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 
 use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state};
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
 const NB_FREERTOS_SYMBOLS : usize = 6;
