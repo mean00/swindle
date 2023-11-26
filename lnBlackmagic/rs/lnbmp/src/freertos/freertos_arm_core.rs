@@ -62,36 +62,21 @@ impl freertos_cortexm_core
     /**
      * 
      */
-    pub fn push( &mut self, first : u32, last : u32 ) -> bool
+    pub fn push( &mut self, first : usize, last : usize ) -> bool
     {
         let to_push = last-first;
-        self.pointer -= 4*to_push;  
-        let mut current = self.pointer;
-        let mut item : [u32;1]=[0];
-        for i in first..last {
-            item[0]=self.registers[i as usize];        
-            if !bmp_write_mem32(current, &item)   {                
-                return false;
-            }     
-            current += 4;  
-        }
-        true
+        self.pointer -= 4*to_push as u32;
+        let current = self.pointer;
+        bmp_write_mem32( current, &self.registers[first..last])
     }
     /**
      * 
      */
-    pub fn pop( &mut self, first : u32, last : u32 ) -> bool
+    pub fn pop( &mut self, first : usize, last : usize ) -> bool
     {
-        let mut item : [u32;1]=[0];
-        for i in first..last {
-            
-            if !bmp_read_mem32(self.pointer, &mut item)   {                
-                return false;
-            }     
-            self.registers[i as usize]=item[0];
-            self.pointer += 4;  
-        }
-        true
+        let current = self.pointer;
+        self.pointer += 4*(last-first) as u32;
+        bmp_read_mem32(current, &mut self.registers[first..last])
     }
 
 

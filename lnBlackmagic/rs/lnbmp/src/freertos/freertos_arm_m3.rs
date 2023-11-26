@@ -69,7 +69,7 @@ impl freertos_switch_handler for freertos_switch_handler_m3
         self.gpr.registers[13] -= STACKED_REGISTER_SIZE; // adjust stack to be at the beginning
         self.gpr.pointer = self.gpr.registers[13];
         
-        self.gpr.push(14,17);  // r14/r15/R16 PSR
+        self.gpr.push(14,17);  // r14/r15/R16 (xPSR)
         self.gpr.push(12,13);  // R12
         self.gpr.push(0,4);    // push  R0 to R4 excluded
         self.gpr.push(4,12);   // push  R4..r12 excluded
