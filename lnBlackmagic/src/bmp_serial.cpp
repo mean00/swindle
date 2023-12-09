@@ -6,9 +6,9 @@
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbStack.h"
 #include "lnArduino.h"
+#include "lnBMP_pinout.h"
 #include "lnBmpTask.h"
 #include "lnSerial.h"
-#include "lnBMP_pinout.h"
 #define BMP_SERIAL_BUFFER_SIZE 256
 /**
 
@@ -33,10 +33,10 @@ class BMPSerial : public xTask
         _usb = new lnUsbCDC(_usbInstance);
 #if 1
         bool dma = true;
-        _serial =  createLnSerialRxTx(_serialInstance, 512,dma); // no dma
+        _serial = createLnSerialRxTx(_serialInstance, 128, dma); // no dma
         _connected = 0;
         start();
-#endif        
+#endif
     }
     /**
      *
@@ -181,7 +181,7 @@ class BMPSerial : public xTask
 void serialInit()
 {
 
-// bridge CDC ACMxxx to Serial port yy
-    BMPSerial *serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE); 
+    // bridge CDC ACMxxx to Serial port yy
+    BMPSerial *serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE);
     EXTRA_SETUP();
 }
