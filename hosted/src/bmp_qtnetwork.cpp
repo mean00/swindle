@@ -50,7 +50,7 @@ extern "C"
 #define QBMPLOGN(...)                                                                                                  \
     {                                                                                                                  \
     }
-#endif    
+#endif
 // Rust part
 extern "C"
 {
@@ -63,7 +63,7 @@ extern "C"
 BMPTcp *current_connection = NULL;
 
 extern void exit_from_bmp();
-#define BUFFER_SIZE (3*1024)
+#define BUFFER_SIZE (3 * 1024)
 char tcp_buffer[BUFFER_SIZE];
 int tcp_index = 0;
 
@@ -168,14 +168,15 @@ void BMPTcp::write(uint32_t sz, const uint8_t *ptr)
 //
 void BMPTcp::flush()
 {
-    if(!tcp_index) return;
+    if (!tcp_index)
+        return;
     QBMPLOG("tcp write :\n");
 #if 0    
     for (int i = 0; i < tcp_index; i++)
     {
         uint8_t c = tcp_buffer[i];
     }
-#endif    
+#endif
     QBMPLOGN((int)tcp_index, (const char *)tcp_buffer);
     QBMPLOG("\n--\n");
     if (tcp_index != _socket->write(tcp_buffer, tcp_index))

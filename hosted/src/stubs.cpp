@@ -4,8 +4,8 @@
 #include "string.h"
 extern "C"
 {
-    #include "bmp_remote.h"
-    #include "src/remote.h"
+#include "bmp_remote.h"
+#include "src/remote.h"
 }
 
 void xAssert(int a)
@@ -23,16 +23,16 @@ extern "C" void do_assert(const char *z)
 }
 extern "C" void _putchar(char){};
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 extern "C" void bmp_set_wait_state_c(unsigned int ws)
 {
-        printf("Stubbed : set ws %d\n",ws);
+    printf("Stubbed : set ws %d\n", ws);
 }
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 extern "C" unsigned int bmp_get_wait_state_c(void)
 {
@@ -95,33 +95,29 @@ extern "C"
     }
 }
 
-extern "C" uint32_t bmp_adiv5_ap_read_c(  const uint32_t device_index, const  uint32_t ap_selection, const uint32_t address)
+extern "C" uint32_t bmp_adiv5_ap_read_c(const uint32_t device_index, const uint32_t ap_selection,
+                                        const uint32_t address)
 {
     xAssert(0);
     return 0;
 }
 
-extern "C" void bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address, const uint32_t value )
+extern "C" void bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address,
+                                     const uint32_t value)
 {
     xAssert(0);
 }
 
-extern "C" int32_t bmp_adiv5_mem_read_c( const uint32_t  device_index,
-                                            const uint32_t  ap_selection, 
-                                            const uint32_t  csw,
-                                            const uint32_t address,
-                                            uint8_t *buffer, uint32_t len)
+extern "C" int32_t bmp_adiv5_mem_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
+                                        const uint32_t address, uint8_t *buffer, uint32_t len)
 {
     xAssert(0);
     return 0;
 }
 
-extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
-                                            const uint32_t  ap_selection, 
-                                            const uint32_t  csw,
-                                            const uint32_t address,
-                                            const uint32_t alin,
-                                            const uint8_t *buffer, uint32_t len)
+extern "C" int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
+                                         const uint32_t address, const uint32_t alin, const uint8_t *buffer,
+                                         uint32_t len)
 
 {
     xAssert(0);
@@ -130,105 +126,108 @@ extern "C" int32_t bmp_adiv5_mem_write_c( const uint32_t  device_index,
 
 extern "C"
 {
-extern void remote_pin_set(uint8_t p, uint8_t s);
-extern void remote_pin_direction(uint8_t p, uint8_t is_direction);
-extern bool remote_pin_get(uint8_t p);
+    extern void remote_pin_set(uint8_t p, uint8_t s);
+    extern void remote_pin_direction(uint8_t p, uint8_t is_direction);
+    extern bool remote_pin_get(uint8_t p);
 
-void bmp_pin_set(uint8_t pin, uint8_t state)
-{
-    remote_pin_set(pin,state);
-}
+    void bmp_pin_set(uint8_t pin, uint8_t state)
+    {
+        remote_pin_set(pin, state);
+    }
 
-bool bmp_pin_get(uint8_t pin)
-{
-    return remote_pin_get(pin);
-}
-void bmp_pin_direction(uint8_t pin, uint8_t is_write)
-{
-    remote_pin_direction(pin, is_write);
-}
+    bool bmp_pin_get(uint8_t pin)
+    {
+        return remote_pin_get(pin);
+    }
+    void bmp_pin_direction(uint8_t pin, uint8_t is_write)
+    {
+        remote_pin_direction(pin, is_write);
+    }
 
+    // This shouold be in platform.c but we put them here to minimize the change
+    // in blackmagic source tree
 
-// This shouold be in platform.c but we put them here to minimize the change
-// in blackmagic source tree 
-
-void remote_pin_gen(uint8_t code, uint8_t pin, uint8_t value) 
-{
-	uint8_t buffer[REMOTE_MAX_MSG_SIZE]=	{			REMOTE_SOM, REMOTE_GEN_PACKET, code, pin, value, REMOTE_EOM, 0};
-	platform_buffer_write(buffer, 6);
-	int length = platform_buffer_read(buffer,REMOTE_MAX_MSG_SIZE);
-	if(length<1) 
-	{
-		DEBUG_ERROR("Invalid pin set reply\n");
-		return ;//false;
-	}
-	bool r= buffer[0]==REMOTE_RESP_OK;
-	if(!r)
-	{
-			DEBUG_ERROR(" pin set error\n");
-	}
-	//return r;
-}
-
-
-void remote_pin_direction(uint8_t pin, uint8_t is_write) 
-{
-    remote_pin_gen('X',pin, is_write);
-}
-
-void remote_pin_set(uint8_t pin, uint8_t value) // pin 0 = clk, pin 1 = io
-{
-    remote_pin_gen('W',pin, value);
-}
-bool remote_pin_get(uint8_t pin) // pin 0 = clk, pin 1 = io
-{
-	uint8_t buffer[REMOTE_MAX_MSG_SIZE]=	{			REMOTE_SOM, REMOTE_GEN_PACKET, 'w',pin, REMOTE_EOM, 0};
-	platform_buffer_write(buffer, 5);
-	int length = platform_buffer_read(buffer,REMOTE_MAX_MSG_SIZE);
-	if(length<1) 
-	{
-		DEBUG_ERROR("Invalid pin set reply\n");
-		return false;
-	}
-	bool r= buffer[0]==REMOTE_RESP_OK;
-	if(!r)
-	{
-			DEBUG_ERROR(" pin set error\n");
-            xAssert(0);
-	}else
-	{
-        // this is hackish
-        switch(buffer[2])
+    void remote_pin_gen(uint8_t code, uint8_t pin, uint8_t value)
+    {
+        uint8_t buffer[REMOTE_MAX_MSG_SIZE] = {REMOTE_SOM, REMOTE_GEN_PACKET, code, pin, value, REMOTE_EOM, 0};
+        platform_buffer_write(buffer, 6);
+        int length = platform_buffer_read(buffer, REMOTE_MAX_MSG_SIZE);
+        if (length < 1)
         {
-            case '0': r=0;break;
-            case '1': r=1;break;
-            default:
-                    xAssert(0);
+            DEBUG_ERROR("Invalid pin set reply\n");
+            return; // false;
         }
-	}
-	return r;
-}
+        bool r = buffer[0] == REMOTE_RESP_OK;
+        if (!r)
+        {
+            DEBUG_ERROR(" pin set error\n");
+        }
+        // return r;
+    }
 
-void riscv_jtag_dtm_handler(const uint8_t dev_index)
-{
-    
-}
+    void remote_pin_direction(uint8_t pin, uint8_t is_write)
+    {
+        remote_pin_gen('X', pin, is_write);
+    }
 
-float bmp_get_target_voltage_c()
-{
-    return 0.0;
-}
-const char *bmp_get_version_string()
-{
-    return "lnbmpa";
-}
-size_t xPortGetFreeHeapSize( void )
-{
-    return 33;
-}
-size_t xPortGetMinimumEverFreeHeapSize( void )
-{
-    return 2;;
-}
+    void remote_pin_set(uint8_t pin, uint8_t value) // pin 0 = clk, pin 1 = io
+    {
+        remote_pin_gen('W', pin, value);
+    }
+    bool remote_pin_get(uint8_t pin) // pin 0 = clk, pin 1 = io
+    {
+        uint8_t buffer[REMOTE_MAX_MSG_SIZE] = {REMOTE_SOM, REMOTE_GEN_PACKET, 'w', pin, REMOTE_EOM, 0};
+        platform_buffer_write(buffer, 5);
+        int length = platform_buffer_read(buffer, REMOTE_MAX_MSG_SIZE);
+        if (length < 1)
+        {
+            DEBUG_ERROR("Invalid pin set reply\n");
+            return false;
+        }
+        bool r = buffer[0] == REMOTE_RESP_OK;
+        if (!r)
+        {
+            DEBUG_ERROR(" pin set error\n");
+            xAssert(0);
+        }
+        else
+        {
+            // this is hackish
+            switch (buffer[2])
+            {
+            case '0':
+                r = 0;
+                break;
+            case '1':
+                r = 1;
+                break;
+            default:
+                xAssert(0);
+            }
+        }
+        return r;
+    }
+
+    void riscv_jtag_dtm_handler(const uint8_t dev_index)
+    {
+    }
+
+    float bmp_get_target_voltage_c()
+    {
+        return 0.0;
+    }
+    const char *bmp_get_version_string()
+    {
+        return "lnbmpa";
+    }
+    size_t xPortGetFreeHeapSize(void)
+    {
+        return 33;
+    }
+    size_t xPortGetMinimumEverFreeHeapSize(void)
+    {
+        return 2;
+        ;
+    }
 }
 // -- eof --
