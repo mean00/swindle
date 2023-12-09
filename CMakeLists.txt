@@ -76,6 +76,7 @@ include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
 
 GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
+HASH_GD32_FIRMWARE(lnBMP)    
 
 
 ADD_SUBDIRECTORY(lnBlackmagic)
