@@ -16,10 +16,10 @@ enum lnBMPPins
 };
 
 #ifdef USE_RP2040
-    #include "lnBMP_pinout_rp2040.h"
+#include "lnBMP_pinout_rp2040.h"
 #elif defined(USE_STLINK_PINOUT)
-    #include "lnBMP_pinout_stlink.h"
-#else    
-    #include "lnBMP_pinout_ln.h"
+#include "lnBMP_pinout_stlink.h"
+#else
+#include "lnBMP_pinout_ln.h"
 #endif
 // EOF

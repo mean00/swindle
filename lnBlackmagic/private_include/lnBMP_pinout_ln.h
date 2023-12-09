@@ -14,11 +14,12 @@ const lnPin _mapping[8] = {
     PB6, // 7 RST
 };
 
-
 #define PIN_ADC_NRESET_DIV_BY_TWO PA3 // this pins is connected to NRST/2
 #define PIN_ADC_NRESET_MULTIPLIER 1.  // 2.0 if divided by 2 , 1.0 if not divided
 
-#define LN_USB_INSTANCE         1
-#define LN_SERIAL_INSTANCE      2
+#define LN_USB_INSTANCE 1
+#define LN_SERIAL_INSTANCE 2
 
-#define EXTRA_SETUP() {}
+#define EXTRA_SETUP()                                                                                                  \
+    {                                                                                                                  \
+    }

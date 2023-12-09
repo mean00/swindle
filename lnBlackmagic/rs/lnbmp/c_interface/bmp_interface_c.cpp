@@ -8,13 +8,13 @@ extern "C"
 #include "gdb_packet.h"
 #include "general.h"
 #include "hex_utils.h"
+#include "platform.h"
 #include "target.h"
 #include "target_internal.h"
-#include "platform.h"
 
-extern "C" size_t xPortGetFreeHeapSize( void );
-extern "C" size_t xPortGetMinimumEverFreeHeapSize( void );
-extern "C" int command_process(target_s *const t, const char *cmd_buffer);
+    extern "C" size_t xPortGetFreeHeapSize(void);
+    extern "C" size_t xPortGetMinimumEverFreeHeapSize(void);
+    extern "C" int command_process(target_s *const t, const char *cmd_buffer);
 
     bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
@@ -136,9 +136,9 @@ extern "C" int command_process(target_s *const t, const char *cmd_buffer);
         return 0;
     }
     /**
-     * @brief 
-     * 
-     * @return uint32_t 
+     * @brief
+     *
+     * @return uint32_t
      */
     uint32_t bmp_get_cpuid_c()
     {
@@ -149,15 +149,15 @@ extern "C" int command_process(target_s *const t, const char *cmd_buffer);
         return cur_target->cpuid;
     }
     /**
-     * @brief 
-     * 
-     * @param kind 
-     * @param index 
-     * @param start 
-     * @param size 
-     * @param blockSize 
-     * @return true 
-     * @return false 
+     * @brief
+     *
+     * @param kind
+     * @param index
+     * @param start
+     * @param size
+     * @param blockSize
+     * @return true
+     * @return false
      */
     bool bmp_map_get_c(int kind, int index, uint32_t *start, uint32_t *size, uint32_t *blockSize)
     {
@@ -384,26 +384,25 @@ extern "C" int command_process(target_s *const t, const char *cmd_buffer);
         *watchpoint = watch;
         return reason;
     }
-    bool bmp_mon_c( const char *str)
+    bool bmp_mon_c(const char *str)
     {
-        if(command_process(cur_target, str)==0)
+        if (command_process(cur_target, str) == 0)
             return true;
         return false;
     }
     /**
-    */
+     */
     uint32_t free_heap_c()
     {
         return (uint32_t)xPortGetFreeHeapSize();
     }
     /**
-    */
+     */
     uint32_t min_free_heap_c()
     {
         return (uint32_t)xPortGetMinimumEverFreeHeapSize();
     }
 
-    
     /*
 
     z1,addr,kind’ insert hw breakpoint

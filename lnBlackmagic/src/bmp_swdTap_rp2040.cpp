@@ -39,24 +39,23 @@ extern "C"
 }
 
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 void gmp_gpio_init_adc()
 {
-
 }
 
 /*
-    */
-extern "C"  float bmp_get_target_voltage_c()
-{      
+ */
+extern "C" float bmp_get_target_voltage_c()
+{
     float vcc = 3219.; // lnBaseAdc::getVcc();
     return vcc;
 }
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 void lnSoftSystemReset()
 {

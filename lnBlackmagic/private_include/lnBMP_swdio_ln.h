@@ -1,6 +1,5 @@
 #pragma once
 
-
 /**
  */
 class SwdPin
@@ -29,11 +28,11 @@ class SwdPin
     }
     void output()
     {
-        lnPinMode(_me, lnOUTPUT,SWD_IO_SPEED); // 10 Mhz
+        lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED); // 10 Mhz
     }
     void hiZ()
     {
-        lnOpenDrainClose(_me,false);        
+        lnOpenDrainClose(_me, false);
         lnPinMode(_me, lnOUTPUT_OPEN_DRAIN, 1);
     }
     void set(bool x)

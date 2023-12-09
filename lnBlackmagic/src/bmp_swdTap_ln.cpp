@@ -1,23 +1,23 @@
 
-#include "lnArduino.h"
 #include "lnADC.h"
+#include "lnArduino.h"
 #include "lnBMP_pinout.h"
 static lnSimpleADC *adc = NULL;
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
-void    gmp_gpio_init_adc()
+void gmp_gpio_init_adc()
 {
-    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);    
-    lnPeripherals::enable(Peripherals::pADC0);    
+    lnPinMode(PIN_ADC_NRESET_DIV_BY_TWO, lnADC_MODE);
+    lnPeripherals::enable(Peripherals::pADC0);
     adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO);
     adc->setSmpt(LN_ADC_SMPT_239_5);
 }
 
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 extern "C" float bmp_get_target_voltage_c()
 {

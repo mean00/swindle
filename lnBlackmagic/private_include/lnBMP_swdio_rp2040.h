@@ -1,12 +1,11 @@
 #pragma once
 
-
 /**
  */
 class SwdPin
 {
   public:
-    SwdPin(lnBMPPins no) 
+    SwdPin(lnBMPPins no)
     {
         _me = _mapping[no & 7];
         _output = false;
@@ -17,12 +16,12 @@ class SwdPin
 
     void on()
     {
-        lnDigitalWrite(_me,1);
+        lnDigitalWrite(_me, 1);
         //_fast.on();
     }
     void off()
     {
-        lnDigitalWrite(_me,0);
+        lnDigitalWrite(_me, 0);
         //_fast.off();
     }
     void input()
@@ -31,11 +30,11 @@ class SwdPin
     }
     void output()
     {
-        lnPinMode(_me, lnOUTPUT,SWD_IO_SPEED); // 10 Mhz
+        lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED); // 10 Mhz
     }
     void hiZ()
     {
-        lnOpenDrainClose(_me,false);        
+        lnOpenDrainClose(_me, false);
         lnPinMode(_me, lnOUTPUT_OPEN_DRAIN, 1);
     }
     void set(bool x)
@@ -54,5 +53,5 @@ class SwdPin
   protected:
     lnPin _me;
     bool _output;
-    bool _wait;    
+    bool _wait;
 };

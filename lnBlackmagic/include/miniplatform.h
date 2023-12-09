@@ -17,12 +17,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- #pragma once
+#pragma once
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-extern void Logger(const char *fmt, ...);
-extern void deadEnd(int err);
+    extern void Logger(const char *fmt, ...);
+    extern void deadEnd(int err);
 #define PLATFORM_HAS_DEBUG 1
 #define ENABLE_DEBUG 1
 #undef PLATFORM_PRINTF

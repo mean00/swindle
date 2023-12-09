@@ -36,7 +36,7 @@ extern "C"
 #include "general.h"
 #include "timing.h"
 }
-extern  void gmp_gpio_init_adc();
+extern void gmp_gpio_init_adc();
 
 uint32_t swd_delay_cnt = 4;
 
@@ -57,20 +57,20 @@ static SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
 static SwdReset pReset(TRESET_PIN);
 
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
     swd_delay_cnt = ws;
 }
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
-extern "C" uint32_t  bmp_get_wait_state_c()
+extern "C" uint32_t bmp_get_wait_state_c()
 {
-    return swd_delay_cnt ;
+    return swd_delay_cnt;
 }
 
 /**
@@ -86,11 +86,10 @@ void bmp_gpio_init()
     pReset.off(); // hi-z by default
 
     gmp_gpio_init_adc();
-
 }
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 void bmp_io_begin_session()
 {
@@ -99,11 +98,10 @@ void bmp_io_begin_session()
     pSWCLK.clockOn();
     pSWCLK.output();
     pReset.off(); // hi-z by default
-    
 }
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 void bmp_io_end_session()
 {
@@ -112,9 +110,7 @@ void bmp_io_end_session()
     pSWCLK.hiZ();
     pSWCLK.hiZ();
     pReset.off(); // hi-z by default
-        
 }
-
 
 /**
  */
@@ -228,7 +224,6 @@ extern "C" bool platform_nrst_get_val(void)
 {
     return pReset.state();
 }
-
 
 swd_proc_s swd_proc;
 /**

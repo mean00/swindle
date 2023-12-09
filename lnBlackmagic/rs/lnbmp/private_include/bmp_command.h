@@ -4,7 +4,7 @@ typedef void target_s;
 typedef int bool;
 
 void bmp_set_wait_state_c(unsigned int ws); // this is used to set the clock on SWD
-unsigned int bmp_get_wait_state_c(); // this is used to set the clock on SWD
+unsigned int bmp_get_wait_state_c();        // this is used to set the clock on SWD
 
 bool cmd_swd_scan(const target_s *t, int argc, const char **argv);
 bool cmd_rvswd_scan(const target_s *t, int argc, const char **argv);

@@ -42,7 +42,6 @@ int vasprintf_(char **strp, const char *fmt, va_list ap);
     {                                                                                                                  \
     }
 
-
 #define TMS_SET_MODE()                                                                                                 \
     do                                                                                                                 \
     {                                                                                                                  \

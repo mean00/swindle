@@ -127,7 +127,7 @@ extern "C" int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint
 
 extern "C" const char *bmp_get_version_string(void)
 {
-    return "Version " LN_BMP_VERSION" Generated on " LN_BMP_GEN_DATE" (hash " LN_BMP_GIT_HASH")\n";
+    return "Version " LN_BMP_VERSION " Generated on " LN_BMP_GEN_DATE " (hash " LN_BMP_GIT_HASH ")\n";
 }
 
 // EOF
