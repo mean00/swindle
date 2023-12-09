@@ -78,7 +78,5 @@ impl freertos_cortexm_core
         self.pointer += 4*(last-first) as u32;
         bmp_read_mem32(current, &mut self.registers[first..last])
     }
-
-
 }
 //--
