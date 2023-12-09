@@ -31,9 +31,12 @@ class BMPSerial : public xTask
         _serialInstance = serialInstance;
         _evGroup = new xFastEventGroup;
         _usb = new lnUsbCDC(_usbInstance);
-        _serial =  createLnSerial(_serialInstance, lnSerialCore::txRx, 512);
+#if 1
+        bool dma = true;
+        _serial =  createLnSerialRxTx(_serialInstance, 512,dma); // no dma
         _connected = 0;
         start();
+#endif        
     }
     /**
      *
@@ -170,7 +173,7 @@ class BMPSerial : public xTask
     int _connected;
     int _usbInstance, _serialInstance;
     uint8_t _usbBuffer[BMP_SERIAL_BUFFER_SIZE];
-    lnSerialCore *_serial;
+    lnSerialRxTx *_serial;
     xFastEventGroup *_evGroup;
     lnUsbCDC *_usb;
 };
