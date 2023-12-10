@@ -10,14 +10,26 @@ use crate::freertos::enable_freertos;
 crate::setup_log!(false);
 crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning, gdb_print};
-
+extern "C"  
+{
+    pub fn _Z17lnSoftSystemResetv() -> ();
+}
+/**
+ * 
+ */
+fn systemReset()
+{
+    unsafe  {
+        _Z17lnSoftSystemResetv();
+    }
+}
 struct HelpTree {
     command: &'static str,
     help: &'static str,
 }
 
 //
-const mon_command_tree: [CommandTree; 9] = [
+const mon_command_tree: [CommandTree; 10] = [
     CommandTree {
         command: "help",
         args: 0,
@@ -72,9 +84,15 @@ const mon_command_tree: [CommandTree; 9] = [
         require_connected: true,
         cb: CallbackType::text(_fos),
     }, //
+    CommandTree {
+        command: "reset",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_reset),
+    }, //
 ];
 //
-const help_tree : [HelpTree;9]=
+const help_tree : [HelpTree;10]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
@@ -83,9 +101,19 @@ const help_tree : [HelpTree;9]=
     HelpTree{ command: "version",help :"Display version." },
     HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
     HelpTree{ command: "ram",help :"Display stats about Ram usage." },
-    HelpTree{ command: "fos",help :"Enable FreeRTOS support." },
+    HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
     HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
+    HelpTree{ command: "reset",help :"Reset the debugger." },
 ];
+
+/**
+ * 
+ */
+pub fn _reset(_command: &str, _args: &[&str]) -> bool {   
+    encoder::reply_e01();
+    systemReset();
+    true
+}
 
 /**
  * 
@@ -102,7 +130,9 @@ pub fn _fos(_command: &str, _args: &[&str]) -> bool {
     
     true
 }
-
+/**
+ * 
+ */
 pub fn _ram(_command: &str, _args: &[&str]) -> bool {
     let (min_heap, heap) = bmp::get_heap_stats();
     gdb_print!(
@@ -208,7 +238,7 @@ pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
         bmpwarning!("swdp fail!\n");
         return false;
     }
-
+    crate::freertos::os_detach();
     encoder::reply_ok();
     true
 }

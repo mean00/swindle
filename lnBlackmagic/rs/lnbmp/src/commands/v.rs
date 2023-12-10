@@ -67,7 +67,7 @@ fn _vAttach(_command: &str, _args: &[&str]) -> bool {
          * https://sourceware.org/pipermail/gdb-patches/2021-December/184171.html
          * https://sourceware.org/pipermail/gdb-patches/2022-April/188058.html
          * https://sourceware.org/pipermail/gdb-patches/2022-July/190869.html
-         */
+         */        
         os_attach( bmp_cpuid());
         encoder::simple_send("T05thread:1;");
         return true;
