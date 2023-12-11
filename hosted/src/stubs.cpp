@@ -230,4 +230,7 @@ extern "C"
         ;
     }
 }
+void lnSoftSystemReset()
+{
+}
 // -- eof --
