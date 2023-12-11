@@ -12,7 +12,7 @@ crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning, gdb_print};
 extern "C"  
 {
-    pub fn _Z17lnSoftSystemResetv() -> ();
+    pub fn _Z17lnSoftSystemResetv();
 }
 /**
  * 
@@ -29,7 +29,7 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 10] = [
+const mon_command_tree: [CommandTree; 11] = [
     CommandTree {
         command: "help",
         args: 0,
@@ -85,6 +85,12 @@ const mon_command_tree: [CommandTree; 10] = [
         cb: CallbackType::text(_fos),
     }, //
     CommandTree {
+        command: "freertos",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_fos),
+    }, //
+    CommandTree {
         command: "reset",
         args: 0,
         require_connected: false,
@@ -118,8 +124,13 @@ pub fn _reset(_command: &str, _args: &[&str]) -> bool {
 /**
  * 
  */
-pub fn _fos(_command: &str, _args: &[&str]) -> bool {
-    if enable_freertos() {
+pub fn _fos(command: &str, _args: &[&str]) -> bool {
+    let mut flavor : &str= "";
+    if command.len()>4
+    {
+        flavor = &command[4..];
+    }
+    if enable_freertos(flavor) {
         gdb_print!("FreeRTOS support enabled\n");
         encoder::reply_ok();
     }

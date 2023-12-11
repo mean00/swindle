@@ -17,9 +17,20 @@ use freertos_symbols::{get_symbols};
 use freertos_arm_core::freertos_cortexm_core;
 use freertos_arm::{freertos_attach_arm, freertos_detach_arm, freertos_can_switch_arm, freertos_switch_task_action_arm};
 
+
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning};
+use crate::{bmplog, bmpwarning,gdb_print};
+
+#[derive(PartialEq,Copy,Clone)]
+pub enum LN_MCU_CORE {
+        LN_MCU_AUTO,
+        LN_MCU_CM0,
+        LN_MCU_CM3,
+        LN_MCU_CM4,
+        LN_MCU_CM33,
+        LN_MCU_NONE, 
+}
 
 /**
  * 
@@ -31,7 +42,7 @@ pub fn os_attach( cpuid : u32) {
  * 
  */
 pub fn os_detach( ) {
-    freertos_detach_arm();
+    freertos_detach_arm();    
 }
 /**
  * 
@@ -48,28 +59,22 @@ pub fn freertos_switch_task_action( new_stack : u32) -> u32{
 /**
  * 
  */
-pub fn enable_freertos() -> bool
+pub fn enable_freertos(flavor : &str) -> bool
 {
     let all_symbols = get_symbols();
-    all_symbols.valid = all_symbols.loaded;
+    let core : LN_MCU_CORE = match flavor.to_uppercase().as_str() {
+        "M0"  =>  LN_MCU_CORE::LN_MCU_CM0,
+        "M3"  =>  LN_MCU_CORE::LN_MCU_CM3,
+        "M4"  =>  LN_MCU_CORE::LN_MCU_CM4,
+        "M33" =>  LN_MCU_CORE::LN_MCU_CM33,
+        "" | "AUTO"=>  LN_MCU_CORE::LN_MCU_AUTO,
+        "NONE" | "OFF" => LN_MCU_CORE::LN_MCU_NONE,        
+        _     => { gdb_print!("Unkown core: None, auto, cm0, cm3, cm4 or cm33\n"); return false;},
+    };    
+    all_symbols.mcu_handler = core;
+    all_symbols.valid = all_symbols.loaded && core!=LN_MCU_CORE::LN_MCU_NONE;    
     all_symbols.valid
 }
+//
 
-
-pub fn fos_taist() 
-{
-    // the common part of TCB is 5 registers
-    // pxTopOfStack
-    // *State
-    // *EventList
-    // priority
-    // stack
-            
-    let r=crate::freertos::freertos_tcb::freertos_collect_information(); 
-    for i in r
-    {
-        i.print_tcb();
-    }    
-}
-
- //
+ 

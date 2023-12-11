@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 
 use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state};
+use crate::freertos::LN_MCU_CORE; 
 
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
@@ -32,6 +33,7 @@ pub struct FreeRTOSSymbols
     pub index   : usize,
     pub symbols : [u32;NB_FREERTOS_SYMBOLS],    
     pub cpuid   : u32,
+    pub mcu_handler : LN_MCU_CORE,
 }
 
 static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
@@ -40,6 +42,7 @@ static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
     index : 0,
     symbols : [0;NB_FREERTOS_SYMBOLS],
     cpuid : 0,    
+    mcu_handler : LN_MCU_CORE::LN_MCU_NONE,
 };
 /**
  * 

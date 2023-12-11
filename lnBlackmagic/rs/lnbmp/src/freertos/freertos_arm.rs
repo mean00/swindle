@@ -16,6 +16,11 @@ use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
 use crate::freertos::freertos_trait::{freertos_task_info,freertos_task_state,freertos_switch_handler};
 use core::ptr::null;
+use crate::freertos::freertos_symbols::{get_symbols};
+use crate::freertos::freertos_arm_core::freertos_cortexm_core;
+use crate::freertos::LN_MCU_CORE;
+
+
 
 const ARM_PARTNO_MASK : u32 = 0xfff0;
 
@@ -71,15 +76,27 @@ pub fn freertos_switch_task_action_arm( new_stack : u32) -> u32{
  * 
  */
 const mul: u32 = 0;
-pub fn freertos_attach_arm(cpu : u32) ->bool {    
-    unsafe {        
-        let switcher: Box<dyn freertos_switch_handler> = match (mul*ARM_CM33 +(1-mul)*cpu) & ARM_PARTNO_MASK
+pub fn freertos_attach_arm(cpu : u32) ->bool { 
+
+    // Lookup the
+    let all_symbols = get_symbols();
+    let mut core = all_symbols.mcu_handler;
+    if core==LN_MCU_CORE::LN_MCU_AUTO
+    {
+        core = match (mul*ARM_CM33 +(1-mul)*cpu) & ARM_PARTNO_MASK
         {
-            ARM_CM0  =>  Box::new( freertos_switch_handler_m0::new()),
-            ARM_CM0P =>  Box::new( freertos_switch_handler_m0::new()),
-            ARM_CM3  =>  Box::new( freertos_switch_handler_m3::new()),
-            ARM_CM4  =>  Box::new( freertos_switch_handler_m3::new()),
+            ARM_CM0 | ARM_CM0P  =>  LN_MCU_CORE::LN_MCU_CM0,
+            ARM_CM3             =>  LN_MCU_CORE::LN_MCU_CM3,
+            ARM_CM4             =>  LN_MCU_CORE::LN_MCU_CM4,            
             _ => { return false;},
+        };
+    }
+    unsafe {        
+        let switcher: Box<dyn freertos_switch_handler> = match core  {
+            LN_MCU_CORE::LN_MCU_CM0 =>  Box::new( freertos_switch_handler_m0::new()),
+            LN_MCU_CORE::LN_MCU_CM3 =>  Box::new( freertos_switch_handler_m3::new()),
+            LN_MCU_CORE::LN_MCU_CM4 =>  Box::new( freertos_switch_handler_m3::new()),
+            _ => {return false;},
         };
         FreeRTOS_switcher_internal.switcher = Some(switcher);    
   } // unsafe 
