@@ -50,6 +50,7 @@ pub fn os_detach( ) {
 pub fn os_can_switch() ->bool {
     freertos_can_switch_arm()
 }
+
 /**
  * 
  */
@@ -69,11 +70,11 @@ pub fn enable_freertos(flavor : &str) -> bool
         "M33" =>  LN_MCU_CORE::LN_MCU_CM33,
         "" | "AUTO"=>  LN_MCU_CORE::LN_MCU_AUTO,
         "NONE" | "OFF" => LN_MCU_CORE::LN_MCU_NONE,        
-        _     => { gdb_print!("Unkown core: None, auto, cm0, cm3, cm4 or cm33\n"); return false;},
+        _     => { return false;},
     };    
     all_symbols.mcu_handler = core;
     all_symbols.valid = all_symbols.loaded && core!=LN_MCU_CORE::LN_MCU_NONE;    
-    all_symbols.valid
+    true
 }
 //
 

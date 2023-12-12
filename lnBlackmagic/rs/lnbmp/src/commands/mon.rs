@@ -130,16 +130,23 @@ pub fn _fos(command: &str, _args: &[&str]) -> bool {
     {
         flavor = &command[4..];
     }
-    if enable_freertos(flavor) {
-        gdb_print!("FreeRTOS support enabled\n");
+    if enable_freertos(flavor) {        
+        
+        if crate::freertos::freertos_symbols::freertos_symbol_valid()
+        {
+            gdb_print!("FreeRTOS support enabled\n");    
+        }else
+        {
+            gdb_print!("FreeRTOS support *NOT *enabled\n");
+        } 
         encoder::reply_ok();
+        return true;       
     }
-    else  {
-        gdb_print!("FreeRTOS not available\n");
+    else  {        
+        gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|NONE|AUTO]\n");
         encoder::reply_e01();
+        return true;               
     }
-    
-    true
 }
 /**
  * 
