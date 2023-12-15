@@ -29,7 +29,7 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 11] = [
+const mon_command_tree: [CommandTree; 12] = [
     CommandTree {
         command: "help",
         args: 0,
@@ -85,6 +85,12 @@ const mon_command_tree: [CommandTree; 11] = [
         cb: CallbackType::text(_fos),
     }, //
     CommandTree {
+        command: "os_info",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_fos_info),
+    }, //    
+    CommandTree {
         command: "freertos",
         args: 0,
         require_connected: true,
@@ -98,7 +104,7 @@ const mon_command_tree: [CommandTree; 11] = [
     }, //
 ];
 //
-const help_tree : [HelpTree;10]=
+const help_tree : [HelpTree;11]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
@@ -108,6 +114,7 @@ const help_tree : [HelpTree;10]=
     HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
     HelpTree{ command: "ram",help :"Display stats about Ram usage." },
     HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
+    HelpTree{ command: "os_info",help :"Dump FreeRTOS internal state." },
     HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
     HelpTree{ command: "reset",help :"Reset the debugger." },
 ];
@@ -120,6 +127,14 @@ pub fn _reset(_command: &str, _args: &[&str]) -> bool {
     systemReset();
     true
 }
+/**
+ * 
+ */
+pub fn _fos_info(command: &str, _args: &[&str]) -> bool {
+    crate::freertos::os_info();
+    encoder::reply_ok();
+    true
+}
 
 /**
  * 
@@ -130,6 +145,7 @@ pub fn _fos(command: &str, _args: &[&str]) -> bool {
     {
         flavor = &command[4..];
     }
+    
     if enable_freertos(flavor) {        
         
         if crate::freertos::freertos_symbols::freertos_symbol_valid()

@@ -10,7 +10,7 @@ pub mod freertos_arm_core;
 pub mod freertos_arm;
 pub mod freertos_arm_m0;
 pub mod freertos_arm_m3;
-
+use crate::bmp::bmp_cpuid;
 use crate::bmp::{bmp_read_mem,bmp_read_mem32};
 use freertos_trait::{freertos_task_info};
 use freertos_symbols::{get_symbols};
@@ -69,13 +69,25 @@ pub fn enable_freertos(flavor : &str) -> bool
         "M4"  =>  LN_MCU_CORE::LN_MCU_CM4,
         "M33" =>  LN_MCU_CORE::LN_MCU_CM33,
         "" | "AUTO"=>  LN_MCU_CORE::LN_MCU_AUTO,
-        "NONE" | "OFF" => LN_MCU_CORE::LN_MCU_NONE,        
+        "NONE" | "OFF" => {os_detach( );LN_MCU_CORE::LN_MCU_NONE},        
         _     => { return false;},
     };    
-    all_symbols.mcu_handler = core;
+    all_symbols.mcu_handler = core;       
+    os_attach( bmp_cpuid());
+    
     all_symbols.valid = all_symbols.loaded && core!=LN_MCU_CORE::LN_MCU_NONE;    
+    
     true
 }
+/**
+ * 
+ */
+
+pub fn os_info()
+{
+    freertos_hashtcb::dump_hash_info();
+}
+
 //
 
  

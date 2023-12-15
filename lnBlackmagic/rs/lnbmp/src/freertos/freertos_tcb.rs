@@ -15,7 +15,7 @@ use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
 
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
 const OFFSET_TO_SIZE : u32 = 44;
@@ -131,7 +131,11 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info>
                 }
             }            
         }
-    }        
+    }
+    for t in &output
+    {
+        t.print_tcb();
+    }
     output
 }
 /**

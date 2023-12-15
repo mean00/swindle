@@ -1,4 +1,4 @@
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
 
@@ -44,14 +44,14 @@ impl freertos_task_state
 }
 
 impl freertos_task_info
-{
+{    
     pub fn print_tcb(&self)
     {
         let name_as_string = unsafe { core::str::from_utf8_unchecked(&self.name) };
         bmplog!("TCB {} at 0x{:x} name [{}]\n", self.tcb_no, self.tcb_addr, name_as_string);
         bmplog!("\t top of stack 0x{:x}\n", self.top_of_stack);
         bmplog!("\t priority {}\n", self.priority);
-        bmplog!("\t state {}\n", self.state as usize);
+        bmplog!("\t state {}\n", self.state.as_str());
     }
 }
 
