@@ -64,7 +64,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 
-find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
+#find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
+find_package(Qt6 COMPONENTS Network SerialPort REQUIRED)
 
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
@@ -106,4 +107,4 @@ target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
 target_link_libraries(lnBMP_hosted PRIVATE lnBMP_interface)
 target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
 target_link_libraries(lnBMP_hosted PRIVATE embeddedPrintf usb-1.0 )
-target_link_libraries(lnBMP_hosted PRIVATE Qt5::Network Qt5::SerialPort)
+target_link_libraries(lnBMP_hosted PRIVATE Qt6::Network Qt6::SerialPort)
