@@ -15,16 +15,17 @@ use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
 use crate::commands::mon::_qRcmd;
-use crate::commands::q_thread::{_qSymbol, _qfThreadInfo, _qsThreadInfo, _qC,_qThreadExtraInfo,_qP};
+use crate::commands::q_thread::{
+    _qC, _qP, _qSymbol, _qThreadExtraInfo, _qfThreadInfo, _qsThreadInfo,
+};
 use crate::commands::CallbackType;
-use crate::util::xmin;
 use crate::parsing_util;
+use crate::util::xmin;
 
 use numtoa::NumToA;
 
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
-
 
 const q_command_tree: [CommandTree; 13] = [
     CommandTree {
@@ -32,7 +33,7 @@ const q_command_tree: [CommandTree; 13] = [
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qSymbol),
-    }, // read symbol 
+    }, // read symbol
     CommandTree {
         command: "qSupported",
         args: 0,
@@ -80,13 +81,13 @@ const q_command_tree: [CommandTree; 13] = [
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qThreadExtraInfo),
-    }, // List threads    
+    }, // List threads
     CommandTree {
         command: "qP",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qP),
-    }, // List threads    
+    }, // List threads
     CommandTree {
         command: "qCRC",
         args: 0,

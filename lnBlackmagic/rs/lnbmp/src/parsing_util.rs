@@ -18,7 +18,7 @@ pub fn ascii_hex_string_to_u8s<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&
     Ok(&sout[..s])
 }
 /**
- * 
+ *
  */
 pub fn ascii_hex_string_to_str<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&'a str, i32> {
     let datain = sin.as_bytes();
@@ -28,7 +28,7 @@ pub fn ascii_hex_string_to_str<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&
         sout[i] = ascii_octet_to_hex(datain[i * 2], datain[i * 2 + 1]);
     }
     unsafe {
-    return Ok(core::str::from_utf8_unchecked(&sout[..s]));
+        return Ok(core::str::from_utf8_unchecked(&sout[..s]));
     }
 }
 //
@@ -73,16 +73,15 @@ pub fn u8s_string_to_u32_le(datain: &[u8]) -> u32 {
     let mut val: u32 = 0;
     let mut shift = 0;
     let number = datain.len() >> 1;
-    
+
     for i in 0..number {
-        let hi: u32 = _hex(datain[i*2]) as u32;
-        let lo: u32 = _hex(datain[i*2+1]) as u32;
-        val += ( (hi<<4)+lo) << shift;
-        shift+=8;
+        let hi: u32 = _hex(datain[i * 2]) as u32;
+        let lo: u32 = _hex(datain[i * 2 + 1]) as u32;
+        val += ((hi << 4) + lo) << shift;
+        shift += 8;
     }
     val
 }
-
 
 pub fn ascii_string_to_u32(s: &str) -> u32 {
     let datain = s.as_bytes();

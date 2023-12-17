@@ -30,14 +30,14 @@ pub fn _m(command: &str, _args: &[&str]) -> bool {
 
             while left != 0 {
                 let chunk: usize = core::cmp::min(16, left);
-                crate::bmp::bmp_read_mem(current_address, &mut tmp[0..chunk]);                
+                crate::bmp::bmp_read_mem(current_address, &mut tmp[0..chunk]);
                 left -= chunk;
                 for i in 0..chunk {
                     crate::parsing_util::u8_to_ascii_to_buffer(tmp[i], &mut char_buffer[(2 * i)..]);
                 }
                 e.add_u8(&char_buffer[..(2 * chunk)]);
                 // avoid overflow
-                if left!=0 {
+                if left != 0 {
                     current_address += chunk as u32;
                 }
             }

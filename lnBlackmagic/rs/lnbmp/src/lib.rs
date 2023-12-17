@@ -10,13 +10,13 @@ mod bmplogger;
 mod commands;
 mod decoder;
 mod encoder;
+mod freertos;
 mod glue;
 mod packet_symbols;
 mod parsing_util;
 mod poppingbuffer;
 mod rn_bmp_cmd_c;
 mod util;
-mod freertos;
 
 use crate::decoder::gdb_stream;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};

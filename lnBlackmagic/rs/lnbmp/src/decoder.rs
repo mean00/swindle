@@ -107,10 +107,10 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
             sz -= 1;
             dex += 1;
             self.automaton = match self.automaton {
-                PARSER_AUTOMATON::Init =>  PARSER_AUTOMATON::Init,
+                PARSER_AUTOMATON::Init => PARSER_AUTOMATON::Init,
                 //PARSER_AUTOMATON::Init => match c {
-                    //   CHAR_RESET_04   => PARSER_AUTOMATON::Reset,
-                  //  _ => PARSER_AUTOMATON::Init,
+                //   CHAR_RESET_04   => PARSER_AUTOMATON::Reset,
+                //  _ => PARSER_AUTOMATON::Init,
                 //},
                 PARSER_AUTOMATON::Idle => {
                     bmplog!("Idle\n");

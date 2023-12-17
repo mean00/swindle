@@ -1,25 +1,23 @@
 use crate::bmp;
 use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::encoder;
+use crate::freertos::enable_freertos;
 use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_to_u32};
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::freertos::enable_freertos;
 //
 //
 crate::setup_log!(false);
 crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning, gdb_print};
-extern "C"  
-{
+extern "C" {
     pub fn _Z17lnSoftSystemResetv();
 }
 /**
- * 
+ *
  */
-fn systemReset()
-{
-    unsafe  {
+fn systemReset() {
+    unsafe {
         _Z17lnSoftSystemResetv();
     }
 }
@@ -89,7 +87,7 @@ const mon_command_tree: [CommandTree; 12] = [
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos_info),
-    }, //    
+    }, //
     CommandTree {
         command: "freertos",
         args: 0,
@@ -120,15 +118,15 @@ const help_tree : [HelpTree;11]=
 ];
 
 /**
- * 
+ *
  */
-pub fn _reset(_command: &str, _args: &[&str]) -> bool {   
+pub fn _reset(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_e01();
     systemReset();
     true
 }
 /**
- * 
+ *
  */
 pub fn _fos_info(_command: &str, _args: &[&str]) -> bool {
     crate::freertos::os_info();
@@ -137,34 +135,30 @@ pub fn _fos_info(_command: &str, _args: &[&str]) -> bool {
 }
 
 /**
- * 
+ *
  */
 pub fn _fos(command: &str, _args: &[&str]) -> bool {
-    let mut flavor : &str= "";
-    if command.len()>4
-    {
+    let mut flavor: &str = "";
+    if command.len() > 4 {
         flavor = &command[4..];
     }
-    
-    if enable_freertos(flavor) {        
-        
+
+    if enable_freertos(flavor) {
         if crate::freertos::freertos_symbols::freertos_symbol_valid() {
-            gdb_print!("FreeRTOS support enabled\n");    
-        }
-        else {
+            gdb_print!("FreeRTOS support enabled\n");
+        } else {
             gdb_print!("FreeRTOS support *NOT *enabled\n");
-        } 
+        }
         encoder::reply_ok();
         true
-    }
-    else  {        
+    } else {
         gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|NONE|AUTO]\n");
         encoder::reply_e01();
         true
     }
 }
 /**
- * 
+ *
  */
 pub fn _ram(_command: &str, _args: &[&str]) -> bool {
     let (min_heap, heap) = bmp::get_heap_stats();

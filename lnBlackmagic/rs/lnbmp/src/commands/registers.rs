@@ -11,7 +11,7 @@ use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
 
-use crate::parsing_util::{ascii_string_to_u32,ascii_string_to_u32_le};
+use crate::parsing_util::{ascii_string_to_u32, ascii_string_to_u32_le};
 
 use crate::bmp;
 

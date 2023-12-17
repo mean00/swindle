@@ -5,7 +5,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::{exec_one, CommandTree};
-use crate::bmp::{bmp_write_mem32,bmp_read_mem32};
+use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 use crate::encoder::encoder;
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
@@ -17,18 +17,22 @@ use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
 use crate::commands::mon::_qRcmd;
 use crate::commands::CallbackType;
-use crate::util::xmin;
 use crate::parsing_util;
+use crate::util::xmin;
 use numtoa::NumToA;
 
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
-use crate::freertos::freertos_trait::{freertos_switch_handler,freertos_task_info};
-use crate::freertos::freertos_tcb::{get_current_thread_id,freertos_collect_information, get_tcb_info_from_id};
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
-use crate::freertos::freertos_tcb::{set_pxCurrentTCB, get_pxCurrentTCB, freertos_switch_task,freertos_is_thread_present};
 use crate::freertos::freertos_symbols::freertos_symbol_valid;
+use crate::freertos::freertos_tcb::{
+    freertos_collect_information, get_current_thread_id, get_tcb_info_from_id,
+};
+use crate::freertos::freertos_tcb::{
+    freertos_is_thread_present, freertos_switch_task, get_pxCurrentTCB, set_pxCurrentTCB,
+};
+use crate::freertos::freertos_trait::{freertos_switch_handler, freertos_task_info};
 //
 // ‘m thread-id’
 // A single thread ID
@@ -39,23 +43,20 @@ use crate::freertos::freertos_symbols::freertos_symbol_valid;
 // (lower case letter ‘L’) denotes end of list.
 //
 pub fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
-
     let list = crate::freertos::freertos_tcb::get_threads();
-    if list.is_empty()    {
+    if list.is_empty() {
         encoder::simple_send("m1");
-    }else    {
+    } else {
         let mut e = encoder::new();
         e.begin();
         e.add("m");
-        let mut not_first: bool = false ; 
+        let mut not_first: bool = false;
         for i in list {
-            if not_first
-            {
+            if not_first {
                 e.add(",");
             }
             e.add_u32_no_padding(i);
             not_first = true;
-         
         }
         e.end();
     }
@@ -64,16 +65,15 @@ pub fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
 /**
  * get a human readable attributes  "qThreadExtraInfo,id"
  */
-pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool 
-{   
+pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
     let args: Vec<&str> = command.split(',').collect();
-    if args.len()!=2 {
-            encoder::reply_e01();
+    if args.len() != 2 {
+        encoder::reply_e01();
     }
     let thread_id = parsing_util::ascii_string_to_u32(args[1]);
 
     let info = get_tcb_info_from_id(thread_id);
-    if let Some(x) = info     {
+    if let Some(x) = info {
         let mut e = encoder::new();
         e.begin();
         let name_as_string = unsafe { core::str::from_utf8_unchecked(&x.name) };
@@ -82,8 +82,7 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool
         e.hex_and_add(" state:");
         e.hex_and_add(x.state.as_str());
         e.end();
-    }
-    else     {
+    } else {
         encoder::reply_e01();
     }
 
@@ -93,17 +92,14 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool
  *  switch thread
  */
 pub fn _Hg(command: &str, _args: &[&str]) -> bool {
-
-    let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[2..]);
-    if !freertos_symbol_valid()
-    {
+    let thread_id: u32 = parsing_util::ascii_string_to_u32(&command[2..]);
+    if !freertos_symbol_valid() {
         encoder::reply_ok();
         return true;
     }
-    if  freertos_switch_task(thread_id) {
+    if freertos_switch_task(thread_id) {
         encoder::reply_ok();
-    }
-    else {
+    } else {
         encoder::reply_e01();
     }
     true
@@ -112,17 +108,16 @@ pub fn _Hg(command: &str, _args: &[&str]) -> bool {
  *  is thread alive ?
  */
 pub fn _T(command: &str, _args: &[&str]) -> bool {
+    let thread_id: u32 = parsing_util::ascii_string_to_u32(&command[1..]);
 
-    let thread_id: u32 = parsing_util::ascii_string_to_u32( &command[1..]);
-    
-    let ok = match freertos_symbol_valid()    {
+    let ok = match freertos_symbol_valid() {
         true => freertos_is_thread_present(thread_id),
-        false =>  thread_id==1,
+        false => thread_id == 1,
     };
 
     if ok {
         encoder::reply_ok();
-    }else  {
+    } else {
         encoder::reply_e01();
     }
     true
@@ -130,23 +125,22 @@ pub fn _T(command: &str, _args: &[&str]) -> bool {
 /**
  * get a human readable attributes  "qThreadExtraInfo,id"
  */
-pub fn _qP(_command: &str, _args: &[&str]) -> bool 
-{   
+pub fn _qP(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_e01();
     true
 }
 
 //
-// 
+//
 //
 pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
     //let list = crate::freertos::freertos_tcb::get_threads();
-   // if list.is_empty()  {
-   //     encoder::simple_send("l");
-   // }
-   // else  {
-        encoder::simple_send("l");
-   // }
+    // if list.is_empty()  {
+    //     encoder::simple_send("l");
+    // }
+    // else  {
+    encoder::simple_send("l");
+    // }
     true
 }
 
@@ -154,31 +148,27 @@ pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
  * ‘qC’ Return the current thread ID.
  */
 
- pub fn _qC(_command: &str, _args: &[&str]) -> bool {
-    let mut current_thread_id =1;
-    if!freertos_symbol_valid() {
-        current_thread_id=1;
+pub fn _qC(_command: &str, _args: &[&str]) -> bool {
+    let mut current_thread_id = 1;
+    if !freertos_symbol_valid() {
+        current_thread_id = 1;
+    } else if let Some(x) = get_current_thread_id() {
+        current_thread_id = x;
     }
-    else if let Some(x) = get_current_thread_id() {
-            current_thread_id = x;
-    }
-    
+
     let mut e = encoder::new();
     e.begin();
-    e.add("QC");    
-    e.add_u32(current_thread_id);    
-    e.end();    
+    e.add("QC");
+    e.add_u32(current_thread_id);
+    e.end();
     true
 }
 
-
 /**
- * 
+ *
  */
 pub fn _qSymbol(_command: &str, args: &[&str]) -> bool {
     crate::freertos::freertos_symbols::q_freertos_symbols(args)
 }
-
-
 
 // EOF
