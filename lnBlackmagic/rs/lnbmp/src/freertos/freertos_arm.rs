@@ -13,6 +13,7 @@ use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
+use crate::freertos::freertos_arm_m33::freertos_switch_handler_m33;
 use crate::freertos::freertos_symbols::get_symbols;
 use crate::freertos::freertos_trait::{
     freertos_switch_handler, freertos_task_info, freertos_task_state,
@@ -90,6 +91,7 @@ pub fn freertos_attach_arm(cpu: u32) -> bool {
             LN_MCU_CORE::LN_MCU_CM0 => Box::new(freertos_switch_handler_m0::new()),
             LN_MCU_CORE::LN_MCU_CM3 => Box::new(freertos_switch_handler_m3::new()),
             LN_MCU_CORE::LN_MCU_CM4 => Box::new(freertos_switch_handler_m3::new()),
+            LN_MCU_CORE::LN_MCU_CM33 => Box::new(freertos_switch_handler_m33::new()),
             _ => {
                 return false;
             }

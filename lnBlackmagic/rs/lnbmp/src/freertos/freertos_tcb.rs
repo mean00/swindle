@@ -14,6 +14,7 @@ use crate::freertos::{freertos_switch_task_action, os_can_switch};
 
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
+use crate::freertos::freertos_arm_m33::freertos_switch_handler_m33;
 
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
