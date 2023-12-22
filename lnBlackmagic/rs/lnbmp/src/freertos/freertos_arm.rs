@@ -81,6 +81,7 @@ pub fn freertos_attach_arm(cpu: u32) -> bool {
             ARM_CM0 | ARM_CM0P => LN_MCU_CORE::LN_MCU_CM0,
             ARM_CM3 => LN_MCU_CORE::LN_MCU_CM3,
             ARM_CM4 => LN_MCU_CORE::LN_MCU_CM4,
+            ARM_CM33 => LN_MCU_CORE::LN_MCU_CM33,
             _ => {
                 return false;
             }
