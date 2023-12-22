@@ -1,0 +1,19 @@
+diff --git a/src/target/adiv5.c b/src/target/adiv5.c
+index 137162f8..9c131ba9 100644
+--- a/src/target/adiv5.c
++++ b/src/target/adiv5.c
+@@ -687,10 +687,10 @@ static void adiv5_component_probe(
+ 				DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
+ 				cortexa_probe(ap, addr);
+ 				break;
+-			case aa_cortexr:
+-				DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
+-				cortexr_probe(ap, addr);
+-				break;
++			//case aa_cortexr:
++				//DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
++				//cortexr_probe(ap, addr);
++				//break;
+ 			default:
+ 				break;
+ 			}
