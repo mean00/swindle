@@ -67,7 +67,7 @@ DECLARE_MCU( SAM4L sam4l.c      sam4l_probe)
 DECLARE_MCU( SAMD samd.c        samd_probe)
 DECLARE_MCU( SAMX5X samx5x.c    samx5x_probe)
 DECLARE_MCU( SFDP sfdp.c        sfdp_probe)
-DECLARE_MCU( STM32F1 stm32f1.c  stm32f1_probe gd32f1_probe mm32f3xx_probe mm32l0xx_probe at32fxx_probe )
+DECLARE_MCU( STM32F1 stm32f1.c  stm32f1_probe gd32f1_probe mm32f3xx_probe mm32l0xx_probe  at32f40x_probe)
 DECLARE_MCU( STM32F4 stm32f4.c  stm32f4_probe gd32f4_probe)
 DECLARE_MCU( STM32G0 stm32g0.c  stm32g0_probe )
 DECLARE_MCU( STM32H5 stm32h5.c  stm32h5_probe )
@@ -77,8 +77,7 @@ DECLARE_MCU( STM32L4 stm32l4.c  stm32l4_probe )
 
 DECLARE_MCU( STM32MP15 stm32mp15.c stm32mp15_cm4_probe )
 
-
-DECLARE_MCU( AT32FXXX at32f43x.c  at32f43x_probe am32f40x_probe) 
+DECLARE_MCU( AT32FXXX at32f43x.c  at32f43x_probe ) 
 
 DECLARE_MCU( MSP432P4  msp432p4.c  msp432p4_probe  )
 DECLARE_MCU( HC32L110 hc32l110.c  hc32l110_probe  )
