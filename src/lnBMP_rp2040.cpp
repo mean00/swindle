@@ -3,15 +3,15 @@
 */
 #include "lnArduino.h"
 #define LED LN_SYSTEM_LED
-#define LED2 PA8
+#define LED2 GPIO26
 
 extern "C" void user_init();
 /**
  */
 void setup()
 {
-    lnPinMode(LED, lnOUTPUT_OPEN_DRAIN);
-    lnPinMode(LED2, lnOUTPUT_OPEN_DRAIN);
+    lnPinMode(LED, lnOUTPUT);
+    lnPinMode(LED2, lnOUTPUT);
 }
 void loop()
 {
@@ -22,8 +22,8 @@ void loop()
     {
         // Logger("*\n");
         delay(1000);
-        lnOpenDrainClose(LED, onoff);
-        lnOpenDrainClose(LED2, !onoff);
+        lnDigitalToggle(LED);
+        lnDigitalToggle(LED2);
         onoff = !onoff;
     }
 }

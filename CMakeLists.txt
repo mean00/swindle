@@ -75,7 +75,14 @@ include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
 SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
 
-GENERATE_GD32_FIRMWARE(lnBMP src/lnBMP.cpp)
+
+IF (USE_RP2040)
+        SET(SOURCES src/lnBMP_rp2040.cpp)
+ELSE()
+        SET(SOURCES src/lnBMP.cpp)
+ENDIF()
+
+GENERATE_GD32_FIRMWARE(lnBMP ${SOURCES})
 HASH_GD32_FIRMWARE(lnBMP)    
 
 
