@@ -34,7 +34,7 @@ void setup()
 {
     lnPinMode(LED, lnOUTPUT);
     lnPinMode(LED2, lnOUTPUT);
-    ws = new WS2812_rp2040_pio_single(1, 0, GPIO23);
+    ws = new WS2812_rp2040_pio_single(1, 0, LED_WS2812);
 }
 /**
  * @brief
