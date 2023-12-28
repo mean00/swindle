@@ -78,6 +78,7 @@ SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
 
 IF (USE_RP2040)
         SET(SOURCES src/lnBMP_rp2040.cpp)
+        USE_LIBRARY(WS2812_rp_single)
 ELSE()
         SET(SOURCES src/lnBMP.cpp)
 ENDIF()
