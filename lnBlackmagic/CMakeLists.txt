@@ -85,8 +85,9 @@ DECLARE_MCU( MSP432E4  msp432e4.c  msp432e4_probe  )
 
    
 FILE(APPEND  ${BOARD_STUB_FILE} "#define LN_BOARDS_ENABLED \"${STR_BOARD_ENABLED}\"\n")
-
+SET(BMP_EXTRA  ${B}/../../blackmagic_addon/)
 SET(BOARDS      ${enabled_sources}
+                ${BMP_EXTRA}/ch32v3xx.c
                 ${B}/bmp_disabledBoard.cpp
                 ${T}/lpc_common.c                
                 CACHE INTERNAL ""
@@ -138,6 +139,7 @@ IF (LN_BMP_HOSTED)
             ${HOSTED}/remote/protocol_v3.c  
             ${HOSTED}/remote/protocol_v3_adiv5.c  
 
+            
 
              #${HOSTED}/bmp_libusb.c
             ${HOSTED}/wchlink_riscv_dtm.c
@@ -223,6 +225,8 @@ SET(BM_TARGET   ${T}/adiv5.c
 #----------
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
+target_include_directories( lnBlackmagic PRIVATE ${BMP_EXTRA})
+
 target_link_libraries( lnBlackmagic lnArduino)
 IF (LN_BMP_HOSTED) 
 ELSE()
