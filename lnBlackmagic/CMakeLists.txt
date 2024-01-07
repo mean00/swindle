@@ -93,11 +93,16 @@ SET(BOARDS      ${enabled_sources}
         )
 
 include_directories(${CMAKE_SOURCE_DIR}/blackmagic/libopencm3/include)
-
+# ===========================================================================================
 IF (LN_BMP_HOSTED) 
         #----------------------------
         # Hosted mode
-        #----------------------------
+        #----------------------------    
+    find_package(PkgConfig)
+    pkg_check_modules( usb REQUIRED libusb-1.0)
+    pkg_check_modules( ftdi REQUIRED libftdi1)
+
+    include_directories( ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
     MESSAGE(STATUS "Building for hosted mode (${LN_BMP_HOSTED})")
     ADD_DEFINITIONS("-DPC_HOSTED=1")
     ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1")
@@ -132,7 +137,12 @@ IF (LN_BMP_HOSTED)
             ${HOSTED}/remote/protocol_v2.c  
             ${HOSTED}/remote/protocol_v3.c  
             ${HOSTED}/remote/protocol_v3_adiv5.c  
-            
+
+
+             #${HOSTED}/bmp_libusb.c
+            ${HOSTED}/wchlink_riscv_dtm.c
+            ${HOSTED}/wchlink_rvswd.c
+            ${HOSTED}/wchlink.c
             
             #${HOSTED}/remote/_swdptap.c
             #${PC}/cl_utils.c   
@@ -149,6 +159,7 @@ IF (LN_BMP_HOSTED)
             CACHE INTERNAL ""
             )
 ELSE()  
+# ===========================================================================================
         #----------------------------
         # "Normal" /Standalone mode
         #----------------------------
@@ -179,6 +190,7 @@ ELSE()
                 )
         include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
 ENDIF()
+# ===========================================================================================
 #-------
 SET(BM_SRC      ${S}/command.c  
                 ${S}/crc32.c        
