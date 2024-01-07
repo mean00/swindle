@@ -103,10 +103,10 @@ IF (LN_BMP_HOSTED)
     pkg_check_modules( usb REQUIRED libusb-1.0)
     pkg_check_modules( ftdi REQUIRED libftdi1)
 
-    include_directories( ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
+    
     MESSAGE(STATUS "Building for hosted mode (${LN_BMP_HOSTED})")
     ADD_DEFINITIONS("-DPC_HOSTED=1")
-    ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1")
+    # needed for wchlink ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1")
     #    ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
     # Set a dummy configuration for lnArduino so it builds
@@ -126,7 +126,7 @@ IF (LN_BMP_HOSTED)
     SET(BM_HOSTED
             ${HOSTED}/bmp_remote.c 
             #${HOSTED}/bmp_serial.c      
-            ${HOSTED}/dap.c
+            #${HOSTED}/dap.c
             ${HOSTED}/platform.c   
             ${HOSTED}/debug.c   
             ${HOSTED}/remote/protocol_v0.c  
@@ -143,9 +143,14 @@ IF (LN_BMP_HOSTED)
 
              #${HOSTED}/bmp_libusb.c
             ${HOSTED}/wchlink_riscv_dtm.c
+            ${HOSTED}/riscv_dtm_wchlink.c
             ${HOSTED}/wchlink_rvswd.c
             ${HOSTED}/wchlink.c
-            
+            ${T}/riscv_debug.c  
+            ${T}/riscv32.c  
+            ${T}/riscv64.c  
+
+
             #${HOSTED}/remote/_swdptap.c
             #${PC}/cl_utils.c   
             #${PC}/gdb_if.c    
@@ -226,6 +231,10 @@ SET(BM_TARGET   ${T}/adiv5.c
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
 target_include_directories( lnBlackmagic PRIVATE ${BMP_EXTRA})
+
+IF (LN_BMP_HOSTED) 
+target_include_directories( lnBlackmagic PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
+ENDIF()
 
 target_link_libraries( lnBlackmagic lnArduino)
 IF (LN_BMP_HOSTED) 

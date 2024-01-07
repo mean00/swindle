@@ -239,18 +239,24 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
                 }
             }
             break;
-#if 0            
+#if 1
             case WCHLINK_VID:
                 if (pid == WCHLINK_PID)
                 {
                     // take the 1st one (?)
                     // memset(info, 0, sizeof(*info));
-                    info->type = BMP_TYPE_WCHLINK;
+                    info->type = PROBE_TYPE_WCHLINK;
                     // this is ugly, dont check anything just copy hoping it fits
                     strcpy(info->manufacturer, "wchlink");
                     info->pid = WCHLINK_PID;
                     info->vid = WCHLINK_VID;
                     printf("Found WCHLINK\n");
+                    const int result = libusb_init(&info->libusb_ctx);
+                    if (result != LIBUSB_SUCCESS)
+                    {
+                        printf("Error initializing libusb\n");
+                        exit(-1);
+                    }
                     return 0;
                 }
                 break;

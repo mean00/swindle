@@ -233,4 +233,17 @@ extern "C"
 void lnSoftSystemReset()
 {
 }
+
+extern "C" void stlink_adiv5_dp_init()
+{
+    xAssert(0);
+}
+
+extern "C" bool dap_run_cmd(const void *request_data, size_t request_length, void *response_data,
+                            size_t response_length)
+{
+    xAssert(0);
+    return false;
+}
+
 // -- eof --
