@@ -117,6 +117,7 @@
                 "set remotetimeout unlimited",
                 "set remote hardware-breakpoint-limit 8",
                 "set remote hardware-watchpoint-limit 2",                       
+                "mon reset halt",
                 ]
              },
              {
@@ -219,7 +220,35 @@
             ]
     
         },
-        
+        {
+            "name": "PicoProbe",
+            "cwd": "${workspaceFolder}",
+            //"svdFile" : "${workspaceRoot}/.vscode/STM32F103.svd",              
+            "executable": "build/lnBMP_RP2040_CLANG.elf",
+            "gdbPath" : "${config:armToolchainPath}/arm-none-eabi-gdb",        
+            "request": "launch",
+            "type": "cortex-debug",   
+            //"searchDir" : [ "/usr/share/openocd/scripts"],
+            "servertype": "openocd",              
+            "device": "RP2040",                            
+            "configFiles": [
+              //"adapter speed 5000",
+              "interface/cmsis-dap.cfg",
+              "target/rp2040.cfg"
+            ],
+            "runToMain": true,
+            "openOCDPreConfigLaunchCommands" : ["adapter speed 5000"], 
+            "preLaunchCommands":[                
+                "b deadEnd",
+                "set mem inaccessible-by-default off",
+                "set confirm off"
+            ],
+            "preRestartCommands": [
+            "enable breakpoint",
+            "break main"
+            ]
+  
+        },       
 
     ]
 }
