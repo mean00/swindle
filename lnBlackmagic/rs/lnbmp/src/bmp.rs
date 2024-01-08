@@ -100,6 +100,15 @@ pub fn swdp_scan() -> bool {
         ))
     }
 }
+pub fn rvswdp_scan() -> bool {
+    unsafe {
+        ret_to_bool(rn_bmp_cmd_c::cmd_rvswd_scan(
+            null(),
+            0,
+            null_mut() as *mut *const i8,
+        ))
+    }
+}
 
 pub fn bmp_detach() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_detach_c(0)) }

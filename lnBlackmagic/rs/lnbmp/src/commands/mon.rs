@@ -27,7 +27,7 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 12] = [
+const mon_command_tree: [CommandTree; 13] = [
     CommandTree {
         command: "help",
         args: 0,
@@ -39,6 +39,12 @@ const mon_command_tree: [CommandTree; 12] = [
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_swdp_scan),
+    }, //
+    CommandTree {
+        command: "rvswdp_scan",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_rvswdp_scan),
     }, //
     CommandTree {
         command: "voltage",
@@ -102,10 +108,11 @@ const mon_command_tree: [CommandTree; 12] = [
     }, //
 ];
 //
-const help_tree : [HelpTree;11]=
+const help_tree : [HelpTree;12]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
+    HelpTree{ command: "rvswdp_scan",help :"Probe WCH RISCV device(s), you need a whlink. Hosted only." },
     HelpTree{ command: "voltage",help :"Display target voltage." },
     HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
     HelpTree{ command: "version",help :"Display version." },
@@ -262,13 +269,30 @@ pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
     bmplog!("swdp_scan:\n");
 
     if !bmp::swdp_scan() {
-        bmpwarning!("swdp fail!\n");
+        bmpwarning!("swdp failed!\n");
         return false;
     }
     crate::freertos::os_detach();
     encoder::reply_ok();
     true
 }
+/*
+   Detect stuff connected to the SWD interface
+   Try to use the fastest speed
+*/
+pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
+    bmplog!("rvswdp_scan:\n");
+
+    if !bmp::rvswdp_scan() {
+        bmpwarning!("rvswdp_scan failed!\n");
+        return false;
+    }
+    crate::freertos::os_detach();
+    encoder::reply_ok();
+    true
+}
+
+
 
 /**
  *

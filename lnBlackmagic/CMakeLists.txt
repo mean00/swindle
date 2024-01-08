@@ -230,7 +230,7 @@ SET(BM_TARGET   ${T}/adiv5.c
 #----------
 
 add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
-target_include_directories( lnBlackmagic PRIVATE ${BMP_EXTRA})
+target_include_directories( lnBlackmagic PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 IF (LN_BMP_HOSTED) 
 target_include_directories( lnBlackmagic PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
