@@ -1,5 +1,76 @@
+diff --git a/src/command.c b/src/command.c
+index f77149b..577cee5 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -46,6 +46,7 @@
+ #include "traceswo.h"
+ #endif
+ 
++/*static  */ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
+ static bool cmd_version(target_s *t, int argc, const char **argv);
+ static bool cmd_help(target_s *t, int argc, const char **argv);
+ 
+@@ -82,6 +83,7 @@ const command_s cmd_list[] = {
+ 	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
+ 	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
+ 	{"swdp_scan", cmd_swd_scan, "Deprecated: use swd_scan instead"},
++	{"rvswdp_scan", cmd_rvswd_scan, "Scan RVSWD (WCH Risc-V) for devices"},
+ 	{"auto_scan", cmd_auto_scan, "Automatically scan all chain types for devices"},
+ 	{"frequency", cmd_frequency, "set minimum high and low times: [FREQ]"},
+ 	{"targets", cmd_targets, "Display list of available targets"},
+@@ -689,3 +691,50 @@ static bool cmd_heapinfo(target_s *t, int argc, const char **argv)
+ 		gdb_outf("%s\n", "Set semihosting heapinfo: HEAP_BASE HEAP_LIMIT STACK_BASE STACK_LIMIT");
+ 	return true;
+ }
++
++
++ 
++ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv)
++ {
++ 	(void)target;
++ 	(void)argc;
++ 	(void)argv;
++ 
++ 	if (platform_target_voltage())
++ 		gdb_outf("Target voltage: %s\n", platform_target_voltage());
++ 
++ 	if (connect_assert_nrst)
++ 		platform_nrst_set_val(true); /* will be deasserted after attach */
++ 
++ 	bool scan_result = false;
++ 	volatile exception_s e;
++ 	TRY_CATCH (e, EXCEPTION_ALL) {
++ #if PC_HOSTED == 1
++ 		scan_result = bmda_rvswd_scan();
++ #else
++ 		scan_result = false;
++ #endif
++ 	}
++ 	switch (e.type) {
++ 	case EXCEPTION_TIMEOUT:
++ 		gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
++ 		break;
++ 	case EXCEPTION_ERROR:
++ 		gdb_outf("Exception: %s\n", e.msg);
++ 		break;
++ 	}
++ 
++ 	if (!scan_result) {
++ 		platform_target_clk_output_enable(false);
++ 		platform_nrst_set_val(false);
++ 		gdb_out("RVSWD scan failed!\n");
++ 		return false;
++ 	}
++ 
++ 	cmd_targets(NULL, 0, NULL);
++ 	platform_target_clk_output_enable(false);
++ 	morse(NULL, false);
++ 	return true;
++ }
++ 
++
 diff --git a/src/include/buffer_utils.h b/src/include/buffer_utils.h
-index 085d75af..0bad5e49 100644
+index 085d75a..0bad5e4 100644
 --- a/src/include/buffer_utils.h
 +++ b/src/include/buffer_utils.h
 @@ -51,6 +51,14 @@ static inline void write_le4(uint8_t *const buffer, const size_t offset, const u
@@ -18,7 +89,7 @@ index 085d75af..0bad5e49 100644
  {
  	return buffer[offset + 0U] | ((uint16_t)buffer[offset + 1U] << 8U);
 diff --git a/src/include/target.h b/src/include/target.h
-index 1761080b..cdbb0701 100644
+index 1761080..cdbb070 100644
 --- a/src/include/target.h
 +++ b/src/include/target.h
 @@ -43,6 +43,7 @@ typedef struct target_controller target_controller_s;
@@ -30,7 +101,7 @@ index 1761080b..cdbb0701 100644
  bool adiv5_swd_scan(uint32_t targetid);
  bool jtag_scan(void);
 diff --git a/src/platforms/hosted/Makefile.inc b/src/platforms/hosted/Makefile.inc
-index 9a3c4b63..55de5862 100644
+index 9a3c4b6..55de586 100644
 --- a/src/platforms/hosted/Makefile.inc
 +++ b/src/platforms/hosted/Makefile.inc
 @@ -133,6 +133,7 @@ ifneq ($(HOSTED_BMP_ONLY), 1)
@@ -42,7 +113,7 @@ index 9a3c4b63..55de5862 100644
      SRC += bmp_serial.c
  endif
 diff --git a/src/platforms/hosted/bmp_libusb.c b/src/platforms/hosted/bmp_libusb.c
-index ed8b4083..aa9f0b4e 100644
+index ed8b408..aa9f0b4 100644
 --- a/src/platforms/hosted/bmp_libusb.c
 +++ b/src/platforms/hosted/bmp_libusb.c
 @@ -74,6 +74,7 @@ static const debugger_device_s debugger_devices[] = {
@@ -63,10 +134,10 @@ index ed8b4083..aa9f0b4e 100644
  		DEBUG_INFO("Using %04x:%04x %s %s\n %s %s\n", info->vid, info->pid,
  			(info->serial[0]) ? info->serial : NO_SERIAL_NUMBER, info->manufacturer, info->product, info->version);
 diff --git a/src/platforms/hosted/platform.c b/src/platforms/hosted/platform.c
-index 234da2ac..9dc1bc7b 100644
+index 234da2a..c672cc5 100644
 --- a/src/platforms/hosted/platform.c
 +++ b/src/platforms/hosted/platform.c
-@@ -50,6 +50,7 @@
+@@ -50,9 +50,15 @@
  #include "stlinkv2.h"
  #include "ftdi_bmp.h"
  #include "jlink.h"
@@ -74,19 +145,29 @@ index 234da2ac..9dc1bc7b 100644
  #include "cmsis_dap.h"
  #endif
  
-@@ -148,6 +149,11 @@ void platform_init(int argc, char **argv)
- 		if (!jlink_init())
- 			exit(1);
- 		break;
 +
++#undef HOSTED_BMP_ONLY 
++#define HOSTED_BMP_ONLY  1
++#define HOSTED_WCH 1
++
+ bmda_probe_s bmda_probe_info;
+ 
+ jtag_proc_s jtag_proc;
+@@ -150,6 +156,13 @@ void platform_init(int argc, char **argv)
+ 		break;
+ #endif
+ 
++#ifdef HOSTED_WCH 
 +	case PROBE_TYPE_WCHLINK:
 +		if (!wchlink_init())
 +			exit(-1);
 +		break;
- #endif
- 
++#endif
++
  	default:
-@@ -269,6 +275,21 @@ bool bmda_jtag_init(void)
+ 		exit(1);
+ 	}
+@@ -269,6 +282,21 @@ bool bmda_jtag_init(void)
  	}
  }
  
@@ -95,7 +176,7 @@ index 234da2ac..9dc1bc7b 100644
 +	bmda_probe_info.is_jtag = false;
 +
 +	switch (bmda_probe_info.type) {
-+#if HOSTED_BMP_ONLY == 0
++#ifdef HOSTED_WCH 
 +	case PROBE_TYPE_WCHLINK:
 +		return wchlink_rvswd_scan();
 +#endif
@@ -108,7 +189,7 @@ index 234da2ac..9dc1bc7b 100644
  void bmda_adiv5_dp_init(adiv5_debug_port_s *const dp)
  {
  	switch (bmda_probe_info.type) {
-@@ -334,6 +355,9 @@ char *bmda_adaptor_ident(void)
+@@ -334,6 +362,9 @@ char *bmda_adaptor_ident(void)
  	case PROBE_TYPE_JLINK:
  		return "J-Link";
  
@@ -119,7 +200,7 @@ index 234da2ac..9dc1bc7b 100644
  		return NULL;
  	}
 diff --git a/src/platforms/hosted/platform.h b/src/platforms/hosted/platform.h
-index 968fad1a..2f4ff47e 100644
+index 968fad1..2f4ff47 100644
 --- a/src/platforms/hosted/platform.h
 +++ b/src/platforms/hosted/platform.h
 @@ -77,13 +77,19 @@ void platform_buffer_flush(void);
@@ -143,16 +224,143 @@ index 968fad1a..2f4ff47e 100644
  } probe_type_e;
  
  void gdb_ident(char *p, int count);
-diff --git a/src/platforms/hosted/wchlink.c b/src/platforms/hosted/wchlink.c
+diff --git a/src/platforms/hosted/riscv_dtm_wchlink.c b/src/platforms/hosted/riscv_dtm_wchlink.c
 new file mode 100644
-index 00000000..b8dea2b2
+index 0000000..6ed73d8
 --- /dev/null
-+++ b/src/platforms/hosted/wchlink.c
-@@ -0,0 +1,380 @@
++++ b/src/platforms/hosted/riscv_dtm_wchlink.c
+@@ -0,0 +1,76 @@
 +/*
 + * This file is part of the Black Magic Debug project.
 + *
 + * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "bmp_hosted.h"
++#include "general.h"
++#include "jep106.h"
++#include "riscv_debug.h"
++#include "target_probe.h"
++#include "target.h"
++#include "wchlink.h"
++
++void riscv_dtm_wchlink_init(riscv_dm_s *dtm);
++
++static bool riscv_dtm_wchlink_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
++{
++	(void)dmi;
++	return wchlink_riscv_dmi_read( address, value);
++}
++
++static bool riscv_dtm_wchlink_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
++{
++	(void)dmi;
++	return wchlink_riscv_dmi_write(address, value);
++}
++
++uint8_t riscv_dtm_wchlink_handler()
++{
++	riscv_dmi_s *dmi_bus = calloc(1, sizeof(*dmi_bus));
++	if (!dmi_bus) {
++		DEBUG_WARN("calloc: failed in %s\n", __func__);
++		return 0;
++	}
++	dmi_bus->read = riscv_dtm_wchlink_dmi_read;
++	dmi_bus->write = riscv_dtm_wchlink_dmi_write;
++	dmi_bus->version = RISCV_DEBUG_0_13;
++	dmi_bus->designer_code =
++		NOT_JEP106_MANUFACTURER_WCH; /* fixme: WCHLINK deosn't seem to have a jep106 code assigned this is a dummy code */
++
++	/* Call higher level code to discover the DMI bus */
++	riscv_dmi_init(dmi_bus);
++	uint8_t c = dmi_bus->ref_count;
++	if (!dmi_bus->ref_count) {
++		free(dmi_bus);
++	}
++	return c;
++}
+diff --git a/src/platforms/hosted/riscv_dtm_wchlink.h b/src/platforms/hosted/riscv_dtm_wchlink.h
+new file mode 100644
+index 0000000..15a2fea
+--- /dev/null
++++ b/src/platforms/hosted/riscv_dtm_wchlink.h
+@@ -0,0 +1,39 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef PLATFORM_HOSTED_RISCV_DTM_WCHLINK_H
++#define PLATFORM_HOSTED_RISCV_DTM_WCHLINK_H
++
++uint8_t riscv_dtm_wchlink_handler();
++
++#endif /* PLATFORM_HOSTED_RISCV_DTM_WCHLINK_H */
+diff --git a/src/platforms/hosted/wchlink.c b/src/platforms/hosted/wchlink.c
+new file mode 100644
+index 0000000..7276b01
+--- /dev/null
++++ b/src/platforms/hosted/wchlink.c
+@@ -0,0 +1,412 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2022 1BitSquared <info@1bitsquared.com>
 + * Written by Rafael Silva <perigoso@riseup.net>
 + *
 + * Redistribution and use in source and binary forms, with or without
@@ -182,363 +390,395 @@ index 00000000..b8dea2b2
 + */
 +
 +#include <libusb.h>
-+
++#include "bmp_hosted.h"
 +#include "wchlink.h"
-+#include "wchlink_protocol.h"
-+#include "buffer_utils.h"
 +
-+typedef struct wchlink {
-+	struct wchlink_fw_version {
-+		uint8_t major;
-+		uint8_t minor;
-+	} fw_version; /* Firmware version */
++#include "riscv_debug.h"
++#include "riscv_dtm_wchlink.h"
 +
-+	uint8_t hw_type; /* Hardware type */
++#define WCHLINK_MODERV_OP_EPT_ADDR    0x1U
++#define WCHLINK_MODERV_FLASH_EPT_ADDR 0x2U
 +
-+	uint8_t riscvchip; /* The attached RISC-V chip code */
-+} wchlink_s;
++#define TRANSFER_TIMEOUT_MS 100U
 +
-+static wchlink_s wchlink;
++#define WCH_CMD_OUT_HEADER 0x81U
++#define WCH_CMD_IN_HEADER  0x82U
 +
-+/* WCH-Link USB protocol functions */
++#define WCH_CMD_UNKNOWN_FIELD     0x01U
++#define WCH_CMD_UNKNOWN_FIELD_DMI 0x06U
 +
-+static char *wchlink_command_error(const uint8_t command, const uint8_t subcommand, const uint8_t error)
++/* Flash commands */
++#define WCH_FLASH_GRP       0x02U
++#define WCH_FLASH_CHIPERASE 0x01U /* Unconfirmed */
++#define WCH_FLASH_TERMINATE 0x08U /* Unconfirmed */
++
++/* Flash potection commands */
++#define WCH_PROTECT_GRP                 0x06U
++#define WCH_PROTECT_CMD_CHECK           0x01U
++#define WCH_PROTECT_CMD_FLASH_UNPROTECT 0x02U
++#define WCH_PROTECT_CMD_FLASH_PROTECT   0x03U
++
++/* DMI access commands */
++#define WCH_DMI_GRP       0x08U
++#define WCH_DMI_CMD_NOP   0x00U
++#define WCH_DMI_CMD_READ  0x01U
++#define WCH_DMI_CMD_WRITE 0x02U
++
++/* System commands */
++#define WCH_SYS_GRP             0x0dU
++#define WCH_SYS_CMD_GET_VERSION 0x01U
++#define WCH_SYS_CMD_CONNECT     0x02U
++#define WCH_SYS_CMD_UNKNOWN     0x03U /* Unknown - no clue */
++#define WCH_SYS_CMD_GET_MEMINFO 0x04U /* RAM size, flash size, addr. */
++#define WCH_SYS_CMD_CLOSE       0xffU /* Terminate connection (unsure what this does) */
++
++/* Debug commands */
++#define WCH_DBG_GRP             0x0eU
++#define WCH_DBG_CMD_DISABLE_DBG 0x01U
++
++/* Error ? who knows */
++#define WCH_ERR_GRP 0x55U
++
++static bool wchlink_bulk_write(bmda_probe_s *const info, uint8_t *const data, const size_t length)
 +{
-+	/* Only this error is formaly known, so we hack it's identification a bit for now */
-+	return command == WCH_CMD_CONTROL && subcommand == WCH_CONTROL_SUBCMD_ATTACH && error == WCH_ERR_ATTACH ?
-+		"Failed to attach to target" :
-+		"Unknown";
++	int transferred = 0;
++	const int result = libusb_bulk_transfer(
++		info->usb_link->device_handle, info->usb_link->ep_tx, data, length, &transferred, TRANSFER_TIMEOUT_MS);
++	if (result < 0) {
++		DEBUG_WARN("WCH-Link write error: %s (%d)\n", libusb_strerror(result), result);
++		return false;
++	}
++
++	return true;
 +}
 +
-+/*
-+ * Send a command to the WCH-Link.
-+ *
-+ * ┌─────────────┬────────┬─────────┬──────────────┬──────────────────────────────┐
-+ * │    Byte     │   0    │    1    │      2       │            3:End             │
-+ * ├─────────────┼────────┼─────────┼──────────────┼──────────────────────────────┤
-+ * │ Description │ Header │ Command │ Payload Size │ Payload (Sub-command + Data) │
-+ * └─────────────┴────────┴─────────┴──────────────┴──────────────────────────────┘
-+ *	See wchlink_protocol.h for more information.
-+ *  
-+ * Returns true for success, false for failure.
-+ */
-+bool wchlink_command_send_recv(const uint8_t command, const uint8_t subcommand, const void *const payload,
-+	const size_t payload_length, void *const response, const size_t response_length)
++static bool wchlink_bulk_read(bmda_probe_s *const info, uint8_t *const data, const size_t length)
 +{
-+	/*
-+	 * Total request size is packet header + command + payload size + payload (for which we always add the subcommand byte) 
-+	 * Total response size is packet header + command/error + payload size + payload
-+	 */
-+	const size_t request_size = 4U + payload_length;
-+	const size_t response_size = 3U + response_length;
-+
-+	/* Stack buffer for the transfer, this is much larger than we need */
-+	uint8_t buffer[256U] = {0};
-+	if (request_size > sizeof(buffer) || response_size > sizeof(buffer))
-+		return false;
-+
-+	/* Prepare the command packet */
-+	buffer[WCH_CMD_PACKET_HEADER_OFFSET] = WCH_CMD_PACKET_HEADER_OUT; /* Command packet header */
-+	buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET] = command;                /* Command */
-+	buffer[WCH_CMD_PACKET_SIZE_OFFSET] = payload_length + 1U;         /* Payload size */
-+	buffer[WCH_CMD_PACKET_PAYLOAD_OFFSET] = subcommand;               /* Subcommand as the first byte of the payload */
-+
-+	/* Payload if any */
-+	if (payload_length && payload)
-+		memcpy(buffer + WCH_CMD_PACKET_PAYLOAD_OFFSET + 1U, payload, payload_length);
-+
-+	/* Send the command and receive the response */
-+	if (bmda_usb_transfer(bmda_probe_info.usb_link, buffer, request_size, buffer, response_size, WCH_USB_TIMEOUT) < 0)
-+		return false;
-+
-+	/* Check the response */
-+	if (buffer[WCH_CMD_PACKET_HEADER_OFFSET] != WCH_CMD_PACKET_HEADER_IN) {
-+		DEBUG_ERROR("wchlink protocol error: malformed response\n");
++	int transferred = 0;
++	const int result = libusb_bulk_transfer(
++		info->usb_link->device_handle, info->usb_link->ep_rx, data, length, &transferred, TRANSFER_TIMEOUT_MS);
++	if (result < 0) {
++		DEBUG_WARN("WCH-Link read error: %s (%d)\n", libusb_strerror(result), result);
 +		return false;
 +	}
-+	if (buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET] != command) {
-+		DEBUG_ERROR("wchlink protocol error: 0x%02x - %s\n", buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET],
-+			wchlink_command_error(command, subcommand, buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET]));
-+		return false;
-+	}
-+	if (buffer[WCH_CMD_PACKET_SIZE_OFFSET] != response_length) {
-+		DEBUG_ERROR("wchlink protocol error: response payload size mismatch\n");
-+		return false;
-+	}
-+
-+	/* Copy the response payload if requested */
-+	if (response_length && response)
-+		memcpy(response, buffer + WCH_CMD_PACKET_PAYLOAD_OFFSET, response_length);
 +
 +	return true;
 +}
 +
 +/*
-+ * Do a DMI transfer.
-+ *
-+ * ┌────────────────────────────┐
-+ * │          Payload           │
-+ * ├─────────┬──────┬───────────┤
-+ * │    0    │ 1:4  │     5     │
-+ * ├─────────┼──────┼───────────┤
-+ * │ Address │ Data │ Operation │
-+ * └─────────┴──────┴───────────┘
-+ * ┌────────────────────────────┐
-+ * │      Response payload      │
-+ * ├─────────┬──────┬───────────┤
-+ * │    0    │ 1:4  │     5     │
-+ * ├─────────┼──────┼───────────┤
-+ * │ Address │ Data │  Status   │
-+ * └─────────┴──────┴───────────┘
-+ *	See wchlink_protocol.h for more information.
-+ *  
++ * On success this copies the endpoint addresses identified into the
++ * usb_link_s sub-structure of bmp_info_s (info->usb_link) for later use.
 + * Returns true for success, false for failure.
 + */
-+bool wchlink_transfer_dmi(const uint8_t operation, const uint32_t address, const uint32_t data_in,
-+	uint32_t *const data_out, uint8_t *const status)
-+{
-+	/* Stack buffer for the transfer */
-+	uint8_t buffer[9U] = {0};
-+
-+	/* Prepare the command packet */
-+	buffer[WCH_CMD_PACKET_HEADER_OFFSET] = WCH_CMD_PACKET_HEADER_OUT; /* Command packet header */
-+	buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET] = WCH_CMD_DMI;            /* Command */
-+	buffer[WCH_CMD_PACKET_SIZE_OFFSET] = 6U;                          /* Payload size */
-+
-+	/* Payload */
-+	buffer[WCH_CMD_PACKET_PAYLOAD_OFFSET + WCH_DMI_ADDR_OFFSET] = address & 0xffU;   /* Address */
-+	write_be4(buffer, WCH_CMD_PACKET_PAYLOAD_OFFSET + WCH_DMI_DATA_OFFSET, data_in); /* Data */
-+	buffer[WCH_CMD_PACKET_PAYLOAD_OFFSET + WCH_DMI_OP_STATUS_OFFSET] = operation;    /* Operation */
-+
-+	/* Send the command and receive the response */
-+	if (bmda_usb_transfer(bmda_probe_info.usb_link, buffer, sizeof(buffer), buffer, sizeof(buffer), WCH_USB_TIMEOUT) <
-+		0)
-+		return false;
-+
-+	/* Check the response */
-+	if (buffer[WCH_CMD_PACKET_HEADER_OFFSET] != WCH_CMD_PACKET_HEADER_IN) {
-+		DEBUG_ERROR("wchlink protocol error: malformed response\n");
-+		return false;
-+	}
-+	if (buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET] != WCH_CMD_DMI) {
-+		DEBUG_ERROR("wchlink protocol error: 0x%02x - %s\n", buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET],
-+			wchlink_command_error(WCH_CMD_DMI, 0, buffer[WCH_CMD_PACKET_CMD_ERROR_OFFSET]));
-+		return false;
-+	}
-+	if (buffer[WCH_CMD_PACKET_SIZE_OFFSET] != 6U) {
-+		DEBUG_ERROR("wchlink protocol error: response payload size mismatch\n");
-+		return false;
-+	}
-+
-+	/* Copy over the result */
-+	if (data_out)
-+		*data_out = read_be4(buffer, WCH_CMD_PACKET_PAYLOAD_OFFSET + WCH_DMI_DATA_OFFSET);
-+	if (status)
-+		*status = buffer[WCH_CMD_PACKET_PAYLOAD_OFFSET + WCH_DMI_OP_STATUS_OFFSET];
-+
-+	return true;
-+}
-+
-+/*
-+ * Try to claim the debugging interface of a WCH-Link.
-+ * On success this copies the command endpoint addresses identified into the
-+ * usb_link_s sub-structure of bmda_probe_s (bmda_probe_info.usb_link) for later use.
-+ * Returns true for success, false for failure.
-+ */
-+static bool wchlink_claim_interface(void)
++static bool claim_wchlink_interface(bmda_probe_s *info, libusb_device *dev)
 +{
 +	libusb_config_descriptor_s *config;
-+	const int result = libusb_get_active_config_descriptor(bmda_probe_info.libusb_dev, &config);
++	const int result = libusb_get_active_config_descriptor(dev, &config);
 +	if (result != LIBUSB_SUCCESS) {
-+		DEBUG_ERROR("Failed to get configuration descriptor: %s\n", libusb_error_name(result));
++		DEBUG_WARN("Failed to get configuration descriptor: %s\n", libusb_error_name(result));
 +		return false;
 +	}
++
 +	const libusb_interface_descriptor_s *descriptor = NULL;
-+	for (size_t idx = 0; idx < config->bNumInterfaces; ++idx) {
-+		const libusb_interface_s *const interface = &config->interface[idx];
++	for (size_t i = 0; i < config->bNumInterfaces; ++i) {
++		const libusb_interface_s *const interface = &config->interface[i];
 +		const libusb_interface_descriptor_s *const interface_desc = &interface->altsetting[0];
-+		if (interface_desc->bInterfaceClass == LIBUSB_CLASS_VENDOR_SPEC &&
-+			interface_desc->bInterfaceSubClass == WCH_USB_INTERFACE_SUBCLASS && interface_desc->bNumEndpoints > 1U) {
-+			const int result = libusb_claim_interface(bmda_probe_info.usb_link->device_handle, (int)idx);
++		if (interface_desc->bInterfaceClass == LIBUSB_CLASS_VENDOR_SPEC && interface_desc->bInterfaceSubClass == 128U) {
++			const int result = libusb_claim_interface(info->usb_link->device_handle, i);
 +			if (result) {
-+				DEBUG_ERROR("Can not claim handle: %s\n", libusb_error_name(result));
++				DEBUG_WARN("Can not claim handle: %s\n", libusb_error_name(result));
 +				break;
 +			}
-+			bmda_probe_info.usb_link->interface = idx;
++
++			info->usb_link->interface = i;
 +			descriptor = interface_desc;
 +		}
 +	}
 +	if (!descriptor) {
-+		DEBUG_ERROR("No suitable interface found\n");
++		DEBUG_WARN("No suitable interface found\n");
 +		libusb_free_config_descriptor(config);
 +		return false;
 +	}
++
 +	for (size_t i = 0; i < descriptor->bNumEndpoints; i++) {
 +		const libusb_endpoint_descriptor_s *endpoint = &descriptor->endpoint[i];
-+		if ((endpoint->bEndpointAddress & LIBUSB_ENDPOINT_ADDRESS_MASK) == WCH_USB_MODE_RV_CMD_EPT_ADDR) {
++
++		if ((endpoint->bEndpointAddress & LIBUSB_ENDPOINT_ADDRESS_MASK) == WCHLINK_MODERV_OP_EPT_ADDR) {
 +			if (endpoint->bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK)
-+				bmda_probe_info.usb_link->ep_rx = endpoint->bEndpointAddress;
++				info->usb_link->ep_rx = endpoint->bEndpointAddress;
 +			else
-+				bmda_probe_info.usb_link->ep_tx = endpoint->bEndpointAddress;
++				info->usb_link->ep_tx = endpoint->bEndpointAddress;
 +		}
 +	}
 +	libusb_free_config_descriptor(config);
 +	return true;
 +}
 +
-+/* WCH-Link command functions */
-+
-+static char *wchlink_hw_type_to_string(const uint8_t hardware_id)
++static bool wchlink_read_version(bmda_probe_s *info)
 +{
-+	switch (hardware_id) {
-+	case WCH_HARDWARE_TYPE_WCHLINK:
-+		return "WCH-Link (CH549)";
-+	case WCH_HARDWARE_TYPE_WCHLINKE2:
-+	case WCH_HARDWARE_TYPE_WCHLINKE:
-+		return "WCH-LinkE (CH32V305)";
-+	case WCH_HARDWARE_TYPE_WCHLINKS:
-+		return "WCH-LinkS (CH32V203)";
-+	case WCH_HARDWARE_TYPE_WCHLINKB:
-+		return "WCH-LinkB";
-+	case WCH_HARDWARE_TYPE_WCHLINKW:
-+		return "WCH-LinkW (CH32V208)";
-+	default:
-+		return "Unknown";
-+	}
-+}
-+
-+static char *wchlink_riscvchip_to_string(const uint8_t hardware_id)
-+{
-+	switch (hardware_id) {
-+	case WCH_RISCVCHIP_CH32V103:
-+		return "CH32V103 RISC-V3A series";
-+	case WCH_RISCVCHIP_CH57X:
-+		return "CH571/CH573 RISC-V3A BLE 4.2 series";
-+	case WCH_RISCVCHIP_CH56X:
-+		return "CH565/CH569 RISC-V3A series";
-+	case WCH_RISCVCHIP_CH32V20X:
-+		return "CH32V20X RISC-V4B/V4C series";
-+	case WCH_RISCVCHIP_CH32V30X:
-+		return "CH32V30X RISC-V4C/V4F series";
-+	case WCH_RISCVCHIP_CH58X:
-+		return "CH581/CH582/CH583 RISC-V4A BLE 5.3 series";
-+	case WCH_RISCVCHIP_CH32V003:
-+		return "CH32V003 RISC-V2A series";
-+	case WCH_RISCVCHIP_CH59X:
-+		return "CH59x RISC-V4C BLE 5.4 series";
-+	case WCH_RISCVCHIP_CH32X035:
-+		return "CH32X035 RISC-V4C series";
-+	default:
-+		return "Unknown";
-+	}
-+}
-+
-+static bool wchlink_get_version(void)
-+{
-+	uint8_t response[4U];
-+	if (!wchlink_command_send_recv(
-+			WCH_CMD_CONTROL, WCH_CONTROL_SUBCMD_GET_PROBE_INFO, NULL, 0, response, sizeof(response)))
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_SYS_GRP,
++		WCH_CMD_UNKNOWN_FIELD,
++		WCH_SYS_CMD_GET_VERSION,
++	};
++	if (!wchlink_bulk_write(info, cmd, sizeof(cmd)))
 +		return false;
 +
-+	wchlink.fw_version.major = response[WCH_VERSION_MAJOR_OFFSET];
-+	wchlink.fw_version.minor = response[WCH_VERSION_MINOR_OFFSET];
-+	DEBUG_INFO("Firmware version: v%" PRIu32 ".%" PRIu32 "\n", wchlink.fw_version.major, wchlink.fw_version.minor);
++	uint8_t response[7];
++	if (!wchlink_bulk_read(info, response, sizeof(response)))
++		return false;
 +
-+	const uint8_t hardware_type = response[WCH_HARDWARE_TYPE_OFFSET];
-+	DEBUG_INFO("Hardware type: %s\n", wchlink_hw_type_to_string(hardware_type));
++	const uint8_t wchlink_major = response[3];
++	const uint8_t wchlink_minor = response[4];
++	const uint8_t wchlink_id = response[5];
 +
-+	/* Build version string onto info struct for version command */
-+	snprintf(bmda_probe_info.version, sizeof(bmda_probe_info.version), "%s v%" PRIu32 ".%" PRIu32,
-+		wchlink_hw_type_to_string(hardware_type), wchlink.fw_version.major, wchlink.fw_version.minor);
++	const char *wchlink_name = NULL;
++	switch (wchlink_id) {
++	case 1:
++		wchlink_name = "WCH-Link-CH549 (RV)";
++		break;
++	case 2:
++		wchlink_name = "WCH-LinkE-CH32V307 (RV)";
++		break;
++	case 3:
++		wchlink_name = "WCH-LinkS-CH32V203 (RV)";
++		break;
++	case 4:
++		wchlink_name = "WCH-LinkB (RV)";
++		break;
++	default:
++		wchlink_name = "unknow WCH-LINK";
++		break;
++	}
++
++	DEBUG_INFO("%s (id:%u) v%u.%u\n", wchlink_name, wchlink_id, wchlink_major, wchlink_minor);
 +
 +	return true;
 +}
 +
-+/*
-+ * This function is called when the WCH-Link attaches to certain types of RISC-V chip
-+ * It is unknown what this function does, but the official WCH-Link software calls it
-+ * 
-+ * Removing this function still allows the WCH-Link to work and the scan is successful
-+ * but it is unknown if it might required for some chips or states
-+ */
-+static bool wchlink_after_attach_unknown()
++static bool wchlink_connect(bmda_probe_s *info, uint8_t *const device_code, uint32_t *const device_id)
 +{
-+	DEBUG_INFO("Sending unknown WCH-Link command after attach\n");
-+
-+	/* Response seems to be WCH_CONTROL_SUBCMD_UNKNOWN, but without knowing what the command does we won't check it blindly */
-+	uint8_t response = 0;
-+	return wchlink_command_send_recv(WCH_CMD_CONTROL, WCH_CONTROL_SUBCMD_UNKNOWN, NULL, 0, &response, sizeof(response));
-+}
-+
-+/* WCH-Link attach routine, attempts to detect and attach to a connected RISC-V chip */
-+bool wchlink_attach()
-+{
-+	uint8_t response[5U];
-+	if (!wchlink_command_send_recv(WCH_CMD_CONTROL, WCH_CONTROL_SUBCMD_ATTACH, NULL, 0, response, sizeof(response)))
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_SYS_GRP,
++		WCH_CMD_UNKNOWN_FIELD,
++		WCH_SYS_CMD_CONNECT,
++	};
++	if (!wchlink_bulk_write(info, cmd, sizeof(cmd)))
 +		return false;
 +
-+	wchlink.riscvchip = response[WCH_RISCVCHIP_OFFSET];
-+	const uint32_t idcode = read_be4(response, WCH_IDCODDE_OFFSET);
++	uint8_t response[8];
++	if (!wchlink_bulk_read(info, response, sizeof(response)))
++		return false;
 +
-+	DEBUG_INFO("WCH-Link attached to RISC-V chip: %s\n", wchlink_riscvchip_to_string(wchlink.riscvchip));
-+	DEBUG_INFO("ID code: 0x%08" PRIx32 "\n", idcode);
++	if (response[1] != WCH_SYS_GRP) { // response[1] returns WCH_ERR_GRP (0x55) on error
++		DEBUG_WARN("WCH-Link failed to connect with device\n");
++		return false;
++	}
 +
-+	/* Some RISC-V chips require* an additional command to be sent after attach */
-+	switch (wchlink.riscvchip) {
-+	case WCH_RISCVCHIP_CH32V103:
-+	case WCH_RISCVCHIP_CH32V20X:
-+	case WCH_RISCVCHIP_CH32V30X:
-+	case WCH_RISCVCHIP_CH32V003:
-+		if (!wchlink_after_attach_unknown())
-+			return false;
-+		break;
-+	default:
-+		break;
++	*device_code = response[3];
++	*device_id = (response[4] << 24U) + (response[5] << 16U) + (response[6] << 8U) + (response[7] & 0x0fU);
++
++	return true;
++}
++
++static bool wchlink_unknown(bmda_probe_s *info)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_SYS_GRP,
++		WCH_CMD_UNKNOWN_FIELD,
++		WCH_SYS_CMD_UNKNOWN,
++	};
++	if (!wchlink_bulk_write(info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[4];
++	if (!wchlink_bulk_read(info, response, sizeof(response)))
++		return false;
++
++	return true;
++}
++
++bool wchlink_riscv_dmi_read( const uint32_t address, uint32_t *const value)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_DMI_GRP,
++		WCH_CMD_UNKNOWN_FIELD_DMI,
++		address & 0xffU,
++		0U,
++		0U,
++		0U,
++		0U,
++		WCH_DMI_CMD_READ,
++	};
++
++	if (!wchlink_bulk_write(&bmda_probe_info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[9];
++	if (!wchlink_bulk_read(&bmda_probe_info, response, sizeof(response)))
++		return false;
++
++	if (response[8]) { /* status */
++		DEBUG_WARN("WCH-Link failed to read DMI register\n");
++		return false;
++	}
++
++	*value = (response[4] << 24U) + (response[5] << 16U) + (response[6] << 8U) + response[7];
++
++	return true;
++}
++
++bool wchlink_riscv_dmi_write( const uint32_t address, const uint32_t value)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_DMI_GRP,
++		WCH_CMD_UNKNOWN_FIELD_DMI,
++		address & 0xffU,
++		value >> 24U,
++		value >> 16U,
++		value >> 8U,
++		value & 0xffU,
++		WCH_DMI_CMD_WRITE,
++	};
++
++	if (!wchlink_bulk_write(&bmda_probe_info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[9];
++	if (!wchlink_bulk_read(&bmda_probe_info, response, sizeof(response)))
++		return false;
++
++	if (response[8]) { /* status */
++		DEBUG_WARN("WCH-Link failed to read DMI register\n");
++		return false;
 +	}
 +
 +	return true;
 +}
 +
-+bool wchlink_init(void)
++static bool wchlink_init2(bmda_probe_s *const info)
 +{
-+	usb_link_s *link = calloc(1U, sizeof(usb_link_s));
++	usb_link_s *link = calloc(1, sizeof(usb_link_s));
 +	if (!link)
 +		return false;
-+	bmda_probe_info.usb_link = link;
-+	link->context = bmda_probe_info.libusb_ctx;
-+	const int result = libusb_open(bmda_probe_info.libusb_dev, &link->device_handle);
-+	if (result != LIBUSB_SUCCESS) {
-+		DEBUG_ERROR("libusb_open() failed (%d): %s\n", result, libusb_error_name(result));
++	info->usb_link = link;
++	link->context = info->libusb_ctx;
++
++	libusb_device **device_list = NULL;
++	const ssize_t device_count = libusb_get_device_list(info->libusb_ctx, &device_list);
++	if (device_count < 0) {
++		DEBUG_WARN("libusb_get_device_list() failed");
 +		return false;
 +	}
-+	if (!wchlink_claim_interface()) {
-+		libusb_close(bmda_probe_info.usb_link->device_handle);
++
++	libusb_device *device_wchlink = NULL;
++	for (ssize_t device_index = 0; device_index < device_count; ++device_index) {
++		if (!device_list[device_index])
++			continue;
++
++		libusb_device *const device = device_list[device_index];
++		struct libusb_device_descriptor device_descriptor;
++		if (libusb_get_device_descriptor(device, &device_descriptor) < 0) {
++			DEBUG_WARN("libusb_get_device_descriptor() failed");
++			libusb_free_device_list(device_list, 1);
++			return false;
++		}
++
++		if (device_descriptor.idVendor != info->vid || device_descriptor.idProduct != info->pid)
++			continue;
++
++		int result = libusb_open(device, &link->device_handle);
++		if (result != LIBUSB_SUCCESS)
++			continue;
++
++		device_wchlink = device;
++		break;
++	}
++
++	if (!device_wchlink || !claim_wchlink_interface(info, device_wchlink)) {
++		libusb_free_device_list(device_list, 1);
 +		return false;
 +	}
++
 +	if (!link->ep_tx || !link->ep_rx) {
-+		DEBUG_ERROR("Device setup failed\n");
-+		libusb_release_interface(bmda_probe_info.usb_link->device_handle, bmda_probe_info.usb_link->interface);
-+		libusb_close(bmda_probe_info.usb_link->device_handle);
++		DEBUG_WARN("Device setup failed\n");
++		libusb_release_interface(info->usb_link->device_handle, info->usb_link->interface);
++		libusb_close(info->usb_link->device_handle);
++		libusb_free_device_list(device_list, 1);
 +		return false;
 +	}
-+	if (!wchlink_get_version()) {
-+		DEBUG_ERROR("Failed to read WCH-Link information\n");
-+		libusb_release_interface(bmda_probe_info.usb_link->device_handle, bmda_probe_info.usb_link->interface);
-+		libusb_close(bmda_probe_info.usb_link->device_handle);
-+		return false;
-+	}
++
++	libusb_free_device_list(device_list, 1);
++
++	return wchlink_read_version(info);
++}
++
++bool wchlink_init(bmda_probe_s *const info)
++{
++	return wchlink_init2(&bmda_probe_info);
++
++}
++
++const char *wchlink_target_voltage()
++{	
++	return "Unavailable";
++}
++
++void wchlink_nrst_set_val( bool assert)
++{
++	(void)assert;
++}
++
++bool wchlink_nrst_get_val()
++{	
 +	return true;
++}
++
++uint32_t wchlink_rvswd_scan()
++{
++
++	target_list_free();
++
++	uint8_t device_code;
++	uint32_t device_id;
++
++	if (!wchlink_connect(&bmda_probe_info, &device_code, &device_id)) {
++		DEBUG_WARN("WCH-Link failed to connect to target");
++		return 0U;
++	}
++
++	DEBUG_WARN("WCH-Link connected with 0x%0X\n", device_id);
++
++	switch (device_code) {
++	case 0x1U:
++	case 0x5U:
++	case 0x6U:
++	case 0x9U:
++	case 0xaU:
++		wchlink_unknown(&bmda_probe_info);
++		break;
++
++	default:
++		break;
++	}
++
++	return riscv_dtm_wchlink_handler();
 +}
 diff --git a/src/platforms/hosted/wchlink.h b/src/platforms/hosted/wchlink.h
 new file mode 100644
-index 00000000..8e6a283d
+index 0000000..1d219d6
 --- /dev/null
 +++ b/src/platforms/hosted/wchlink.h
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,92 @@
 +/*
 + * This file is part of the Black Magic Debug project.
 + *
-+ * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Copyright (C) 2022 1BitSquared <info@1bitsquared.com>
 + * Written by Rafael Silva <perigoso@riseup.net>
 + *
 + * Redistribution and use in source and binary forms, with or without
@@ -570,16 +810,66 @@ index 00000000..8e6a283d
 +#ifndef PLATFORMS_HOSTED_WCHLINK_H
 +#define PLATFORMS_HOSTED_WCHLINK_H
 +
++#include <stdbool.h>
 +#include "bmp_hosted.h"
 +
-+bool wchlink_init(void);
-+bool wchlink_rvswd_scan(void);
-+void wchlink_riscv_dtm_handler(void);
++#if HOSTED_BMP_ONLY == 1
++bool wchlink_init()
++{
++	return false;
++}
++
++const char *wchlink_target_voltage()
++{
++	
++	return "ERROR";
++}
++
++void wchlink_nrst_set_val(bool assert)
++{
++	(void)assert;
++}
++
++bool wchlink_nrst_get_val()
++{
++	return true;
++}
++
++uint32_t wchlink_rvswd_scan()
++{	
++	return 0;
++}
++
++bool wchlink_riscv_dmi_read(uint32_t address, uint32_t *value)
++{
++	(void)address;
++	(void)value;
++	return false;
++}
++
++bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value)
++{
++	(void)address;
++	(void)value;
++	return false;
++}
++
++#else
++bool wchlink_init();
++const char *wchlink_target_voltage();
++void wchlink_nrst_set_val(bool assert);
++bool wchlink_nrst_get_val();
++uint32_t wchlink_rvswd_scan();
++bool wchlink_riscv_dmi_read( uint32_t address, uint32_t *value);
++bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value);
++bool wchlink_riscv_dmi_read( uint32_t address, uint32_t *value);
++bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value);
++#endif
 +
 +#endif /* PLATFORMS_HOSTED_WCHLINK_H */
 diff --git a/src/platforms/hosted/wchlink_protocol.h b/src/platforms/hosted/wchlink_protocol.h
 new file mode 100644
-index 00000000..4de7b706
+index 0000000..4de7b70
 --- /dev/null
 +++ b/src/platforms/hosted/wchlink_protocol.h
 @@ -0,0 +1,324 @@
@@ -909,10 +1199,10 @@ index 00000000..4de7b706
 +#endif /* PLATFORMS_HOSTED_WCHLINK_PROTOCOL_H */
 diff --git a/src/platforms/hosted/wchlink_riscv_dtm.c b/src/platforms/hosted/wchlink_riscv_dtm.c
 new file mode 100644
-index 00000000..35dfb30d
+index 0000000..d01eeba
 --- /dev/null
 +++ b/src/platforms/hosted/wchlink_riscv_dtm.c
-@@ -0,0 +1,90 @@
+@@ -0,0 +1,91 @@
 +/*
 + * This file is part of the Black Magic Debug project.
 + *
@@ -954,18 +1244,19 @@ index 00000000..35dfb30d
 +static bool wchlink_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
 +static bool wchlink_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value);
 +
-+void wchlink_riscv_dtm_handler(void)
++uint8_t  wchlink_riscv_dtm_handler(void)
 +{
 +	riscv_dmi_s *dmi = calloc(1, sizeof(*dmi));
 +	if (!dmi) { /* calloc failed: heap exhaustion */
 +		DEBUG_WARN("calloc: failed in %s\n", __func__);
-+		return;
++		return -1;
 +	}
 +
 +	wchlink_riscv_dtm_init(dmi);
 +	/* If we failed to find any DMs or Harts, free the structure */
 +	if (!dmi->ref_count)
 +		free(dmi);
++	return 0;
 +}
 +
 +static void wchlink_riscv_dtm_init(riscv_dmi_s *const dmi)
@@ -1005,10 +1296,10 @@ index 00000000..35dfb30d
 +}
 diff --git a/src/platforms/hosted/wchlink_rvswd.c b/src/platforms/hosted/wchlink_rvswd.c
 new file mode 100644
-index 00000000..249aa7f4
+index 0000000..7a93626
 --- /dev/null
 +++ b/src/platforms/hosted/wchlink_rvswd.c
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,61 @@
 +/*
 + * This file is part of the Black Magic Debug project.
 + *
@@ -1040,13 +1331,20 @@ index 00000000..249aa7f4
 + * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 + * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 + */
-+
++#if 0
 +#include "general.h"
 +#include "target_internal.h"
 +#include "wchlink.h"
 +#include "wchlink_protocol.h"
 +
-+bool wchlink_rvswd_scan(void)
++extern void wchlink_riscv_dtm_handler();
++
++/**
++ * @brief 
++ * 
++ * @return uint32_t 
++ */
++uint32_t wchlink_rvswd_scan(void)
 +{
 +	target_list_free();
 +
@@ -1062,9 +1360,11 @@ index 00000000..249aa7f4
 +
 +	return target_list != NULL;
 +}
++#endif
+\ No newline at end of file
 diff --git a/src/target/ch32vx.c b/src/target/ch32vx.c
 new file mode 100644
-index 00000000..ac178d7c
+index 0000000..ac178d7
 --- /dev/null
 +++ b/src/target/ch32vx.c
 @@ -0,0 +1,162 @@
@@ -1231,7 +1531,7 @@ index 00000000..ac178d7c
 +	return true;
 +}
 diff --git a/src/target/jep106.h b/src/target/jep106.h
-index c900377b..2dc3cb9c 100644
+index c900377..2dc3cb9 100644
 --- a/src/target/jep106.h
 +++ b/src/target/jep106.h
 @@ -44,14 +44,27 @@
@@ -1280,7 +1580,7 @@ index c900377b..2dc3cb9c 100644
   * This JEP code should belong to "Andes Technology Corporation", but is used on RISC-V by GigaDevice,
   * so in the unlikely event we need to support chips by them, here be dragons.
 diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index 365126cf..50db08ee 100644
+index 365126c..ae2f2c1 100644
 --- a/src/target/riscv32.c
 +++ b/src/target/riscv32.c
 @@ -72,6 +72,8 @@ static ssize_t riscv32_reg_read(target_s *target, uint32_t c, void *data, size_t
@@ -1303,18 +1603,19 @@ index 365126cf..50db08ee 100644
  	target->regs_read = riscv32_regs_read;
  	target->regs_write = riscv32_regs_write;
  	target->reg_write = riscv32_reg_write;
-@@ -96,6 +96,10 @@ bool riscv32_probe(target_s *const target)
+@@ -96,6 +96,11 @@ bool riscv32_probe(target_s *const target)
  	case JEP106_MANUFACTURER_RV_GIGADEVICE:
  		PROBE(gd32vf1_probe);
  		break;
 +	case NOT_JEP106_MANUFACTURER_WCH:
++		PROBE(ch32v3xx_probe);
 +		PROBE(ch32v003x_probe);
 +		PROBE(ch32vx_probe);
 +		break;
  	}
  
  #if PC_HOSTED == 0
-@@ -217,7 +221,7 @@ uint32_t riscv32_pack_data(const void *const src, const uint8_t access_width)
+@@ -217,7 +222,7 @@ uint32_t riscv32_pack_data(const void *const src, const uint8_t access_width)
  static void riscv32_abstract_mem_read(
  	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
  {
@@ -1323,7 +1624,7 @@ index 365126cf..50db08ee 100644
  	const uint8_t access_width = riscv_mem_access_width(hart, src, len);
  	const uint8_t access_length = 1U << access_width;
  	/* Build the access command */
-@@ -281,6 +285,7 @@ static void riscv_sysbus_check(riscv_hart_s *const hart)
+@@ -281,6 +286,7 @@ static void riscv_sysbus_check(riscv_hart_s *const hart)
  static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
  	const size_t len, const uint8_t access_width, const uint8_t access_length)
  {
@@ -1331,7 +1632,7 @@ index 365126cf..50db08ee 100644
  	/* Build the access command */
  	const uint32_t command = ((uint32_t)access_width << RV_SYSBUS_MEM_ACCESS_SHIFT) | RV_SYSBUS_MEM_READ_ON_ADDR |
  		(access_length < len ? RV_SYSBUS_MEM_ADDR_POST_INC | RV_SYSBUS_MEM_READ_ON_DATA : 0U);
-@@ -314,38 +319,27 @@ static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const
+@@ -314,38 +320,27 @@ static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const
  }
  
  static void riscv32_sysbus_mem_adjusted_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
@@ -1378,7 +1679,7 @@ index 365126cf..50db08ee 100644
  		break;
  	}
  	}
-@@ -369,25 +363,16 @@ static void riscv32_sysbus_mem_read(
+@@ -369,25 +364,16 @@ static void riscv32_sysbus_mem_read(
  		++native_access_width;
  	const uint8_t native_access_length = (uint8_t)(1U << native_access_width);
  
@@ -1408,7 +1709,7 @@ index 365126cf..50db08ee 100644
  
  	/*
  	 * Now we're aligned to the wider access width, do another set of reads if there's
-@@ -404,12 +389,13 @@ static void riscv32_sysbus_mem_read(
+@@ -404,12 +390,13 @@ static void riscv32_sysbus_mem_read(
  
  	/* If there's any data left to read, do another adjusted access to grab it */
  	if (remainder)
@@ -1423,7 +1724,7 @@ index 365126cf..50db08ee 100644
  	/* Build the access command */
  	const uint32_t command = ((uint32_t)access_width << RV_SYSBUS_MEM_ACCESS_SHIFT) |
  		(access_length < len ? RV_SYSBUS_MEM_ADDR_POST_INC : 0U);
-@@ -438,9 +424,10 @@ static void riscv32_sysbus_mem_native_write(riscv_hart_s *const hart, const targ
+@@ -438,9 +425,10 @@ static void riscv32_sysbus_mem_native_write(riscv_hart_s *const hart, const targ
  }
  
  static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const target_addr_t dest, const void *const src,
@@ -1436,7 +1737,7 @@ index 365126cf..50db08ee 100644
  	/*
  	 * On a 32-bit target the only possible widths are 8- 16- and 32-bit, so after the adjustment loop,
  	 * there are only and exactly 2 possible cases to handle here: 16- and 32-bit access.
-@@ -448,43 +435,31 @@ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const ta
+@@ -448,43 +436,31 @@ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const ta
  	 * wider access primitive, we first have to read back what's at the target aligned location, replace
  	 * the correct set of bits in the target value, then write the new combined value back
  	 */
@@ -1487,7 +1788,7 @@ index 365126cf..50db08ee 100644
  		break;
  	}
  	}
-@@ -508,25 +483,16 @@ static void riscv32_sysbus_mem_write(
+@@ -508,25 +484,16 @@ static void riscv32_sysbus_mem_write(
  		++native_access_width;
  	const uint8_t native_access_length = (uint8_t)(1U << native_access_width);
  
@@ -1517,7 +1818,7 @@ index 365126cf..50db08ee 100644
  
  	/*
  	 * Now we're aligned to the wider access width, do another set of writes if there's
-@@ -543,64 +509,187 @@ static void riscv32_sysbus_mem_write(
+@@ -543,64 +510,187 @@ static void riscv32_sysbus_mem_write(
  
  	/* If there's any data left to write, do another adjusted access to perform it */
  	if (remainder)
@@ -1744,7 +2045,7 @@ index 365126cf..50db08ee 100644
  
  /*
 diff --git a/src/target/riscv64.c b/src/target/riscv64.c
-index 2e25bd17..19eadb86 100644
+index 2e25bd1..19eadb8 100644
 --- a/src/target/riscv64.c
 +++ b/src/target/riscv64.c
 @@ -49,9 +49,7 @@ static void riscv64_mem_read(target_s *target, void *dest, target_addr_t src, si
@@ -1759,7 +2060,7 @@ index 2e25bd17..19eadb86 100644
  	target->regs_write = riscv64_regs_write;
  	target->mem_read = riscv64_mem_read;
 diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
-index 6fa13ef4..9a9dd256 100644
+index 6fa13ef..fc87cdc 100644
 --- a/src/target/riscv_debug.c
 +++ b/src/target/riscv_debug.c
 @@ -113,8 +113,8 @@
@@ -2035,7 +2336,7 @@ index 6fa13ef4..9a9dd256 100644
 +
 +	offset += riscv_snprint_isa_subset(hart, buffer + offset, print_size);
 +
-+	offset += snprintf(buffer, print_size, "%s <feature name=\"org.gnu.gdb.riscv.cpu\">", gdb_xml_preamble_third);
++	offset += snprintf(buffer+offset, print_size, "%s <feature name=\"org.gnu.gdb.riscv.cpu\">", gdb_xml_preamble_third);
  
  	const uint8_t gprs = embedded ? 16U : 32U;
  	/* Then build the general purpose register descriptions using the arrays at top of file */
@@ -2080,7 +2381,7 @@ index 6fa13ef4..9a9dd256 100644
  	return description;
  }
 diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
-index 8af394a7..f5b6e550 100644
+index 8af394a..f5b6e55 100644
 --- a/src/target/riscv_debug.h
 +++ b/src/target/riscv_debug.h
 @@ -85,8 +85,9 @@ typedef enum riscv_match_size {
@@ -2185,7 +2486,7 @@ index 8af394a7..f5b6e550 100644
  
  #endif /*TARGET_RISCV_DEBUG_H*/
 diff --git a/src/target/riscv_jtag_dtm.c b/src/target/riscv_jtag_dtm.c
-index 144e907b..bcaab116 100644
+index 144e907..bcaab11 100644
 --- a/src/target/riscv_jtag_dtm.c
 +++ b/src/target/riscv_jtag_dtm.c
 @@ -51,13 +51,6 @@
@@ -2247,7 +2548,7 @@ index 144e907b..bcaab116 100644
  }
  
 diff --git a/src/target/target_internal.h b/src/target/target_internal.h
-index ff932b95..65fc9a3d 100644
+index ff932b9..65fc9a3 100644
 --- a/src/target/target_internal.h
 +++ b/src/target/target_internal.h
 @@ -156,7 +156,7 @@ struct target {
@@ -2260,7 +2561,7 @@ index ff932b95..65fc9a3d 100644
  	target_addr_t heapinfo[4];
  	target_command_s *commands;
 diff --git a/src/target/target_probe.c b/src/target/target_probe.c
-index 1b0167a5..3ab3e7b4 100644
+index 1b0167a..3ab3e7b 100644
 --- a/src/target/target_probe.c
 +++ b/src/target/target_probe.c
 @@ -84,6 +84,8 @@ CORTEXM_PROBE_WEAK_NOP(efm32_aap_probe)
@@ -2273,15 +2574,16 @@ index 1b0167a5..3ab3e7b4 100644
  TARGET_PROBE_WEAK_NOP(gd32f1_probe)
  TARGET_PROBE_WEAK_NOP(gd32vf1_probe)
 diff --git a/src/target/target_probe.h b/src/target/target_probe.h
-index 3e4efe59..693184de 100644
+index 3e4efe5..fbdd709 100644
 --- a/src/target/target_probe.h
 +++ b/src/target/target_probe.h
-@@ -51,6 +51,8 @@ bool efm32_aap_probe(adiv5_access_port_s *ap);
+@@ -51,6 +51,9 @@ bool efm32_aap_probe(adiv5_access_port_s *ap);
  bool rp_rescue_probe(adiv5_access_port_s *ap);
  bool lpc55_dmap_probe(adiv5_access_port_s *ap);
  
 +bool ch32v003x_probe(target_s *target);
 +bool ch32vx_probe(target_s *target);
++bool ch32v3xx_probe(target_s *target);
  bool ch32f1_probe(target_s *target);   // will catch all the clones
  bool at32f40x_probe(target_s *target); // STM32 clones from Artery
  bool at32f43x_probe(target_s *target);
