@@ -142,48 +142,39 @@ bool ch32v3xx_probe(target_s *target)
      */
 
     const uint32_t chipid = target_mem_read32(target, CH32VX_CHIPID);
-    switch (chipid & 0xffffff0f)
-    {
-    case 0x30330504U: /* CH32V303CBT6 */
-    case 0x30320504U: /* CH32V303RBT6 */
-    case 0x30310504U: /* CH32V303RCT6 */
-    case 0x30300504U: /* CH32V303VCT6 */
-    case 0x30520508U: /* CH32V305FBP6 */
-    case 0x30500508U: /* CH32V305RBT6 */
-    case 0x30730508U: /* CH32V307WCU6 */
-    case 0x30720508U: /* CH32V307FBP6 */
-    case 0x30710508U: /* CH32V307RCT6 */
-    case 0x30700508U: /* CH32V307VCT6 */
-        break;
-    default:
-        return false;
-        break;
-    }
-
-    DEBUG_WARN("CH32V CHIPID 0x%" PRIx32 " \n", chipid);
 
     const uint16_t family = (chipid & CH32VX_CHIPID_FAMILY_MASK) >> CH32VX_CHIPID_FAMILY_OFFSET;
+    bool detect_size = false;
     switch (family)
     {
+    case 0x203U:
+        detect_size = false;
+        target->driver = "CH32V203";
+        break;
     case 0x303U:
+        detect_size = true;
         target->driver = "CH32V303";
         break;
     case 0x305U:
+        detect_size = true;
         target->driver = "CH32V305";
         break;
     case 0x307U:
+        detect_size = true;
         target->driver = "CH32V307";
         break;
     default:
         return false;
         break;
     }
-    DEBUG_WARN("CH32V family 0x%" PRIx32 " \n", family);
+    DEBUG_WARN("CH32V family %s\n", target->driver);
 
     target->part_id = chipid;
 
-    uint32_t obr = READ_FLASH_REG(target, OBR);
-    obr = (obr >> 8) & 3; // SRAM_CODE_MODE
+    if (detect_size)
+    {
+        uint32_t obr = READ_FLASH_REG(target, OBR); // offset 01xc 32.4.6
+        obr = (obr >> 8) & 3;                       // SRAM_CODE_MODE
 
 #define MEMORY_CONFIG(x, flash, ram)                                                                                   \
     case x: {                                                                                                          \
@@ -191,16 +182,33 @@ bool ch32v3xx_probe(target_s *target)
         ram_size = ram;                                                                                                \
     };                                                                                                                 \
     break;
-    switch (obr) // See 32.4.6
+        switch (obr) // See 32.4.6
+        {
+            MEMORY_CONFIG(0, 192, 128)
+            MEMORY_CONFIG(1, 224, 96)
+            MEMORY_CONFIG(2, 256, 64)
+            MEMORY_CONFIG(3, 288, 32)
+        default:
+            flash_size = 128; // ?
+            ram_size = 32;
+            break;
+        }
+    }
+    else // only deal with 203 for the moment
     {
-        MEMORY_CONFIG(0, 192, 128)
-        MEMORY_CONFIG(1, 224, 96)
-        MEMORY_CONFIG(2, 256, 64)
-        MEMORY_CONFIG(3, 288, 32)
-    default:
-        flash_size = 128; // ?
-        ram_size = 32;
+        switch (chipid)
+        {
+#define CH32_HARDCODED(x, y, z)                                                                                        \
+    case x:                                                                                                            \
+        flash_size = y;                                                                                                \
+        ram_size = z;                                                                                                  \
         break;
+            CH32_HARDCODED(0x20310500, 64, 20)
+        default:
+            flash_size = 64; // ?
+            ram_size = 20;
+            break;
+        }
     }
     DEBUG_WARN("CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
     target_add_ram(target, RAM_ADDRESS, ram_size * 1024U);
