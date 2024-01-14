@@ -13,9 +13,8 @@ OPTION(USE_CH32V3x       "Target USE_CH32V3x chip with 256 flash" OFF)
 
 #
 SET(BMP_VERSION_BRANCH 1.10)
-
-
 SET(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
+SET(LNBMP_TOP_FOLDER ${CMAKE_SOURCE_DIR}/blackmagic)
 
 #-------------
 # Options
