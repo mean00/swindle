@@ -227,6 +227,13 @@
       ],
       "zones_allow_external_fillets": false
     },
+    "ipc2581": {
+      "dist": "",
+      "distpn": "",
+      "internal_id": "",
+      "mfg": "",
+      "mpn": ""
+    },
     "layer_presets": [],
     "viewports": []
   },
@@ -600,7 +607,7 @@
   "sheets": [
     [
       "fbe443d6-6d74-4abc-9dee-16e0160553bc",
-      ""
+      "Root"
     ]
   ],
   "text_variables": {}
