@@ -343,6 +343,8 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
         // every 2k bytes or so
         {
             block = 0;
+            encoder::raw_send("+");
+            encoder::flush();
             //            encoder::raw_send_u8(&[0]);
             //            encoder::flush();
         }
@@ -352,6 +354,7 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
             encoder::error(1);
             return true;
         }
+        
         digest.update(&buffer[0..(rd as usize)]);
         adr += rd;
     }
