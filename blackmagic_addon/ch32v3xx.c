@@ -91,14 +91,19 @@ const command_s ch32v3x_cmd_list[] = {
     //{"chtest", ch32v3x_test, "ch32v3x test"},
     {"", NULL, ""}};
 
-static bool ch32v3x_flash_erase(target_flash_s *flash, target_addr_t addr, size_t len);
-static bool ch32v3x_flash_write(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
-static bool ch32v3x_flash_write_flash_prepare(target_flash_s *flash);
-static bool ch32v3x_flash_write_flash_done(target_flash_s *flash);
+static bool ch32v3x_flash_erase_direct(target_flash_s *flash, target_addr_t addr, size_t len);
+static bool ch32v3x_flash_write_direct(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
+static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t addr, size_t len);
+static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
+static bool ch32v3x_flash_prepare_direct(target_flash_s *flash);
+static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash);
+static bool ch32v3x_flash_done_direct(target_flash_s *flash);
+static bool ch32v3x_flash_done_flashstub(target_flash_s *flash);
 
 /*
  */
-static void ch32v3x_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize, size_t writesize)
+static void ch32v3x_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize, size_t writesize,
+                              bool flashstub)
 {
     target_flash_s *flash = calloc(1, sizeof(*flash));
     if (!flash)
@@ -110,11 +115,21 @@ static void ch32v3x_add_flash(target_s *target, uint32_t addr, size_t length, si
     flash->start = addr;
     flash->length = length;
     flash->blocksize = erasesize;
-    flash->erase = ch32v3x_flash_erase;
-    flash->write = ch32v3x_flash_write;
     flash->writesize = writesize;
-    flash->prepare = ch32v3x_flash_write_flash_prepare;
-    flash->done = ch32v3x_flash_write_flash_done;
+    if (flashstub)
+    {
+        flash->erase = ch32v3x_flash_erase_flashstub;
+        flash->write = ch32v3x_flash_write_flashstub;
+        flash->prepare = ch32v3x_flash_prepare_flashstub;
+        flash->done = ch32v3x_flash_done_flashstub;
+    }
+    else
+    {
+        flash->erase = ch32v3x_flash_erase_direct;
+        flash->write = ch32v3x_flash_write_direct;
+        flash->prepare = ch32v3x_flash_prepare_direct;
+        flash->done = ch32v3x_flash_done_direct;
+    }
     flash->erased = 0xff;
     target_add_flash(target, flash);
 }
@@ -128,6 +143,7 @@ bool ch32v3xx_probe(target_s *target)
     int ram_size = 0;
     size_t erase_size = 256;
     size_t write_size = 256;
+    bool can_use_flashstub = false;
     /* CHIPID table
      *	CH32V303CBT6: 0x303305x4
      *	CH32V303RBT6: 0x303205x4
@@ -149,18 +165,22 @@ bool ch32v3xx_probe(target_s *target)
     {
     case 0x203U:
         detect_size = false;
+        can_use_flashstub = false;
         target->driver = "CH32V203";
         break;
     case 0x303U:
         detect_size = true;
+        can_use_flashstub = true;
         target->driver = "CH32V303";
         break;
     case 0x305U:
         detect_size = true;
+        can_use_flashstub = true;
         target->driver = "CH32V305";
         break;
     case 0x307U:
         detect_size = true;
+        can_use_flashstub = true;
         target->driver = "CH32V307";
         break;
     default:
@@ -212,7 +232,7 @@ bool ch32v3xx_probe(target_s *target)
     }
     DEBUG_WARN("CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
     target_add_ram(target, RAM_ADDRESS, ram_size * 1024U);
-    ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size);
+    ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size, can_use_flashstub);
     target_add_commands(target, ch32v3x_cmd_list, target->driver);
 
     return true;
@@ -332,7 +352,7 @@ bool exec_code(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2,
     target_halt_reason_e reason = TARGET_HALT_RUNNING;
     t->halt_resume(t, false); // go!
     platform_timeout_s timeout;
-    platform_timeout_set(&timeout, 5000);
+    platform_timeout_set(&timeout, 10000);
     while (reason == TARGET_HALT_RUNNING)
     {
         if (platform_timeout_is_expired(&timeout))
@@ -365,6 +385,7 @@ the_end:
 
 bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t addr, size_t len)
 {
+    addr |= FLASH_OFFSET;
     while (len)
     {
         uint32_t chunk = len;
@@ -385,7 +406,7 @@ bool ch32v3x_flash_erase_direct(target_flash_s *flash, target_addr_t addr, size_
     //(void)flash;
     (void)addr;
     (void)len;
-
+    addr |= FLASH_OFFSET;
     uint32_t cur_addr = addr;
     uint32_t end_addr = cur_addr + len;
     while (cur_addr < end_addr)
@@ -418,6 +439,7 @@ bool ch32v3x_flash_erase_direct(target_flash_s *flash, target_addr_t addr, size_
  */
 bool ch32v3x_flash_write_direct(target_flash_s *flash, target_addr_t dest, const void *srcx, size_t len)
 {
+    dest |= FLASH_OFFSET;
     uint32_t cur_addr = dest;
     const uint8_t *src = (const uint8_t *)srcx;
 
@@ -460,11 +482,161 @@ bool ch32v3x_flash_write_direct(target_flash_s *flash, target_addr_t dest, const
 
 uint32_t oldmie, oldpc, oldsp, oldmie;
 
-/*
+#define LN_CLOCK_IRC8 0
+#define LN_CLOCK_XTAL 16
+#define LN_CLOCK_PLL 24
+
+#define LN_RCU_ADR (0x40021000)
+#define CH32_CLK_CTL (LN_RCU_ADR + 0)
+#define CH32_CLK_CFG0 (LN_RCU_ADR + 4)
+
+#define CH32_FLASH_CTRL (0x40022010)
+
+/**
+ * @brief
+ *
+ * @param flash
+ * @param mask
  */
-static bool ch32v3x_flash_write_flash_prepare(target_flash_s *flash)
+static void ch32_waitControlBit(target_flash_s *flash, int mask)
+{
+    uint32_t timeout = 200000; // just to not get stuck forever
+    while (timeout--)
+    {
+        volatile uint32_t ctl = target_mem_read32(flash->t, CH32_CLK_CTL);
+        if (ctl & mask)
+            return;
+    }
+}
+#if 0
+static void ch32_waitCfg0Bit(int mask)
+{
+
+    while (!(arcu->CFG0 & mask))
+    {
+        __asm__("nop");
+    }
+}
+#endif
+
+/**
+ * @brief
+ *
+ * @param flash
+ * @param clock
+ * @param enabled
+ */
+static void ch32v3x_enableDisableClock(target_flash_s *flash, int clock, bool enabled)
+{
+    int setBit = 1 << clock;
+    int statusBit = 1 << (clock + 1);
+    volatile uint32_t CTL = target_mem_read32(flash->t, CH32_CLK_CTL);
+    if (enabled)
+    {
+        CTL |= setBit;
+    }
+    else
+    {
+        CTL &= ~setBit;
+    }
+    target_mem_write32(flash->t, CH32_CLK_CTL, CTL);
+    // wait for it to be ready
+    if (enabled)
+    {
+        ch32_waitControlBit(flash, statusBit);
+    }
+}
+/**
+ * @brief
+ *
+ * @param flash
+ * @param source
+ */
+void ch32v3x_setSysClock(target_flash_s *flash, int source)
+{
+    volatile uint32_t pll = target_mem_read32(flash->t, CH32_CLK_CFG0);
+    pll &= ~(0x3); // clear source
+    pll |= source; // 7 = pll x4
+    target_mem_write32(flash->t, CH32_CLK_CFG0, pll);
+}
+/**
+ * @brief
+ *
+ */
+static void ch32_v3x_sysclock_72Mhz(target_flash_s *flash)
+{
+    // 1- Enable internal 8Mhz clock
+    ch32v3x_enableDisableClock(flash, LN_CLOCK_IRC8, true);
+    // disable Xtal
+    ch32v3x_enableDisableClock(flash, LN_CLOCK_XTAL, false);
+
+    // 2- Switch sysclock to internal Clock (IRC)
+    ch32v3x_setSysClock(flash, 0);
+
+    // 3- Set multiplier to 9 (8*9=72 = max flash clock)
+    // stop pll
+    ch32v3x_enableDisableClock(flash, LN_CLOCK_PLL, 0);
+    uint32_t pll = target_mem_read32(flash->t, CH32_CLK_CFG0);
+    pll &= ~(0xf << 18); // clear multiplier
+    pll |= 0x7 << 18;    // 7 = pll x9
+    pll &= ~(1 << 16);   // pll source = HSI
+
+    pll &= ~((0xf) << 4); // AHB PRESCALER CLEAR
+    pll |= 0 << 4;        // AHB prescaler is CK_SYS
+    pll &= ~(3 << 11);    //  APB2 Prescaler clear
+    pll |= 0 << 11;       // APB2 is AHB
+
+    target_mem_write32(flash->t, CH32_CLK_CFG0, pll);
+
+    pll = target_mem_read32(flash->t, CH32_CLK_CFG0);
+    // 4- Start PLL
+    ch32v3x_enableDisableClock(flash, LN_CLOCK_PLL, true);
+    // 5- Switch sysclock to PLL
+    ch32v3x_setSysClock(flash, 2);
+    // we are now running at 72Mhz
+
+    uint32_t cfg = target_mem_read32(flash->t, CH32_CLK_CFG0);
+    uint32_t ctl = target_mem_read32(flash->t, CH32_CLK_CTL);
+
+    uint32_t res = cfg ^ ctl ^ pll;
+}
+void setupClock(target_flash_s *flash)
+{
+    ch32_v3x_sysclock_72Mhz(flash);
+
+    // set flash clk to sysclock
+    uint32_t conf = target_mem_read32(flash->t, CH32_FLASH_CTRL);
+
+    conf &= ~(3 << 24); // clear ENHANCE and SCK
+    conf |= (2 << 24);  // SCK=1, flash clk = sysclk
+
+    target_mem_write32(flash->t, CH32_FLASH_CTRL, conf);
+    conf = target_mem_read32(flash->t, CH32_FLASH_CTRL);
+}
+/**
+ * @brief
+ *
+ * @param flash
+ * @return true
+ * @return false
+ */
+static bool ch32v3x_flash_prepare_direct(target_flash_s *flash)
+{
+    setupClock(flash);
+    ch32v3x_fast_unlock(flash->t);
+    return true;
+}
+/**
+ * @brief
+ *
+ * @param flash
+ * @return true
+ * @return false
+ */
+static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
 {
     uint32_t zero = 0;
+    setupClock(flash);
     riscv_csr_read(flash->t->priv, 0x304, &oldmie);                     //  save old mie
     riscv_csr_write(flash->t->priv, 0x304, &zero);                      // disable all interrupts set MIE to zero
     target_breakwatch_set(flash->t, TARGET_BREAK_HARD, RAM_ADDRESS, 4); // at the end of write the stub will jump here
@@ -477,8 +649,13 @@ static bool ch32v3x_flash_write_flash_prepare(target_flash_s *flash)
 }
 
 /**
+ * @brief
+ *
+ * @param flash
+ * @return true
+ * @return false
  */
-static bool ch32v3x_flash_write_flash_done(target_flash_s *flash)
+static bool ch32v3x_flash_done_flashstub(target_flash_s *flash)
 {
     flash->t->halt_request(flash->t);
     target_breakwatch_clear(flash->t, TARGET_BREAK_HARD, RAM_ADDRESS, 4);
@@ -487,11 +664,23 @@ static bool ch32v3x_flash_write_flash_done(target_flash_s *flash)
     riscv_csr_write(flash->t->priv, 0x304, &oldmie);
     return true;
 }
+/**
+ * @brief
+ *
+ * @param flash
+ * @return true
+ * @return false
+ */
+static bool ch32v3x_flash_done_direct(target_flash_s *flash)
+{
+    return true;
+}
 
 /**
  */
 static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t dest, const void *srcx, size_t len)
 {
+    dest |= FLASH_OFFSET;
     uint32_t addr = dest;
     while (len)
     {
@@ -510,19 +699,11 @@ static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t d
 
 /*
 #define RAM_ADDRESS 0x20000000
+    direct  at 36 Mhz 1KB/S 1mn40
+    fs      at 36 Mhz 3KB/S 54 sec
+
+    direct  at 72 Mhz 1kb 1mn40
+    fs      at 72 Mhz 3KB 54 sec no gain
+
+
 */
-static bool ch32v3x_flash_write(target_flash_s *flash, target_addr_t dest, const void *srcx, size_t len)
-{
-    dest |= FLASH_OFFSET;
-    return ch32v3x_flash_write_flashstub(flash, dest, srcx, len);
-}
-
-//
-
-/**
- */
-static bool ch32v3x_flash_erase(target_flash_s *flash, target_addr_t addr, size_t len)
-{
-    addr |= FLASH_OFFSET;
-    return ch32v3x_flash_erase_flashstub(flash, addr, len);
-}
