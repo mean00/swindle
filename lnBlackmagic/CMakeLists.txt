@@ -146,10 +146,6 @@ IF (LN_BMP_HOSTED)
             ${HOSTED}/riscv_dtm_wchlink.c
             ${HOSTED}/wchlink_rvswd.c
             ${HOSTED}/wchlink.c
-            ${T}/riscv_debug.c  
-            ${T}/riscv32.c  
-            ${T}/riscv64.c  
-
 
             #${HOSTED}/remote/_swdptap.c
             #${PC}/cl_utils.c   
@@ -216,6 +212,9 @@ SET(BM_TARGET   ${T}/adiv5.c
                 ${T}/adiv5_swd.c   
                 ${T}/cortex.c
                 ${T}/cortexm.c
+                ${T}/riscv_debug.c  
+                ${T}/riscv32.c  
+                ${T}/riscv64.c      
                 #${T}/cortexa.c    
                 ${T}/target_flash.c 
                 #${T}/target_probe.c 

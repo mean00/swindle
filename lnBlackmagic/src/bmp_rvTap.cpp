@@ -37,6 +37,12 @@ IO is sampled when clock goes ___---
 #include "lnArduino.h"
 #include "lnBMP_pinout.h"
 
+extern "C"
+{
+#include "jep106.h"
+#include "riscv_debug.h"
+}
+
 extern "C" void bmp_set_wait_state_c(uint32_t ws);
 extern void bmp_io_begin_session();
 extern void bmp_gpio_init();
@@ -287,4 +293,76 @@ bool rv_dm_probe(uint32_t *chip_id)
     RD(0x05, 0x1ffff704UL);
     return true;
 }
+/**
+ * @brief
+ *
+ * @param dmi
+ * @param address
+ * @param value
+ * @return true
+ * @return false
+ */
+static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
+{
+    uint8_t status = 0;
+    const bool result = rv_dm_read(address, value);
+
+    /* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
+    dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
+    return dmi->fault == RV_DMI_SUCCESS;
+}
+/**
+ * @brief
+ *
+ * @param dmi
+ * @param address
+ * @param value
+ * @return true
+ * @return false
+ */
+static bool ch32_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+{
+    uint8_t status = 0;
+    const bool result = rv_dm_write(address, value);
+
+    /* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
+    if (!result)
+        dmi->fault = RV_DMI_FAILURE;
+    else
+        dmi->fault = RV_DMI_SUCCESS;
+    return dmi->fault == RV_DMI_SUCCESS;
+}
+
+/**
+ * @brief
+ *
+ */
+extern "C" void target_list_free(void);
+extern "C" bool rvswd_scan()
+{
+    uint32_t id = 0;
+    target_list_free();
+    if (!rv_dm_probe(&id))
+    {
+        return false;
+    }
+    Logger("WCH : found 0x%x device\n", id);
+    riscv_dmi_s *dmi = new riscv_dmi_s;
+    memset(dmi, 0, sizeof(*dmi));
+    if (!dmi)
+    { /* calloc failed: heap exhaustion */
+        Logger("calloc: failed in %s\n", __func__);
+        return false;
+    }
+    dmi->designer_code = NOT_JEP106_MANUFACTURER_WCH;
+    dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
+    dmi->address_width = 8U;
+    dmi->read = ch32_riscv_dmi_read;
+    dmi->write = ch32_riscv_dmi_write;
+
+    riscv_dmi_init(dmi);
+
+    return true;
+}
+
 // EOF
