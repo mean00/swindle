@@ -52,9 +52,9 @@ static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
 static void swdioSetAsOutput(bool output);
 
-static SwdPin pSWDIO(TSWDIO_PIN);
-static SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
-static SwdReset pReset(TRESET_PIN);
+SwdPin pSWDIO(TSWDIO_PIN);
+SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
+SwdReset pReset(TRESET_PIN);
 
 /**
  * @brief
