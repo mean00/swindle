@@ -36,8 +36,10 @@ IO is sampled when clock goes ___---
  */
 #include "lnArduino.h"
 #include "lnBMP_pinout.h"
-extern void gmp_gpio_init_adc();
 
+extern "C" void bmp_set_wait_state_c(uint32_t ws);
+extern void bmp_io_begin_session();
+extern void bmp_gpio_init();
 extern uint32_t swd_delay_cnt;
 
 #include "lnBMP_swdio.h"
@@ -245,6 +247,44 @@ bool rv_dm_reset()
     RV_WAIT();
     pRVDIO.set(1); // going high => stop bit
     RV_WAIT();
+    return true;
+}
+
+#define WR(a, b) rv_dm_write(a, b)
+#define RD(a, b) rv_dm_read(a, &out)
+
+/**
+ * @brief
+ *
+ * @return uint32_t
+ */
+bool rv_dm_probe(uint32_t *chip_id)
+{
+    bmp_set_wait_state_c(100);
+    bmp_gpio_init();
+    bmp_io_begin_session();
+
+    rv_dm_reset();
+    *chip_id = 0;
+
+    uint32_t out = 0;
+    // init sequence
+    WR(0x10, 0x80000001UL);
+    lnDelayMs(10);
+    WR(0x10, 0x80000001UL);
+    lnDelayMs(10);
+    RD(0x11, 0x00030382UL);
+    lnDelayMs(10);
+    RD(0x7f, 0x30700518UL);
+    *chip_id = out; // 0x203xxxx 0x303xxxx 0x305...
+    lnDelayMs(10);
+    WR(0x05, 0x1ffff704UL);
+    lnDelayMs(10);
+    WR(0x17, 0x02200000UL);
+    lnDelayMs(10);
+    RD(0x04, 0x30700518UL);
+    lnDelayMs(10);
+    RD(0x05, 0x1ffff704UL);
     return true;
 }
 // EOF
