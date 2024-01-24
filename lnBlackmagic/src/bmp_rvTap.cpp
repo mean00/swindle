@@ -242,7 +242,7 @@ bool rv_dm_read(uint32_t adr, uint32_t *output)
  */
 bool rv_dm_reset()
 {
-    // toggle the clock 50 times
+    // toggle the clock 100 times
     pRVDIO.output();
     pRVDIO.off(); //
     for (int i = 0; i < 100; i++)
@@ -304,12 +304,14 @@ bool rv_dm_probe(uint32_t *chip_id)
  */
 static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
-    uint8_t status = 0;
     const bool result = rv_dm_read(address, value);
-
-    /* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
-    dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
-    return dmi->fault == RV_DMI_SUCCESS;
+    if (result)
+    {
+        dmi->fault = RV_DMI_SUCCESS;
+        return true;
+    }
+    dmi->fault = RV_DMI_FAILURE;
+    return false;
 }
 /**
  * @brief
@@ -322,15 +324,14 @@ static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, 
  */
 static bool ch32_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
 {
-    uint8_t status = 0;
     const bool result = rv_dm_write(address, value);
-
-    /* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
-    if (!result)
-        dmi->fault = RV_DMI_FAILURE;
-    else
+    if (result)
+    {
         dmi->fault = RV_DMI_SUCCESS;
-    return dmi->fault == RV_DMI_SUCCESS;
+        return true;
+    }
+    dmi->fault = RV_DMI_FAILURE;
+    return false;
 }
 
 /**
