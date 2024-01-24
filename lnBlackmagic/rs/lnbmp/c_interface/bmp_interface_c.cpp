@@ -3,7 +3,7 @@ extern "C"
 {
 
 #include "ctype.h"
-#include "gdb_hostio.h"
+//#include "gdb_hostio.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
 #include "general.h"
@@ -35,7 +35,7 @@ extern "C"
     target_controller_s gdb_controller = {
         .destroy_callback = gdb_target_destroy_callback,
         .printf = gdb_target_printf,
-
+/*
         .open = hostio_open,
         .close = hostio_close,
         .read = hostio_read,
@@ -48,6 +48,7 @@ extern "C"
         .gettimeofday = hostio_gettimeofday,
         .isatty = hostio_isatty,
         .system = hostio_system,
+        */
     };
 
     /*

@@ -7,6 +7,19 @@ extern "C"
 #include "gdb_packet.h"
 #include "general.h"
 #include "target.h"
+#include "semihosting.h"
+        
+int32_t semihosting_request(target_s *target, uint32_t syscall, uint32_t r1)
+{
+        xAssert(0);
+        return -1;
+}
+int semihosting_reply(target_controller_s *tc, char *packet, int len)
+{
+    xAssert(0);
+    return -1;
+}
+
 
     void gdb_if_putchar(char c, int flush)
     {
@@ -26,7 +39,7 @@ extern "C"
     {
         xAssert(0);
     }
-
+#if 0
     int hostio_reply(target_controller_s *tc, char *pbuf, int len)
     {
         xAssert(0);
@@ -94,5 +107,6 @@ extern "C"
     {
         xAssert(0);
     }
+#endif
 }
 // EOF

@@ -4,7 +4,7 @@ extern "C"
 
 #include "adiv5.h"
 #include "ctype.h"
-#include "gdb_hostio.h"
+//#include "gdb_hostio.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
 #include "general.h"
