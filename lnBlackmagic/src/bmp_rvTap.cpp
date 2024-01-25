@@ -99,6 +99,29 @@ static inline int parity8(uint8_t x)
     return (par_table[x >> 4] ^ par_table[x & 0xf]);
 }
 
+uint32_t rv_end_frame()
+{
+    uint32_t out = 0;
+    uint8_t bit;
+    READ_BIT(bit);
+    out = (out << 1) + bit;
+    READ_BIT(bit);
+    out = (out << 1) + bit;
+    READ_BIT(bit);
+    out = (out << 1) + bit;
+    READ_BIT(bit);
+    out = (out << 1) + bit;
+
+    pRVCLK.clockOff();
+
+    pRVDIO.output();
+    pRVDIO.set(0); // going high => stop bit
+    pRVCLK.clockOn();
+    pRVDIO.set(1); // going high => stop bit
+    RV_WAIT();
+    return out;
+}
+
 /**
  */
 bool rv_dm_write(uint32_t adr, uint32_t val)
@@ -145,19 +168,7 @@ bool rv_dm_write(uint32_t adr, uint32_t val)
     pRVCLK.off();
     pRVDIO.input();
 
-    uint8_t bit;
-    READ_BIT(bit);
-    READ_BIT(bit);
-    READ_BIT(bit);
-    READ_BIT(bit);
-
-    pRVCLK.clockOff();
-
-    pRVDIO.output();
-    pRVDIO.set(0); // going high => stop bit
-    pRVCLK.clockOn();
-    pRVDIO.set(1); // going high => stop bit
-    RV_WAIT();
+    rv_end_frame();
 
     return true;
 }
@@ -211,25 +222,22 @@ bool rv_dm_read(uint32_t adr, uint32_t *output)
     }
     *output = value;
 
+    // rv_end_frame();
+
     READ_BIT(bit); // read parity bit
     READ_BIT(bit); // read parity bit
     // status x4
     READ_BIT(bit); // read parity bit
     READ_BIT(bit); // read parity bit
     READ_BIT(bit); // read parity bit
-    // Last status we let clk low
-    pRVCLK.clockOff();
+    READ_BIT(bit); // read parity bit
 
-    bit = pRVDIO.read();
-
-    // clk is high, we can go low up = stop bit
+    // clk is high, we can have IO  low then up = stop bit
     pRVDIO.set(0);
     pRVDIO.output();
+    pRVDIO.off();
     RV_WAIT();
-
-    pRVCLK.clockOn();
-
-    pRVDIO.set(1);
+    pRVDIO.on();
     RV_WAIT();
     return true;
 }
@@ -247,11 +255,13 @@ bool rv_dm_reset()
     for (int i = 0; i < 100; i++)
     {
         PUT_BIT(1);
-        RV_WAIT();
     }
     RV_WAIT();
-    pRVDIO.set(1); // going high => stop bit
+    pRVDIO.set(0); // going low high with CLK = high => stop bit
     RV_WAIT();
+    pRVDIO.set(1);
+    RV_WAIT();
+    lnDelayMs(10);
     return true;
 }
 
