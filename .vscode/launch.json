@@ -12,6 +12,38 @@
             "args": [],
             "cwd": "${workspaceFolder}"
         },
+        {
+            "name": "picoDebugRvsw",
+            "cwd": "${workspaceFolder}",                          
+            "executable": "build/lnBMP_default_pinout_M4_96M_CLANG.elf",
+            "gdbPath" : "${config:armToolchainPath}/arm-none-eabi-gdb",        
+            "request": "launch",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "bmp",
+            "interface": "swd",
+            "device": "rp2040",
+            "BMPGDBSerialPort" : "/dev/ttyBmpGdb3",
+            "runToMain": true,
+            "preLaunchCommands":[
+            "b deadEnd",
+            "set mem inaccessible-by-default off",
+            "set confirm off",
+            ],
+            "preRestartCommands": [
+            "enable breakpoint",
+            "break main"
+            ]
+    
+        },
+        {
+            "name": "Hosted_gdb",
+            "type": "gdb",            
+            "request": "launch",            
+            "program": "${workspaceFolder}/hosted/build/lnBMP_hosted",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
            {
             "name": "riscv_BMP",
             "type": "gdb",
@@ -24,10 +56,8 @@
             "set confirm off",
             "set mem inaccessible-by-default off",
             "set  architecture riscv:rv32",
-            "set remotetimeout unlimited",
-            "set remote hardware-breakpoint-limit 4",
-            "set remote hardware-watchpoint-limit 0", 
-            "mon rvswdp_scan"
+            "set remotetimeout unlimited",           
+            "mon rvswdp_scan",
             "attach 1",
             "load ",
             "tb main ",
@@ -49,7 +79,7 @@
             "set remotetimeout unlimited",
             "set remote hardware-breakpoint-limit 4",
             "set remote hardware-watchpoint-limit 0", 
-            "mon rvswdp_scan"
+            "mon rvswdp_scan",
             "attach 1",
             //"mon halt",
             //"interrupt",            
