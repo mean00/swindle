@@ -68,17 +68,19 @@ extern SwdReset pReset;
 // data is sampled on transition clock low => clock high
 
 #define PUT_BIT(x)                                                                                                     \
-    pRVCLK.off();                                                                                                      \
+    pRVCLK.clockOff();                                                                                                 \
     pRVDIO.set(x);                                                                                                     \
-    pRVCLK.on();
+    pRVCLK.clockOn();
 
 #define READ_BIT(x)                                                                                                    \
-    pRVCLK.off();                                                                                                      \
-    pRVCLK.on();                                                                                                       \
+    pRVCLK.clockOff();                                                                                                 \
+    pRVCLK.clockOn();                                                                                                  \
     x = pRVDIO.read(); // read bit on rising edge
 
 #define RV_WAIT()                                                                                                      \
     {                                                                                                                  \
+        __asm__("nop");                                                                                                \
+        __asm__("nop");                                                                                                \
         __asm__("nop");                                                                                                \
         __asm__("nop");                                                                                                \
         __asm__("nop");                                                                                                \
@@ -149,12 +151,11 @@ bool rv_dm_write(uint32_t adr, uint32_t val)
     READ_BIT(bit);
     READ_BIT(bit);
 
-    pRVCLK.off();
-    RV_WAIT();
+    pRVCLK.clockOff();
+
     pRVDIO.output();
     pRVDIO.set(0); // going high => stop bit
-    pRVCLK.on();
-    RV_WAIT();
+    pRVCLK.clockOn();
     pRVDIO.set(1); // going high => stop bit
     RV_WAIT();
 
@@ -217,8 +218,7 @@ bool rv_dm_read(uint32_t adr, uint32_t *output)
     READ_BIT(bit); // read parity bit
     READ_BIT(bit); // read parity bit
     // Last status we let clk low
-    pRVCLK.off();
-    RV_WAIT();
+    pRVCLK.clockOff();
 
     bit = pRVDIO.read();
 
@@ -227,8 +227,7 @@ bool rv_dm_read(uint32_t adr, uint32_t *output)
     pRVDIO.output();
     RV_WAIT();
 
-    pRVCLK.on();
-    RV_WAIT();
+    pRVCLK.clockOn();
 
     pRVDIO.set(1);
     RV_WAIT();
@@ -261,12 +260,15 @@ bool rv_dm_reset()
 
 /**
  * @brief
- *
+ * 100 ws => 6 sec 0x5500 3kB
+ * 20 ws => same
+ * 10 ws => 8 sec
+ * no fs => 12 sec
  * @return uint32_t
  */
 bool rv_dm_probe(uint32_t *chip_id)
 {
-    bmp_set_wait_state_c(100);
+    bmp_set_wait_state_c(10);
     bmp_gpio_init();
     bmp_io_begin_session();
 
