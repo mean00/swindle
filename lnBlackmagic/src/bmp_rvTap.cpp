@@ -99,6 +99,11 @@ static inline int parity8(uint8_t x)
     return (par_table[x >> 4] ^ par_table[x & 0xf]);
 }
 
+/**
+ * @brief read 4 status bit then send a stop bit
+ *
+ * @return uint32_t
+ */
 uint32_t rv_end_frame()
 {
     uint32_t out = 0;
@@ -227,18 +232,8 @@ bool rv_dm_read(uint32_t adr, uint32_t *output)
     READ_BIT(bit); // read parity bit
     READ_BIT(bit); // read parity bit
     // status x4
-    READ_BIT(bit); // read parity bit
-    READ_BIT(bit); // read parity bit
-    READ_BIT(bit); // read parity bit
-    READ_BIT(bit); // read parity bit
-
-    // clk is high, we can have IO  low then up = stop bit
-    pRVDIO.set(0);
-    pRVDIO.output();
-    pRVDIO.off();
-    RV_WAIT();
-    pRVDIO.on();
-    RV_WAIT();
+    pRVCLK.off();
+    rv_end_frame();
     return true;
 }
 /**
