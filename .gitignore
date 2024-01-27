@@ -1,3 +1,4 @@
+build_default.cmake
 *.sw*
 .ccls*
 nbproject/*
