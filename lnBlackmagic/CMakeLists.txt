@@ -264,8 +264,8 @@ ELSE (LN_BMP_HOSTED)
         #
         # rvTap does not like -Oz
         # Something to fix here
-        MESSAGE(STATUS "Restricting flags for rvTap to -O2")
-        set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-O2")
+        MESSAGE(STATUS "Restricting flags for rvTap to -Os")
+        set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-Ofast")
 ENDIF (LN_BMP_HOSTED) 
 #
 MESSAGE(STATUS "Enabled boards  : ${enabled_boards}")

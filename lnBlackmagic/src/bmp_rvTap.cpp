@@ -286,7 +286,7 @@ bool rv_dm_reset()
  */
 bool rv_dm_probe(uint32_t *chip_id)
 {
-    bmp_set_wait_state_c(20);
+    bmp_set_wait_state_c(15);
     bmp_gpio_init();
     bmp_io_begin_session();
 
