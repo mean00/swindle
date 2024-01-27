@@ -236,6 +236,9 @@ IF (LN_BMP_HOSTED)
 target_include_directories( lnBlackmagic PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
 ENDIF()
 
+# O0, O1, O2 => works, -Oz does not work
+
+
 target_link_libraries( lnBlackmagic lnArduino)
 IF (LN_BMP_HOSTED) 
 ELSE()
@@ -257,7 +260,12 @@ IF (LN_BMP_HOSTED)
     corrosion_import_crate(MANIFEST_PATH rs/lnbmp/Cargo.toml    NO_DEFAULT_FEATURES      CFLAGS ${LN_LTO_RUST_FLAGS} )
     corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 ELSE (LN_BMP_HOSTED) 
-add_subdirectory( rs )
+        add_subdirectory( rs )
+        #
+        # rvTap does not like -Oz
+        # Something to fix here
+        MESSAGE(STATUS "Restricting flags for rvTap to -O2")
+        set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-O2")
 ENDIF (LN_BMP_HOSTED) 
 #
 MESSAGE(STATUS "Enabled boards  : ${enabled_boards}")

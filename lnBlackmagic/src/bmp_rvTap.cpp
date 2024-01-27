@@ -59,7 +59,7 @@ extern uint32_t swd_delay_cnt;
 #define pRVCLK pSWCLK
 #define Rvswd_delay_cnt swd_delay_cnt
 
-static bool rv_dm_reset();
+bool rv_dm_reset();
 
 extern SwdPin pSWDIO;
 extern SwdWaitPin pSWCLK;
@@ -70,6 +70,8 @@ extern SwdReset pReset;
 #define PUT_BIT(x)                                                                                                     \
     pRVCLK.clockOff();                                                                                                 \
     pRVDIO.set(x);                                                                                                     \
+    __asm__("nop");                                                                                                    \
+    __asm__("nop");                                                                                                    \
     pRVCLK.clockOn();
 
 #define READ_BIT(x)                                                                                                    \
@@ -98,16 +100,69 @@ static inline int parity8(uint8_t x)
 {
     return (par_table[x >> 4] ^ par_table[x & 0xf]);
 }
+/**
+ * @brief
+ *
+ * @param adr
+ * @param status
+ * @return true
+ * @return false
+ */
+bool rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
+{
+    // start bit
+    pRVDIO.output();
+    pRVDIO.off(); // io going low if CLK is high = start
+    RV_WAIT();
+    adr = (adr << 1) + wr;
+    int parity = parity8(adr);
+    for (int i = 0; i < 8; i++)
+    {
+        PUT_BIT(adr & 0x80);
+        adr <<= 1;
+    }
+    // send parity twice
+    PUT_BIT(parity);
+    PUT_BIT(parity);
 
+    // dont know if this is from host or target
+    PUT_BIT(0);
+    PUT_BIT(0);
+    PUT_BIT(0);
+    // PUT_BIT(0);
+
+    // last bit, switch to input if need be
+    pRVCLK.clockOff();
+
+    if (!wr)
+    {
+        pRVDIO.set(1);
+        pRVDIO.input();
+        pRVDIO.set(1);
+    }
+    else
+    {
+        pRVDIO.set(0);
+    }
+    pRVCLK.clockOn();
+
+    return true;
+}
 /**
  * @brief read 4 status bit then send a stop bit
  *
  * @return uint32_t
  */
-uint32_t rv_end_frame()
+bool rv_end_frame(uint32_t *status)
 {
     uint32_t out = 0;
     uint8_t bit;
+
+    // now get the reply - 4 bits
+    pRVCLK.clockOff();
+    RV_WAIT();
+    pRVDIO.input();
+
     READ_BIT(bit);
     out = (out << 1) + bit;
     READ_BIT(bit);
@@ -124,6 +179,12 @@ uint32_t rv_end_frame()
     pRVCLK.clockOn();
     pRVDIO.set(1); // going high => stop bit
     RV_WAIT();
+    *status = out;
+    if (out != 3 && out != 7)
+    {
+        Logger("Status error : 0x%x\n", out);
+        return false;
+    }
     return out;
 }
 
@@ -131,30 +192,8 @@ uint32_t rv_end_frame()
  */
 bool rv_dm_write(uint32_t adr, uint32_t val)
 {
-    // start bit
-    pRVDIO.output();
-
-    pRVDIO.off(); // io going low if CLK is high = start
-    RV_WAIT();
-    // pRVCLK.clockOff();
-
-    adr <<= 1;
-    adr |= 1; // write
-    int parity = parity8(adr);
-    for (int i = 0; i < 8; i++)
-    {
-        PUT_BIT(adr & 0x80);
-        adr <<= 1;
-    }
-    // send parity twice
-    PUT_BIT(parity);
-    PUT_BIT(parity);
-
-    // dont know if this is from host or target
-    PUT_BIT(0);
-    PUT_BIT(0);
-    PUT_BIT(0);
-    PUT_BIT(0);
+    uint32_t status = 0;
+    rv_start_frame(adr, &status, true);
 
     // Now data
     uint8_t *p = (uint8_t *)&val;
@@ -165,16 +204,16 @@ bool rv_dm_write(uint32_t adr, uint32_t val)
         PUT_BIT(val & 0x80000000UL);
         val <<= 1;
     }
-    // data partity (twice)
+    // data parity (twice)
     PUT_BIT(parity2);
     PUT_BIT(parity2);
 
-    // now get the reply - 4 bits
-    pRVCLK.off();
-    pRVDIO.input();
-
-    rv_end_frame();
-
+    uint32_t st = 0;
+    if (!rv_end_frame(&st))
+    {
+        Logger("Write failed Adr=0x%x Value=0x%x status=0x%x\n", adr, val, st);
+        return false;
+    }
     return true;
 }
 /**
@@ -187,36 +226,8 @@ bool rv_dm_write(uint32_t adr, uint32_t val)
  */
 bool rv_dm_read(uint32_t adr, uint32_t *output)
 {
-    // start bit
-    pRVDIO.output();
-
-    pRVDIO.off(); // io going low if CLK is high = start
-    RV_WAIT();
-    // pRVCLK.clockOff();
-
-    adr <<= 1;
-    adr |= 0; // read
-    int parity = parity8(adr);
-    for (int i = 0; i < 8; i++)
-    {
-        PUT_BIT(adr & 0x80);
-        adr <<= 1;
-    }
-    // send parity twice
-    PUT_BIT(parity);
-    PUT_BIT(parity);
-
-    // dont know if this is from host or target
-
-    PUT_BIT(0);
-    PUT_BIT(0);
-    PUT_BIT(0);
-    // PUT_BIT(0);
-    pRVCLK.off();
-    pRVDIO.set(0);
-    pRVDIO.input();
-    pRVCLK.on(); /**
-                  */
+    uint32_t status;
+    rv_start_frame(adr, &status, false);
 
     uint32_t value = 0, bit;
     for (int i = 0; i < 32; i++)
@@ -227,13 +238,15 @@ bool rv_dm_read(uint32_t adr, uint32_t *output)
     }
     *output = value;
 
-    // rv_end_frame();
+    READ_BIT(bit); // read parity bit
+    READ_BIT(bit); // read parity bit
 
-    READ_BIT(bit); // read parity bit
-    READ_BIT(bit); // read parity bit
-    // status x4
-    pRVCLK.off();
-    rv_end_frame();
+    uint32_t st = 0;
+    if (!rv_end_frame(&st))
+    {
+        Logger("Read failed Adr=0x%x Value=0x%x status=0x%x\n", adr, value, st);
+        return false;
+    }
     return true;
 }
 /**
@@ -273,7 +286,7 @@ bool rv_dm_reset()
  */
 bool rv_dm_probe(uint32_t *chip_id)
 {
-    bmp_set_wait_state_c(10);
+    bmp_set_wait_state_c(20);
     bmp_gpio_init();
     bmp_io_begin_session();
 
@@ -311,6 +324,23 @@ bool rv_dm_probe(uint32_t *chip_id)
  */
 static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
+    int retries = 10;
+    while (1)
+    {
+        if (!retries)
+        {
+            dmi->fault = RV_DMI_FAILURE;
+            return false;
+        }
+        const bool result = rv_dm_read(address, value);
+        if (result)
+        {
+            dmi->fault = RV_DMI_SUCCESS;
+            return true;
+        }
+        retries--;
+    }
+#if 0    
     const bool result = rv_dm_read(address, value);
     if (result)
     {
@@ -319,6 +349,7 @@ static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, 
     }
     dmi->fault = RV_DMI_FAILURE;
     return false;
+#endif
 }
 /**
  * @brief
