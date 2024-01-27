@@ -1,0 +1,18 @@
+diff --git a/src/include/stdio_newlib.h b/src/include/stdio_newlib.h
+index 99d9fac7..291bb8ce 100644
+--- a/src/include/stdio_newlib.h
++++ b/src/include/stdio_newlib.h
+@@ -38,9 +38,9 @@
+ #endif
+ #define vasprintf vasiprintf
+ 
+-#ifdef snprintf
+-#undef snprintf
+-#endif
+-#define snprintf sniprintf
++// MEANX #ifdef snprintf
++// MEANX #undef snprintf
++// MEANX #endif
++// MEANX #define snprintf sniprintf
+ 
+ #endif /* STDIO_NEWLIB_H */

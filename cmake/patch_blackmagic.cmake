@@ -8,4 +8,5 @@ APPLY_PATCH_IF_NEEDED3(patched10 ${BMP_PATCH_FOLDER}/blackmagic_make_swd_scan_pu
 APPLY_PATCH_IF_NEEDED3(patched11 ${BMP_PATCH_FOLDER}/blackmagic_use_embedded_printf.patch        ${LNBMP_TOP_FOLDER}   "use embedded printf ")
 APPLY_PATCH_IF_NEEDED3(patched12 ${BMP_PATCH_FOLDER}/blackmagic_disable_cortexr.patch            ${LNBMP_TOP_FOLDER}   "disable cortexr ")
 APPLY_PATCH_IF_NEEDED3(patched13 ${BMP_PATCH_FOLDER}/blackmagic_rswd_support.patch               ${LNBMP_TOP_FOLDER}   "add rvswd support (perigoso)")
+APPLY_PATCH_IF_NEEDED3(patched14 ${BMP_PATCH_FOLDER}/blackmagic_disable_snprintf_define.patch    ${LNBMP_TOP_FOLDER}   "disable snprintf define")
 
