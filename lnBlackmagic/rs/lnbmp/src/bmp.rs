@@ -109,7 +109,6 @@ pub fn rvswdp_scan() -> bool {
         ))
     }
 }
-
 pub fn bmp_detach() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_detach_c(0)) }
 }
@@ -418,8 +417,9 @@ pub fn bmp_adiv5_ap_write(device_index: u32, ap_selection: u32, address: u32, va
     }
 }
 /**
- *
- */
+ * 
+ */ 
+
 pub fn bmp_adiv5_full_dp_low_level(
     device_index: u32,
     ap_selection: u32,
@@ -513,6 +513,25 @@ pub fn get_heap_stats() -> (u32, u32) {
     }
  }
 */
+
+
+
+/**
+ *
+ */
+
+ pub fn bmp_rv_read(address : u8) -> ( i32, u32) {
+ 
+    (-1,0)    
+}
+/**
+ * 
+ */
+pub fn bmp_rv_write(address : u8, data : u32) ->  i32 {
+ 
+    -1
+}
+
 /*
  */
 // EOF

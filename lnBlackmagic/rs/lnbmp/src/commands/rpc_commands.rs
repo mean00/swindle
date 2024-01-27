@@ -6,6 +6,7 @@ pub const RPC_SWDP_PACKET: u8 = b'S';
 pub const RPC_GEN_PACKET: u8 = b'G';
 pub const RPC_HL_PACKET: u8 = b'H';
 pub const RPC_ADIV5_PACKET: u8 = b'A';
+pub const RPC_RV_PACKET: u8 = b'B';
 
 /* Generic protocol elements */
 pub const RPC_START: u8 = b'A';
@@ -68,3 +69,10 @@ pub const RPC_REMOTE_AP_WRITE: u8 = b'A';
 pub const RPC_REMOTE_ADIV5_RAW_ACCESS: u8 = b'R';
 pub const RPC_REMOTE_MEM_READ: u8 = b'm';
 pub const RPC_REMOTE_MEM_WRITE: u8 = b'M';
+
+/* RV packet */
+pub const RPC_RV_SCAN: u8 = b's';
+pub const RPC_RV_DM_READ: u8 = b'r';
+pub const RPC_RV_DM_WRITE: u8 = b'r';
+
+

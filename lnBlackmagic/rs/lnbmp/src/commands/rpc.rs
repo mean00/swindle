@@ -115,6 +115,17 @@ fn reply_adiv5_32(fault: i32, value: u32) {
         rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
     }
 }
+fn reply_rv_32(fault: i32, value: u32) {
+    if fault != 0 {
+        bmplog!("\rv error   : 0x{:x}\n", fault as u32);
+        rpc_reply32_le(
+            rpc_commands::RPC_RESP_ERR,
+            ((fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32),
+        );
+    } else {
+        rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
+    }
+}
 /**
  *
  */
@@ -484,6 +495,42 @@ fn rpc_jtag_packet(_input: &[u8]) -> bool {
     bmplog!("jtag packet\n");
     false
 }
+
+/**
+ * 
+ */
+fn rpc_rv_packet(input: &[u8]) -> bool {
+    match input[0] {
+        rpc_commands::RPC_RV_SCAN       =>  {             
+            if bmp::rvswdp_scan() == true 
+            {                     
+                rpc_reply(rpc_commands::RPC_RESP_OK, 0);
+                return true;
+            }
+            bmpwarning!("rvswd scan failed!\n");
+            rpc_reply(rpc_commands::RPC_RESP_ERR, 0);
+            return false;
+        },
+        rpc_commands::RPC_RV_DM_READ    =>  {             
+            let value: u32;
+            let fault: i32;
+            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..5]);
+            (fault, value) = bmp::bmp_rv_read(address as u8);
+            reply_rv_32(fault, value);
+            return true;
+        },
+        rpc_commands::RPC_RV_DM_WRITE   => {
+            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..5]);
+            let value: u32 = crate::parsing_util::u8s_string_to_u32(&input[6..]);            
+            let fault = bmp::bmp_rv_write(address as u8, value);
+            reply_rv_32(fault, 0);
+            return true;
+        },
+        _ => (),
+    }
+    bmplog!("**** unsupported rv packet*********\n");
+    false
+}
 /**
  *
  */
@@ -585,7 +632,8 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         bmplog!("Cmd : {}", input[1]);
         bmplog!("\n");
     }
-    match input[0] {
+    match input[0] {        
+        rpc_commands::RPC_RV_PACKET => rpc_rv_packet(&input[1..]),
         rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&input[1..]),
         rpc_commands::RPC_JTAG_PACKET => rpc_jtag_packet(&input[1..]),
         rpc_commands::RPC_SWDP_PACKET => rpc_swdp_packet(&input[1..]),
