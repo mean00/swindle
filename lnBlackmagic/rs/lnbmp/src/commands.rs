@@ -11,8 +11,6 @@ mod mon;
 pub mod q;
 pub mod q_thread;
 mod registers;
-pub mod rpc;
-pub mod rpc_commands;
 pub mod run;
 mod v;
 
@@ -33,12 +31,12 @@ crate::setup_log!(false);
 crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning, gdb_print};
 
-enum CallbackType {
+pub enum CallbackType {
     text(Callback_text),
     raw(Callback_raw),
 }
 
-struct CommandTree {
+pub struct CommandTree {
     command: &'static str,
     args: usize,
     require_connected: bool,
@@ -174,7 +172,7 @@ const main_command_tree: [CommandTree; 21] = [
     },
 ];
 
-fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
+pub fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
     let connected: bool = crate::bmp::bmp_attached();
     bmplog!(command);
     bmplog!("\n");

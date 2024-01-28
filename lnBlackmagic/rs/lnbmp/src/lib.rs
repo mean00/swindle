@@ -17,6 +17,7 @@ mod parsing_util;
 mod poppingbuffer;
 mod rn_bmp_cmd_c;
 mod util;
+mod rpc;
 
 use crate::decoder::gdb_stream;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
@@ -120,7 +121,7 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             if !s.is_empty() {
                                 //bmplog!("--> ACK\n");
                                 //rngdb_send_data( CHAR_ACK );
-                                commands::rpc::rpc(s);
+                                rpc::rpc::rpc(s);
                                 bmplog!("Rpc done\n");
                             }
                         }

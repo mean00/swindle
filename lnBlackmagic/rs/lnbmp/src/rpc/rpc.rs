@@ -1,5 +1,5 @@
 use crate::bmp;
-use crate::commands::rpc_commands;
+use crate::rpc::rpc_commands;
 use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::*;
 
@@ -517,14 +517,14 @@ fn rpc_rv_packet(input: &[u8]) -> bool {
         rpc_commands::RPC_RV_DM_READ    =>  {             
             let value: u32;
             let ok: bool;
-            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..5]);
+            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..9]);
             (ok, value) = bmp::bmp_rv_read(address as u8);
             reply_rv_32(ok, value);
             return true;
         },
         rpc_commands::RPC_RV_DM_WRITE   => {
-            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..5]);
-            let value: u32 = crate::parsing_util::u8s_string_to_u32(&input[6..]);            
+            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..9]);
+            let value: u32 = crate::parsing_util::u8s_string_to_u32(&input[10..]);            
             let ok = bmp::bmp_rv_write(address as u8, value);
             reply_rv_32(ok, 0);
             return true;
