@@ -93,4 +93,6 @@ bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value);
 bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value);
 bool bmp_rv_rvswd_probe_c(uint32_t *id);
 
-
+int platform_buffer_read(uint8_t *data, int maxsize);
+ int platform_buffer_write(const uint8_t *data, int size);
+ 

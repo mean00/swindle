@@ -19,6 +19,10 @@ mod rn_bmp_cmd_c;
 mod util;
 mod rpc;
 
+// This should only be included in host mode
+// FIXME TODO
+mod hosted_rpc;
+
 use crate::decoder::gdb_stream;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 extern crate alloc;

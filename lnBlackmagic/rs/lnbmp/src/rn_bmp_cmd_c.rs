@@ -360,3 +360,9 @@ extern "C" {
 extern "C" {
     pub fn bmp_rv_rvswd_probe_c(id: *mut core::ffi::c_uint) -> bool_;
 }
+extern "C" {
+    pub fn platform_buffer_read(data: *mut u8, maxsize: core::ffi::c_int) -> core::ffi::c_int;
+}
+extern "C" {
+    pub fn platform_buffer_write(data: *const u8, size: core::ffi::c_int) -> core::ffi::c_int;
+}
