@@ -29,7 +29,7 @@ extern void do_assert(const char *s);
 #define xAssert(x) if(!(x)) { do_assert(#x);}
 
 uint8_t reply[REMOTE_MAX_MSG_SIZE];
-
+bool remote_rv_dm_probe(uint32_t *id);
 /**
  * @brief uint32_t encoded as ascii
  * 
@@ -121,14 +121,15 @@ bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t va
  * @return true 
  * @return false 
  */
+#if 0
 bool remote_rv_dm_probe(uint32_t *id)
 {
     uint8_t buffer[] = {REMOTE_SOM, RPC_RV_PACKET, RPC_RV_SCAN,  REMOTE_EOM};
     platform_buffer_write(buffer, sizeof(buffer));
     int length = platform_buffer_read(reply, REMOTE_MAX_MSG_SIZE);
-    if (length < 1)
+    if (length !=9)
     {
-        DEBUG_ERROR("Invalid pin set reply\n");
+        DEBUG_ERROR("rv_dm_probe\n");
         return false;
     }
     bool r = reply[0] == REMOTE_RESP_OK;
@@ -141,6 +142,7 @@ bool remote_rv_dm_probe(uint32_t *id)
     *id  = from_ptr(reply+2);
     return true;
 }
+#endif
 /**
  * @brief 
  * 
