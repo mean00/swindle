@@ -119,11 +119,11 @@ fn reply_adiv5_32(fault: i32, value: u32) {
  * 
  */
 fn reply_rv_32(ok: bool, value: u32) {
-    if ok!=true {
+    if !ok {
         bmplog!("\rv error   \n");
         rpc_reply32_le(
             rpc_commands::RPC_RESP_ERR,
-            ((1 as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32),
+            ((1_u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32),
         );
     } else {
         rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
