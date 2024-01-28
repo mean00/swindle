@@ -122,7 +122,8 @@ IF (LN_BMP_HOSTED)
     SET(HOSTED ${BMP}/src/platforms/hosted CACHE INTERNAL "")
     SET(PC ${BMP}/src/platforms/hosted CACHE INTERNAL "")
 
-    include_directories( ${HOSTED})
+    include_directories( ${HOSTED} ${BMP_EXTRA}/hosted/)
+    
     SET(BM_HOSTED
             ${HOSTED}/bmp_remote.c 
             #${HOSTED}/bmp_serial.c      
@@ -142,10 +143,10 @@ IF (LN_BMP_HOSTED)
             ${BMP_EXTRA}/hosted/remote_rv_protocol.c
 
              #${HOSTED}/bmp_libusb.c
-            ${HOSTED}/wchlink_riscv_dtm.c
-            ${HOSTED}/riscv_dtm_wchlink.c
-            ${HOSTED}/wchlink_rvswd.c
-            ${HOSTED}/wchlink.c
+             ${BMP_EXTRA}/hosted/wchlink_riscv_dtm.c
+             ${BMP_EXTRA}/hosted/riscv_dtm_wchlink.c
+             ${BMP_EXTRA}/hosted/wchlink_rvswd.c
+             ${BMP_EXTRA}/hosted/wchlink.c
 
             #${HOSTED}/remote/_swdptap.c
             #${PC}/cl_utils.c   
