@@ -1,0 +1,2589 @@
+diff --git a/src/command.c b/src/command.c
+index f77149b..577cee5 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -46,6 +46,7 @@
+ #include "traceswo.h"
+ #endif
+ 
++/*static  */ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
+ static bool cmd_version(target_s *t, int argc, const char **argv);
+ static bool cmd_help(target_s *t, int argc, const char **argv);
+ 
+@@ -82,6 +83,7 @@ const command_s cmd_list[] = {
+ 	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
+ 	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
+ 	{"swdp_scan", cmd_swd_scan, "Deprecated: use swd_scan instead"},
++	{"rvswdp_scan", cmd_rvswd_scan, "Scan RVSWD (WCH Risc-V) for devices"},
+ 	{"auto_scan", cmd_auto_scan, "Automatically scan all chain types for devices"},
+ 	{"frequency", cmd_frequency, "set minimum high and low times: [FREQ]"},
+ 	{"targets", cmd_targets, "Display list of available targets"},
+@@ -689,3 +691,50 @@ static bool cmd_heapinfo(target_s *t, int argc, const char **argv)
+ 		gdb_outf("%s\n", "Set semihosting heapinfo: HEAP_BASE HEAP_LIMIT STACK_BASE STACK_LIMIT");
+ 	return true;
+ }
++
++
++ 
++ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv)
++ {
++ 	(void)target;
++ 	(void)argc;
++ 	(void)argv;
++ 
++ 	if (platform_target_voltage())
++ 		gdb_outf("Target voltage: %s\n", platform_target_voltage());
++ 
++ 	if (connect_assert_nrst)
++ 		platform_nrst_set_val(true); /* will be deasserted after attach */
++ 
++ 	bool scan_result = false;
++ 	volatile exception_s e;
++ 	TRY_CATCH (e, EXCEPTION_ALL) {
++ #if PC_HOSTED == 1
++ 		scan_result = bmda_rvswd_scan();
++ #else
++ 		scan_result = false;
++ #endif
++ 	}
++ 	switch (e.type) {
++ 	case EXCEPTION_TIMEOUT:
++ 		gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
++ 		break;
++ 	case EXCEPTION_ERROR:
++ 		gdb_outf("Exception: %s\n", e.msg);
++ 		break;
++ 	}
++ 
++ 	if (!scan_result) {
++ 		platform_target_clk_output_enable(false);
++ 		platform_nrst_set_val(false);
++ 		gdb_out("RVSWD scan failed!\n");
++ 		return false;
++ 	}
++ 
++ 	cmd_targets(NULL, 0, NULL);
++ 	platform_target_clk_output_enable(false);
++ 	morse(NULL, false);
++ 	return true;
++ }
++ 
++
+diff --git a/src/include/buffer_utils.h b/src/include/buffer_utils.h
+index 085d75a..0bad5e4 100644
+--- a/src/include/buffer_utils.h
++++ b/src/include/buffer_utils.h
+@@ -51,6 +51,14 @@ static inline void write_le4(uint8_t *const buffer, const size_t offset, const u
+ 	buffer[offset + 3U] = (value >> 24U) & 0xffU;
+ }
+ 
++static inline void write_be4(uint8_t *const buffer, const size_t offset, const uint32_t value)
++{
++	buffer[offset + 0U] = (value >> 24U) & 0xffU;
++	buffer[offset + 1U] = (value >> 16U) & 0xffU;
++	buffer[offset + 2U] = (value >> 8U) & 0xffU;
++	buffer[offset + 3U] = value & 0xffU;
++}
++
+ static inline uint16_t read_le2(const uint8_t *const buffer, const size_t offset)
+ {
+ 	return buffer[offset + 0U] | ((uint16_t)buffer[offset + 1U] << 8U);
+diff --git a/src/include/target.h b/src/include/target.h
+index 1761080..cdbb070 100644
+--- a/src/include/target.h
++++ b/src/include/target.h
+@@ -43,6 +43,7 @@ typedef struct target_controller target_controller_s;
+ #if PC_HOSTED == 1
+ bool bmda_swd_scan(uint32_t targetid);
+ bool bmda_jtag_scan(void);
++bool bmda_rvswd_scan(void);
+ #endif
+ bool adiv5_swd_scan(uint32_t targetid);
+ bool jtag_scan(void);
+diff --git a/src/platforms/hosted/Makefile.inc b/src/platforms/hosted/Makefile.inc
+index 9a3c4b6..55de586 100644
+--- a/src/platforms/hosted/Makefile.inc
++++ b/src/platforms/hosted/Makefile.inc
+@@ -133,6 +133,7 @@ ifneq ($(HOSTED_BMP_ONLY), 1)
+     SRC += bmp_libusb.c stlinkv2.c stlinkv2_jtag.c stlinkv2_swd.c
+     SRC += ftdi_bmp.c ftdi_jtag.c ftdi_swd.c
+     SRC += jlink.c jlink_jtag.c jlink_swd.c
++    SRC += wchlink.c wchlink_rvswd.c wchlink_riscv_dtm.c
+ else
+     SRC += bmp_serial.c
+ endif
+diff --git a/src/platforms/hosted/bmp_libusb.c b/src/platforms/hosted/bmp_libusb.c
+index ed8b408..aa9f0b4 100644
+--- a/src/platforms/hosted/bmp_libusb.c
++++ b/src/platforms/hosted/bmp_libusb.c
+@@ -74,6 +74,7 @@ static const debugger_device_s debugger_devices[] = {
+ 	{VENDOR_ID_STLINK, PRODUCT_ID_STLINKV3, PROBE_TYPE_STLINK_V2, NULL, "ST-Link v3"},
+ 	{VENDOR_ID_STLINK, PRODUCT_ID_STLINKV3E, PROBE_TYPE_STLINK_V2, NULL, "ST-Link v3E"},
+ 	{VENDOR_ID_SEGGER, PRODUCT_ID_ANY, PROBE_TYPE_JLINK, NULL, "Segger J-Link"},
++	{VENDOR_ID_WCH, PRODUCT_ID_WCHLINK_RV, PROBE_TYPE_WCHLINK, NULL, "WCH-Link"},
+ 	{VENDOR_ID_FTDI, PRODUCT_ID_FTDI_FT2232, PROBE_TYPE_FTDI, NULL, "FTDI FT2232"},
+ 	{VENDOR_ID_FTDI, PRODUCT_ID_FTDI_FT4232, PROBE_TYPE_FTDI, NULL, "FTDI FT4232"},
+ 	{VENDOR_ID_FTDI, PRODUCT_ID_FTDI_FT232, PROBE_TYPE_FTDI, NULL, "FTDI FT232"},
+@@ -99,7 +100,7 @@ const debugger_device_s *get_debugger_device_from_vid_pid(const uint16_t probe_v
+ void bmp_ident(bmda_probe_s *info)
+ {
+ 	DEBUG_INFO("Black Magic Debug App " FIRMWARE_VERSION "\n for Black Magic Probe, ST-Link v2 and v3, CMSIS-DAP, "
+-			   "J-Link and FTDI (MPSSE)\n");
++			   "J-Link, FTDI (MPSSE) and WCH-Link\n");
+ 	if (info && info->vid && info->pid) {
+ 		DEBUG_INFO("Using %04x:%04x %s %s\n %s %s\n", info->vid, info->pid,
+ 			(info->serial[0]) ? info->serial : NO_SERIAL_NUMBER, info->manufacturer, info->product, info->version);
+diff --git a/src/platforms/hosted/platform.c b/src/platforms/hosted/platform.c
+index 234da2a..c672cc5 100644
+--- a/src/platforms/hosted/platform.c
++++ b/src/platforms/hosted/platform.c
+@@ -50,9 +50,15 @@
+ #include "stlinkv2.h"
+ #include "ftdi_bmp.h"
+ #include "jlink.h"
++#include "wchlink.h"
+ #include "cmsis_dap.h"
+ #endif
+ 
++
++#undef HOSTED_BMP_ONLY 
++#define HOSTED_BMP_ONLY  1
++#define HOSTED_WCH 1
++
+ bmda_probe_s bmda_probe_info;
+ 
+ jtag_proc_s jtag_proc;
+@@ -150,6 +156,13 @@ void platform_init(int argc, char **argv)
+ 		break;
+ #endif
+ 
++#ifdef HOSTED_WCH 
++	case PROBE_TYPE_WCHLINK:
++		if (!wchlink_init())
++			exit(-1);
++		break;
++#endif
++
+ 	default:
+ 		exit(1);
+ 	}
+@@ -269,6 +282,21 @@ bool bmda_jtag_init(void)
+ 	}
+ }
+ 
++bool bmda_rvswd_scan()
++{
++	bmda_probe_info.is_jtag = false;
++
++	switch (bmda_probe_info.type) {
++#ifdef HOSTED_WCH 
++	case PROBE_TYPE_WCHLINK:
++		return wchlink_rvswd_scan();
++#endif
++
++	default:
++		return false;
++	}
++}
++
+ void bmda_adiv5_dp_init(adiv5_debug_port_s *const dp)
+ {
+ 	switch (bmda_probe_info.type) {
+@@ -334,6 +362,9 @@ char *bmda_adaptor_ident(void)
+ 	case PROBE_TYPE_JLINK:
+ 		return "J-Link";
+ 
++	case PROBE_TYPE_WCHLINK:
++		return "WCH-Link";
++
+ 	default:
+ 		return NULL;
+ 	}
+diff --git a/src/platforms/hosted/platform.h b/src/platforms/hosted/platform.h
+index 968fad1..2f4ff47 100644
+--- a/src/platforms/hosted/platform.h
++++ b/src/platforms/hosted/platform.h
+@@ -77,13 +77,19 @@ void platform_buffer_flush(void);
+ #define VENDOR_ID_ORBCODE   0x1209U
+ #define PRODUCT_ID_ORBTRACE 0x3443U
+ 
++#define VENDOR_ID_WCH           0x1a86U
++#define PRODUCT_ID_WCHLINK_RV   0x8010U /* WCH-Link and WCH-LinkE in mode RV */
++#define PRODUCT_ID_WCHLINK_DAP  0x8011U /* WCH-Link in mode DAP */
++#define PRODUCT_ID_WCHLINKE_DAP 0x8012U /* WCH-LinkE in mode DAP */
++
+ typedef enum probe_type {
+ 	PROBE_TYPE_NONE = 0,
+ 	PROBE_TYPE_BMP,
+ 	PROBE_TYPE_STLINK_V2,
+ 	PROBE_TYPE_FTDI,
+ 	PROBE_TYPE_CMSIS_DAP,
+-	PROBE_TYPE_JLINK
++	PROBE_TYPE_JLINK,
++	PROBE_TYPE_WCHLINK,
+ } probe_type_e;
+ 
+ void gdb_ident(char *p, int count);
+diff --git a/src/platforms/hosted/riscv_dtm_wchlink.c b/src/platforms/hosted/riscv_dtm_wchlink.c
+new file mode 100644
+index 0000000..6ed73d8
+--- /dev/null
++++ b/src/platforms/hosted/riscv_dtm_wchlink.c
+@@ -0,0 +1,76 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "bmp_hosted.h"
++#include "general.h"
++#include "jep106.h"
++#include "riscv_debug.h"
++#include "target_probe.h"
++#include "target.h"
++#include "wchlink.h"
++
++void riscv_dtm_wchlink_init(riscv_dm_s *dtm);
++
++static bool riscv_dtm_wchlink_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
++{
++	(void)dmi;
++	return wchlink_riscv_dmi_read( address, value);
++}
++
++static bool riscv_dtm_wchlink_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
++{
++	(void)dmi;
++	return wchlink_riscv_dmi_write(address, value);
++}
++
++uint8_t riscv_dtm_wchlink_handler()
++{
++	riscv_dmi_s *dmi_bus = calloc(1, sizeof(*dmi_bus));
++	if (!dmi_bus) {
++		DEBUG_WARN("calloc: failed in %s\n", __func__);
++		return 0;
++	}
++	dmi_bus->read = riscv_dtm_wchlink_dmi_read;
++	dmi_bus->write = riscv_dtm_wchlink_dmi_write;
++	dmi_bus->version = RISCV_DEBUG_0_13;
++	dmi_bus->designer_code =
++		NOT_JEP106_MANUFACTURER_WCH; /* fixme: WCHLINK deosn't seem to have a jep106 code assigned this is a dummy code */
++
++	/* Call higher level code to discover the DMI bus */
++	riscv_dmi_init(dmi_bus);
++	uint8_t c = dmi_bus->ref_count;
++	if (!dmi_bus->ref_count) {
++		free(dmi_bus);
++	}
++	return c;
++}
+diff --git a/src/platforms/hosted/riscv_dtm_wchlink.h b/src/platforms/hosted/riscv_dtm_wchlink.h
+new file mode 100644
+index 0000000..15a2fea
+--- /dev/null
++++ b/src/platforms/hosted/riscv_dtm_wchlink.h
+@@ -0,0 +1,39 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef PLATFORM_HOSTED_RISCV_DTM_WCHLINK_H
++#define PLATFORM_HOSTED_RISCV_DTM_WCHLINK_H
++
++uint8_t riscv_dtm_wchlink_handler();
++
++#endif /* PLATFORM_HOSTED_RISCV_DTM_WCHLINK_H */
+diff --git a/src/platforms/hosted/wchlink.c b/src/platforms/hosted/wchlink.c
+new file mode 100644
+index 0000000..7276b01
+--- /dev/null
++++ b/src/platforms/hosted/wchlink.c
+@@ -0,0 +1,412 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2022 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <libusb.h>
++#include "bmp_hosted.h"
++#include "wchlink.h"
++
++#include "riscv_debug.h"
++#include "riscv_dtm_wchlink.h"
++
++#define WCHLINK_MODERV_OP_EPT_ADDR    0x1U
++#define WCHLINK_MODERV_FLASH_EPT_ADDR 0x2U
++
++#define TRANSFER_TIMEOUT_MS 100U
++
++#define WCH_CMD_OUT_HEADER 0x81U
++#define WCH_CMD_IN_HEADER  0x82U
++
++#define WCH_CMD_UNKNOWN_FIELD     0x01U
++#define WCH_CMD_UNKNOWN_FIELD_DMI 0x06U
++
++/* Flash commands */
++#define WCH_FLASH_GRP       0x02U
++#define WCH_FLASH_CHIPERASE 0x01U /* Unconfirmed */
++#define WCH_FLASH_TERMINATE 0x08U /* Unconfirmed */
++
++/* Flash potection commands */
++#define WCH_PROTECT_GRP                 0x06U
++#define WCH_PROTECT_CMD_CHECK           0x01U
++#define WCH_PROTECT_CMD_FLASH_UNPROTECT 0x02U
++#define WCH_PROTECT_CMD_FLASH_PROTECT   0x03U
++
++/* DMI access commands */
++#define WCH_DMI_GRP       0x08U
++#define WCH_DMI_CMD_NOP   0x00U
++#define WCH_DMI_CMD_READ  0x01U
++#define WCH_DMI_CMD_WRITE 0x02U
++
++/* System commands */
++#define WCH_SYS_GRP             0x0dU
++#define WCH_SYS_CMD_GET_VERSION 0x01U
++#define WCH_SYS_CMD_CONNECT     0x02U
++#define WCH_SYS_CMD_UNKNOWN     0x03U /* Unknown - no clue */
++#define WCH_SYS_CMD_GET_MEMINFO 0x04U /* RAM size, flash size, addr. */
++#define WCH_SYS_CMD_CLOSE       0xffU /* Terminate connection (unsure what this does) */
++
++/* Debug commands */
++#define WCH_DBG_GRP             0x0eU
++#define WCH_DBG_CMD_DISABLE_DBG 0x01U
++
++/* Error ? who knows */
++#define WCH_ERR_GRP 0x55U
++
++static bool wchlink_bulk_write(bmda_probe_s *const info, uint8_t *const data, const size_t length)
++{
++	int transferred = 0;
++	const int result = libusb_bulk_transfer(
++		info->usb_link->device_handle, info->usb_link->ep_tx, data, length, &transferred, TRANSFER_TIMEOUT_MS);
++	if (result < 0) {
++		DEBUG_WARN("WCH-Link write error: %s (%d)\n", libusb_strerror(result), result);
++		return false;
++	}
++
++	return true;
++}
++
++static bool wchlink_bulk_read(bmda_probe_s *const info, uint8_t *const data, const size_t length)
++{
++	int transferred = 0;
++	const int result = libusb_bulk_transfer(
++		info->usb_link->device_handle, info->usb_link->ep_rx, data, length, &transferred, TRANSFER_TIMEOUT_MS);
++	if (result < 0) {
++		DEBUG_WARN("WCH-Link read error: %s (%d)\n", libusb_strerror(result), result);
++		return false;
++	}
++
++	return true;
++}
++
++/*
++ * On success this copies the endpoint addresses identified into the
++ * usb_link_s sub-structure of bmp_info_s (info->usb_link) for later use.
++ * Returns true for success, false for failure.
++ */
++static bool claim_wchlink_interface(bmda_probe_s *info, libusb_device *dev)
++{
++	libusb_config_descriptor_s *config;
++	const int result = libusb_get_active_config_descriptor(dev, &config);
++	if (result != LIBUSB_SUCCESS) {
++		DEBUG_WARN("Failed to get configuration descriptor: %s\n", libusb_error_name(result));
++		return false;
++	}
++
++	const libusb_interface_descriptor_s *descriptor = NULL;
++	for (size_t i = 0; i < config->bNumInterfaces; ++i) {
++		const libusb_interface_s *const interface = &config->interface[i];
++		const libusb_interface_descriptor_s *const interface_desc = &interface->altsetting[0];
++		if (interface_desc->bInterfaceClass == LIBUSB_CLASS_VENDOR_SPEC && interface_desc->bInterfaceSubClass == 128U) {
++			const int result = libusb_claim_interface(info->usb_link->device_handle, i);
++			if (result) {
++				DEBUG_WARN("Can not claim handle: %s\n", libusb_error_name(result));
++				break;
++			}
++
++			info->usb_link->interface = i;
++			descriptor = interface_desc;
++		}
++	}
++	if (!descriptor) {
++		DEBUG_WARN("No suitable interface found\n");
++		libusb_free_config_descriptor(config);
++		return false;
++	}
++
++	for (size_t i = 0; i < descriptor->bNumEndpoints; i++) {
++		const libusb_endpoint_descriptor_s *endpoint = &descriptor->endpoint[i];
++
++		if ((endpoint->bEndpointAddress & LIBUSB_ENDPOINT_ADDRESS_MASK) == WCHLINK_MODERV_OP_EPT_ADDR) {
++			if (endpoint->bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK)
++				info->usb_link->ep_rx = endpoint->bEndpointAddress;
++			else
++				info->usb_link->ep_tx = endpoint->bEndpointAddress;
++		}
++	}
++	libusb_free_config_descriptor(config);
++	return true;
++}
++
++static bool wchlink_read_version(bmda_probe_s *info)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_SYS_GRP,
++		WCH_CMD_UNKNOWN_FIELD,
++		WCH_SYS_CMD_GET_VERSION,
++	};
++	if (!wchlink_bulk_write(info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[7];
++	if (!wchlink_bulk_read(info, response, sizeof(response)))
++		return false;
++
++	const uint8_t wchlink_major = response[3];
++	const uint8_t wchlink_minor = response[4];
++	const uint8_t wchlink_id = response[5];
++
++	const char *wchlink_name = NULL;
++	switch (wchlink_id) {
++	case 1:
++		wchlink_name = "WCH-Link-CH549 (RV)";
++		break;
++	case 2:
++		wchlink_name = "WCH-LinkE-CH32V307 (RV)";
++		break;
++	case 3:
++		wchlink_name = "WCH-LinkS-CH32V203 (RV)";
++		break;
++	case 4:
++		wchlink_name = "WCH-LinkB (RV)";
++		break;
++	default:
++		wchlink_name = "unknow WCH-LINK";
++		break;
++	}
++
++	DEBUG_INFO("%s (id:%u) v%u.%u\n", wchlink_name, wchlink_id, wchlink_major, wchlink_minor);
++
++	return true;
++}
++
++static bool wchlink_connect(bmda_probe_s *info, uint8_t *const device_code, uint32_t *const device_id)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_SYS_GRP,
++		WCH_CMD_UNKNOWN_FIELD,
++		WCH_SYS_CMD_CONNECT,
++	};
++	if (!wchlink_bulk_write(info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[8];
++	if (!wchlink_bulk_read(info, response, sizeof(response)))
++		return false;
++
++	if (response[1] != WCH_SYS_GRP) { // response[1] returns WCH_ERR_GRP (0x55) on error
++		DEBUG_WARN("WCH-Link failed to connect with device\n");
++		return false;
++	}
++
++	*device_code = response[3];
++	*device_id = (response[4] << 24U) + (response[5] << 16U) + (response[6] << 8U) + (response[7] & 0x0fU);
++
++	return true;
++}
++
++static bool wchlink_unknown(bmda_probe_s *info)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_SYS_GRP,
++		WCH_CMD_UNKNOWN_FIELD,
++		WCH_SYS_CMD_UNKNOWN,
++	};
++	if (!wchlink_bulk_write(info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[4];
++	if (!wchlink_bulk_read(info, response, sizeof(response)))
++		return false;
++
++	return true;
++}
++
++bool wchlink_riscv_dmi_read( const uint32_t address, uint32_t *const value)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_DMI_GRP,
++		WCH_CMD_UNKNOWN_FIELD_DMI,
++		address & 0xffU,
++		0U,
++		0U,
++		0U,
++		0U,
++		WCH_DMI_CMD_READ,
++	};
++
++	if (!wchlink_bulk_write(&bmda_probe_info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[9];
++	if (!wchlink_bulk_read(&bmda_probe_info, response, sizeof(response)))
++		return false;
++
++	if (response[8]) { /* status */
++		DEBUG_WARN("WCH-Link failed to read DMI register\n");
++		return false;
++	}
++
++	*value = (response[4] << 24U) + (response[5] << 16U) + (response[6] << 8U) + response[7];
++
++	return true;
++}
++
++bool wchlink_riscv_dmi_write( const uint32_t address, const uint32_t value)
++{
++	uint8_t cmd[] = {
++		WCH_CMD_OUT_HEADER,
++		WCH_DMI_GRP,
++		WCH_CMD_UNKNOWN_FIELD_DMI,
++		address & 0xffU,
++		value >> 24U,
++		value >> 16U,
++		value >> 8U,
++		value & 0xffU,
++		WCH_DMI_CMD_WRITE,
++	};
++
++	if (!wchlink_bulk_write(&bmda_probe_info, cmd, sizeof(cmd)))
++		return false;
++
++	uint8_t response[9];
++	if (!wchlink_bulk_read(&bmda_probe_info, response, sizeof(response)))
++		return false;
++
++	if (response[8]) { /* status */
++		DEBUG_WARN("WCH-Link failed to read DMI register\n");
++		return false;
++	}
++
++	return true;
++}
++
++static bool wchlink_init2(bmda_probe_s *const info)
++{
++	usb_link_s *link = calloc(1, sizeof(usb_link_s));
++	if (!link)
++		return false;
++	info->usb_link = link;
++	link->context = info->libusb_ctx;
++
++	libusb_device **device_list = NULL;
++	const ssize_t device_count = libusb_get_device_list(info->libusb_ctx, &device_list);
++	if (device_count < 0) {
++		DEBUG_WARN("libusb_get_device_list() failed");
++		return false;
++	}
++
++	libusb_device *device_wchlink = NULL;
++	for (ssize_t device_index = 0; device_index < device_count; ++device_index) {
++		if (!device_list[device_index])
++			continue;
++
++		libusb_device *const device = device_list[device_index];
++		struct libusb_device_descriptor device_descriptor;
++		if (libusb_get_device_descriptor(device, &device_descriptor) < 0) {
++			DEBUG_WARN("libusb_get_device_descriptor() failed");
++			libusb_free_device_list(device_list, 1);
++			return false;
++		}
++
++		if (device_descriptor.idVendor != info->vid || device_descriptor.idProduct != info->pid)
++			continue;
++
++		int result = libusb_open(device, &link->device_handle);
++		if (result != LIBUSB_SUCCESS)
++			continue;
++
++		device_wchlink = device;
++		break;
++	}
++
++	if (!device_wchlink || !claim_wchlink_interface(info, device_wchlink)) {
++		libusb_free_device_list(device_list, 1);
++		return false;
++	}
++
++	if (!link->ep_tx || !link->ep_rx) {
++		DEBUG_WARN("Device setup failed\n");
++		libusb_release_interface(info->usb_link->device_handle, info->usb_link->interface);
++		libusb_close(info->usb_link->device_handle);
++		libusb_free_device_list(device_list, 1);
++		return false;
++	}
++
++	libusb_free_device_list(device_list, 1);
++
++	return wchlink_read_version(info);
++}
++
++bool wchlink_init(bmda_probe_s *const info)
++{
++	return wchlink_init2(&bmda_probe_info);
++
++}
++
++const char *wchlink_target_voltage()
++{	
++	return "Unavailable";
++}
++
++void wchlink_nrst_set_val( bool assert)
++{
++	(void)assert;
++}
++
++bool wchlink_nrst_get_val()
++{	
++	return true;
++}
++
++uint32_t wchlink_rvswd_scan()
++{
++
++	target_list_free();
++
++	uint8_t device_code;
++	uint32_t device_id;
++
++	if (!wchlink_connect(&bmda_probe_info, &device_code, &device_id)) {
++		DEBUG_WARN("WCH-Link failed to connect to target");
++		return 0U;
++	}
++
++	DEBUG_WARN("WCH-Link connected with 0x%0X\n", device_id);
++
++	switch (device_code) {
++	case 0x1U:
++	case 0x5U:
++	case 0x6U:
++	case 0x9U:
++	case 0xaU:
++		wchlink_unknown(&bmda_probe_info);
++		break;
++
++	default:
++		break;
++	}
++
++	return riscv_dtm_wchlink_handler();
++}
+diff --git a/src/platforms/hosted/wchlink.h b/src/platforms/hosted/wchlink.h
+new file mode 100644
+index 0000000..1d219d6
+--- /dev/null
++++ b/src/platforms/hosted/wchlink.h
+@@ -0,0 +1,92 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2022 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef PLATFORMS_HOSTED_WCHLINK_H
++#define PLATFORMS_HOSTED_WCHLINK_H
++
++#include <stdbool.h>
++#include "bmp_hosted.h"
++
++#if HOSTED_BMP_ONLY == 1
++bool wchlink_init()
++{
++	return false;
++}
++
++const char *wchlink_target_voltage()
++{
++	
++	return "ERROR";
++}
++
++void wchlink_nrst_set_val(bool assert)
++{
++	(void)assert;
++}
++
++bool wchlink_nrst_get_val()
++{
++	return true;
++}
++
++uint32_t wchlink_rvswd_scan()
++{	
++	return 0;
++}
++
++bool wchlink_riscv_dmi_read(uint32_t address, uint32_t *value)
++{
++	(void)address;
++	(void)value;
++	return false;
++}
++
++bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value)
++{
++	(void)address;
++	(void)value;
++	return false;
++}
++
++#else
++bool wchlink_init();
++const char *wchlink_target_voltage();
++void wchlink_nrst_set_val(bool assert);
++bool wchlink_nrst_get_val();
++uint32_t wchlink_rvswd_scan();
++bool wchlink_riscv_dmi_read( uint32_t address, uint32_t *value);
++bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value);
++bool wchlink_riscv_dmi_read( uint32_t address, uint32_t *value);
++bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value);
++#endif
++
++#endif /* PLATFORMS_HOSTED_WCHLINK_H */
+diff --git a/src/platforms/hosted/wchlink_protocol.h b/src/platforms/hosted/wchlink_protocol.h
+new file mode 100644
+index 0000000..4de7b70
+--- /dev/null
++++ b/src/platforms/hosted/wchlink_protocol.h
+@@ -0,0 +1,324 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.	 If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef PLATFORMS_HOSTED_WCHLINK_PROTOCOL_H
++#define PLATFORMS_HOSTED_WCHLINK_PROTOCOL_H
++
++#include <stdint.h>
++#include <stddef.h>
++#include <stdbool.h>
++
++/*
++ * This file contains the definitions for the WCH-Link USB Protocol, no public documentation is available
++ * so these definitions are the result of reverse engineering the protocol and trial and error.
++ *
++ * !!! THIS IS LARGELY INCOMPLETE AND UNTESTED, DO NOT TAKE THIS AS A DEFINITIVE SOURCE OF INFORMATION !!!
++ *
++ * The WCH-Link has two modes of operation, DAPLink and RV (i.e. RISC-V).
++ * This refers to the RV mode of operation only, changing the mode of operation is also out of scope.
++ * This was based on probes with firmware v2.5 and v2.8, differences are expected on untested/future versions.
++ *
++ * Overview
++ *
++ * WCH-Link uses USB Bulk Transfers to communicate with the host
++ *
++ * The WCH-Link exposes 4 endpoints through a Vendor interface:
++ * 0x82: EP 2 IN	(Raw data)
++ * 0x02: EP 2 OUT	(Raw data)
++ * 0x81: EP 1 IN	(Command packets)
++ * 0x01: EP 1 OUT	(Command packets)
++ * EP 1 IN/OUT is used for most of the communication, EP 2 IN/OUT is used for some flash related operations.
++ *
++ * Command packet format:
++ * 	┌─────────────┬────────┬─────────┬──────────────┬──────────────────────────────┐
++ * 	│    Byte     │   0    │    1    │      2       │            3:End             │
++ * 	├─────────────┼────────┼─────────┼──────────────┼──────────────────────────────┤
++ * 	│ Description │ Header │ Command │ Payload Size │ Payload (Sub-command + Data) │
++ * 	└─────────────┴────────┴─────────┴──────────────┴──────────────────────────────┘
++ *
++ * 		Header:
++ *      	- 0x81 for host command packets
++ *      	- 0x82 for device response packets
++ *
++ * 		Command: command, used to identify how the payload will be interpreted.
++ * 		Payload Size: length in bytes of the remaining command data.
++ * 		Payload: command data, interpreted according to the command, most command have a subcommand as the 1st byte.
++ *
++ * Responses are sent in the same format, with the header set to 0x82 and the same command.
++ * In case of an error, the response will contain the error value instead of the requested command in the command field.
++ */
++
++/* USB protocol */
++#define WCH_USB_MODE_RV_CMD_EPT_ADDR  0x1U
++#define WCH_USB_MODE_RV_RAW_EPT_ADDR  0x2U
++#define WCH_USB_MODE_DAP_OUT_EPT_ADDR 0x2U
++#define WCH_USB_MODE_DAP_IN_EPT_ADDR  0x3U
++
++#define WCH_USB_TIMEOUT 5000U
++
++#define WCH_USB_INTERFACE_SUBCLASS 0x80U
++
++/* Command packet */
++#define WCH_CMD_PACKET_HEADER_OFFSET    0U
++#define WCH_CMD_PACKET_HEADER_OUT       0x81U
++#define WCH_CMD_PACKET_HEADER_IN        0x82U
++#define WCH_CMD_PACKET_CMD_ERROR_OFFSET 1U
++#define WCH_CMD_PACKET_SIZE_OFFSET      2U
++#define WCH_CMD_PACKET_PAYLOAD_OFFSET   3U
++
++/* Error */
++#define WCH_ERR_ATTACH 0x55U /* Failed to attach to target */
++
++/* RISC-V targets AKA "riscvchip" */
++#define WCH_RISCVCHIP_CH32V103 0x01U /* CH32V103 RISC-V3A series */
++#define WCH_RISCVCHIP_CH57X    0x02U /* CH571/CH573 RISC-V3A BLE 4.2 series */
++#define WCH_RISCVCHIP_CH56X    0x03U /* CH565/CH569 RISC-V3A series */
++#define WCH_RISCVCHIP_CH32V20X 0x05U /* CH32V20X RISC-V4B/V4C series */
++#define WCH_RISCVCHIP_CH32V30X 0x06U /* CH32V30X RISC-V4C/V4F series */
++#define WCH_RISCVCHIP_CH58X    0x07U /* CH581/CH582/CH583 RISC-V4A BLE 5.3 series */
++#define WCH_RISCVCHIP_CH32V003 0x09U /* CH32V003 RISC-V2A series */
++#define WCH_RISCVCHIP_CH59X    0x0bU /* CH59x RISC-V4C BLE 5.4 series */
++#define WCH_RISCVCHIP_CH32X035 0x0dU /* CH32X035 RISC-V4C series */
++
++/* Commands */
++#define WCH_CMD_ADDR_N_SIZE   0x01U /* Set address and size command */
++#define WCH_CMD_FLASH         0x02U /* Flash command */
++#define WCH_CMD_READ_MEM      0x03U /* Memory read command */
++#define WCH_CMD_PROTECT       0x06U /* Flash potection command */
++#define WCH_CMD_DMI           0x08U /* DMI transfer command */
++#define WCH_CMD_RESET         0x0bU /* Reset command */
++#define WCH_CMD_PROBE_CONTROL 0x0cU /* Probe control command */
++#define WCH_CMD_CONTROL       0x0dU /* Control command */
++#define WCH_CMD_RV_DIS_DBG    0x0eU /* RV disable debug command */
++#define WCH_CMD_VERIFY        0x0fU /* Verify command */
++#define WCH_CMD_UID           0x11U /* Chip UID command */
++#define WCH_CMD_MODDE_SWITCH  0xffU /* Switch probe mode command */
++
++/*
++ * Set address and size command - WCH_CMD_ADDR_N_SIZE
++ *
++ * This command does not have a sub-command byte,
++ * the payload is the address followed by the size
++ *
++ * ┌──────┬──────┐
++ * │ 0:4  │ 5:8  │
++ * ├──────┼──────┤
++ * │ ADDR │ SIZE │
++ * └──────┴──────┘
++ */
++
++/* Flash command - WCH_CMD_FLASH */
++#define WCH_FLASH_SUBCMD_CHIPERASE         0x01U /* Chip erase */
++#define WCH_FLASH_SUBCMD_BEGIN_WRITE_FLASH 0x02U /* Begin write flash - ?? */
++#define WCH_FLASH_SUBCMD_EXEC_RAM          0x03U /* Execute ram - ?? */
++#define WCH_FLASH_SUBCMD_BEGIN_WRITE_MEM   0x05U /* Begin transfer - ?? */
++#define WCH_FLASH_SUBCMD_PREPARE           0x06U /* ?? */
++#define WCH_FLASH_SUBCMD_EXEC_MEM          0x07U /* ?? */
++#define WCH_FLASH_SUBCMD_TERMINATE         0x08U /* ?? */
++#define WCH_FLASH_SUBCMD_READY_WRITE       0x09U /* End transfer - ?? */
++#define WCH_FLASH_SUBCMD_VERIFY2           0x0aU /* Verify - ?? */
++#define WCH_FLASH_SUBCMD_RV_VERIFY         0x0bU /* Verify - ?? */
++#define WCH_FLASH_SUBCMD_BEGIN_READ_MEM    0x0cU /* ?? */
++
++/*
++ * Memory read commands - WCH_CMD_READ_MEM
++ *
++ * This command does not have a sub-command byte,
++ * the payload is the address to read from followed by the number of bytes to read
++ *
++ * ┌──────┬────────┐
++ * │ 0:4  │  5:8   │
++ * ├──────┼────────┤
++ * │ ADDR │ LENGTH │
++ * └──────┴────────┘
++ */
++
++/*
++ * Flash potection command - WCH_CMD_PROTECT
++ *
++ * Not supported on riscvchip:
++ * - 0x01: CH32V103
++ * - 0x09: CH32V003
++ * - 0x05: CH32V20X
++ * - 0x06: CH32V30X
++ * - 0x0d: CH32X035
++ */
++#define WCH_PROTECT_SUBCMD_CHECK           0x01U /* Check if flash is read-protected */
++#define WCH_PROTECT_SUBCMD_FLASH_UNPROTECT 0x02U /* Set flash read unprotected */
++#define WCH_PROTECT_SUBCMD_FLASH_PROTECT   0x03U /* Set flash read protected */
++#define WCH_PROTECT_SUBCMD_CHECK_V2        0x04U /* Check if flash is read-protected - Firmware >= v2.9 */
++/* PROTECT_V2 and UNPROTECT_V2 require `0xbf ff ff ff ff ff ff` as payload */
++#define WCH_PROTECT_SUBCMD_FLASH_UNPROTECT_V2 0xf2U /* Set flash read unprotected - Firmware >= v2.9 */
++#define WCH_PROTECT_SUBCMD_FLASH_PROTECT_V2   0xf3U /* Set flash read protected - Firmware >= v2.9 */
++
++#define WCH_PROTECTED      0x01U /* Protected, memory read returns random data */
++#define WCH_UNPROTECTED    0x02U /* Unprotected */
++#define WCH_PROTECTED_V2   0x01U /* Protected, memory read returns random data */
++#define WCH_UNPROTECTED_V2 0x00U /* Unprotected */
++
++/*
++ * DMI transfer command - WCH_CMD_DMI
++ *
++ * This command does not have a sub-command byte
++ *
++ * ┌────────────────────────────┐
++ * │          Payload           │
++ * ├─────────┬──────┬───────────┤
++ * │    0    │ 1:4  │     5     │
++ * ├─────────┼──────┼───────────┤
++ * │ Address │ Data │ Operation │
++ * └─────────┴──────┴───────────┘
++ * ┌────────────────────────────┐
++ * │      Response payload      │
++ * ├─────────┬──────┬───────────┤
++ * │    0    │ 1:4  │     5     │
++ * ├─────────┼──────┼───────────┤
++ * │ Address │ Data │  Status   │
++ * └─────────┴──────┴───────────┘
++ *
++ * Operation and Status correspond to the same values
++ * found in the JTAG implementation of RISC-V DMI:
++ * 
++ * Operation:
++ * - 0x00: no-op
++ * - 0x01: read
++ * - 0x02: write
++ * 
++ * Status:
++ * - 0x00: success
++ * - 0x01: error
++ * - 0x03: busy
++ */
++#define WCH_DMI_ADDR_OFFSET      0U
++#define WCH_DMI_DATA_OFFSET      1U
++#define WCH_DMI_OP_STATUS_OFFSET 5U
++
++/* Reset command - WCH_CMD_RESET */
++#define WCH_RESET_SUBCMD_RELEASE 0x01U /* Release reset (after 300ms delay) */
++/*
++ * There are two _SUBCMD_ASSERT sub-commands, used depending on the riscvchip:
++ *
++ * ASSERT2 used for riscvchip:
++ * - 0x02: CH57X
++ * - 0x07: CH58X
++ * - 0x0b: CH59X
++ */
++#define WCH_RESET_SUBCMD_ASSERT  0x03U /* Reset */
++#define WCH_RESET_SUBCMD_ASSERT2 0x02U /* Reset */
++
++/*
++ * Probe constrol command - WCH_CMD_PROBE_CONTROL
++ *
++ * This command does not have a sub-command byte,
++ * the payload is the the riscvchip number followed by the speed
++ *
++ * ┌───────────┬───────┐
++ * │     0     │   1   │
++ * ├───────────┼───────┤
++ * │ RISCVCHIP │ Speed │
++ * └───────────┴───────┘
++ *
++ * Response is one byte, 0x01 meaning success
++ */
++#define WCH_SPEED_LOW      0x03U
++#define WCH_SPEED_MEDIUM   0x02U
++#define WCH_SPEED_HIGH     0x01U
++#define WCH_SPEED_VERYHIGH 0x00U
++
++#define WCH_PROBE_CONTROL_OK 0x01U /* Success response */
++
++/* Control command - WCH_CMD_CONTROL */
++#define WCH_CONTROL_SUBCMD_GET_PROBE_INFO 0x01U /* Firmware version and hardware type */
++#define WCH_CONTROL_SUBCMD_ATTACH         0x02U /* Attach to target */
++/*
++ * On some riscvchip targets, a _SUBCMD_UNKNOWN is issued after attach
++ *
++ * Issued on riscvchip:
++ * - 0x01: CH32V103
++ * - 0x05: CH32V20X
++ * - 0x06: CH32V30X
++ * - 0x09: CH32V003
++ */
++#define WCH_CONTROL_SUBCMD_UNKNOWN 0x03U /* ?? - issued after attach */
++/*
++ * _GET_MEMORY_INFO
++ *
++ * Supported on riscvchip:
++ * - 0x05: CH32V20X
++ * - 0x06: CH32V30X
++ */
++#define WCH_CONTROL_SUBCMD_GET_MEMORY_INFO 0x04U /* RAM size, flash size and addr */
++#define WCH_CONTROL_SUBCMD_CLOSE           0xffU /* Terminate connection (unsure what this entails) */
++
++/* Probe info subcommand - WCH_SYS_SUBCMD_GET_PROBE_INFO */
++#define WCH_VERSION_MAJOR_OFFSET 0U /* 8 bit */
++#define WCH_VERSION_MINOR_OFFSET 1U /* 8 bit */
++
++#define WCH_HARDWARE_TYPE_OFFSET    2U
++#define WCH_HARDWARE_TYPE_WCHLINK   1U  /* WCH-Link (CH549) *does not support SDIO (single wire debug) */
++#define WCH_HARDWARE_TYPE_WCHLINKE  2U  /* WCH-LinkE (CH32V305) */
++#define WCH_HARDWARE_TYPE_WCHLINKS  3U  /* WCH-LinkS (CH32V203) */
++#define WCH_HARDWARE_TYPE_WCHLINKB  4U  /* WCH-LinkB */
++#define WCH_HARDWARE_TYPE_WCHLINKW  5U  /* WCH-LinkW (CH32V208) *wireless */
++#define WCH_HARDWARE_TYPE_WCHLINKE2 18U /* WCH-LinkE (CH32V305) - ?? */
++
++/* Attach to target subcommand - WCH_CONTROL_SUBCMD_ATTACH */
++#define WCH_RISCVCHIP_OFFSET 0U /* 8 bit */
++#define WCH_IDCODDE_OFFSET   1U /* 32 bit */
++
++/*
++ * RV disable debug command - WCH_CMD_RV_DIS_DBG
++ *
++ * Supported on riscvchip:
++ * - 0x02: CH57X
++ * - 0x03: CH56X
++ * - 0x07: CH58X
++ * - 0x0b: CH59X
++ */
++#define WCH_RV_DIS_DBG_SUBCMD_DISABLE 0x01U /* Disable debug */
++
++/*
++ * Verify command - WCH_CMD_VERIFY
++ * FIXME: TBD
++ */
++
++/*
++ * Chip UID command - WCH_CMD_UID
++ *
++ * The reply does not use the standard format.
++ *
++ * Raw response: ffff00 20 aeb4abcd 16c6bc45 e339e339e339e339
++ * Corresponding UID: 0xcdabb4ae45bcc616
++ * Unknown value: e339e339e339e339 -> inital value for erased flash
++ */
++#define WCH_UID_SUBCMD_GET    0x09U /* Get chip UID */
++#define WCH_UID_SUBCMD_GET_V2 0x06U /* Get chip UID - Firmware >= v2.9 */
++
++/* Switch probe mode command - WCH_CMD_MODDE_SWITCH */
++#define WCH_MODDE_SWITCH_SUBCMD_SUPPORTED 0x41U /* Check if mode switching is supported - ?? */
++#define WCH_MODDE_SWITCH_SUBCMD_DAP_TO_RV 0x52U /* Switch to RV mode - ?? */
++
++bool wchlink_command_send_recv(uint8_t command, uint8_t subcommand, const void *payload, size_t payload_length,
++	void *response, size_t response_length);
++bool wchlink_transfer_dmi(uint8_t operation, uint32_t address, uint32_t data_in, uint32_t *data_out, uint8_t *status);
++
++bool wchlink_attach(void);
++
++#endif /* PLATFORMS_HOSTED_WCHLINK_PROTOCOL_H */
+diff --git a/src/platforms/hosted/wchlink_riscv_dtm.c b/src/platforms/hosted/wchlink_riscv_dtm.c
+new file mode 100644
+index 0000000..d01eeba
+--- /dev/null
++++ b/src/platforms/hosted/wchlink_riscv_dtm.c
+@@ -0,0 +1,91 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "general.h"
++#include "jep106.h"
++#include "riscv_debug.h"
++#include "wchlink_protocol.h"
++
++static void wchlink_riscv_dtm_init(riscv_dmi_s *dmi);
++static bool wchlink_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
++static bool wchlink_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value);
++
++uint8_t  wchlink_riscv_dtm_handler(void)
++{
++	riscv_dmi_s *dmi = calloc(1, sizeof(*dmi));
++	if (!dmi) { /* calloc failed: heap exhaustion */
++		DEBUG_WARN("calloc: failed in %s\n", __func__);
++		return -1;
++	}
++
++	wchlink_riscv_dtm_init(dmi);
++	/* If we failed to find any DMs or Harts, free the structure */
++	if (!dmi->ref_count)
++		free(dmi);
++	return 0;
++}
++
++static void wchlink_riscv_dtm_init(riscv_dmi_s *const dmi)
++{
++	/* WCH-Link doesn't have any mechanism to identify the DTM manufacturer, so we'll just assume it's WCH */
++	dmi->designer_code = NOT_JEP106_MANUFACTURER_WCH;
++
++	dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
++
++	/* WCH-Link has a fixed address width of 8 bits, limited by the USB protocol (is RVSWD also fixed?) */
++	dmi->address_width = 8U;
++
++	dmi->read = wchlink_riscv_dmi_read;
++	dmi->write = wchlink_riscv_dmi_write;
++
++	riscv_dmi_init(dmi);
++}
++
++static bool wchlink_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
++{
++	uint8_t status = 0;
++	const bool result = wchlink_transfer_dmi(RV_DMI_READ, address, 0, value, &status);
++
++	/* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
++	dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
++	return dmi->fault == RV_DMI_SUCCESS;
++}
++
++static bool wchlink_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
++{
++	uint8_t status = 0;
++	const bool result = wchlink_transfer_dmi(RV_DMI_WRITE, address, value, NULL, &status);
++
++	/* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
++	dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
++	return dmi->fault == RV_DMI_SUCCESS;
++}
+diff --git a/src/platforms/hosted/wchlink_rvswd.c b/src/platforms/hosted/wchlink_rvswd.c
+new file mode 100644
+index 0000000..7a93626
+--- /dev/null
++++ b/src/platforms/hosted/wchlink_rvswd.c
+@@ -0,0 +1,61 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2023 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice, this
++ *    list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ * 3. Neither the name of the copyright holder nor the names of its
++ *    contributors may be used to endorse or promote products derived from
++ *    this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++#if 0
++#include "general.h"
++#include "target_internal.h"
++#include "wchlink.h"
++#include "wchlink_protocol.h"
++
++extern void wchlink_riscv_dtm_handler();
++
++/**
++ * @brief 
++ * 
++ * @return uint32_t 
++ */
++uint32_t wchlink_rvswd_scan(void)
++{
++	target_list_free();
++
++	/* 
++	 * This is redundant as we will run a generic scan routine after this
++	 * but without it the scan will fail
++	 */
++	if (!wchlink_attach())
++		return false;
++
++	/* deffer to WCH-Link riscv_dtm_handler */
++	wchlink_riscv_dtm_handler();
++
++	return target_list != NULL;
++}
++#endif
+\ No newline at end of file
+diff --git a/src/target/ch32vx.c b/src/target/ch32vx.c
+new file mode 100644
+index 0000000..ac178d7
+--- /dev/null
++++ b/src/target/ch32vx.c
+@@ -0,0 +1,162 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2022 1BitSquared <info@1bitsquared.com>
++ * Written by Rafael Silva <perigoso@riseup.net>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++/* This file implements RISC-V CH32Vx target specific functions */
++
++#include "general.h"
++#include "target.h"
++#include "target_internal.h"
++#include "buffer_utils.h"
++
++/* IDCODE register */
++#define CH32V003X_IDCODE 0x1ffff7c4U
++// return ((*(uint32_t *)0x1ffff7c4) >> 16); // REVID
++// return ((*(uint32_t *)0x1ffff7c4) & ((uint32_t)0x0000ffff)); // DEVID
++
++/* IDCODE register */
++#define CH32VX_IDCODE               0x1ffff704U
++#define CH32VX_IDCODE_MASK          0x0ffffff0f
++#define CH32VX_IDCODE_FAMILY_OFFSET 20U
++#define CH32VX_IDCODE_FAMILY_MASK   (0xfffU << CH32VX_IDCODE_FAMILY_OFFSET)
++
++#define CH32V203_IDCODE_FAMILY 0x203U
++#define CH32V208_IDCODE_FAMILY 0x208U
++#define CH32V305_IDCODE_FAMILY 0x305U
++#define CH32V303_IDCODE_FAMILY 0x303U
++#define CH32V307_IDCODE_FAMILY 0x307U
++
++/* Electronic Signature (ESIG) registers */
++#define CH32VX_ESIG_FLASH_CAP 0x1ffff7e0U /* Flash capacity register, 16 bits, KiB units */
++#define CH32VX_ESIG_UID1      0x1ffff7e8U /* Unique ID register, bits 0:31 */
++#define CH32VX_ESIG_UID2      0x1ffff7ecU /* Unique ID register, bits 32:63 */
++#define CH32VX_ESIG_UID3      0x1ffff7f0U /* Unique ID register, bits 64:95 */
++
++static bool ch32vx_uid_cmd(target_s *t, int argc, const char **argv);
++
++const command_s ch32vx_cmd_list[] = {
++	{"uid", ch32vx_uid_cmd, "Prints 96 bit unique id"},
++	{NULL, NULL, NULL},
++};
++
++static size_t ch32vx_read_flash_size(target_s *const t)
++{
++	return target_mem_read16(t, CH32VX_ESIG_FLASH_CAP) * 1024U;
++}
++
++static void ch32vx_read_uid(target_s *const t, uint8_t *const uid)
++{
++	for (size_t uid_reg_offset = 0; uid_reg_offset < 12U; uid_reg_offset += 4U)
++		write_be4(uid, uid_reg_offset, target_mem_read32(t, CH32VX_ESIG_UID1 + uid_reg_offset));
++}
++
++bool ch32v003x_probe(target_s *const target)
++{
++	const uint32_t idcode = target_mem_read32(target, CH32V003X_IDCODE);
++
++	switch (idcode & CH32VX_IDCODE_MASK) {
++	case 0x00300500U: /* CH32V003F4P6 */
++	case 0x00310500U: /* CH32V003F4U6 */
++	case 0x00320500U: /* CH32V003A4M6 */
++	case 0x00330500U: /* CH32V003J4M6 */
++		break;
++	default:
++		DEBUG_INFO("Unrecognized CH32V003x IDCODE: 0x%08x\n", idcode);
++		return false;
++		break;
++	}
++
++	target->driver = "CH32V003";
++
++	const size_t flash_size = ch32vx_read_flash_size(target);
++	DEBUG_INFO("CH32V003x flash size: %zu\n", flash_size);
++	(void)flash_size;
++
++	target->part_id = idcode;
++
++	target_add_commands(target, ch32vx_cmd_list, "CH32Vx");
++
++	return true;
++}
++
++bool ch32vx_probe(target_s *const target)
++{
++	const uint32_t idcode = target_mem_read32(target, CH32VX_IDCODE);
++
++	switch (idcode & CH32VX_IDCODE_MASK) {
++	case 0x30330504U: /* CH32V303CBT6 */
++	case 0x30320504U: /* CH32V303RBT6 */
++	case 0x30310504U: /* CH32V303RCT6 */
++	case 0x30300504U: /* CH32V303VCT6 */
++	case 0x30520508U: /* CH32V305FBP6 */
++	case 0x30500508U: /* CH32V305RBT6 */
++	case 0x30730508U: /* CH32V307WCU6 */
++	case 0x30720508U: /* CH32V307FBP6 */
++	case 0x30710508U: /* CH32V307RCT6 */
++	case 0x30700508U: /* CH32V307VCT6 */
++		break;
++	default:
++		DEBUG_INFO("Unrecognized CH32Vx IDCODE: 0x%08x\n", idcode);
++		return false;
++		break;
++	}
++
++	const uint16_t family = (idcode & CH32VX_IDCODE_FAMILY_MASK) >> CH32VX_IDCODE_FAMILY_OFFSET;
++	switch (family) {
++	case CH32V303_IDCODE_FAMILY:
++		target->driver = "CH32V303";
++		break;
++	case CH32V305_IDCODE_FAMILY:
++		target->driver = "CH32V305";
++		break;
++	case CH32V307_IDCODE_FAMILY:
++		target->driver = "CH32V307";
++		break;
++	default:
++		return false;
++		break;
++	}
++
++	const size_t flash_size = ch32vx_read_flash_size(target);
++	DEBUG_INFO("CH32Vx flash size: %zu\n", flash_size);
++	(void)flash_size;
++
++	target->part_id = idcode;
++
++	target_add_commands(target, ch32vx_cmd_list, "CH32Vx");
++
++	return true;
++}
++
++/* Reads the 96 bit unique id */
++static bool ch32vx_uid_cmd(target_s *const target, const int argc, const char **const argv)
++{
++	(void)argc;
++	(void)argv;
++
++	uint8_t uid[12U];
++	ch32vx_read_uid(target, uid);
++
++	tc_printf(target, "Unique id: 0x");
++	for (size_t i = 0U; i < sizeof(uid); i++)
++		tc_printf(target, "%02" PRIx8, uid[i]);
++	tc_printf(target, "\n");
++
++	return true;
++}
+diff --git a/src/target/jep106.h b/src/target/jep106.h
+index c900377..2dc3cb9 100644
+--- a/src/target/jep106.h
++++ b/src/target/jep106.h
+@@ -44,14 +44,27 @@
+  *
+  * |15     |11     |7|6           0|
+  * | | | | | | | | |0| | | | | | | |
+- *  |\____/ \______/|\_____________/
+- *  |  V        V   |       V
+- *  | Unused   Cont	|      code
+- *  |          Code |
+- *  \_ Legacy flag  \_ Parity bit (always 0)
++ *  | |\__/ \______/|\_____________/
++ *  | | V       V   |       V
++ *  | | Unused Cont	|      code
++ *  | |        Code |
++ *  | |             \_ Parity bit (always 0)
++ *  | \_ BMD internal flag
++ *  \_ Legacy flag  
+  */
+ #define ASCII_CODE_FLAG (1U << 15U) /* flag the code as legacy ASCII */
+ 
++/* 
++ * BMD internal flag
++ *
++ * This is used to mark codes that are not part of the JEP106 or any other standard but are used
++ * internally by BMD to identify targets that don't provide a usable identification code
++ * 
++ * These codes may be changed or removed at any time, and should not be relied upon outside of
++ * the context of BMD
++ */
++#define BMD_INTERNAL_FLAG (1U << 14U) /* flag the code as internal use in BMD */
++
+ #define JEP106_MANUFACTURER_ARM          0x43bU /* ARM Ltd. */
+ #define JEP106_MANUFACTURER_FREESCALE    0x00eU /* Freescale */
+ #define JEP106_MANUFACTURER_NXP          0x015U /* NXP */
+@@ -68,6 +81,11 @@
+ #define JEP106_MANUFACTURER_RASPBERRY    0x913U /* Raspberry Pi */
+ #define JEP106_MANUFACTURER_RENESAS      0x423U /* Renesas */
+ #define JEP106_MANUFACTURER_XILINX       0x309U /* Xilinx - Technically 0x049, but they use Ikanos Communications' code */
++
++/* BMD internal codes */
++/* WCH AKA Nanjing Qinheng Microelectronics */
++#define NOT_JEP106_MANUFACTURER_WCH (BMD_INTERNAL_FLAG | 0x01U) /* WCH (WinChipHead) */
++
+ /*
+  * This JEP code should belong to "Andes Technology Corporation", but is used on RISC-V by GigaDevice,
+  * so in the unlikely event we need to support chips by them, here be dragons.
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 365126c..ae2f2c1 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -72,6 +72,8 @@ static ssize_t riscv32_reg_read(target_s *target, uint32_t c, void *data, size_t
+ static ssize_t riscv32_reg_write(target_s *target, uint32_t c, const void *data, size_t max);
+ static void riscv32_regs_read(target_s *target, void *data);
+ static void riscv32_regs_write(target_s *target, const void *data);
++static void riscv32_mem_read(target_s *target, void *dest, target_addr_t src, size_t len);
++static void riscv32_mem_write(target_s *target, target_addr_t dest, const void *src, size_t len);
+ 
+ static int riscv32_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
+ static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
+@@ -79,9 +81,7 @@ static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
+ bool riscv32_probe(target_s *const target)
+ {
+ 	/* Finish setting up the target structure with generic rv32 functions */
+-	target->core = "rv32";
+-	/* Provide the length of a suitable registers structure */
+-	target->regs_size = sizeof(riscv32_regs_s);
++	target->regs_size = sizeof(riscv32_regs_s); /* Provide the length of a suitable registers structure */
+ 	target->regs_read = riscv32_regs_read;
+ 	target->regs_write = riscv32_regs_write;
+ 	target->reg_write = riscv32_reg_write;
+@@ -96,6 +96,11 @@ bool riscv32_probe(target_s *const target)
+ 	case JEP106_MANUFACTURER_RV_GIGADEVICE:
+ 		PROBE(gd32vf1_probe);
+ 		break;
++	case NOT_JEP106_MANUFACTURER_WCH:
++		PROBE(ch32v3xx_probe);
++		PROBE(ch32v003x_probe);
++		PROBE(ch32vx_probe);
++		break;
+ 	}
+ 
+ #if PC_HOSTED == 0
+@@ -217,7 +222,7 @@ uint32_t riscv32_pack_data(const void *const src, const uint8_t access_width)
+ static void riscv32_abstract_mem_read(
+ 	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
+ {
+-	/* Figure out the maximal width of access to perform, up to the bitness of the target */
++	/* Figure out the maxmial width of access to perform, up to the bitness of the target */
+ 	const uint8_t access_width = riscv_mem_access_width(hart, src, len);
+ 	const uint8_t access_length = 1U << access_width;
+ 	/* Build the access command */
+@@ -281,6 +286,7 @@ static void riscv_sysbus_check(riscv_hart_s *const hart)
+ static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
+ 	const size_t len, const uint8_t access_width, const uint8_t access_length)
+ {
++	DEBUG_TARGET("%s: %zu byte read at %08" PRIx32 " in %u byte blocks\n", __func__, len, src, access_length);
+ 	/* Build the access command */
+ 	const uint32_t command = ((uint32_t)access_width << RV_SYSBUS_MEM_ACCESS_SHIFT) | RV_SYSBUS_MEM_READ_ON_ADDR |
+ 		(access_length < len ? RV_SYSBUS_MEM_ADDR_POST_INC | RV_SYSBUS_MEM_READ_ON_DATA : 0U);
+@@ -314,38 +320,27 @@ static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
+-	const uint8_t access_length, const uint8_t access_width, const uint8_t native_access_length)
++	const uint8_t access_width, const uint8_t native_access_width, const uint8_t access_length)
+ {
+-	const target_addr_t alignment = ~(native_access_length - 1U);
++	DEBUG_PROBE("%s: %u read for %u bytes\n", __func__, access_length, 1U << access_width);
++	const target_addr_t alignment = ~(access_length - 1U);
+ 	/*
+ 	 * On a 32-bit target the only possible widths are 8- 16- and 32-bit, so after the adjustment loop,
+ 	 * there are only and exactly 2 possible cases to handle here: 16- and 32-bit access.
+ 	 */
+-	switch (access_width) {
++	switch (native_access_width) {
+ 	case RV_MEM_ACCESS_16_BIT: {
+ 		uint16_t value = 0;
+-		/* Run the 16-bit native read, storing the result in `value` */
+ 		riscv32_sysbus_mem_native_read(
+-			hart, &value, src & alignment, native_access_length, RV_MEM_ACCESS_16_BIT, native_access_length);
+-		/* Having completed the read, unpack the data (we only care about a single byte in the access) */
+-		adiv5_unpack_data(dest, src, value, ALIGN_8BIT);
++			hart, &value, src & alignment, access_length, RV_MEM_ACCESS_16_BIT, access_length);
++		adiv5_unpack_data(dest, src & 1U, value, access_width);
+ 		break;
+ 	}
+ 	case RV_MEM_ACCESS_32_BIT: {
+ 		uint32_t value = 0;
+-		/* Run the 32-bit native read, storing the result in `value` */
+ 		riscv32_sysbus_mem_native_read(
+-			hart, &value, src & alignment, native_access_length, RV_MEM_ACCESS_32_BIT, native_access_length);
+-
+-		char *data = (char *)dest;
+-		/* Figure out from the access length the initial unpack and adjustment */
+-		const uint8_t adjustment = access_length & (uint8_t)~1U;
+-		/* Having completed the read, unpack the first part of the data (two bytes) */
+-		if (adjustment)
+-			data = (char *)adiv5_unpack_data(data, src, value, ALIGN_16BIT);
+-		/* Now unpack the remaining byte if necessary */
+-		if (access_length & 1U)
+-			adiv5_unpack_data(data, src + adjustment, value, ALIGN_8BIT);
++			hart, &value, src & alignment, access_length, RV_MEM_ACCESS_32_BIT, access_length);
++		adiv5_unpack_data(dest, src & 3U, value, access_width);
+ 		break;
+ 	}
+ 	}
+@@ -369,25 +364,16 @@ static void riscv32_sysbus_mem_read(
+ 		++native_access_width;
+ 	const uint8_t native_access_length = (uint8_t)(1U << native_access_width);
+ 
+-	/* Figure out how much the length is getting adjusted by in the first read to make it aligned */
+-	const target_addr_t length_adjustment = src & (native_access_length - 1U);
+-	/*
+-	 * Having done this, figure out how long the resulting read actually is so we can fill enough of the
+-	 * destination buffer with a single read
+-	 */
+-	const uint8_t read_length =
+-		len + length_adjustment <= native_access_length ? len : native_access_length - length_adjustment;
+-
+ 	/* Do the initial adjusted access */
+ 	size_t remainder = len;
+ 	target_addr_t address = src;
+ 	uint8_t *data = (uint8_t *)dest;
+-	riscv32_sysbus_mem_adjusted_read(hart, data, address, read_length, native_access_width, native_access_length);
++	riscv32_sysbus_mem_adjusted_read(hart, data, address, access_width, native_access_width, native_access_length);
+ 
+ 	/* After doing the initial access, adjust the location of the next and do any follow-up accesses required */
+-	remainder -= read_length;
+-	address += read_length;
+-	data += read_length;
++	remainder -= access_length;
++	address += access_length;
++	data += access_length;
+ 
+ 	/*
+ 	 * Now we're aligned to the wider access width, do another set of reads if there's
+@@ -404,12 +390,13 @@ static void riscv32_sysbus_mem_read(
+ 
+ 	/* If there's any data left to read, do another adjusted access to grab it */
+ 	if (remainder)
+-		riscv32_sysbus_mem_adjusted_read(hart, data, address, remainder, native_access_width, native_access_length);
++		riscv32_sysbus_mem_adjusted_read(hart, data, address, access_width, native_access_width, native_access_length);
+ }
+ 
+ static void riscv32_sysbus_mem_native_write(riscv_hart_s *const hart, const target_addr_t dest, const void *const src,
+ 	const size_t len, const uint8_t access_width, const uint8_t access_length)
+ {
++	DEBUG_TARGET("%s: %zu byte write at %08" PRIx32 " in %u byte blocks\n", __func__, len, dest, access_length);
+ 	/* Build the access command */
+ 	const uint32_t command = ((uint32_t)access_width << RV_SYSBUS_MEM_ACCESS_SHIFT) |
+ 		(access_length < len ? RV_SYSBUS_MEM_ADDR_POST_INC : 0U);
+@@ -438,9 +425,10 @@ static void riscv32_sysbus_mem_native_write(riscv_hart_s *const hart, const targ
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const target_addr_t dest, const void *const src,
+-	const uint8_t access_length, const uint8_t access_width, const uint8_t native_access_length)
++	const uint8_t access_width, const uint8_t native_access_width, const uint8_t access_length)
+ {
+-	const target_addr_t alignment = ~(native_access_length - 1U);
++	DEBUG_PROBE("%s: %u write for %u bytes\n", __func__, access_length, 1U << access_width);
++	const target_addr_t alignment = ~(access_length - 1U);
+ 	/*
+ 	 * On a 32-bit target the only possible widths are 8- 16- and 32-bit, so after the adjustment loop,
+ 	 * there are only and exactly 2 possible cases to handle here: 16- and 32-bit access.
+@@ -448,43 +436,31 @@ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const ta
+ 	 * wider access primitive, we first have to read back what's at the target aligned location, replace
+ 	 * the correct set of bits in the target value, then write the new combined value back
+ 	 */
+-	switch (access_width) {
++	switch (native_access_width) {
+ 	case RV_MEM_ACCESS_16_BIT: {
+ 		uint16_t value = 0;
+ 		/* Start by reading 16 bits */
+ 		riscv32_sysbus_mem_native_read(
+-			hart, &value, dest & alignment, native_access_length, RV_MEM_ACCESS_16_BIT, native_access_length);
++			hart, &value, dest & alignment, access_length, RV_MEM_ACCESS_16_BIT, access_length);
+ 		/* Now replace the part to write (must be done on the widened version of the value) */
+ 		uint32_t widened_value = value;
+-		/*
+-		 * Note that to get here we're doing a 2 byte access for 1 byte so we only care about a single byte
+-		 * replacement. We also have to constrain the replacement to only happen in the lower 16 bits.
+-		 */
+-		adiv5_pack_data(dest & ~2U, src, &widened_value, ALIGN_8BIT);
++		adiv5_pack_data(dest & 1U, src, &widened_value, access_width);
+ 		value = (uint16_t)widened_value;
+ 		/* And finally write the new value back */
+ 		riscv32_sysbus_mem_native_write(
+-			hart, dest & alignment, &value, native_access_length, RV_MEM_ACCESS_16_BIT, native_access_length);
++			hart, dest & alignment, &value, access_length, RV_MEM_ACCESS_16_BIT, access_length);
+ 		break;
+ 	}
+ 	case RV_MEM_ACCESS_32_BIT: {
+ 		uint32_t value = 0;
+ 		/* Start by reading 32 bits */
+ 		riscv32_sysbus_mem_native_read(
+-			hart, &value, dest & alignment, native_access_length, RV_MEM_ACCESS_32_BIT, native_access_length);
+-
++			hart, &value, dest & alignment, access_length, RV_MEM_ACCESS_32_BIT, access_length);
+ 		/* Now replace the part to write */
+-		const char *data = (const char *)src;
+-		/* Figure out from the access length the initial pack and adjustment */
+-		const uint8_t adjustment = access_length & (uint8_t)~1U;
+-		if (adjustment)
+-			data = (const char *)adiv5_pack_data(dest, data, &value, ALIGN_16BIT);
+-		/* Now pack the remaining byte if necessary */
+-		if (access_length & 1)
+-			adiv5_pack_data(dest + adjustment, data, &value, ALIGN_8BIT);
++		adiv5_pack_data(dest & 3U, src, &value, access_width);
+ 		/* And finally write the new value back */
+ 		riscv32_sysbus_mem_native_write(
+-			hart, dest & alignment, &value, native_access_length, RV_MEM_ACCESS_32_BIT, native_access_length);
++			hart, dest & alignment, &value, access_length, RV_MEM_ACCESS_32_BIT, access_length);
+ 		break;
+ 	}
+ 	}
+@@ -508,25 +484,16 @@ static void riscv32_sysbus_mem_write(
+ 		++native_access_width;
+ 	const uint8_t native_access_length = (uint8_t)(1U << native_access_width);
+ 
+-	/* Figure out how much the length is getting adjusted by in the first write to make it aligned */
+-	const target_addr_t length_adjustment = dest & (native_access_length - 1U);
+-	/*
+-	 * Having done this, figure out how long the resulting write actually is so we can fill enough of the
+-	 * destination buffer with a single write
+-	 */
+-	const uint8_t write_length =
+-		len + length_adjustment <= native_access_length ? len : native_access_length - length_adjustment;
+-
+ 	/* Do the initial adjusted access */
+ 	size_t remainder = len;
+ 	target_addr_t address = dest;
+ 	const uint8_t *data = (const uint8_t *)src;
+-	riscv32_sysbus_mem_adjusted_write(hart, address, data, write_length, native_access_width, native_access_length);
++	riscv32_sysbus_mem_adjusted_write(hart, address, data, access_width, native_access_width, native_access_length);
+ 
+ 	/* After doing the initial access, adjust the location of the next and do any follow-up accesses required */
+-	remainder -= write_length;
+-	address += write_length;
+-	data += write_length;
++	remainder -= access_length;
++	address += access_length;
++	data += access_length;
+ 
+ 	/*
+ 	 * Now we're aligned to the wider access width, do another set of writes if there's
+@@ -543,64 +510,187 @@ static void riscv32_sysbus_mem_write(
+ 
+ 	/* If there's any data left to write, do another adjusted access to perform it */
+ 	if (remainder)
+-		riscv32_sysbus_mem_adjusted_write(hart, address, data, remainder, native_access_width, native_access_length);
++		riscv32_sysbus_mem_adjusted_write(hart, address, data, access_width, native_access_width, native_access_length);
+ }
+ 
+-void riscv32_mem_read(target_s *const target, void *const dest, const target_addr_t src, const size_t len)
++static void riscv32_abstract_progbuf_mem_read(
++	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
+ {
+-	/* If we're asked to do a 0-byte read, do nothing */
+-	if (!len) {
+-		DEBUG_PROTO("%s: @ %08" PRIx32 " len %zu\n", __func__, src, len);
++	if (!(hart->extensions & RV_ISA_EXT_COMPRESSED)) {
++		DEBUG_ERROR("This target does not implement the compressed ISA extension\n");
+ 		return;
+ 	}
+ 
++	DEBUG_TARGET("Performing %zu byte read of %08" PRIx32 " using PROGBUF\n", len, src);
++
++	/* Figure out the maxmial width of access to perform, up to the bitness of the target */
++	const uint8_t access_width = riscv_mem_access_width(hart, src, len);
++	// const uint8_t access_length = 1U << access_width;
++	// /* Build the access command */
++	// const uint32_t command = RV_DM_ABST_CMD_ACCESS_MEM | RV_ABST_READ | (access_width << RV_ABST_MEM_ACCESS_SHIFT) |
++	// 	(access_length < len ? RV_ABST_MEM_ADDR_POST_INC : 0U);
++	// /* Write the address to read to arg1 */
++	// if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA1, src))
++	// 	return;
++	// uint8_t *const data = (uint8_t *)dest;
++	// for (size_t offset = 0; offset < len; offset += access_length) {
++	// 	/* Execute the read */
++	// 	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, command) || !riscv_command_wait_complete(hart))
++	// 		return;
++	// 	/* Extract back the data from arg0 */
++	// 	uint32_t value = 0;
++	// 	if (!riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value))
++	// 		return;
++	// 	riscv32_unpack_data(data + offset, value, access_width);
++	// }
++
++	/* Disable auto-exec */
++	// if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_AUTO, 0))
++	// 	return;
++
++	/* 
++	 * progbuf 0
++	 * c.lw x8,0(x11) // Pull the address from DATA1
++	 * c.lw x9,0(x8)  // Read the data at that location
++	 */
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF0, 0x40044180U))
++		return;
++
++	/* 
++	 * progbuf 1
++	 * c.nop		  // alternately, `c.addi x8, 4` , for auto-increment (0xc1040411)
++	 * c.sw x9, 0(x10) // Write back to DATA0
++	 */
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF1, 0xc1040001U))
++		return;
++
++	/* 
++	 * progbuf 2
++	 * c.sw x8, 0(x11) // Write addy to DATA1
++	 * c.ebreak
++	 */
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF2, 0x9002c180U))
++		return;
++
++	/* StaticUpdatePROGBUFRegs */
++	uint32_t rr;
++	if (!riscv_dm_read(hart->dbg_module, 0x12, &rr)) {
++		DEBUG_ERROR("Could not get hart info\n");
++		return;
++	}
++	DEBUG_INFO("rr: %08" PRIx32 "\n", rr);
++	const uint32_t data0_offset = 0xe0000000U | (rr & 0x7ffU);
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, data0_offset)) // DATA0's location in memory.
++		return;
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, 0x0023100aU)) // Copy data to x10
++		return;
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, data0_offset + 4U)) // DATA1's location in memory.
++		return;
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, 0x0023100bU)) // Copy data to x11
++		return;
++	// if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, 0x40022010U)) // FLASH->CTLR
++	// 	return;
++	// if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, 0x0023100cU)) // Copy data to x12
++	// 	return;
++	// #define CR_PAGE_PG  ((uint32_t)0x00010000)
++	// #define CR_BUF_LOAD ((uint32_t)0x00040000)
++	// 	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, CR_PAGE_PG | CR_BUF_LOAD))
++	// 		return;
++	// 	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, 0x0023100dU)) // Copy data to x13
++	// 		return;
++
++	/* Enable auto-exec */
++	// if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_AUTO, 1U))
++	// 	return;
++
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA1, src))
++		return;
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, 0x00241000U) || !riscv_command_wait_complete(hart))
++		return;
++
++	/* Extract back the data from arg0 */
++	uint32_t value = 0;
++	if (!riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value))
++		return;
++
++	riscv32_unpack_data(dest, value, access_width);
++}
++
++static void riscv32_abstract_progbuf_mem_write(
++	riscv_hart_s *const hart, const target_addr_t dest, const void *const src, const size_t len)
++{
++	DEBUG_TARGET("Performing %zu byte write of %08" PRIx32 " using PROGBUF\n", len, dest);
++
++	(void)hart;
++	(void)dest;
++	(void)src;
++	(void)len;
++
++	// /* Figure out the maxmial width of access to perform, up to the bitness of the target */
++	// const uint8_t access_width = riscv_mem_access_width(hart, dest, len);
++	// const uint8_t access_length = 1U << access_width;
++	// /* Build the access command */
++	// const uint32_t command = RV_DM_ABST_CMD_ACCESS_MEM | RV_ABST_WRITE | (access_width << RV_ABST_MEM_ACCESS_SHIFT) |
++	// 	(access_length < len ? RV_ABST_MEM_ADDR_POST_INC : 0U);
++	// /* Write the address to write to arg1 */
++	// if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA1, dest))
++	// 	return;
++	// const uint8_t *const data = (const uint8_t *)src;
++	// for (size_t offset = 0; offset < len; offset += access_length) {
++	// 	/* Pack the data to write into arg0 */
++	// 	uint32_t value = riscv32_pack_data(data + offset, access_width);
++	// 	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, value))
++	// 		return;
++	// 	/* Execute the write */
++	// 	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, command) || !riscv_command_wait_complete(hart))
++	// 		return;
++	// }
++}
++
++static void riscv32_mem_read(target_s *const target, void *const dest, const target_addr_t src, const size_t len)
++{
++	DEBUG_TARGET("Performing %zu byte read of %08" PRIx32 "\n", len, src);
++	/* If we're asked to do a 0-byte read, do nothing */
++	if (!len)
++		return;
++
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_read(hart, dest, src, len);
+-	else
++		return;
++	}
++	if (hart->flags & RV_HART_FLAG_MEMORY_ABSTRACT) {
+ 		riscv32_abstract_mem_read(hart, dest, src, len);
+-
+-#if ENABLE_DEBUG
+-	DEBUG_PROTO("%s: @ %08" PRIx32 " len %zu:", __func__, src, len);
+-#ifndef DEBUG_PROTO_IS_NOOP
+-	const uint8_t *const data = (const uint8_t *)dest;
+-#endif
+-	for (size_t offset = 0; offset < len; ++offset) {
+-		if (offset == 16U)
+-			break;
+-		DEBUG_PROTO(" %02x", data[offset]);
++		if (hart->status == RISCV_HART_NOT_SUPP) {
++			DEBUG_WARN("Abstract memory access not supported, falling back to prog buffer\n");
++			hart->flags &= (uint8_t)~RV_HART_FLAG_MEMORY_ABSTRACT;
++		} else
++			return;
+ 	}
+-	if (len > 16U)
+-		DEBUG_PROTO(" ...");
+-	DEBUG_PROTO("\n");
+-#endif
++	riscv32_abstract_progbuf_mem_read(hart, dest, src, len);
+ }
+ 
+-void riscv32_mem_write(target_s *const target, const target_addr_t dest, const void *const src, const size_t len)
++static void riscv32_mem_write(target_s *const target, const target_addr_t dest, const void *const src, const size_t len)
+ {
+-#if ENABLE_DEBUG
+-	DEBUG_PROTO("%s: @ %" PRIx32 " len %zu:", __func__, dest, len);
+-#ifndef DEBUG_PROTO_IS_NOOP
+-	const uint8_t *const data = (const uint8_t *)src;
+-#endif
+-	for (size_t offset = 0; offset < len; ++offset) {
+-		if (offset == 16U)
+-			break;
+-		DEBUG_PROTO(" %02x", data[offset]);
+-	}
+-	if (len > 16U)
+-		DEBUG_PROTO(" ...");
+-	DEBUG_PROTO("\n");
+-#endif
++	DEBUG_TARGET("Performing %zu byte write of %08" PRIx32 "\n", len, dest);
+ 	/* If we're asked to do a 0-byte read, do nothing */
+ 	if (!len)
+ 		return;
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_write(hart, dest, src, len);
+-	else
++		return;
++	}
++	if (hart->flags & RV_HART_FLAG_MEMORY_ABSTRACT) {
+ 		riscv32_abstract_mem_write(hart, dest, src, len);
++		if (hart->status == RISCV_HART_NOT_SUPP) {
++			DEBUG_WARN("Abstract memory access not supported, falling back to prog buffer\n");
++			hart->flags &= (uint8_t)~RV_HART_FLAG_MEMORY_ABSTRACT;
++		} else
++			return;
++	}
++	riscv32_abstract_progbuf_mem_write(hart, dest, src, len);
+ }
+ 
+ /*
+diff --git a/src/target/riscv64.c b/src/target/riscv64.c
+index 2e25bd1..19eadb8 100644
+--- a/src/target/riscv64.c
++++ b/src/target/riscv64.c
+@@ -49,9 +49,7 @@ static void riscv64_mem_read(target_s *target, void *dest, target_addr_t src, si
+ bool riscv64_probe(target_s *const target)
+ {
+ 	/* Finish setting up the target structure with generic rv64 functions */
+-	target->core = "rv64";
+-	/* Provide the length of a suitable registers structure */
+-	target->regs_size = sizeof(riscv64_regs_s);
++	target->regs_size = sizeof(riscv64_regs_s); /* Provide the length of a suitable registers structure */
+ 	target->regs_read = riscv64_regs_read;
+ 	target->regs_write = riscv64_regs_write;
+ 	target->mem_read = riscv64_mem_read;
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 6fa13ef..fc87cdc 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -113,8 +113,8 @@
+ 
+ #define RV_GPRS_COUNT 32U
+ 
+-/* This enum defines the set of currently known and valid halt causes */
+-typedef enum riscv_halt_cause {
++	/* This enum defines the set of currently known and valid halt causes */
++	typedef enum riscv_halt_cause {
+ 	/* Halt was caused by an `ebreak` instruction executing */
+ 	RV_HALT_CAUSE_EBREAK = (1U << 6U),
+ 	/* Halt was caused by a breakpoint or watchpoint (set in the trigger module) */
+@@ -220,9 +220,6 @@ static void riscv_detach(target_s *target);
+ static const char *riscv_target_description(target_s *target);
+ 
+ static bool riscv_check_error(target_s *target);
+-static void riscv_halt_request(target_s *target);
+-static void riscv_halt_resume(target_s *target, bool step);
+-static target_halt_reason_e riscv_halt_poll(target_s *target, target_addr_t *watch);
+ static void riscv_reset(target_s *target);
+ 
+ void riscv_dmi_init(riscv_dmi_s *const dmi)
+@@ -350,6 +347,64 @@ static void riscv_hart_read_ids(riscv_hart_s *const hart)
+ 	/* rv128 is unimpl. */
+ }
+ 
++static size_t append_char(char *const buffer, const size_t offset, const size_t max_length, const char c)
++{
++	if (buffer && offset < max_length)
++		buffer[offset] = c;
++	return offset + 1;
++}
++
++static size_t riscv_snprint_isa_subset(const riscv_hart_s *const hart, char *const buffer, const size_t max_length)
++{
++	size_t offset = snprintf(buffer, max_length, "rv%" PRIu8, hart->access_width);
++
++	const bool is_embedded = hart->extensions & RV_ISA_EXT_EMBEDDED;
++
++	offset = append_char(buffer, offset, max_length, is_embedded ? 'e' : 'i');
++
++	const bool is_general_purpose_isa =
++		!is_embedded && (hart->extensions & RV_ISA_EXT_GENERAL_PURPOSE) == RV_ISA_EXT_GENERAL_PURPOSE;
++
++	if (is_general_purpose_isa) {
++		offset = append_char(buffer, offset, max_length, 'g');
++		if (hart->extensions & RV_ISA_EXT_QUAD_FLOAT)
++			offset = append_char(buffer, offset, max_length, 'q');
++	} else {
++		if (hart->extensions & RV_ISA_EXT_MUL_DIV_INT)
++			offset = append_char(buffer, offset, max_length, 'm');
++		if (hart->extensions & RV_ISA_EXT_ATOMIC)
++			offset = append_char(buffer, offset, max_length, 'a');
++		if (hart->extensions & RV_ISA_EXT_QUAD_FLOAT)
++			offset = append_char(buffer, offset, max_length, 'q'); /* Implies d */
++		else if (hart->extensions & RV_ISA_EXT_DOUBLE_FLOAT)
++			offset = append_char(buffer, offset, max_length, 'd'); /* Implies f */
++		else if (hart->extensions & RV_ISA_EXT_SINGLE_FLOAT)
++			offset = append_char(buffer, offset, max_length, 'f');
++	}
++	if (hart->extensions & RV_ISA_EXT_DECIMAL_FLOAT)
++		offset = append_char(buffer, offset, max_length, 'l');
++	if (hart->extensions & RV_ISA_EXT_COMPRESSED)
++		offset = append_char(buffer, offset, max_length, 'c');
++	if (hart->extensions & RV_ISA_EXT_BIT_MANIP)
++		offset = append_char(buffer, offset, max_length, 'b');
++	if (hart->extensions & RV_ISA_EXT_DYNAMIC_LANG)
++		offset = append_char(buffer, offset, max_length, 'j');
++	if (hart->extensions & RV_ISA_EXT_TRANSACT_MEM)
++		offset = append_char(buffer, offset, max_length, 't');
++	if (hart->extensions & RV_ISA_EXT_PACKED_SIMD)
++		offset = append_char(buffer, offset, max_length, 'p');
++	if (hart->extensions & RV_ISA_EXT_VECTOR)
++		offset = append_char(buffer, offset, max_length, 'v');
++	if (hart->extensions & RV_ISA_EXT_USER_INTERRUPTS)
++		offset = append_char(buffer, offset, max_length, 'n');
++
++	/* null-terminate the string */
++	if (max_length > 0)
++		buffer[offset < max_length ? offset : max_length - 1] = '\0';
++
++	return offset;
++}
++
+ static bool riscv_hart_init(riscv_hart_s *const hart)
+ {
+ 	/* Allocate a new target */
+@@ -368,9 +423,9 @@ static bool riscv_hart_init(riscv_hart_s *const hart)
+ 	uint32_t isa = riscv_hart_discover_isa(hart);
+ 	hart->address_width = riscv_isa_address_width(isa);
+ 	hart->extensions = isa & RV_ISA_EXTENSIONS_MASK;
+-	/* Figure out if the target needs us to use sysbus or not for memory access */
+-	riscv_hart_memory_access_type(hart);
+-	/* Then read out the ID registers */
++	static char core_string[32U]; // FIXME: Extremely hacky, do not merge!
++	riscv_snprint_isa_subset(hart, core_string, sizeof(core_string));
++	target->core = core_string;
+ 	riscv_hart_read_ids(hart);
+ 
+ 	DEBUG_INFO("Hart %" PRIx32 ": %u-bit RISC-V (arch = %08" PRIx32 "), vendor = %" PRIx32 ", impl = %" PRIx32
+@@ -379,7 +434,6 @@ static bool riscv_hart_init(riscv_hart_s *const hart)
+ 
+ 	/* We don't support rv128, so tell the user and fast-quit on this target. */
+ 	if (hart->access_width == 128U) {
+-		target->core = "(unsup) rv128";
+ 		DEBUG_WARN("rv128 is unsupported, ignoring this hart\n");
+ 		return true;
+ 	}
+@@ -388,8 +442,8 @@ static bool riscv_hart_init(riscv_hart_s *const hart)
+ 	target->designer_code = hart->vendorid ? hart->vendorid : hart->dbg_module->dmi_bus->designer_code;
+ 	target->cpuid = hart->archid;
+ 
+-	/* Now we're in a safe environment, leasurely read out the triggers, etc. */
+ 	riscv_hart_discover_triggers(hart);
++	riscv_hart_memory_access_type(hart);
+ 
+ 	/* Setup core-agnostic target functions */
+ 	target->attach = riscv_attach;
+@@ -430,16 +484,30 @@ static void riscv_hart_free(void *const priv)
+ 
+ static bool riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
+ {
+-	const bool result = dmi->read(dmi, address, value);
++	bool result = false;
++	do {
++		result = dmi->read(dmi, address, value);
++	} while (dmi->fault == RV_DMI_TOO_SOON);
++
+ 	if (result)
+-		DEBUG_PROTO("%s:  %08" PRIx32 " -> %08" PRIx32 "\n", __func__, address, *value);
++		DEBUG_TARGET("%s:  %08" PRIx32 " -> %08" PRIx32 "\n", __func__, address, *value);
++	else
++		DEBUG_WARN("%s:  %08" PRIx32 " failed: %u\n", __func__, address, dmi->fault);
+ 	return result;
+ }
+ 
+ static bool riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+ {
+-	DEBUG_PROTO("%s: %08" PRIx32 " <- %08" PRIx32 "\n", __func__, address, value);
+-	return dmi->write(dmi, address, value);
++	DEBUG_TARGET("%s: %08" PRIx32 " <- %08" PRIx32 "\n", __func__, address, value);
++
++	bool result = false;
++	do {
++		result = dmi->write(dmi, address, value);
++	} while (dmi->fault == RV_DMI_TOO_SOON);
++
++	if (!result)
++		DEBUG_WARN("%s:  %08" PRIx32 " failed: %u\n", __func__, address, dmi->fault);
++	return result;
+ }
+ 
+ bool riscv_dm_read(riscv_dm_s *dbg_module, const uint8_t address, uint32_t *const value)
+@@ -676,11 +744,7 @@ static void riscv_hart_discover_triggers(riscv_hart_s *const hart)
+ 		riscv_csr_write(hart, RV_TRIG_SELECT | RV_CSR_FORCE_32_BIT, &trigger);
+ 		/* Try reading the trigger info */
+ 		uint32_t info = 0;
+-		/*
+-		 * If the read succeeds but info is still 0, assume we're talking to something like a WCH device
+-		 * which'll do this despite not actually implementing the tinfo register. Handle it the same as
+-		 * the read explicitly failing.
+-		 */
++		/* Some chips reply ok but return 0 (WCH)*/
+ 		if (!riscv_csr_read(hart, RV_TRIG_INFO | RV_CSR_FORCE_32_BIT, &info) || !info) {
+ 			/*
+ 			 * If that fails, it's probably because the tinfo register isn't implemented, so read
+@@ -710,17 +774,23 @@ static void riscv_hart_discover_triggers(riscv_hart_s *const hart)
+ 
+ static void riscv_hart_memory_access_type(riscv_hart_s *const hart)
+ {
+-	uint32_t sysbus_status;
+-	hart->flags &= (uint8_t)~RV_HART_FLAG_MEMORY_SYSBUS;
++	hart->flags &= (uint8_t)~RV_HART_FLAG_MEMORY_MASK;
+ 	/*
+ 	 * Try reading the system bus access control and status register.
+ 	 * Check if the value read back is non-zero for the sbasize field
+ 	 */
+-	if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &sysbus_status) ||
+-		!(sysbus_status & RV_DM_SYSBUS_STATUS_ADDR_WIDTH_MASK))
+-		return;
+-	/* If all the checks passed, we now have a valid system bus so can proceed with using it for memory access */
+-	hart->flags = RV_HART_FLAG_MEMORY_SYSBUS | (sysbus_status & RV_HART_FLAG_ACCESS_WIDTH_MASK);
++	uint32_t sysbus_status;
++	if (riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &sysbus_status) &&
++		(sysbus_status & RV_DM_SYSBUS_STATUS_ADDR_WIDTH_MASK)) {
++		/* If all the checks passed, we now have a valid system bus so can proceed with using it for memory access */
++		hart->flags = RV_HART_FLAG_MEMORY_SYSBUS | (sysbus_status & RV_HART_FLAG_ACCESS_WIDTH_MASK);
++	} else {
++		/* 
++		 * If the system bus is not valid, we need to fall back to using abstract commands
++		 * Later, if the memory access fails, we'll clear the flag and fall back to use the prog buffer
++		 */
++		hart->flags = RV_HART_FLAG_MEMORY_ABSTRACT;
++	}
+ 	/* Make sure the system bus is not in any kind of error state */
+ 	(void)riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, 0x00407000U);
+ }
+@@ -810,7 +880,7 @@ static bool riscv_dm_poll_state(riscv_dm_s *const dbg_module, const uint32_t sta
+ 	return true;
+ }
+ 
+-static void riscv_halt_request(target_s *const target)
++void riscv_halt_request(target_s *const target)
+ {
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	/* Request the hart to halt */
+@@ -823,7 +893,7 @@ static void riscv_halt_request(target_s *const target)
+ 	(void)riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel);
+ }
+ 
+-static void riscv_halt_resume(target_s *target, const bool step)
++void riscv_halt_resume(target_s *const target, const bool step)
+ {
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	/* Configure the debug controller for single-stepping as appropriate */
+@@ -846,7 +916,7 @@ static void riscv_halt_resume(target_s *target, const bool step)
+ 	(void)riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel);
+ }
+ 
+-static target_halt_reason_e riscv_halt_poll(target_s *const target, target_addr_t *const watch)
++target_halt_reason_e riscv_halt_poll(target_s *const target, target_addr_t *const watch)
+ {
+ 	(void)watch;
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+@@ -881,7 +951,7 @@ static void riscv_reset(target_s *const target)
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	bool has_reset = false;
+ 	/* If the target does not have the nRST pin inhibited, use that to initiate reset */
+-	if (!(target->target_options & TOPT_INHIBIT_NRST)) {
++	if (!(target->target_options & RV_TOPT_INHIBIT_NRST)) {
+ 		platform_nrst_set_val(true);
+ 		has_reset = riscv_dm_poll_state(hart->dbg_module, RV_DM_STAT_ALL_RESET);
+ 		platform_nrst_set_val(false);
+@@ -904,17 +974,6 @@ static void riscv_reset(target_s *const target)
+ 	target_check_error(target);
+ }
+ 
+-static const char *riscv_fpu_ext_string(const uint32_t extensions)
+-{
+-	if (extensions & RV_ISA_EXT_QUAD_FLOAT)
+-		return "q";
+-	if (extensions & RV_ISA_EXT_DOUBLE_FLOAT)
+-		return "d";
+-	if (extensions & RV_ISA_EXT_SINGLE_FLOAT)
+-		return "f";
+-	return "";
+-}
+-
+ /*
+  * This function creates the target description XML string for a RISC-V part.
+  * This is done this way to decrease string duplication and thus code size, making it
+@@ -965,16 +1024,20 @@ static const char *riscv_fpu_ext_string(const uint32_t extensions)
+  * "</target>"
+  */
+ static size_t riscv_build_target_description(
+-	char *const buffer, size_t max_length, const uint8_t address_width, const uint32_t extensions)
++	char *const buffer, const size_t max_length, const riscv_hart_s *const hart)
+ {
+-	const bool embedded = extensions & RV_ISA_EXT_EMBEDDED;
+-	const uint32_t fpu = extensions & RV_ISA_EXT_ANY_FLOAT;
++	const bool embedded = hart->extensions & RV_ISA_EXT_EMBEDDED;
+ 
+ 	size_t print_size = max_length;
+ 	/* Start with the "preamble" chunks, which are mostly common across targets save for 2 words. */
+-	int offset = snprintf(buffer, print_size, "%s target %sriscv:rv%u%c%s%s <feature name=\"org.gnu.gdb.riscv.cpu\">",
+-		gdb_xml_preamble_first, gdb_xml_preamble_second, address_width, embedded ? 'e' : 'i', riscv_fpu_ext_string(fpu),
+-		gdb_xml_preamble_third);
++	int offset = snprintf(buffer, print_size, "%s target %sriscv:", gdb_xml_preamble_first, gdb_xml_preamble_second);
++
++	if (max_length != 0)
++		print_size = max_length - (size_t)offset;
++
++	offset += riscv_snprint_isa_subset(hart, buffer + offset, print_size);
++
++	offset += snprintf(buffer+offset, print_size, "%s <feature name=\"org.gnu.gdb.riscv.cpu\">", gdb_xml_preamble_third);
+ 
+ 	const uint8_t gprs = embedded ? 16U : 32U;
+ 	/* Then build the general purpose register descriptions using the arrays at top of file */
+@@ -986,14 +1049,14 @@ static size_t riscv_build_target_description(
+ 		const char *const name = riscv_gpr_names[i];
+ 		const gdb_reg_type_e type = riscv_gpr_types[i];
+ 
+-		offset += snprintf(buffer + offset, print_size, "<reg name=\"%s\" bitsize=\"%u\"%s%s/>", name, address_width,
+-			gdb_reg_type_strings[type], i == 0 ? " regnum=\"0\"" : "");
++		offset += snprintf(buffer + offset, print_size, "<reg name=\"%s\" bitsize=\"%u\"%s%s/>", name,
++			hart->address_width, gdb_reg_type_strings[type], i == 0 ? " regnum=\"0\"" : "");
+ 	}
+ 
+ 	/* Then build the program counter register description, which has the same bitsize as the GPRs. */
+ 	if (max_length != 0)
+ 		print_size = max_length - (size_t)offset;
+-	offset += snprintf(buffer + offset, print_size, "<reg name=\"pc\" bitsize=\"%u\"%s/>", address_width,
++	offset += snprintf(buffer + offset, print_size, "<reg name=\"pc\" bitsize=\"%u\"%s/>", hart->address_width,
+ 		gdb_reg_type_strings[GDB_TYPE_CODE_PTR]);
+ 
+ 	/* XXX: TODO - implement generation of the FPU feature and registers */
+@@ -1006,7 +1069,7 @@ static size_t riscv_build_target_description(
+ 		if (max_length != 0)
+ 			print_size = max_length - (size_t)offset;
+ 		offset += snprintf(buffer + offset, print_size, " <reg name=\"%s\" bitsize=\"%u\" regnum=\"%" PRIu32 "\" %s/>",
+-			riscv_csrs[i].name, address_width, riscv_csrs[i].csr_number + RV_CSR_GDB_OFFSET,
++			riscv_csrs[i].name, hart->address_width, riscv_csrs[i].csr_number + RV_CSR_GDB_OFFSET,
+ 			gdb_reg_save_restore_strings[GDB_SAVE_RESTORE_NO]);
+ 	}
+ 	/* Add the closing tags required */
+@@ -1021,10 +1084,9 @@ static size_t riscv_build_target_description(
+ static const char *riscv_target_description(target_s *const target)
+ {
+ 	const riscv_hart_s *const hart = riscv_hart_struct(target);
+-	const size_t description_length =
+-		riscv_build_target_description(NULL, 0, hart->address_width, hart->extensions) + 1U;
++	const size_t description_length = riscv_build_target_description(NULL, 0, hart) + 1U;
+ 	char *const description = malloc(description_length);
+ 	if (description)
+-		(void)riscv_build_target_description(description, description_length, hart->address_width, hart->extensions);
++		(void)riscv_build_target_description(description, description_length, hart);
+ 	return description;
+ }
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+index 8af394a..f5b6e55 100644
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -85,8 +85,9 @@ typedef enum riscv_match_size {
+ } riscv_match_size_e;
+ 
+ /* These defines specify Hart-specific information such as which memory access style to use */
+-#define RV_HART_FLAG_MEMORY_ABSTRACT    0x00U
++#define RV_HART_FLAG_MEMORY_MASK        0x30U
+ #define RV_HART_FLAG_MEMORY_SYSBUS      0x10U
++#define RV_HART_FLAG_MEMORY_ABSTRACT    0x20U
+ #define RV_HART_FLAG_ACCESS_WIDTH_MASK  0x0fU
+ #define RV_HART_FLAG_ACCESS_WIDTH_8BIT  0x01U
+ #define RV_HART_FLAG_ACCESS_WIDTH_16BIT 0x02U
+@@ -146,12 +147,23 @@ typedef struct riscv_hart {
+ 
+ #define RV_STATUS_VERSION_MASK 0x0000000fU
+ 
++#define RV_DMI_NOOP     0U
++#define RV_DMI_READ     1U
++#define RV_DMI_WRITE    2U
++#define RV_DMI_SUCCESS  0U
++#define RV_DMI_FAILURE  2U
++#define RV_DMI_TOO_SOON 3U
++
+ #define RV_DM_DATA0             0x04U
+ #define RV_DM_DATA1             0x05U
+ #define RV_DM_DATA2             0x06U
+ #define RV_DM_DATA3             0x07U
+ #define RV_DM_ABST_CTRLSTATUS   0x16U
+ #define RV_DM_ABST_COMMAND      0x17U
++#define RV_DM_ABST_AUTO         0x18U
++#define RV_DM_PROGBUF0          0x20U
++#define RV_DM_PROGBUF1          0x21U
++#define RV_DM_PROGBUF2          0x22U
+ #define RV_DM_SYSBUS_CTRLSTATUS 0x38U
+ #define RV_DM_SYSBUS_ADDR0      0x39U
+ #define RV_DM_SYSBUS_ADDR1      0x3aU
+@@ -190,11 +202,40 @@ typedef struct riscv_hart {
+ /* The FP base defines the starting register space address for the floating point registers */
+ #define RV_FP_BASE 0x1020U
+ 
+-#define RV_ISA_EXT_EMBEDDED     0x00000010U
+-#define RV_ISA_EXT_ANY_FLOAT    0x00010028U
+-#define RV_ISA_EXT_SINGLE_FLOAT 0x00000020U
+-#define RV_ISA_EXT_DOUBLE_FLOAT 0x00000008U
+-#define RV_ISA_EXT_QUAD_FLOAT   0x00010000U
++/* 
++ * The Extensions field encodes the presence of standard extensions, single bit per alphabet letter
++ * (bit 0 encodes presence of extension “A” through to bit 25 which encodes “Z”)
++ * 
++ * This list is taken from the RISC-V Instruction Set Manual v2.2
++ * 
++ * The list order is the canonical representation order in the ISA subset string
++ */
++
++/* Base ISA */
++#define RV_ISA_EXT_INTEGER  (1U << 8U) /* 'I': RV32I/64I/128I integer base ISA */
++#define RV_ISA_EXT_EMBEDDED (1U << 4U) /* 'E': RV32E reduced integer base ISA (Embedded) */
++
++/* Standard general-purpose ISA */
++#define RV_ISA_EXT_MUL_DIV_INT  (1U << 12U) /* 'M': Integer multiplication and division */
++#define RV_ISA_EXT_ATOMIC       (1U << 0U)  /* 'A': Atomic instructions */
++#define RV_ISA_EXT_SINGLE_FLOAT (1U << 5U)  /* 'F': Single-precision floating-point */
++#define RV_ISA_EXT_DOUBLE_FLOAT (1U << 3U)  /* 'D': Double-precision floating-point */
++
++/* 'G' standard general-purpose ISA abreviation, representing 'IMAFD' */
++#define RV_ISA_EXT_GENERAL_PURPOSE                                                               \
++	(RV_ISA_EXT_INTEGER | RV_ISA_EXT_MUL_DIV_INT | RV_ISA_EXT_ATOMIC | RV_ISA_EXT_SINGLE_FLOAT | \
++		RV_ISA_EXT_DOUBLE_FLOAT)
++
++/* Standard Unprivileged Extensions */
++#define RV_ISA_EXT_QUAD_FLOAT      (1U << 16U) /* 'Q': Quad-precision floating-point */
++#define RV_ISA_EXT_DECIMAL_FLOAT   (1U << 11U) /* 'L': Decimal floating-point */
++#define RV_ISA_EXT_COMPRESSED      (1U << 2U)  /* 'C': 16-bit compressed instructions */
++#define RV_ISA_EXT_BIT_MANIP       (1U << 1U)  /* 'B': Bit manipulation */
++#define RV_ISA_EXT_DYNAMIC_LANG    (1U << 9U)  /* 'J': Dynamic languages  */
++#define RV_ISA_EXT_TRANSACT_MEM    (1U << 19U) /* 'T': Transactional memory */
++#define RV_ISA_EXT_PACKED_SIMD     (1U << 15U) /* 'P': Packed-SIMD */
++#define RV_ISA_EXT_VECTOR          (1U << 21U) /* 'V': Vector extensions */
++#define RV_ISA_EXT_USER_INTERRUPTS (1U << 13U) /* 'N': User-level interrupts */
+ 
+ #define RV_TRIGGER_SUPPORT_MASK       0x0000fffeU
+ #define RV_TRIGGER_MODE_MASK          0xffff0000U
+@@ -214,6 +255,8 @@ typedef struct riscv_hart {
+ #define RV_CSR_MTVAL      0x343
+ #define RV_CSR_MIP        0x344
+ 
++#define RV_TOPT_INHIBIT_NRST 0x00000001U
++
+ void riscv_jtag_dtm_handler(uint8_t dev_index);
+ void riscv_dmi_init(riscv_dmi_s *dmi);
+ riscv_hart_s *riscv_hart_struct(target_s *target);
+@@ -231,7 +274,8 @@ uint8_t riscv_mem_access_width(const riscv_hart_s *hart, target_addr_t address,
+ void riscv32_unpack_data(void *dest, uint32_t data, uint8_t access_width);
+ uint32_t riscv32_pack_data(const void *src, uint8_t access_width);
+ 
+-void riscv32_mem_read(target_s *target, void *dest, target_addr_t src, size_t len);
+-void riscv32_mem_write(target_s *target, target_addr_t dest, const void *src, size_t len);
++void riscv_halt_request(target_s *target);
++void riscv_halt_resume(target_s *target, bool step);
++target_halt_reason_e riscv_halt_poll(target_s *target, target_addr_t *watch);
+ 
+ #endif /*TARGET_RISCV_DEBUG_H*/
+diff --git a/src/target/riscv_jtag_dtm.c b/src/target/riscv_jtag_dtm.c
+index 144e907..bcaab11 100644
+--- a/src/target/riscv_jtag_dtm.c
++++ b/src/target/riscv_jtag_dtm.c
+@@ -51,13 +51,6 @@
+ #define RV_DTMCS_ADDRESS_MASK      0x000003f0U
+ #define RV_DTMCS_ADDRESS_SHIFT     4U
+ 
+-#define RV_DMI_NOOP     0U
+-#define RV_DMI_READ     1U
+-#define RV_DMI_WRITE    2U
+-#define RV_DMI_SUCCESS  0U
+-#define RV_DMI_FAILURE  2U
+-#define RV_DMI_TOO_SOON 3U
+-
+ static void riscv_jtag_dtm_init(riscv_dmi_s *dmi);
+ static uint32_t riscv_shift_dtmcs(const riscv_dmi_s *dmi, uint32_t control);
+ static bool riscv_jtag_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
+@@ -186,33 +179,21 @@ static bool riscv_dmi_transfer(riscv_dmi_s *const dmi, const uint8_t operation,
+ 
+ static bool riscv_jtag_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
+ {
+-	bool result = true;
+-	do {
+-		/* Setup the location to read from */
+-		result = riscv_dmi_transfer(dmi, RV_DMI_READ, address, 0, NULL);
+-		if (result)
+-			/* If that worked, read back the value and check the operation status */
+-			result = riscv_dmi_transfer(dmi, RV_DMI_NOOP, 0, 0, value);
+-	} while (dmi->fault == RV_DMI_TOO_SOON);
+-
+-	if (!result)
+-		DEBUG_WARN("DMI read at 0x%08" PRIx32 " failed with status %u\n", address, dmi->fault);
++	/* Setup the location to read from */
++	bool result = riscv_dmi_transfer(dmi, RV_DMI_READ, address, 0, NULL);
++	if (result)
++		/* If that worked, read back the value and check the operation status */
++		result = riscv_dmi_transfer(dmi, RV_DMI_NOOP, 0, 0, value);
+ 	return result;
+ }
+ 
+ static bool riscv_jtag_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+ {
+-	bool result = true;
+-	do {
+-		/* Write a value to the requested register */
+-		result = riscv_dmi_transfer(dmi, RV_DMI_WRITE, address, value, NULL);
+-		if (result)
+-			/* If that worked, read back the operation status to ensure the write actually worked */
+-			result = riscv_dmi_transfer(dmi, RV_DMI_NOOP, 0, 0, NULL);
+-	} while (dmi->fault == RV_DMI_TOO_SOON);
+-
+-	if (!result)
+-		DEBUG_WARN("DMI write at 0x%08" PRIx32 " failed with status %u\n", address, dmi->fault);
++	/* Write a value to the requested register */
++	bool result = riscv_dmi_transfer(dmi, RV_DMI_WRITE, address, value, NULL);
++	if (result)
++		/* If that worked, read back the operation status to ensure the write actually worked */
++		result = riscv_dmi_transfer(dmi, RV_DMI_NOOP, 0, 0, NULL);
+ 	return result;
+ }
+ 
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+index ff932b9..65fc9a3 100644
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -156,7 +156,7 @@ struct target {
+ 	/* Other stuff */
+ 	const char *driver;
+ 	uint32_t cpuid;
+-	char *core;
++	const char *core;
+ 	char cmdline[MAX_CMDLINE];
+ 	target_addr_t heapinfo[4];
+ 	target_command_s *commands;
+diff --git a/src/target/target_probe.c b/src/target/target_probe.c
+index 1b0167a..3ab3e7b 100644
+--- a/src/target/target_probe.c
++++ b/src/target/target_probe.c
+@@ -84,6 +84,8 @@ CORTEXM_PROBE_WEAK_NOP(efm32_aap_probe)
+ CORTEXM_PROBE_WEAK_NOP(rp_rescue_probe)
+ CORTEXM_PROBE_WEAK_NOP(lpc55_dmap_probe)
+ 
++TARGET_PROBE_WEAK_NOP(ch32v003x_probe)
++TARGET_PROBE_WEAK_NOP(ch32vx_probe)
+ TARGET_PROBE_WEAK_NOP(ch32f1_probe)
+ TARGET_PROBE_WEAK_NOP(gd32f1_probe)
+ TARGET_PROBE_WEAK_NOP(gd32vf1_probe)
+diff --git a/src/target/target_probe.h b/src/target/target_probe.h
+index 3e4efe5..fbdd709 100644
+--- a/src/target/target_probe.h
++++ b/src/target/target_probe.h
+@@ -51,6 +51,9 @@ bool efm32_aap_probe(adiv5_access_port_s *ap);
+ bool rp_rescue_probe(adiv5_access_port_s *ap);
+ bool lpc55_dmap_probe(adiv5_access_port_s *ap);
+ 
++bool ch32v003x_probe(target_s *target);
++bool ch32vx_probe(target_s *target);
++bool ch32v3xx_probe(target_s *target);
+ bool ch32f1_probe(target_s *target);   // will catch all the clones
+ bool at32f40x_probe(target_s *target); // STM32 clones from Artery
+ bool at32f43x_probe(target_s *target);

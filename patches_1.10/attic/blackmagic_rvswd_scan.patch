@@ -1,0 +1,20 @@
+--- a/src/command.c	2024-01-27 10:37:14.323402465 +0100
++++ b/src/command.c	2024-01-27 10:38:30.652191831 +0100
+@@ -75,6 +75,8 @@
+ #endif
+ #if PC_HOSTED == 1
+ static bool cmd_shutdown_bmda(target_s *t, int argc, const char **argv);
++#else
++bool rvswd_scan(void);
+ #endif
+ 
+ const command_s cmd_list[] = {
+@@ -712,7 +714,7 @@
+  #if PC_HOSTED == 1
+  		scan_result = bmda_rvswd_scan();
+  #else
+- 		scan_result = false;
++ 		scan_result = rvswd_scan();
+  #endif
+  	}
+  	switch (e.type) {

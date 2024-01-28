@@ -59,6 +59,17 @@ extern uint32_t swd_delay_cnt;
 #define pRVCLK pSWCLK
 #define Rvswd_delay_cnt swd_delay_cnt
 
+#warning this is duplicated from riscv_jtag_dtm
+#define RV_DMI_NOOP     0U
+#define RV_DMI_READ     1U
+#define RV_DMI_WRITE    2U
+#define RV_DMI_SUCCESS  0U
+#define RV_DMI_FAILURE  2U
+#define RV_DMI_TOO_SOON 3U
+
+
+
+
 bool rv_dm_reset();
 
 extern SwdPin pSWDIO;
@@ -393,7 +404,7 @@ extern "C" bool rvswd_scan()
         Logger("calloc: failed in %s\n", __func__);
         return false;
     }
-    dmi->designer_code = NOT_JEP106_MANUFACTURER_WCH;
+    dmi->designer_code = JEP106_MANUFACTURER_WCH;
     dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
     dmi->address_width = 8U;
     dmi->read = ch32_riscv_dmi_read;
