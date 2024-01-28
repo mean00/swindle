@@ -106,8 +106,8 @@ IF (LN_BMP_HOSTED)
     
     MESSAGE(STATUS "Building for hosted mode (${LN_BMP_HOSTED})")
     ADD_DEFINITIONS("-DPC_HOSTED=1")
-    # needed for wchlink ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1")
-    #    ADD_DEFINITIONS("-DENABLE_DEBUG=1")
+    # if the next line is present, wchlink will not work
+    ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
     # Set a dummy configuration for lnArduino so it builds
     SET(LN_EXT "arm_gd32fx" CACHE INTERNAL "")
@@ -143,10 +143,10 @@ IF (LN_BMP_HOSTED)
             ${BMP_EXTRA}/hosted/remote_rv_protocol.c
 
              #${HOSTED}/bmp_libusb.c
-             ${BMP_EXTRA}/hosted/wchlink_riscv_dtm.c
-             ${BMP_EXTRA}/hosted/riscv_dtm_wchlink.c
-             ${BMP_EXTRA}/hosted/wchlink_rvswd.c
-             ${BMP_EXTRA}/hosted/wchlink.c
+             #${BMP_EXTRA}/hosted/wchlink_riscv_dtm.c
+             #${BMP_EXTRA}/hosted/riscv_dtm_wchlink.c
+             #${BMP_EXTRA}/hosted/wchlink_rvswd.c
+             #${BMP_EXTRA}/hosted/wchlink.c
 
             #${HOSTED}/remote/_swdptap.c
             #${PC}/cl_utils.c   

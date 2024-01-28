@@ -239,7 +239,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
                 }
             }
             break;
-#if 1
+#if 0
             case WCHLINK_VID:
                 if (pid == WCHLINK_PID)
                 {

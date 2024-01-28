@@ -17,6 +17,7 @@
 #include "gdb_packet.h"
 #include "bmp_remote.h"
 #include "remote/protocol_v2_defs.h"
+#include "jep106.h"
 
 #define RPC_RV_PACKET       'B'
 
@@ -122,4 +123,37 @@ bool remote_rv_dm_probe(uint32_t *id)
     *id  = from_ptr(reply+1);
     return true;
 }
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
+bool bmda_rvswd_scan()
+{
+    uint32_t id = 0;
+    target_list_free();
+    if (!remote_rv_dm_probe(&id))
+    {
+        return false;
+    }
+    DEBUG_ERROR("WCH : found 0x%x device\n", id);
+    riscv_dmi_s *dmi = (riscv_dmi_s *)malloc(sizeof( *dmi));
+    memset(dmi, 0, sizeof(*dmi));
+    if (!dmi)
+    { /* calloc failed: heap exhaustion */
+        DEBUG_ERROR("calloc: failed in %s\n", __func__);
+        return false;
+    }
+    dmi->designer_code = JEP106_MANUFACTURER_WCH;
+    dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
+    dmi->address_width = 8U;
+    dmi->read = remote_ch32_riscv_dmi_read;
+    dmi->write = remote_ch32_riscv_dmi_write;
+
+    riscv_dmi_init(dmi);
+
+    return true;
+}
+
  // EOF

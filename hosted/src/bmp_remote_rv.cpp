@@ -42,7 +42,7 @@ extern "C" bool remote_rv_rvswd_scan_c()
         Logger("calloc: failed in %s\n", __func__);
         return false;
     }
-    dmi->designer_code = NOT_JEP106_MANUFACTURER_WCH;
+    dmi->designer_code = JEP106_MANUFACTURER_WCH;
     dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
     dmi->address_width = 8U;
     dmi->read = remote_ch32_riscv_dmi_read;
