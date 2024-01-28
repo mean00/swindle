@@ -30,13 +30,30 @@ extern void do_assert(const char *s);
 
 uint8_t reply[REMOTE_MAX_MSG_SIZE];
 
-
+/**
+ * @brief uint32_t encoded as ascii
+ * 
+ * @param p 
+ * @return uint32_t 
+ */
+ static uint32_t c_from_ptr(const uint8_t *p)
+{
+    uint32_t out=0;
+    if(*p>='a' && *p<='f') out=*p-'a';
+    if(*p>='A' && *p<='F') out=*p-'A';
+    if(*p>='0' && *p<='9') out=*p-'0';
+    return out;
+}
+static uint32_t u8_from_ptr(const uint8_t *p)
+{
+    return (c_from_ptr(p+1)<<8)+c_from_ptr(p);
+}
 static uint32_t from_ptr(const uint8_t *p)
 {
-     return ((uint32_t)(p[1])<<0) + 
-            ((uint32_t)(p[2])<<8) + 
-            ((uint32_t)(p[3])<<16) + 
-            ((uint32_t)(p[4])<<24) ;
+     return ((uint32_t)(u8_from_ptr(p+0))<<0) + 
+            ((uint32_t)(u8_from_ptr(p+2))<<8) + 
+            ((uint32_t)(u8_from_ptr(p+4))<<16) + 
+            ((uint32_t)(u8_from_ptr(p+6))<<24) ;
 }
 
 #define SERIALIZE(X)  X&0xff, X>>8, X>>16, X>>24
@@ -120,7 +137,8 @@ bool remote_rv_dm_probe(uint32_t *id)
         DEBUG_ERROR(" dm_probe set error\n");
         xAssert(0);
     }
-    *id  = from_ptr(reply+1);
+    
+    *id  = from_ptr(reply+2);
     return true;
 }
 /**
