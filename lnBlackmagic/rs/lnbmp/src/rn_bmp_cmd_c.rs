@@ -351,3 +351,12 @@ extern "C" {
 extern "C" {
     pub fn min_free_heap_c() -> core::ffi::c_uint;
 }
+extern "C" {
+    pub fn bmp_rv_dm_read_c(adr: u8, value: *mut core::ffi::c_uint) -> bool_;
+}
+extern "C" {
+    pub fn bmp_rv_dm_write_c(adr: u8, value: core::ffi::c_uint) -> bool_;
+}
+extern "C" {
+    pub fn bmp_rv_rvswd_scan_c() -> bool_;
+}

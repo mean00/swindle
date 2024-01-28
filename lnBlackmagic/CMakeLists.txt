@@ -139,7 +139,7 @@ IF (LN_BMP_HOSTED)
             ${HOSTED}/remote/protocol_v3.c  
             ${HOSTED}/remote/protocol_v3_adiv5.c  
 
-            
+            ${BMP_EXTRA}/hosted/remote_rv_protocol.c
 
              #${HOSTED}/bmp_libusb.c
             ${HOSTED}/wchlink_riscv_dtm.c

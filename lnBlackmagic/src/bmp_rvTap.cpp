@@ -403,5 +403,32 @@ extern "C" bool rvswd_scan()
 
     return true;
 }
+extern "C"
+{
+/**
+    * @brief 
+    * 
+    * @param adr 
+    * @param value 
+    * @return true 
+    * @return false 
+    */
+extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
+{
+    return rv_dm_read(  adr,   value);
+}
+/**
+ * @brief 
+ * 
+ * @param adr 
+ * @param value 
+ * @return true 
+ * @return false 
+ */
+extern "C"  bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
+{
+    return rv_dm_write(  adr,   value);
+}
+}
 
 // EOF

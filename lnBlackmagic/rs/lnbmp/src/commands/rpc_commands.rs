@@ -73,6 +73,6 @@ pub const RPC_REMOTE_MEM_WRITE: u8 = b'M';
 /* RV packet */
 pub const RPC_RV_SCAN: u8 = b's';
 pub const RPC_RV_DM_READ: u8 = b'r';
-pub const RPC_RV_DM_WRITE: u8 = b'r';
+pub const RPC_RV_DM_WRITE: u8 = b'w';
 
 

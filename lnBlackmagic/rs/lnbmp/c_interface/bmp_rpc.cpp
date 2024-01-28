@@ -130,4 +130,5 @@ extern "C" const char *bmp_get_version_string(void)
     return "Version " LN_BMP_VERSION " Generated on " LN_BMP_GEN_DATE " (hash " LN_BMP_GIT_HASH ")\n";
 }
 
+
 // EOF

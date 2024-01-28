@@ -115,12 +115,15 @@ fn reply_adiv5_32(fault: i32, value: u32) {
         rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
     }
 }
-fn reply_rv_32(fault: i32, value: u32) {
-    if fault != 0 {
-        bmplog!("\rv error   : 0x{:x}\n", fault as u32);
+/**
+ * 
+ */
+fn reply_rv_32(ok: bool, value: u32) {
+    if ok!=true {
+        bmplog!("\rv error   \n");
         rpc_reply32_le(
             rpc_commands::RPC_RESP_ERR,
-            ((fault as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32),
+            ((1 as u32) << 8) + (rpc_commands::RPC_ERROR_FAULT as u32),
         );
     } else {
         rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
@@ -513,17 +516,17 @@ fn rpc_rv_packet(input: &[u8]) -> bool {
         },
         rpc_commands::RPC_RV_DM_READ    =>  {             
             let value: u32;
-            let fault: i32;
+            let ok: bool;
             let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..5]);
-            (fault, value) = bmp::bmp_rv_read(address as u8);
-            reply_rv_32(fault, value);
+            (ok, value) = bmp::bmp_rv_read(address as u8);
+            reply_rv_32(ok, value);
             return true;
         },
         rpc_commands::RPC_RV_DM_WRITE   => {
             let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..5]);
             let value: u32 = crate::parsing_util::u8s_string_to_u32(&input[6..]);            
-            let fault = bmp::bmp_rv_write(address as u8, value);
-            reply_rv_32(fault, 0);
+            let ok = bmp::bmp_rv_write(address as u8, value);
+            reply_rv_32(ok, 0);
             return true;
         },
         _ => (),

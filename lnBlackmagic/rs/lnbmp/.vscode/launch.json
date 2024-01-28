@@ -19,5 +19,31 @@
             "target": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted",            
             "cwd": "${workspaceFolder}"
         },      
+{
+                "name": "Arm",
+                "cwd": "${workspaceFolder}",
+                "svdFile" : "${workspaceRoot}/.vscode/STM32F103.svd",              
+                "executable": "../../../build/lnBMP_default_pinout_M4_96M_CLANG.elf",
+      
+                "request": "launch",
+                "type": "cortex-debug",
+                "runToEntryPoint": "main",
+                "servertype": "bmp",
+                "interface": "swd",
+                "device": "STM32F103",
+                "BMPGDBSerialPort" : "/dev/ttyBmpGdb3",
+                "runToMain": true,
+                "gdbPath" : "${config:armToolchainPath}/arm-none-eabi-gdb",     
+                "preLaunchCommands":[
+                "b deadEnd",
+                "set mem inaccessible-by-default off",
+                "set confirm off"
+                ],
+                "preRestartCommands": [
+                "enable breakpoint",
+                "break main"
+                ]
+      
+            },
     ]
 }
