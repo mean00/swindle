@@ -11,11 +11,15 @@ extern "C"
 #include "platform.h"
 #include "target.h"
 #include "target_internal.h"
-
+}
+// C++ 
+bool rv_dm_probe(uint32_t *chip_id); // C++
+// C
+extern "C"
+{
     extern "C" size_t xPortGetFreeHeapSize(void);
     extern "C" size_t xPortGetMinimumEverFreeHeapSize(void);
-    extern "C" int command_process(target_s *const t, const char *cmd_buffer);
-
+    extern "C" int command_process(target_s *const t, const char *cmd_buffer);    
     bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
 
     target_s *cur_target;
@@ -390,6 +394,11 @@ extern "C"
             return true;
         return false;
     }
+    bool bmp_rv_rvswd_probe_c(uint32_t *id)
+    {
+        return rv_dm_probe(id);
+
+    }
     /**
      */
     uint32_t free_heap_c()
@@ -436,4 +445,7 @@ extern "C"
     }
     */
 } // extern C
+
+
+
 // EOF

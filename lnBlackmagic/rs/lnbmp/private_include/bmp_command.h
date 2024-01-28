@@ -91,6 +91,6 @@ uint32_t min_free_heap_c();
 //
 bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value);
 bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value);
-bool bmp_rv_rvswd_scan_c();
+bool bmp_rv_rvswd_probe_c(uint32_t *id);
 
 

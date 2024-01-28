@@ -502,17 +502,17 @@ fn rpc_jtag_packet(_input: &[u8]) -> bool {
 /**
  * 
  */
+#[no_mangle]
 fn rpc_rv_packet(input: &[u8]) -> bool {
     match input[0] {
-        rpc_commands::RPC_RV_SCAN       =>  {             
-            if bmp::rvswdp_scan() == true 
-            {                     
-                rpc_reply(rpc_commands::RPC_RESP_OK, 0);
-                return true;
-            }
-            bmpwarning!("rvswd scan failed!\n");
-            rpc_reply(rpc_commands::RPC_RESP_ERR, 0);
-            return false;
+        rpc_commands::RPC_RV_SCAN       =>  {      
+            let mut id:u32 =0;       
+            let success = bmp::bmp_rvswdp_probe(&mut id);
+            reply_rv_32(success, id);
+            return match success {
+                true =>  {  bmpwarning!("rvswd scan ok!\n");true}
+                false => {  bmpwarning!("rvswd scan failed!\n");true}
+            };
         },
         rpc_commands::RPC_RV_DM_READ    =>  {             
             let value: u32;

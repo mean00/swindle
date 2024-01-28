@@ -358,5 +358,5 @@ extern "C" {
     pub fn bmp_rv_dm_write_c(adr: u8, value: core::ffi::c_uint) -> bool_;
 }
 extern "C" {
-    pub fn bmp_rv_rvswd_scan_c() -> bool_;
+    pub fn bmp_rv_rvswd_probe_c(id: *mut core::ffi::c_uint) -> bool_;
 }

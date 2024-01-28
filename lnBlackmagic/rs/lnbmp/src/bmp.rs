@@ -539,8 +539,9 @@ pub fn bmp_rv_write(adr : u8, data : u32) ->  bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rv_dm_write_c(adr, data)) }
 }
 
-pub fn bmp_rv_rvswd_scan() -> bool {
-    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rv_rvswd_scan_c()) }
+pub fn bmp_rvswdp_probe(id : &mut u32) -> bool {
+    let id_ptr: *mut u32 = id;
+    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rv_rvswd_probe_c(id_ptr)) }
 }
 
 
