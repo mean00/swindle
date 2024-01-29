@@ -8,7 +8,6 @@ use crate::bmplogger::*;
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::parsing_util::ascii_octet_to_hex;
 use crate::parsing_util::u8s_string_to_u32_le;
-
 use crate::rpc::rpc_commands::*;
 
 crate::setup_log!(false);
@@ -97,7 +96,7 @@ pub fn  remote_ch32_riscv_dmi_write_rs( address: u32, value : u32 ) -> bool {
     e.end();
     // now get the reply
     let reply = remote_get_reply();
-    if  !check_reply(reply,0)    {
+    if  !check_reply(reply,8)    {
         return false;
     }    
     true
