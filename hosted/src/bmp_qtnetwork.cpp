@@ -41,7 +41,7 @@ extern "C"
 #include <fcntl.h>
 }
 //-- disable debug
-#if 1
+#if 0
 #undef QBMPLOG
 #undef QBMPLOGN
 #define QBMPLOG(...)                                                                                                   \

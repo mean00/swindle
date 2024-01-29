@@ -58,6 +58,21 @@ static uint32_t from_ptr(const uint8_t *p)
 
 #define SERIALIZE(X)  X&0xff, X>>8, X>>16, X>>24
 
+extern bool remote_ch32_riscv_dmi_write_rs( uint32_t  address, uint32_t value );
+extern bool remote_ch32_riscv_dmi_read_rs(  uint32_t  address, uint32_t *value );
+
+#if 1
+bool remote_ch32_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value)
+{
+    return remote_ch32_riscv_dmi_read_rs(address, value);
+}
+bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value)
+{
+    return remote_ch32_riscv_dmi_write_rs(address, value);
+}
+
+#else
+
 /**
  * @brief 
  * 
@@ -121,7 +136,7 @@ bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t va
  * @return true 
  * @return false 
  */
-#if 0
+
 bool remote_rv_dm_probe(uint32_t *id)
 {
     uint8_t buffer[] = {REMOTE_SOM, RPC_RV_PACKET, RPC_RV_SCAN,  REMOTE_EOM};

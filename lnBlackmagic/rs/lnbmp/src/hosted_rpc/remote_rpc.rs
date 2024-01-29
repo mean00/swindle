@@ -10,6 +10,7 @@ use crate::hosted_rpc::remote_encoder::*;
 use crate::bmplogger::*;
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::parsing_util::ascii_octet_to_hex;
+use crate::parsing_util::u8s_string_to_u32_le;
 
 use crate::rpc::rpc_commands::*;
 /**
@@ -45,53 +46,73 @@ pub fn remote_rv_dm_probe(id : &mut u32)->bool {
 
     let mut e = rpc_encoder::new();
     e.begin();
-    e.add_u8(&[RPC_RV_PACKET]);
-    e.add_u8(&[RPC_RV_SCAN]);
+    e.add_u8(&[RPC_RV_PACKET, RPC_RV_SCAN]);    
     e.end();
     // now get the reply
     let reply = remote_get_reply();
+    if reply.len()==0
+    {
+        return false;
+    }
+    if reply[0]!= RPC_RESP_OK
+    {
+        return false;
+    }
     if reply.len()!=9
     {
         return false;
     }
-    *id =0x11223344;
+    *id = u8s_string_to_u32_le( &reply[1..]);
     true
 }
-/*
-
-    while left != 0 {
-        let chunk: usize = core::cmp::min(16, left);
-        crate::bmp::bmp_read_mem(current_address, &mut tmp[0..chunk]);
-        left -= chunk;
-        for i in 0..chunk {
-            crate::parsing_util::u8_to_ascii_to_buffer(tmp[i], &mut char_buffer[(2 * i)..]);
-        }
-        e.add_u8(&char_buffer[..(2 * chunk)]);
-        // avoid overflow
-        if left != 0 {
-            current_address += chunk as u32;
-        }
-    }
-
-    let mut e : encoder;
-
-    uint8_t buffer[] = {REMOTE_SOM, RPC_RV_PACKET, RPC_RV_SCAN,  REMOTE_EOM};
-    platform_buffer_write(buffer, sizeof(buffer));
-    int length = platform_buffer_read(reply, REMOTE_MAX_MSG_SIZE);
-    if (length !=9)
+/**
+ * 
+ */
+#[no_mangle]
+pub fn remote_ch32_riscv_dmi_read_rs( address: u32, value : &mut u32) -> bool {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_READ]);   
+    e.add_u32_le(address);
+    e.end();
+    // now get the reply
+    let reply = remote_get_reply();
+    if reply.len()==0
     {
-        DEBUG_ERROR("rv_dm_probe\n");
         return false;
     }
-    bool r = reply[0] == REMOTE_RESP_OK;
-    if (!r)
+    if reply[0]!= RPC_RESP_OK
     {
-        DEBUG_ERROR(" dm_probe set error\n");
-        xAssert(0);
+        return false;
     }
-    
-    *id  = from_ptr(reply+2);
-    return true;
-
+    if reply.len()!=9
+    {
+        return false;
+    }
+    *value = u8s_string_to_u32_le( &reply[1..]);
+    true
 }
-*/
+/**
+ * 
+ */
+#[no_mangle]
+pub fn  remote_ch32_riscv_dmi_write_rs( address: u32, value : u32 ) -> bool {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_WRITE]);   
+    e.add_u32_le(address);
+    e.add_u32_le(value);
+    e.end();
+    // now get the reply
+    let reply = remote_get_reply();
+    if reply.len()==0
+    {
+        return false;
+    }
+    if reply[0]== RPC_RESP_OK
+    {
+        return true;
+    }
+    false
+}
+//
