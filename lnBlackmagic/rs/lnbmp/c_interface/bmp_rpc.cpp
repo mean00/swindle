@@ -4,7 +4,7 @@ extern "C"
 
 #include "adiv5.h"
 #include "ctype.h"
-#include "gdb_hostio.h"
+//#include "gdb_hostio.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
 #include "general.h"
@@ -20,6 +20,11 @@ static adiv5_debug_port_s remote_dp = {
     .mem_read = advi5_mem_read_bytes,
     .mem_write = adiv5_mem_write_bytes,
 };
+
+extern "C" int32_t semihosting_request(target_s *target, uint32_t syscall, uint32_t r1)
+{
+    return -1;
+}
 
 /*
  */

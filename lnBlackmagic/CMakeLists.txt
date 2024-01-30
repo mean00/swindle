@@ -60,7 +60,8 @@ DECLARE_MCU( MSP432  msp432.c   msp432_probe)
 DECLARE_MCU( NRF51 nrf51.c      nrf51_probe nrf51_mdm_probe )
 DECLARE_MCU( NRF91 nrf91.c      nrf91_probe )
 DECLARE_MCU( NXPKE04 nxpke04.c  ke04_probe )
-DECLARE_MCU( RENESAS renesas.c  renesas_probe )
+DECLARE_MCU( RENESAS_RA renesas_ra.c  renesas_ra_probe )
+DECLARE_MCU( RENESAS_RZ renesas_rz.c  renesas_rz_probe )
 DECLARE_MCU( RP rp.c            rp_probe rp_rescue_probe)
 DECLARE_MCU( SAM3X sam3x.c      sam3x_probe samx7x_probe)
 DECLARE_MCU( SAM4L sam4l.c      sam4l_probe)
@@ -105,6 +106,7 @@ IF (LN_BMP_HOSTED)
 
     
     MESSAGE(STATUS "Building for hosted mode (${LN_BMP_HOSTED})")
+    ADD_DEFINITIONS("-DBMD_IS_STDC=1")
     ADD_DEFINITIONS("-DPC_HOSTED=1")
     # if the next line is present, wchlink will not work
     ADD_DEFINITIONS("-DENABLE_DEBUG=1")
@@ -140,6 +142,8 @@ IF (LN_BMP_HOSTED)
             ${HOSTED}/remote/protocol_v3.c  
             ${HOSTED}/remote/protocol_v3_adiv5.c  
 
+            #${PC}/../common/swdptap.c
+
             ${BMP_EXTRA}/hosted/remote_rv_protocol.c
 
              #${HOSTED}/bmp_libusb.c
@@ -172,6 +176,7 @@ ELSE()
         ADD_DEFINITIONS("-DPLATFORM_IDENT=\"lnBMP\"")
         ADD_DEFINITIONS("-DPC_HOSTED=0")        
         ADD_DEFINITIONS("-include miniplatform.h")       
+        ADD_DEFINITIONS("-DBMD_IS_STDC=1")
         include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
         #  add lnBlackmagic target code and host connection stuff
         IF(USE_RP2040)
@@ -209,7 +214,8 @@ SET(BM_SRC      ${S}/command.c
                 CACHE INTERNAL ""
                 )
 #------                    
-SET(BM_TARGET   ${T}/adiv5.c    
+SET(BM_TARGET   
+                ${T}/adiv5.c    
                 ${T}/adiv5_swd.c   
                 ${T}/cortex.c
                 ${T}/cortexm.c

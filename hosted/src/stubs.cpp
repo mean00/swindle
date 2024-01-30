@@ -44,6 +44,7 @@ extern "C" unsigned int bmp_get_wait_state_c(void)
 //  Stubs for RPC mode
 //
 //
+#if 0
 extern "C" bool bmp_rpc_init_swd_c()
 {
     xAssert(0);
@@ -87,6 +88,7 @@ extern "C" bool bmp_adiv5_full_dp_low_level_c()
     xAssert(0);
     return false;
 }
+#endif
 extern "C"
 {
     int gdb_if_init(void)
@@ -94,7 +96,7 @@ extern "C"
         return 0;
     }
 }
-
+#if 0
 extern "C" uint32_t bmp_adiv5_ap_read_c(const uint32_t device_index, const uint32_t ap_selection,
                                         const uint32_t address)
 {
@@ -123,7 +125,7 @@ extern "C" int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint
     xAssert(0);
     return 0;
 }
-
+#endif
 extern "C"
 {
     extern void remote_pin_set(uint8_t p, uint8_t s);
@@ -216,10 +218,12 @@ extern "C"
     {
         return 0.0;
     }
+#if 0
     const char *bmp_get_version_string()
     {
         return "lnbmpa";
     }
+#endif    
     size_t xPortGetFreeHeapSize(void)
     {
         return 33;
@@ -268,5 +272,15 @@ extern "C" bool bmp_rv_dm_reset_c()
 {
     xAssert(0);
     return false;
+}
+/*
+*/
+extern "C" void swdptap_init(void)
+{
+
+}
+extern "C" void gdb_if_putchar(const char c, const int flush)
+{
+
 }
 // -- eof --
