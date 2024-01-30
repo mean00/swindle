@@ -264,7 +264,7 @@ extern "C"  bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
     xAssert(0);
     return false;
 }
-bool rv_dm_probe(uint32_t *c)
+extern "C" bool bmp_rv_dm_reset_c()
 {
     xAssert(0);
     return false;

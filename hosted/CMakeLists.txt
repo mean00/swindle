@@ -100,8 +100,8 @@ ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
 #corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 
 SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
-SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/bmp_qtnetwork.h ${H}/bmp_qtserial.cpp ${H}/bmp_qtnetwork.cpp
-        ${H}/bmp_remote_rv.cpp)
+SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/bmp_qtnetwork.h ${H}/bmp_qtserial.cpp ${H}/bmp_qtnetwork.cpp)
+#${H}/bmp_remote_rv.cpp)
 
 ADD_EXECUTABLE(lnBMP_hosted ${SRC})
 target_link_libraries(lnBMP_hosted PRIVATE rsbmp)
