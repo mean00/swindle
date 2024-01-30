@@ -295,24 +295,32 @@ bool rv_dm_reset()
  * no fs => 12 sec
  * @return uint32_t
  */
-bool rv_dm_probe(uint32_t *chip_id)
+ bool rv_dm_start()
 {
     bmp_set_wait_state_c(15);
     bmp_gpio_init();
     bmp_io_begin_session();
 
     rv_dm_reset();
+    return true;
+}
+
+bool rv_dm_probe(uint32_t *chip_id)
+{
+    rv_dm_start();
     *chip_id = 0;
 
     uint32_t out = 0;
-    // init sequence
-    WR(0x10, 0x80000001UL);
+    //
+    // init sequence, reverse eng from capture
+    //----------------------------------------------
+    WR(0x10, 0x80000001UL);         // write DM CTROL =1
+    lnDelayMs(10);                      
+    WR(0x10, 0x80000001UL);         // write DM CTRL = 0x800000001 
     lnDelayMs(10);
-    WR(0x10, 0x80000001UL);
+    RD(0x11, 0x00030382UL);             // read DM_STATUS
     lnDelayMs(10);
-    RD(0x11, 0x00030382UL);
-    lnDelayMs(10);
-    RD(0x7f, 0x30700518UL);
+    RD(0x7f, 0x30700518UL);             // read 0x7f
     *chip_id = out; // 0x203xxxx 0x303xxxx 0x305...
     lnDelayMs(10);
     WR(0x05, 0x1ffff704UL);
@@ -322,7 +330,7 @@ bool rv_dm_probe(uint32_t *chip_id)
     RD(0x04, 0x30700518UL);
     lnDelayMs(10);
     RD(0x05, 0x1ffff704UL);
-    return true;
+    return (*chip_id)!=0xffffffffUL;
 }
 /**
  * @brief
@@ -426,7 +434,9 @@ extern "C"
     */
 extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
 {
-    return rv_dm_read(  adr,   value);
+    bool r= rv_dm_read(  adr,   value);
+    Logger("bmp_rv_dm_read_c : ad=0x%x value=0x%x status=%d\n",adr,*value,r);
+    return r;    
 }
 /**
  * @brief 
@@ -438,8 +448,20 @@ extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
  */
 extern "C"  bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
 {
-    return rv_dm_write(  adr,   value);
+    bool r=  rv_dm_write(  adr,   value);
+     Logger("bmp_rv_dm_write_c : ad=0x%x value=0x%x stat=%d\n",adr,value,r);
+    return r;    
+
 }
+/**
+ * @brief 
+ * 
+ */
+extern "C" bool bmp_rv_dm_reset_c()  
+{
+    return rv_dm_reset();
+}
+
 }
 
 // EOF
