@@ -522,7 +522,8 @@ fn rpc_rv_packet(input: &[u8]) -> bool {
         }
         rpc_commands::RPC_RV_DM_WRITE => {
             let address: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[1..9]);
-            let value: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[10..]);
+            let value: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[9..]);
+            //bmpwarning!("RV_DM_WRITE adr = {:x} val = {:x}\n",address,value);
             let ok = bmp::bmp_rv_write(address as u8, value);
             reply_rv_32(ok, 0);
             return true;
