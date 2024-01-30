@@ -25,6 +25,10 @@
 #define RPC_RV_DM_READ      'r'
 #define RPC_RV_DM_WRITE     'w'
 
+#define RV_DMI_SUCCESS  0U
+#define RV_DMI_FAILURE  2U
+
+
 extern void do_assert(const char *s);
 #define xAssert(x) if(!(x)) { do_assert(#x);}
 
@@ -60,19 +64,54 @@ static uint32_t from_ptr(const uint8_t *p)
 
 extern bool remote_ch32_riscv_dmi_write_rs( uint32_t  address, uint32_t value );
 extern bool remote_ch32_riscv_dmi_read_rs(  uint32_t  address, uint32_t *value );
+extern bool remote_ch32_riscv_dmi_reset_rs();
 
-#if 1
+#if 0
+/**
+ * @brief 
+ * 
+ * @param dmi 
+ * @param address 
+ * @param value 
+ * @return true 
+ * @return false 
+ */
 bool remote_ch32_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value)
 {
-    return remote_ch32_riscv_dmi_read_rs(address, value);
+    bool result  =  remote_ch32_riscv_dmi_read_rs(address, value);
+    if (1 || result)
+    {
+        dmi->fault = RV_DMI_SUCCESS;
+        return true;
+    }else
+    {
+        dmi->fault = RV_DMI_FAILURE;
+        return false;
+    }
 }
+/**
+ * @brief 
+ * 
+ * @param dmi 
+ * @param address 
+ * @param value 
+ * @return true 
+ * @return false 
+ */
 bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value)
 {
-    return remote_ch32_riscv_dmi_write_rs(address, value);
+    bool result  =  remote_ch32_riscv_dmi_write_rs(address, value);
+    if (1 || result)
+    {
+        dmi->fault = RV_DMI_SUCCESS;
+        return true;
+    }     else
+    {
+        dmi->fault = RV_DMI_FAILURE;
+        return false;
+    }
 }
-
 #else
-
 /**
  * @brief 
  * 
@@ -82,25 +121,24 @@ bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t va
  * @return true 
  * @return false 
  */
- bool remote_ch32_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value)
- {
-    uint8_t buffer[] = {REMOTE_SOM, RPC_RV_PACKET, RPC_RV_DM_READ,  address};
-    platform_buffer_write(buffer, sizeof(buffer));
-    int length = platform_buffer_read(reply, REMOTE_MAX_MSG_SIZE);
-    if (length < 1)
+bool remote_ch32_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value)
+{
+    int retries = 10;
+    while (1)
     {
-        DEBUG_ERROR("Invalid pin set reply\n");
-        return false;
-    }
-    bool r = reply[0] == REMOTE_RESP_OK;
-    if (!r)
-    {
-        DEBUG_ERROR(" dm_probe write error\n");
-        xAssert(0);
+        if (!retries)
+        {
+            dmi->fault = RV_DMI_FAILURE;
+            return false;
+        }
+        bool result  =  remote_ch32_riscv_dmi_read_rs(address, value);
+        if (result)
+        {
+            dmi->fault = RV_DMI_SUCCESS;
+            return true;
+        }
     }    
-    *value  = from_ptr(reply+1);
-    return true;
- }
+}
 /**
  * @brief 
  * 
@@ -112,52 +150,56 @@ bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t va
  */
 bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value)
 {
-    uint8_t buffer[] = {REMOTE_SOM, RPC_RV_PACKET, RPC_RV_DM_WRITE,  address, SERIALIZE(value)};
-    platform_buffer_write(buffer, sizeof(buffer));
-    int length = platform_buffer_read(reply, REMOTE_MAX_MSG_SIZE);
-    if (length < 1)
+    int retries = 10;
+    while (1)
     {
-        DEBUG_ERROR("Invalid pin set reply\n");
-        return false;
+        if (!retries)
+        {
+            dmi->fault = RV_DMI_FAILURE;
+            return false;
+        }
+        bool result  =  remote_ch32_riscv_dmi_write_rs(address, value);
+        if (result)
+        {
+            dmi->fault = RV_DMI_SUCCESS;
+            return true;
+        }     
     }
-    bool r = reply[0] == REMOTE_RESP_OK;
-    if (!r)
-    {
-        DEBUG_ERROR(" dm_probe write error\n");
-        xAssert(0);
-    }
-
-    return r;
-}
-/**
- * @brief 
- * 
- * @param id 
- * @return true 
- * @return false 
- */
-
-bool remote_rv_dm_probe(uint32_t *id)
-{
-    uint8_t buffer[] = {REMOTE_SOM, RPC_RV_PACKET, RPC_RV_SCAN,  REMOTE_EOM};
-    platform_buffer_write(buffer, sizeof(buffer));
-    int length = platform_buffer_read(reply, REMOTE_MAX_MSG_SIZE);
-    if (length !=9)
-    {
-        DEBUG_ERROR("rv_dm_probe\n");
-        return false;
-    }
-    bool r = reply[0] == REMOTE_RESP_OK;
-    if (!r)
-    {
-        DEBUG_ERROR(" dm_probe set error\n");
-        xAssert(0);
-    }
-    
-    *id  = from_ptr(reply+2);
-    return true;
 }
 #endif
+/**
+ * @brief 
+ * 
+ * @param chip_id 
+ * @return true 
+ * @return false 
+ */
+ #define RD(a, b) { remote_ch32_riscv_dmi_read_rs((unsigned int)a,&out); printf(" READ adr =0x%x, got 0x%x expected 0x%x\n",(unsigned int)a,(unsigned int)out,(unsigned int)b);}
+ #define WR(a, b) { remote_ch32_riscv_dmi_write_rs((unsigned int)a,(unsigned int)b); }
+
+
+
+bool bmda_rv_dm_probe(uint32_t *chip_id)
+{
+    uint32_t out;
+    remote_ch32_riscv_dmi_reset_rs();
+    *chip_id = 0;    
+    //
+    // init sequence, reverse eng from capture
+    //----------------------------------------------
+    WR(0x10, 0x80000001UL);         // write DM CTROL =1
+                        
+    WR(0x10, 0x80000001UL);         // write DM CTRL = 0x800000001 
+    RD(0x11, 0x00030382UL);             // read DM_STATUS
+    RD(0x7f, 0x30700518UL);             // read 0x7f
+    *chip_id = out; // 0x203xxxx 0x303xxxx 0x305...
+    WR(0x05, 0x1ffff704UL);
+    WR(0x17, 0x02200000UL);
+    RD(0x04, 0x30700518UL);
+    RD(0x05, 0x1ffff704UL);
+    return (*chip_id)!=0xffffffffUL;
+}
+
 /**
  * @brief 
  * 
@@ -166,13 +208,18 @@ bool remote_rv_dm_probe(uint32_t *id)
  */
 bool bmda_rvswd_scan()
 {
-    uint32_t id = 0;
+    
     target_list_free();
-    if (!remote_rv_dm_probe(&id))
+    
+    // actual scan
+    uint32_t chip_id=0;
+    if(!bmda_rv_dm_probe(&chip_id))
     {
+        DEBUG_ERROR("WCH : no device found\n");
         return false;
     }
-    DEBUG_ERROR("WCH : found 0x%x device\n", id);
+
+    DEBUG_ERROR("WCH : found 0x%x device\n", chip_id);
     riscv_dmi_s *dmi = (riscv_dmi_s *)malloc(sizeof( *dmi));
     memset(dmi, 0, sizeof(*dmi));
     if (!dmi)
