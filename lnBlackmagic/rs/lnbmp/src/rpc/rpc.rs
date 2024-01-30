@@ -1,7 +1,7 @@
 use crate::bmp;
-use crate::rpc::rpc_commands;
 use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::*;
+use crate::rpc::rpc_commands;
 
 use crate::bmplogger::*;
 use crate::parsing_util::ascii_hex_string_to_u8s;
@@ -67,8 +67,10 @@ fn rpc_reply32_le(code: u8, subcode: u32) {
 
     reply[0] = rpc_commands::RPC_REMOTE_RESP;
     reply[1] = code;
+    let mut sc = subcode;
     for i in 0..4 {
-        let ascii = crate::parsing_util::u8_to_ascii(((subcode >> (8 * i)) & 0xff) as u8);
+        let ascii = crate::parsing_util::u8_to_ascii((sc & 0xff) as u8);
+        sc >>= 8;
         reply[2 + i * 2] = ascii[0];
         reply[3 + i * 2] = ascii[1];
     }
@@ -116,7 +118,7 @@ fn reply_adiv5_32(fault: i32, value: u32) {
     }
 }
 /**
- * 
+ *
  */
 fn reply_rv_32(ok: bool, value: u32) {
     if !ok {
@@ -500,35 +502,31 @@ fn rpc_jtag_packet(_input: &[u8]) -> bool {
 }
 
 /**
- * 
+ *
  */
 #[no_mangle]
 fn rpc_rv_packet(input: &[u8]) -> bool {
     match input[0] {
-        rpc_commands::RPC_RV_SCAN       =>  {      
-            let mut id:u32 =0;       
-            let success = bmp::bmp_rvswdp_probe(&mut id);
-            reply_rv_32(success, id);
-            return match success {
-                true =>  {  bmpwarning!("rvswd scan ok!\n");true}
-                false => {  bmpwarning!("rvswd scan failed!\n");true}
-            };
-        },
-        rpc_commands::RPC_RV_DM_READ    =>  {             
+        rpc_commands::RPC_RV_RESET => {
+            let success = bmp::bmp_rv_reset();
+            reply_rv_32(success, 0);
+            return true;
+        }
+        rpc_commands::RPC_RV_DM_READ => {
             let value: u32;
             let ok: bool;
-            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..9]);
+            let address: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[1..9]);
             (ok, value) = bmp::bmp_rv_read(address as u8);
             reply_rv_32(ok, value);
             return true;
-        },
-        rpc_commands::RPC_RV_DM_WRITE   => {
-            let address: u32 = crate::parsing_util::u8s_string_to_u32(&input[1..9]);
-            let value: u32 = crate::parsing_util::u8s_string_to_u32(&input[10..]);            
+        }
+        rpc_commands::RPC_RV_DM_WRITE => {
+            let address: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[1..9]);
+            let value: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[10..]);
             let ok = bmp::bmp_rv_write(address as u8, value);
             reply_rv_32(ok, 0);
             return true;
-        },
+        }
         _ => (),
     }
     bmplog!("**** unsupported rv packet*********\n");
@@ -635,7 +633,7 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         bmplog!("Cmd : {}", input[1]);
         bmplog!("\n");
     }
-    match input[0] {        
+    match input[0] {
         rpc_commands::RPC_RV_PACKET => rpc_rv_packet(&input[1..]),
         rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&input[1..]),
         rpc_commands::RPC_JTAG_PACKET => rpc_jtag_packet(&input[1..]),

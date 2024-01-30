@@ -292,8 +292,6 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
-
-
 /**
  *
  */

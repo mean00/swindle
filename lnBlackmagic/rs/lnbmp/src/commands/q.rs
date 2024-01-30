@@ -354,7 +354,7 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
             encoder::error(1);
             return true;
         }
-        
+
         digest.update(&buffer[0..(rd as usize)]);
         adr += rd;
     }

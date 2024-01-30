@@ -1,2 +1,2 @@
-pub mod remote_rpc;
 mod remote_encoder;
+pub mod remote_rpc;

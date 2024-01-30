@@ -1,9 +1,7 @@
-
-
 /**
  *  Stack layout for cortex M33 without FPU without MPU
 Newer stack
-    Extra        
+    Extra
         psplim     r13 *temp
         lr         r14
         R4..r11   10 registers = 40 bytes
@@ -28,7 +26,7 @@ use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_trait::freertos_switch_handler;
 
 const STACKED_REGISTER_SIZE: u32 = 72;
-const PSPLIM : usize = 14;
+const PSPLIM: usize = 14;
 /**
  *
  */
@@ -75,9 +73,8 @@ impl freertos_switch_handler for freertos_switch_handler_m33 {
         self.gpr.push(0, 4); // push  R0 to R4 excluded
         self.gpr.push(4, 12); // push  R4..r12 excluded
 
-        
-        self.gpr.push(14, 15);              // LR
-        self.gpr.push(PSPLIM, PSPLIM+1);    // psplim
+        self.gpr.push(14, 15); // LR
+        self.gpr.push(PSPLIM, PSPLIM + 1); // psplim
 
         true
     }
@@ -89,9 +86,9 @@ impl freertos_switch_handler for freertos_switch_handler_m33 {
         // rewind by 16 *4=64 bytes, we dont save SP on SP but on TCP
         self.gpr.pointer = address;
         // now read the registers onto the stack
-        self.gpr.pop(PSPLIM, PSPLIM+1);    // psplim
-        self.gpr.pop(14, 15);              // LR
-        
+        self.gpr.pop(PSPLIM, PSPLIM + 1); // psplim
+        self.gpr.pop(14, 15); // LR
+
         self.gpr.pop(4, 12); // push  R4..r12 excluded
         self.gpr.pop(0, 4); //
         self.gpr.pop(12, 13); // R12

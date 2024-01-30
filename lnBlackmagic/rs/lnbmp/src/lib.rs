@@ -16,8 +16,8 @@ mod packet_symbols;
 mod parsing_util;
 mod poppingbuffer;
 mod rn_bmp_cmd_c;
-mod util;
 mod rpc;
+mod util;
 
 // This should only be included in host mode
 // FIXME TODO

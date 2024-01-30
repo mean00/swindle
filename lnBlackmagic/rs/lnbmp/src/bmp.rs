@@ -417,8 +417,8 @@ pub fn bmp_adiv5_ap_write(device_index: u32, ap_selection: u32, address: u32, va
     }
 }
 /**
- * 
- */ 
+ *
+ */
 
 pub fn bmp_adiv5_full_dp_low_level(
     device_index: u32,
@@ -514,36 +514,37 @@ pub fn get_heap_stats() -> (u32, u32) {
  }
 */
 
-
+pub fn bmp_rv_reset() -> bool {
+    unsafe {
+        let status: bool = ret_to_bool(rn_bmp_cmd_c::bmp_rv_dm_reset_c());
+        status
+    }
+}
 
 /**
  *
  */
 
- pub fn bmp_rv_read(adr : u8) -> ( bool, u32) {
-     
+pub fn bmp_rv_read(adr: u8) -> (bool, u32) {
     unsafe {
-
         let mut ret: u32 = 0;
         let ret_ptr: *mut u32 = &mut ret;
 
-        let status : bool =  ret_to_bool(rn_bmp_cmd_c::bmp_rv_dm_read_c(adr, ret_ptr));
+        let status: bool = ret_to_bool(rn_bmp_cmd_c::bmp_rv_dm_read_c(adr, ret_ptr));
         (status, ret)
     }
 }
 /**
- * 
+ *
  */
-pub fn bmp_rv_write(adr : u8, data : u32) ->  bool {
- 
+pub fn bmp_rv_write(adr: u8, data: u32) -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rv_dm_write_c(adr, data)) }
 }
 
-pub fn bmp_rvswdp_probe(id : &mut u32) -> bool {
+pub fn bmp_rvswdp_probe(id: &mut u32) -> bool {
     let id_ptr: *mut u32 = id;
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rv_rvswd_probe_c(id_ptr)) }
 }
-
 
 /*
  */
