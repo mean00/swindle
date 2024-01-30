@@ -20,7 +20,7 @@ mod rpc;
 mod util;
 
 // This should only be included in host mode
-// FIXME TODO
+#[cfg(not(target_os = "none"))]
 mod hosted_rpc;
 
 use crate::decoder::gdb_stream;
