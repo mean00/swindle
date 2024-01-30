@@ -435,7 +435,7 @@ extern "C"
 extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
 {
     bool r= rv_dm_read(  adr,   value);
-    Logger("bmp_rv_dm_read_c : ad=0x%x value=0x%x status=%d\n",adr,*value,r);
+ //   Logger("bmp_rv_dm_read_c : ad=0x%x value=0x%x status=%d\n",adr,*value,r);
     return r;    
 }
 /**
@@ -449,7 +449,7 @@ extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
 extern "C"  bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
 {
     bool r=  rv_dm_write(  adr,   value);
-     Logger("bmp_rv_dm_write_c : ad=0x%x value=0x%x stat=%d\n",adr,value,r);
+//     Logger("bmp_rv_dm_write_c : ad=0x%x value=0x%x stat=%d\n",adr,value,r);
     return r;    
 
 }
