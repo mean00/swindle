@@ -394,11 +394,7 @@ extern "C"
             return true;
         return false;
     }
-    bool bmp_rv_rvswd_probe_c(uint32_t *id)
-    {
-        return rv_dm_probe(id);
-
-    }
+    
     /**
      */
     uint32_t free_heap_c()
