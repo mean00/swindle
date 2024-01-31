@@ -8,7 +8,7 @@ SET(myB ${CMAKE_CURRENT_SOURCE_DIR}/ CACHE INTERNAL "")
 
 SET(B ${myB}/src CACHE INTERNAL "")
 
-OPTION(LN_BMP_HOSTED  "Enable Hosted mode" OFF)
+OPTION(SWINDLE_HOSTED  "Enable Hosted mode" OFF)
 
 #----------------------------
 # Supported boards
@@ -96,7 +96,8 @@ SET(BOARDS      ${enabled_sources}
 
 include_directories(${CMAKE_SOURCE_DIR}/blackmagic/libopencm3/include)
 # ===========================================================================================
-IF (LN_BMP_HOSTED) 
+IF (SWINDLE_HOSTED) 
+        
         #----------------------------
         # Hosted mode
         #----------------------------    
@@ -105,7 +106,7 @@ IF (LN_BMP_HOSTED)
     pkg_check_modules( ftdi REQUIRED libftdi1)
 
     
-    MESSAGE(STATUS "Building for hosted mode (${LN_BMP_HOSTED})")
+    MESSAGE(STATUS "Building for hosted mode (${SWINDLE_HOSTED})")
     ADD_DEFINITIONS("-DBMD_IS_STDC=1")
     ADD_DEFINITIONS("-DPC_HOSTED=1")
     # if the next line is present, wchlink will not work
@@ -171,7 +172,7 @@ ELSE()
         #----------------------------
         # "Normal" /Standalone mode
         #----------------------------
-        MESSAGE(STATUS "Building for embedded mode (${LN_BMP_HOSTED})")
+        MESSAGE(STATUS "Building for embedded mode (${SWINDLE_HOSTED})")
         ADD_DEFINITIONS("-DENABLE_DEBUG=1")
         ADD_DEFINITIONS("-DPLATFORM_IDENT=\"lnBMP\"")
         ADD_DEFINITIONS("-DPC_HOSTED=0")        
@@ -239,7 +240,7 @@ SET(BM_TARGET
 add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
 target_include_directories( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-IF (LN_BMP_HOSTED) 
+IF (_HOSTED) 
 target_include_directories( libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
 ENDIF()
 
@@ -247,7 +248,7 @@ ENDIF()
 
 
 target_link_libraries( libswindle lnArduino)
-IF (LN_BMP_HOSTED) 
+IF (SWINDLE_HOSTED) 
 ELSE()
     target_link_libraries( libswindle tinyUsb)
 ENDIF()
@@ -262,18 +263,18 @@ include_directories( ${BMP}/src)
 include_directories( ${BMP}/src/target)
 #---------
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
-IF (LN_BMP_HOSTED) 
+IF (SWINDLE_HOSTED) 
     include(rnCmake)
     corrosion_import_crate(MANIFEST_PATH rs/rs_swindle/Cargo.toml    NO_DEFAULT_FEATURES      CFLAGS ${LN_LTO_RUST_FLAGS} )
     corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
-ELSE (LN_BMP_HOSTED) 
+ELSE (SWINDLE_HOSTED) 
         add_subdirectory( rs )
         #
         # rvTap does not like -Oz
         # Something to fix here
         MESSAGE(STATUS "Restricting flags for rvTap to -Os")
         set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-Ofast")
-ENDIF (LN_BMP_HOSTED) 
+ENDIF (SWINDLE_HOSTED) 
 #
 MESSAGE(STATUS "Enabled boards  : ${enabled_boards}")
 MESSAGE(STATUS "Enabled sources : ${BOARDS}")

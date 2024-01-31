@@ -13,7 +13,7 @@ PROJECT(lnBMPHosted C CXX)
 #
 set(LN_EXT                  arm_gd32fx)
 set(LN_MCU_FOLDER           ${CMAKE_SOURCE_DIR}/../lnArduino/mcus/arm_gd32fx/)
-SET(LN_BMP_HOSTED           True CACHE INTERNAL "")
+SET(SWINDLE_HOSTED           True CACHE INTERNAL "")
 SET(LN_ARCH                 "X86" CACHE INTERNAL "")
 SET(LN_MCU                  "M4" CACHE INTERNAL "")
 SET(LN_TOOLCHAIN_EXT        "arm_gd32fx_clang" CACHE INTERNAL "")
@@ -30,7 +30,7 @@ SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
 #
 SET(LN_ENABLED_BOARDS   CH32F1 RP STM32F1 CACHE INTERNAL "")
 #
-include(lnBMP_version)
+include(swindle_version)
 GEN_VERSION_FILE()
 #
 SET(BMP_VERSION_BRANCH 1.10)
@@ -93,7 +93,7 @@ ADD_DEFINITIONS("-DBMD_IS_STDC=1")
 
 include(enabled_board)
 
-ADD_SUBDIRECTORY(../lnBlackmagic lnBMP)
+ADD_SUBDIRECTORY(../swindle lnswindle)
 
 #
 #include(rnCmake)
@@ -104,11 +104,11 @@ SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/bmp_qtnetwork.h ${H}/bmp_qtserial.cpp ${H}/bmp_qtnetwork.cpp)
 #${H}/bmp_remote_rv.cpp)
 
-ADD_EXECUTABLE(lnBMP_hosted ${SRC})
-target_link_libraries(lnBMP_hosted PRIVATE rsbmp)
-target_link_libraries(lnBMP_hosted PRIVATE lnBMP_interface)
-target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
-target_link_libraries(lnBMP_hosted PRIVATE lnBMP_interface)
-target_link_libraries(lnBMP_hosted PRIVATE lnBlackmagic  )
-target_link_libraries(lnBMP_hosted PRIVATE embeddedPrintf usb-1.0 )
-target_link_libraries(lnBMP_hosted PRIVATE Qt6::Network Qt6::SerialPort)
+ADD_EXECUTABLE(swindle_hosted ${SRC})
+target_link_libraries(swindle_hosted PRIVATE rsbmp)
+target_link_libraries(swindle_hosted PRIVATE swindle_interface)
+target_link_libraries(swindle_hosted PRIVATE libswindle  )
+target_link_libraries(swindle_hosted PRIVATE swindle_interface)
+target_link_libraries(swindle_hosted PRIVATE libswindle  )
+target_link_libraries(swindle_hosted PRIVATE embeddedPrintf usb-1.0 )
+target_link_libraries(swindle_hosted PRIVATE Qt6::Network Qt6::SerialPort)
