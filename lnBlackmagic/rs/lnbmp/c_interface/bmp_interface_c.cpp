@@ -20,8 +20,7 @@ extern "C"
     extern "C" size_t xPortGetFreeHeapSize(void);
     extern "C" size_t xPortGetMinimumEverFreeHeapSize(void);
     extern "C" int command_process(target_s *const t, const char *cmd_buffer);    
-    bool generic_crc32(target_s *t, uint32_t *crc, uint32_t base, int len);
-
+    extern "C" bool bmd_crc32(target_s *const target, uint32_t *const result, const uint32_t base, const size_t len);
     target_s *cur_target;
     bool shutdown_bmda;
 
@@ -312,7 +311,7 @@ extern "C"
         if (!bmp_attached_c())
             return false;
 
-        if (!generic_crc32(cur_target, (uint32_t *)crc, address, length))
+        if (!bmd_crc32(cur_target, (uint32_t *)crc, address, length))
             return false;
         return true;
     }
