@@ -43,7 +43,7 @@ pub struct CommandTree {
     cb: CallbackType, // string + strings
 }
 
-const main_command_tree: [CommandTree; 21] = [
+const main_command_tree: [CommandTree; 22] = [
     CommandTree {
         command: "!",
         args: 0,
@@ -116,6 +116,13 @@ const main_command_tree: [CommandTree; 21] = [
         require_connected: true,
         cb: CallbackType::text(_m),
     }, // read memory
+    CommandTree {
+        command: "p",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_p),
+    }, // read register
+    
     CommandTree {
         command: "P",
         args: 0,
