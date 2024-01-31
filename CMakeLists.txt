@@ -4,7 +4,7 @@ SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 cmake_minimum_required(VERSION 3.13)
 MESSAGE(STATUS "======================")
-MESSAGE(STATUS "Starting lnBMP ")
+MESSAGE(STATUS "Starting swindle ")
 MESSAGE(STATUS "======================")
 
 OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
@@ -39,12 +39,12 @@ include(./mcuSelect.cmake)
 SET(CMAKE_TOOLCHAIN_FILE ${AF_FOLDER}/lnArduino.cmake)
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
-PROJECT(lnBMP NONE) # the NONE is very important !
+PROJECT(swindle NONE) # the NONE is very important !
 
 enable_language(C CXX ASM) # this is important too!
 # Generate version
 STRING(TIMESTAMP  timestamp "20%y-%m-%d")
-include(lnBMP_version)
+include(swindle_version)
 GEN_VERSION_FILE()
 
 #
@@ -78,22 +78,22 @@ SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
 
 
 IF (USE_RP2040)
-        SET(SOURCES src/lnBMP_rp2040.cpp)
+        SET(SOURCES src/swindle_rp2040.cpp)
         USE_LIBRARY(WS2812_rp_single)
 ELSE()
-        SET(SOURCES src/lnBMP.cpp)
+        SET(SOURCES src/swindle.cpp)
 ENDIF()
 
-GENERATE_GD32_FIRMWARE(lnBMP ${SOURCES})
-HASH_GD32_FIRMWARE(lnBMP)    
+GENERATE_GD32_FIRMWARE(swindle ${SOURCES})
+HASH_GD32_FIRMWARE(swindle)    
 
 
-ADD_SUBDIRECTORY(lnBlackmagic)
-target_link_libraries(lnBMP lnarduino_c_bindings)
-target_link_libraries(lnBMP lnBlackmagic )
-#target_link_libraries(lnBMP gd32_usb_usbd )
-target_link_libraries(lnBMP lnBMP_interface )
-target_link_libraries(lnBMP rsbmp)
+ADD_SUBDIRECTORY(swindle)
+target_link_libraries(swindle lnarduino_c_bindings)
+target_link_libraries(swindle libswindle )
+#target_link_libraries(swindle gd32_usb_usbd )
+target_link_libraries(swindle swindle_interface )
+target_link_libraries(swindle rsbmp)
 
 #
 #
@@ -122,7 +122,7 @@ IF(USE_STLINK_PINOUT)
     MESSAGE(STATUS "STLink style pinout (PA13/PA14)")
     SET(TGT_PINOUT "stlink_pinout")
 ELSE()
-    MESSAGE(STATUS "Using lnBMP pinout (PB8/PB9)")
+    MESSAGE(STATUS "Using swindle pinout (PB8/PB9)")
     SET(TGT_PINOUT "default_pinout")
 ENDIF()
 
@@ -131,14 +131,14 @@ IF(USE_CLANG)
     SET(LN_COMPILER "_CLANG" CACHE STRING "")
 ELSE()
     MESSAGE(STATUS "Using Gcc toolchain")
-    target_link_libraries(lnBMP "-Wl,--allow-multiple-definition") # we have symbols from gcc and symbols from llvm
+    target_link_libraries(swindle "-Wl,--allow-multiple-definition") # we have symbols from gcc and symbols from llvm
     SET(LN_COMPILER "_GCC" CACHE STRING "")
 ENDIF()    
 
 IF(USE_RP2040)
-    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_RP2040${LN_COMPILER} )
+    set_target_properties(swindle PROPERTIES OUTPUT_NAME swindle_RP2040${LN_COMPILER} )
 ELSE()
-    set_target_properties(lnBMP PROPERTIES OUTPUT_NAME lnBMP_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
+    set_target_properties(swindle PROPERTIES OUTPUT_NAME swindle_${TGT_PINOUT}_${LN_MCU}_${MCU_SPEED_M}M${LN_COMPILER} )
 ENDIF()    
 
 #---

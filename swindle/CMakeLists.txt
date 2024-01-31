@@ -178,7 +178,7 @@ ELSE()
         ADD_DEFINITIONS("-include miniplatform.h")       
         ADD_DEFINITIONS("-DBMD_IS_STDC=1")
         include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-        #  add lnBlackmagic target code and host connection stuff
+        #  add swindle target code and host connection stuff
         IF(USE_RP2040)
             SET(EXTRA _rp2040)
         ELSE()
@@ -198,7 +198,7 @@ ELSE()
                 #!!${B}/bmp_stubs.cpp
                 CACHE INTERNAL ""
                 )
-        include_directories( ${CMAKE_SOURCE_DIR}/lnBlackmagic/include )
+        include_directories( ${CMAKE_SOURCE_DIR}/swindle/include )
 ENDIF()
 # ===========================================================================================
 #-------
@@ -236,26 +236,26 @@ SET(BM_TARGET
                 )
 #----------
 
-add_library(lnBlackmagic STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
-target_include_directories( lnBlackmagic PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
+target_include_directories( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 IF (LN_BMP_HOSTED) 
-target_include_directories( lnBlackmagic PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
+target_include_directories( libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
 ENDIF()
 
 # O0, O1, O2 => works, -Oz does not work
 
 
-target_link_libraries( lnBlackmagic lnArduino)
+target_link_libraries( libswindle lnArduino)
 IF (LN_BMP_HOSTED) 
 ELSE()
-    target_link_libraries( lnBlackmagic tinyUsb)
+    target_link_libraries( libswindle tinyUsb)
 ENDIF()
 IF(USE_STLINK_PINOUT)
-        target_compile_definitions(lnBlackmagic PRIVATE USE_STLINK_PINOUT)
+        target_compile_definitions(libswindle PRIVATE USE_STLINK_PINOUT)
 ENDIF(USE_STLINK_PINOUT)
-target_include_directories(lnBlackmagic PRIVATE  ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
-target_include_directories(lnBlackmagic PRIVATE  ${myB}/private_include)
+target_include_directories(libswindle PRIVATE  ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
+target_include_directories(libswindle PRIVATE  ${myB}/private_include)
 
 include_directories( ${BMP}/src/include)
 include_directories( ${BMP}/src)
