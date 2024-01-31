@@ -1,0 +1,20 @@
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index f9974a8a..877d9935 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -110,6 +110,7 @@
+ #define RV_DCSR_STEP       0x00000004U
+ #define RV_DCSR_CAUSE_MASK 0x000001c0U
+ #define RV_DCSR_STEPIE     0x00000800U
++#define RV_DCSR_EBREAKM    0x00008000U
+ 
+ #define RV_GPRS_COUNT 32U
+ 
+@@ -834,6 +835,7 @@ static void riscv_halt_resume(target_s *target, const bool step)
+ 		stepping_config |= RV_DCSR_STEP | RV_DCSR_STEPIE;
+ 	else
+ 		stepping_config &= ~(RV_DCSR_STEP | RV_DCSR_STEPIE);
++    stepping_config |= RV_DCSR_EBREAKM;
+ 	if (!riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
+ 		return;
+ 	/* Request the hart to resume */

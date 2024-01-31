@@ -9,5 +9,6 @@ APPLY_PATCH_IF_NEEDED3(patched11 ${BMP_PATCH_FOLDER}/blackmagic_use_embedded_pri
 APPLY_PATCH_IF_NEEDED3(patched12 ${BMP_PATCH_FOLDER}/blackmagic_disable_cortexr.patch            ${LNBMP_TOP_FOLDER}   "disable cortexr ")
 APPLY_PATCH_IF_NEEDED3(patched14 ${BMP_PATCH_FOLDER}/blackmagic_disable_snprintf_define.patch    ${LNBMP_TOP_FOLDER}   "disable snprintf define")
 APPLY_PATCH_IF_NEEDED3(patched13 ${BMP_PATCH_FOLDER}/blackmagic_rvswd_perigoso.patch             ${LNBMP_TOP_FOLDER}   "add rvswd support (based on perigoso work)")
+APPLY_PATCH_IF_NEEDED3(patched16 ${BMP_PATCH_FOLDER}/blackmagic_make_ebreak_work.patch           ${LNBMP_TOP_FOLDER}   "riscv make sw breakpoint work")
 
 
