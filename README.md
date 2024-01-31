@@ -1,17 +1,18 @@
 
-lnBMP : black magic probe with rust in it
+swindle : black magic probe with rust in it
 =====
 
-lnBMP is a custom port of the amazing Black Magic Probe.
+swindle is a custom port of the amazing Black Magic Probe.
 
-lnBmp is made of 3 layers :
+swindle is made of 3 layers :
 
-* Gdb command parser written in rust.
+* A Gdb command parser written in rust.
 * Blackmagic probe debugger engine, pretty much untouched.
 * Low level stuff using lnArduino.
 * Limited FreeRTOS support
+* Partial Support for ch32vxx (riscv)
 
-![screenshot](assets/web/lnBMP.png?raw=true "front")
+![screenshot](assets/web/swindle.png?raw=true "front")
 
 
 
@@ -24,7 +25,7 @@ Because using the RP2040 zero makes a very small & cheap debugger
 Additionnaly, the structure of the gdb rust parser is simpler than the one
 from blackmagic and easier to modify to add support for things.
 
-Since under the hood FreeRTOS is used, lnBMP is easy to extend by creating separate standalone threads
+Since under the hood FreeRTOS is used, swindle is easy to extend by creating separate standalone threads
 
 Quick FAQ
 ==================
@@ -33,7 +34,7 @@ Quick FAQ
 * Can i run it on xyz board ? : No, only RP2040, STM32F103, GD32F103, GD32F303 and CH32V3x (maybe CH32V2X)
 * Can i debug all the boards : No, only some are enabled, but you can easily change that.
 * How do i update it ? : Through DFU for all boards except the RP2040
-* Is Jtag supported ? : No, only SWD. You can reactivate it if you really need it.
+* Is Jtag supported ? : No, only SWD/RVSWD. You can reactivate it if you really need it.
 
 How to build
 ------------
@@ -49,7 +50,7 @@ Then, the usual cmake thing
 and then dfu update (the 2 scripts for ST/GD and WCH are provided)
 
 
-**Make sure you flash lnBMP_bootloader! first**
+**Make sure you flash swindle_bootloader! first**
 
 Pinout
 ==================
