@@ -165,7 +165,7 @@ bool ch32v3xx_probe(target_s *target)
     {
     case 0x203U:
         detect_size = false;
-        can_use_flashstub = false;
+        can_use_flashstub = true;
         target->driver = "CH32V203";
         break;
     case 0x303U:
@@ -369,7 +369,7 @@ bool exec_code(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2,
         goto the_end;
     }
 
-    if (reason != TARGET_HALT_BREAKPOINT)
+    if (reason != TARGET_HALT_REQUEST)
     {
         debug("OOPS executing code !\n");
         goto the_end;
@@ -639,7 +639,7 @@ static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
     setupClock(flash);
     riscv_csr_read(flash->t->priv, 0x304, &oldmie);                     //  save old mie
     riscv_csr_write(flash->t->priv, 0x304, &zero);                      // disable all interrupts set MIE to zero
-    target_breakwatch_set(flash->t, TARGET_BREAK_HARD, RAM_ADDRESS, 4); // at the end of write the stub will jump here
+    //target_breakwatch_set(flash->t, TARGET_BREAK_HARD, RAM_ADDRESS, 4); // at the end of write the stub will jump here
     target_mem_write(flash->t, STUB_CODE_LOCATION_ERASE, ch32v3x_erase_bin, sizeof(ch32v3x_erase_bin));
     target_mem_write(flash->t, STUB_CODE_LOCATION_WRITE, ch32v3x_write_bin, sizeof(ch32v3x_write_bin));
     flash->t->reg_read(flash->t, CHREG_SP, &oldsp, 4); // save old sp
