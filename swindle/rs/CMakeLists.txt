@@ -7,6 +7,6 @@ ELSE()
 ENDIF()
 
 
-    RUST_ADD( rsbmp ${CMAKE_CURRENT_SOURCE_DIR}/lnbmp/Cargo.toml )
+    RUST_ADD( rsbmp ${CMAKE_CURRENT_SOURCE_DIR}/rs_swindle/Cargo.toml )
 
 
