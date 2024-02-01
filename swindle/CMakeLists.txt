@@ -1,5 +1,3 @@
-#include_directories( ${CMAKE_BINARY_DIR})
-
 SET(S ${BMP}/src CACHE INTERNAL "")
 SET(T ${BMP}/src/target CACHE INTERNAL "")
 SET(P ${BMP}/src/platforms CACHE INTERNAL "")
@@ -75,11 +73,8 @@ DECLARE_MCU( STM32H5 stm32h5.c  stm32h5_probe )
 DECLARE_MCU( STM32H7 stm32h7.c  stm32h7_probe )
 DECLARE_MCU( STM32L0 stm32l0.c  stm32l0_probe )
 DECLARE_MCU( STM32L4 stm32l4.c  stm32l4_probe )
-
 DECLARE_MCU( STM32MP15 stm32mp15.c stm32mp15_cm4_probe )
-
 DECLARE_MCU( AT32FXXX at32f43x.c  at32f43x_probe ) 
-
 DECLARE_MCU( MSP432P4  msp432p4.c  msp432p4_probe  )
 DECLARE_MCU( HC32L110 hc32l110.c  hc32l110_probe  )
 DECLARE_MCU( MSP432E4  msp432e4.c  msp432e4_probe  )
@@ -102,8 +97,8 @@ IF (SWINDLE_HOSTED)
         # Hosted mode
         #----------------------------    
     find_package(PkgConfig)
-    pkg_check_modules( usb REQUIRED libusb-1.0)
-    pkg_check_modules( ftdi REQUIRED libftdi1)
+    #pkg_check_modules( usb REQUIRED libusb-1.0)
+    #pkg_check_modules( ftdi REQUIRED libftdi1)
 
     
     MESSAGE(STATUS "Building for hosted mode (${SWINDLE_HOSTED})")
@@ -129,8 +124,6 @@ IF (SWINDLE_HOSTED)
     
     SET(BM_HOSTED
             ${HOSTED}/bmp_remote.c 
-            #${HOSTED}/bmp_serial.c      
-            #${HOSTED}/dap.c
             ${HOSTED}/platform.c   
             ${HOSTED}/debug.c   
             ${HOSTED}/remote/protocol_v0.c  
@@ -143,20 +136,8 @@ IF (SWINDLE_HOSTED)
             ${HOSTED}/remote/protocol_v3.c  
             ${HOSTED}/remote/protocol_v3_adiv5.c  
 
-            #${PC}/../common/swdptap.c
-
             ${BMP_EXTRA}/hosted/remote_rv_protocol.c
 
-             #${HOSTED}/bmp_libusb.c
-             #${BMP_EXTRA}/hosted/wchlink_riscv_dtm.c
-             #${BMP_EXTRA}/hosted/riscv_dtm_wchlink.c
-             #${BMP_EXTRA}/hosted/wchlink_rvswd.c
-             #${BMP_EXTRA}/hosted/wchlink.c
-
-            #${HOSTED}/remote/_swdptap.c
-            #${PC}/cl_utils.c   
-            #${PC}/gdb_if.c    
-            #${PC}/serial_unix.c  
             ${PC}/utils.c
             ${PC}/cli.c       
             ${PC}/probe_info.c
@@ -164,7 +145,21 @@ IF (SWINDLE_HOSTED)
             ${T}/jtag_devs.c    
             ${T}/adiv5_jtag.c
             ${T}/spi.c
-            #!!${B}/stubs.cpp
+
+                #${PC}/../common/swdptap.c
+                #${HOSTED}/bmp_serial.c      
+                #${HOSTED}/dap.c
+                #${HOSTED}/bmp_libusb.c
+                #${BMP_EXTRA}/hosted/wchlink_riscv_dtm.c
+                #${BMP_EXTRA}/hosted/riscv_dtm_wchlink.c
+                #${BMP_EXTRA}/hosted/wchlink_rvswd.c
+                #${BMP_EXTRA}/hosted/wchlink.c
+                #${HOSTED}/remote/_swdptap.c
+                #${PC}/cl_utils.c   
+                #${PC}/gdb_if.c    
+                #${PC}/serial_unix.c  
+                #!!${B}/stubs.cpp                
+
             CACHE INTERNAL ""
             )
 ELSE()  
@@ -194,9 +189,9 @@ ELSE()
                 ${B}/bmp_serial.cpp  
                 ${B}/bmp_rs_gdb.cpp                
                 ${B}/bmp_jtagstubs.cpp  
-                #!!${B}/stubs.cpp
-                #${B}/bmp_gdb.cpp
-                #!!${B}/bmp_stubs.cpp
+                        #!!${B}/stubs.cpp
+                        #${B}/bmp_gdb.cpp
+                        #!!${B}/bmp_stubs.cpp
                 CACHE INTERNAL ""
                 )
         include_directories( ${CMAKE_SOURCE_DIR}/swindle/include )
@@ -211,7 +206,7 @@ SET(BM_SRC      ${S}/command.c
                 ${S}/remote.c 
                 ${S}/timing.c 
                 ${S}/maths_utils.c 
-                #${S}/gdb_main.c ${S}/gdb_packet.c
+                        #${S}/gdb_main.c ${S}/gdb_packet.c
                 CACHE INTERNAL ""
                 )
 #------                    
@@ -223,16 +218,17 @@ SET(BM_TARGET
                 ${T}/riscv_debug.c  
                 ${T}/riscv32.c  
                 ${T}/riscv64.c      
-                #${T}/cortexa.c    
                 ${T}/target_flash.c 
-                #${T}/target_probe.c 
                 ${T}/gdb_reg.c
-                #${T}/lmi.c      
                 ${T}/target.c 
                 ${T}/sfdp.c
                 ${T}/spi.c
-                # ${S}/gdb_hostio.c 
-                #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
+                        #${S}/gdb_hostio.c 
+                        #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
+                        #${T}/cortexa.c    
+                        #${T}/lmi.c      
+                        #${T}/target_probe.c 
+
                 CACHE INTERNAL ""
                 )
 #----------
