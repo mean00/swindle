@@ -48,7 +48,7 @@ include(swindle_version)
 GEN_VERSION_FILE()
 
 #
-include(enabled_board)
+include(all_boards)
 #
 include(patch_blackmagic)
 
@@ -70,8 +70,6 @@ SET(LN_USB_DFU_RUNTIME 1 CACHE INTERNAL "")
 include(${AF_FOLDER}/setup.cmake)
 USE_LIBRARY(tinyUsb)
 
-#SET(LN_CUSTOM_LD_SCRIPT ${CMAKE_SOURCE_DIR}/custom_ldscript.ld)
-
 include(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
 
 SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
@@ -91,7 +89,6 @@ HASH_GD32_FIRMWARE(swindle)
 ADD_SUBDIRECTORY(swindle)
 target_link_libraries(swindle lnarduino_c_bindings)
 target_link_libraries(swindle libswindle )
-#target_link_libraries(swindle gd32_usb_usbd )
 target_link_libraries(swindle swindle_interface )
 target_link_libraries(swindle rsbmp)
 

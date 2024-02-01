@@ -91,7 +91,7 @@ ADD_DEFINITIONS("-g3")
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-DBMD_IS_STDC=1")
 
-include(enabled_board)
+include(all_boards)
 
 ADD_SUBDIRECTORY(../swindle lnswindle)
 
