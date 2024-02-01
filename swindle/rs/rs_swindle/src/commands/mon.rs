@@ -112,7 +112,7 @@ const help_tree : [HelpTree;12]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
-    HelpTree{ command: "rvswdp_scan",help :"Probe WCH RISCV device(s), you need a whlink. Hosted only." },
+    HelpTree{ command: "rvswdp_scan",help:"Probe WCH RISCV device(s)." },
     HelpTree{ command: "voltage",help :"Display target voltage." },
     HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
     HelpTree{ command: "version",help :"Display version." },
