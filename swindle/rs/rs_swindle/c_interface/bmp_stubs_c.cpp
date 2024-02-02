@@ -1,4 +1,5 @@
 #include "lnBMPArduino.h"
+#include <cstdint>
 extern "C"
 {
 
@@ -26,6 +27,10 @@ extern "C"
     {
         xAssert(0);
     }
+    volatile const char *morse_msg=NULL;
+    void morse(const char *const msg, const bool repeat)
+    {
 
+    }
   }
 // EOF

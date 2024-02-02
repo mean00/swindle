@@ -279,8 +279,4 @@ extern "C" void swdptap_init(void)
 {
 
 }
-extern "C" void gdb_if_putchar(const char c, const int flush)
-{
-
-}
 // -- eof --

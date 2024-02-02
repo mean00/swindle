@@ -305,17 +305,6 @@ extern "C"
             return true;
         return false;
     }
-
-    bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc)
-    {
-        if (!bmp_attached_c())
-            return false;
-
-        if (!bmd_crc32(cur_target, (uint32_t *)crc, address, length))
-            return false;
-        return true;
-    }
-
     bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data)
     {
         if (!bmp_attached_c())

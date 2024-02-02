@@ -198,15 +198,17 @@ ELSE()
 ENDIF()
 # ===========================================================================================
 #-------
-SET(BM_SRC      ${S}/command.c  
-                #${S}/crc32.c        
+SET(BM_SRC      ${S}/command.c                  
                 ${S}/exception.c    
-                ${S}/hex_utils.c 
-                ${S}/morse.c 
-                ${S}/remote.c 
+                ${S}/hex_utils.c                                 
                 ${S}/timing.c 
                 ${S}/maths_utils.c 
-                        #${S}/gdb_main.c ${S}/gdb_packet.c
+
+                #${S}/remote.c 
+                #${S}/gdb_main.c 
+                #${S}/gdb_packet.c
+                #${S}/crc32.c    
+                #${S}/morse.c     
                 CACHE INTERNAL ""
                 )
 #------                    
