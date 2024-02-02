@@ -23,7 +23,7 @@ use crate::parsing_util;
 use crate::util::xmin;
 
 use numtoa::NumToA;
-
+const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&GDB_CRC_ALG);
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
@@ -325,7 +325,7 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
     }
 
     // loop in crc
-    const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&GDB_CRC_ALG);
+    
     let mut digest = crc32_cksum.digest();
     let mut buffer: [u8; CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
 
