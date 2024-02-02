@@ -28,6 +28,8 @@ extern "C"
 #define ENABLE_DEBUG 1
 #undef PLATFORM_PRINTF
 #define PLATFORM_PRINTF Logger
+#include "printf.h"
+#define snprintf snprintf_
 // #define DEBUG(x, ...) do { ; } while (0)
 #define DEBUG Logger
 #ifdef __cplusplus

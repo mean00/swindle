@@ -33,8 +33,8 @@
 #undef vasprintf
 #include "embedded_printf/printf.h"
 #include "timing.h"
-int vasprintf_(char **strp, const char *fmt, va_list ap);
 #define vasprintf vasprintf_
+#define snprintf snprintf_
 
 #include "miniplatform.h"
 
