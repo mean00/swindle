@@ -25,8 +25,8 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     let mut digest = crc32_cksum.digest();
     let mut buffer: [u8; CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
 
-    bmpwarning!("CRC : Adr 0x{:x}  ", address);
-    bmpwarning!("len {}\n", length);
+    bmplog!("CRC : Adr 0x{:x}  ", address);
+    bmplog!("len {}\n", length);
     //
     let tail = address + length;
     let mut adr: u32 = address;
@@ -39,7 +39,7 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
         adr += rd as u32;
     }
     let crc = digest.finalize();
-    bmpwarning!("XXCRC={:x}\n", crc);
+    bmplog!("XXCRC={:x}\n", crc);
     (true, crc)
 }
 /*
@@ -53,7 +53,7 @@ TODO
 //#[cfg(target_os = "none")]
 pub fn abstract_crc32(address: u32, len: u32, crc: &mut u32) -> bool {
     let status: bool;
-    bmpwarning!("local CRC\n");
+    bmplog!("local CRC\n");
     (status, *crc) = do_local_crc32(address, len); // Native
     status
 }
