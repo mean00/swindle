@@ -15,7 +15,7 @@ void setup()
 }
 void loop()
 {
-    Logger("Starting lnBMP Test\n");
+    Logger("Starting Swindle\n");
     user_init();
     bool onoff = true;
     while (1)

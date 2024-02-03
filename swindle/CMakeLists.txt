@@ -218,13 +218,13 @@ SET(BM_TARGET
                 ${T}/cortex.c
                 ${T}/cortexm.c
                 ${T}/riscv_debug.c  
-                ${T}/riscv32.c  
-                ${T}/riscv64.c      
+                ${T}/riscv32.c                  
                 ${T}/target_flash.c 
                 ${T}/gdb_reg.c
                 ${T}/target.c 
                 ${T}/sfdp.c
                 ${T}/spi.c
+                        #${T}/riscv64.c      
                         #${S}/gdb_hostio.c 
                         #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
                         #${T}/cortexa.c    

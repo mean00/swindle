@@ -14,7 +14,6 @@ mod freertos;
 mod glue;
 mod packet_symbols;
 mod parsing_util;
-mod poppingbuffer;
 mod rn_bmp_cmd_c;
 mod rpc;
 mod util;

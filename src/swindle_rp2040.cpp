@@ -4,8 +4,6 @@
 #include "lnArduino.h"
 #include "lnWS2812_rp_single_pio.h"
 
-#define LED LN_SYSTEM_LED
-#define LED2 GPIO26
 #define LED_WS2812 GPIO16 // GPIO16 for zero, GPIO23 for normal size RP2040
 extern "C" void user_init();
 
@@ -32,8 +30,6 @@ const uint8_t xsin[181] = {
  */
 void setup()
 {
-    lnPinMode(LED, lnOUTPUT);
-    lnPinMode(LED2, lnOUTPUT);
     ws = new WS2812_rp2040_pio_single(1, 0, LED_WS2812);
 }
 /**
@@ -42,7 +38,7 @@ void setup()
  */
 void loop()
 {
-    Logger("Starting lnBMP Test\n");
+    Logger("Starting Swindle\n");
     user_init();
     bool onoff = true;
     while (1)
@@ -54,9 +50,6 @@ void loop()
             if (pix > 180 - STEP)
             {
                 inc = -inc;
-                lnDigitalToggle(LED);
-                lnDigitalToggle(LED2);
-                onoff = !onoff;
             }
         }
         else

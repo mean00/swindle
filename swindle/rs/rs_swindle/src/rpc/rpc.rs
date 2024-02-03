@@ -1,20 +1,16 @@
+/**
+ * This handles the low level RPC as used when BMP is running in hosted mode
+ * It is a parralel path to the normal gdb command and is BMP specific
+ */
+
 use crate::bmp;
-use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::*;
 use crate::rpc::rpc_commands;
 
 use crate::bmplogger::*;
 use crate::crc::do_local_crc32;
-use crate::parsing_util::ascii_hex_string_to_u8s;
-use crate::parsing_util::ascii_octet_to_hex;
-use crate::poppingbuffer::popping_buffer;
-/**
- * This handles the low level RPC as used when BMP is running in hosted mode
- * It is a parralel path to the normal gdb command and is BMP specific
- */
-use alloc::vec;
-use alloc::vec::Vec;
-
+use crate::rpc::rpc_parser::rpc_parameter_parser;
+//------------------------------
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 //-------------------------------
@@ -27,50 +23,6 @@ fn rpc_message_out(message: &[u8]) {
 }
 fn rpc_message_out_no_flush(message: &[u8]) {
     encoder::raw_send_u8(message);
-}
-
-struct rpc_parameter_parser <'a> 
-{
-    data : &'a [u8]
-}
-/**
- * 
- */
-impl <'a> rpc_parameter_parser<'a>
-{
-    fn new(data : &'a[u8]) ->Self
-    {
-        rpc_parameter_parser { data} 
-    }
-    fn next_u32(&mut self) -> u32
-    {
-        let out: u32 = crate::parsing_util::u8s_string_to_u32_le( &self.data[0..8]);
-        self.data = &self.data[8..];
-        out
-    }
-    fn next_u8(&mut self) -> u32
-    {
-        let left: u32 = ascii_octet_to_hex(self.data[0], self.data[1]) as u32;
-        self.data = &self.data[2..];
-        left
-    }   
-    fn next_u16(&mut self) -> u32
-    {
-        let left = self.next_u8();
-        let right = self.next_u8();        
-        self.data = &self.data[4..];
-        (left<<0)+(right<<8)
-    }   
-    fn next_cmd(&mut self) -> u8
-    {
-        let cmd : u8 = self.data[0];
-        self.data = &self.data[1..];
-        cmd
-    }   
-    fn end(&mut self) -> &[u8]
-    {
-        self.data
-    }
 }
 
 /*
@@ -96,9 +48,9 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         rpc_commands::RPC_RV_PACKET => rpc_rv_packet(&mut parser),
         rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&mut parser),
         rpc_commands::RPC_JTAG_PACKET => rpc_jtag_packet(&mut parser),
-        rpc_commands::RPC_SWDP_PACKET => rpc_swdp_packet(&mut parser), // TODO
+        rpc_commands::RPC_SWDP_PACKET => rpc_swdp_packet(&mut parser), 
         rpc_commands::RPC_GEN_PACKET => rpc_gen_packet(&mut parser),
-        rpc_commands::RPC_HL_PACKET => rpc_hl_packet(&mut parser), //TODO
+        rpc_commands::RPC_HL_PACKET => rpc_hl_packet(&mut parser), 
         _ => {
             bmplog!("wrong RPC header\n");
             false
@@ -171,14 +123,6 @@ fn rpc_reply_hex_string(code: u8, s: &[u8]) {
     rpc_message_out_no_flush(&[rpc_commands::RPC_REMOTE_RESP, code]);
     encoder::hexify_and_raw_send(s);
     rpc_message_out(&[crate::packet_symbols::RPC_END]);
-}
-/**
- *
- */
-fn hex16_to_u32(input: &[u8]) -> u32 {
-    let left: u32 = ascii_octet_to_hex(input[0], input[1]) as u32;
-    let right: u32 = ascii_octet_to_hex(input[2], input[3]) as u32;
-    (left << 8) + right
 }
 /**
  *
