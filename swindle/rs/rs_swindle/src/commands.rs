@@ -122,7 +122,6 @@ const main_command_tree: [CommandTree; 22] = [
         require_connected: true,
         cb: CallbackType::text(_p),
     }, // read register
-    
     CommandTree {
         command: "P",
         args: 0,

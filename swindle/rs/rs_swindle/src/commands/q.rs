@@ -19,15 +19,14 @@ use crate::commands::q_thread::{
     _qC, _qP, _qSymbol, _qThreadExtraInfo, _qfThreadInfo, _qsThreadInfo,
 };
 use crate::commands::CallbackType;
+use crate::crc::abstract_crc32;
 use crate::parsing_util;
 use crate::util::xmin;
-use crate::crc::abstract_crc32;
 
 use numtoa::NumToA;
 
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
-
 
 const q_command_tree: [CommandTree; 13] = [
     CommandTree {
@@ -314,7 +313,7 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
             return true;
         }
     }
-        
+
     let mut crc: u32 = 0;
     let status = abstract_crc32(address, length, &mut crc); // remote
 

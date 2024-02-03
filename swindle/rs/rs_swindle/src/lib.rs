@@ -8,6 +8,7 @@
 mod bmp;
 mod bmplogger;
 mod commands;
+mod crc;
 mod decoder;
 mod encoder;
 mod freertos;
@@ -17,7 +18,6 @@ mod parsing_util;
 mod rn_bmp_cmd_c;
 mod rpc;
 mod util;
-mod crc;
 
 // This should only be included in host mode
 #[cfg(not(target_os = "none"))]

@@ -77,5 +77,5 @@ pub const RPC_RV_DM_READ: u8 = b'r';
 pub const RPC_RV_DM_WRITE: u8 = b'w';
 
 /* swindle packet */
-pub const RPC_SWINDLE_CRC32 : u8 = b'C';
+pub const RPC_SWINDLE_CRC32: u8 = b'C';
 /* -- */

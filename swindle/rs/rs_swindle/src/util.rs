@@ -10,7 +10,6 @@ extern crate std;
 #[cfg(feature = "hosted")]
 use std::print;
 
-
 pub fn xswap(a: &mut isize, b: &mut isize) {
     core::mem::swap(&mut (*a), &mut (*b));
 }
@@ -68,4 +67,3 @@ pub fn unsafe_box_allocate<T>() -> *mut T {
     let layout = Layout::new::<T>();
     unsafe { alloc(layout) as *mut T }
 }
-

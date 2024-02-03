@@ -2,7 +2,6 @@
  * This handles the low level RPC as used when BMP is running in hosted mode
  * It is a parralel path to the normal gdb command and is BMP specific
  */
-
 use crate::bmp;
 use crate::encoder::*;
 use crate::rpc::rpc_commands;
@@ -43,14 +42,14 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         bmplog!("\n");
     }
     let mut parser = rpc_parameter_parser::new(input);
-    match parser.next_cmd()  {
+    match parser.next_cmd() {
         rpc_commands::RPC_SWINDLE_PACKET => rpc_swindle_packet(&mut parser),
         rpc_commands::RPC_RV_PACKET => rpc_rv_packet(&mut parser),
         rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&mut parser),
         rpc_commands::RPC_JTAG_PACKET => rpc_jtag_packet(&mut parser),
-        rpc_commands::RPC_SWDP_PACKET => rpc_swdp_packet(&mut parser), 
+        rpc_commands::RPC_SWDP_PACKET => rpc_swdp_packet(&mut parser),
         rpc_commands::RPC_GEN_PACKET => rpc_gen_packet(&mut parser),
-        rpc_commands::RPC_HL_PACKET => rpc_hl_packet(&mut parser), 
+        rpc_commands::RPC_HL_PACKET => rpc_hl_packet(&mut parser),
         _ => {
             bmplog!("wrong RPC header\n");
             false
@@ -169,7 +168,7 @@ fn reply_adiv5_block(fault: i32, buffer: &[u8]) {
 
 /*
  */
-fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
+fn rpc_hl_packet(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("\thl packet\n");
     let cmd = parser.next_cmd();
     if cmd == rpc_commands::RPC_HL_CHECK {
@@ -186,7 +185,7 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
                                                              */
         return true;
     }
-   
+
     // the follow up is
     // - index dp (2)
     // - ap.apsel (2)
@@ -202,7 +201,7 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
             let value: u32;
             let fault: i32;
 
-            bmplog!("\t\t DP_READ: 0x{:x}\n", address );
+            bmplog!("\t\t DP_READ: 0x{:x}\n", address);
             bmplog!("\t\t device_index  {}", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
             bmplog!(" dp_read at 0x{:x}", address);
@@ -218,7 +217,7 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
             let address: u32 = parser.next_u16();
             let value: u32 = parser.next_u16();
             let fault: i32;
-            bmplog!("\t\t LOW_ACCESS: {}\n",address);
+            bmplog!("\t\t LOW_ACCESS: {}\n", address);
             bmplog!("\t\t device_index {} ", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
             bmplog!("\t\taddress :0x{:x}\n", address);
@@ -233,7 +232,7 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
         rpc_commands::RPC_AP_READ =>
         //'a
         {
-            let address: u32 =  parser.next_u16();
+            let address: u32 = parser.next_u16();
             let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
             bmplog!("\t\t AP_READ addr:{}\n", address);
             bmplog!("\t\t value {} \n", value);
@@ -244,7 +243,7 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
         // 'A
         {
             let address: u32 = parser.next_u16();
-            let value: u32 =  parser.next_u16();
+            let value: u32 = parser.next_u16();
             bmp::bmp_adiv5_ap_write(device_index, ap_selection, address, value);
             bmplog!("\t\t AP_WRITE addr:0x{:x}\n", address);
             bmplog!("\t\t value 0x{:x} \n", value);
@@ -254,8 +253,8 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
 
         rpc_commands::RPC_MEM_READ => {
             //M0000a3000040e000edfc00000004
-            let csw1: u32 =  parser.next_u32();
-            let address: u32 =  parser.next_u32();
+            let csw1: u32 = parser.next_u32();
+            let address: u32 = parser.next_u32();
             let length: u32 = parser.next_u32();
             bmplog!("\t\t MEM READ CSW : 0x{:x} \n", csw1);
             bmplog!("\t\t adr  :0x{:x}\n", address);
@@ -278,9 +277,9 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
         } // M
         rpc_commands::RPC_MEM_WRITE => {
             // m0000a300004002e000edfc0000000401040001
-            let csw1: u32 =  parser.next_u32();
-            let align: u32 =  parser.next_u8();
-            let address: u32 =  parser.next_u32();
+            let csw1: u32 = parser.next_u32();
+            let align: u32 = parser.next_u8();
+            let address: u32 = parser.next_u32();
             let length: u32 = parser.next_u32();
             bmplog!("\t\t RPC_MEM_WRITE CSW :0x{:x}\n", csw1);
             bmplog!("\t\t adr  :0x{:x}\n", address);
@@ -313,7 +312,7 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
 /*
  */
 #[no_mangle]
-fn rpc_gen_packet(parser : &mut rpc_parameter_parser) -> bool {
+fn rpc_gen_packet(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("\tgen packet\n");
 
     match parser.next_cmd() {
@@ -385,10 +384,10 @@ fn rpc_gen_packet(parser : &mut rpc_parameter_parser) -> bool {
 
 */
 #[no_mangle]
-fn rpc_swdp_packet(parser : &mut rpc_parameter_parser) -> bool {
+fn rpc_swdp_packet(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("\tswd:\n");
     let cmd = parser.next_cmd();
-    match cmd  {
+    match cmd {
         rpc_commands::RPC_INIT => {
             bmplog!("\tinit swd\n");
             bmp::rpc_init_swd();
@@ -448,7 +447,7 @@ fn rpc_swdp_packet(parser : &mut rpc_parameter_parser) -> bool {
             return true;
         }
         rpc_commands::RPC_OUT_PAR => {
-            let tick =  parser.next_u8();
+            let tick = parser.next_u8();
             bmplog!("\tOut_par bits  : {}", tick);
             if tick == 0 {
                 return false;
@@ -461,14 +460,14 @@ fn rpc_swdp_packet(parser : &mut rpc_parameter_parser) -> bool {
             return true;
         }
         rpc_commands::RPC_OUT => {
-            let tick =  parser.next_u8();
+            let tick = parser.next_u8();
             if tick == 0 {
                 return false;
             }
             bmplog!("\tOut bits  :{} \n", tick);
             // total should be 1 (cmd) + 2 (size) + 2*x
 
-            let param =  parser.next_u32();
+            let param = parser.next_u32();
             bmplog!("\tOut_par value  : {}\n", param);
 
             bmp::bmp_rpc_swd_out(param, tick);
@@ -482,7 +481,7 @@ fn rpc_swdp_packet(parser : &mut rpc_parameter_parser) -> bool {
 }
 /*
  */
-fn rpc_jtag_packet(_parser : &mut rpc_parameter_parser) -> bool {
+fn rpc_jtag_packet(_parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("jtag packet\n");
     false
 }
@@ -491,8 +490,8 @@ fn rpc_jtag_packet(_parser : &mut rpc_parameter_parser) -> bool {
  *
  */
 #[no_mangle]
-fn rpc_rv_packet(parser : &mut rpc_parameter_parser) -> bool {
-    match parser.next_cmd()  {
+fn rpc_rv_packet(parser: &mut rpc_parameter_parser) -> bool {
+    match parser.next_cmd() {
         rpc_commands::RPC_RV_RESET => {
             let success = bmp::bmp_rv_reset();
             reply_rv_32(success, 0);
@@ -507,8 +506,8 @@ fn rpc_rv_packet(parser : &mut rpc_parameter_parser) -> bool {
             return true;
         }
         rpc_commands::RPC_RV_DM_WRITE => {
-            let address: u32 =  parser.next_u32();
-            let value: u32 =  parser.next_u32();
+            let address: u32 = parser.next_u32();
+            let value: u32 = parser.next_u32();
             //bmpwarning!("RV_DM_WRITE adr = {:x} val = {:x}\n",address,value);
             let ok = bmp::bmp_rv_write(address as u8, value);
             reply_rv_32(ok, 0);
@@ -522,17 +521,17 @@ fn rpc_rv_packet(parser : &mut rpc_parameter_parser) -> bool {
 /**
  *
  */
-fn rpc_adiv5_packet(parser : &mut rpc_parameter_parser) -> bool {
+fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
     // the follow up is
     // - index dp (2)
     // - ap.apsel (2)
     // 0   1    2    3    4    5    6    7    8
     // CMD INDEXX    AP_SEL    ADDREEEEEEEEESSS
     // [...]
-    
+
     //let device_index: u32 = ascii_octet_to_hex(input[1], input[2]) as u32;
-    //let ap_selection: u32 = ascii_octet_to_hex(input[3], input[4]) as u32;    
-    match  parser.next_cmd() {
+    //let ap_selection: u32 = ascii_octet_to_hex(input[3], input[4]) as u32;
+    match parser.next_cmd() {
         rpc_commands::RPC_REMOTE_MEM_READ => {
             bmplog!("\tMEM_READ UNIMPLEMENTED\n");
         }
@@ -593,7 +592,6 @@ fn rpc_adiv5_packet(parser : &mut rpc_parameter_parser) -> bool {
     false
 }
 
-
 /**
  *
  */
@@ -609,9 +607,9 @@ pub fn rpc(input: &[u8]) -> bool {
 /**
  * \fn rpc_swindle_packet
  */
-#[no_mangle]    
-fn rpc_swindle_packet(parser : &mut rpc_parameter_parser) -> bool {    
-    match parser.next_cmd() {    
+#[no_mangle]
+fn rpc_swindle_packet(parser: &mut rpc_parameter_parser) -> bool {
+    match parser.next_cmd() {
         rpc_commands::RPC_SWINDLE_CRC32 => {
             let address: u32 = parser.next_u32();
             let len: u32 = parser.next_u32();

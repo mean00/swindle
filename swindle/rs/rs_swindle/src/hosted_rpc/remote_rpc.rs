@@ -108,10 +108,8 @@ pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
     if !check_reply(reply, 8) {
         return false;
     }
-    *out_crc=u8s_string_to_u32_le(&reply[1..]);
+    *out_crc = u8s_string_to_u32_le(&reply[1..]);
     true
 }
-
-
 
 //

@@ -2,8 +2,8 @@
  *
  */
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
 use crate::util::xmin;
+use crate::{bmplog, bmpwarning};
 
 // qCRC:addr hex,length hex’
 // return Ccrc32 hex
@@ -21,7 +21,7 @@ const CRC_BUFFER_SIZE: usize = 128;
 const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&GDB_CRC_ALG);
 /*
  */
-pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {   
+pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     let mut digest = crc32_cksum.digest();
     let mut buffer: [u8; CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
 
