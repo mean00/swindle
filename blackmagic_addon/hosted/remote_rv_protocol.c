@@ -66,52 +66,6 @@ extern bool remote_ch32_riscv_dmi_write_rs( uint32_t  address, uint32_t value );
 extern bool remote_ch32_riscv_dmi_read_rs(  uint32_t  address, uint32_t *value );
 extern bool remote_ch32_riscv_dmi_reset_rs();
 
-#if 0
-/**
- * @brief 
- * 
- * @param dmi 
- * @param address 
- * @param value 
- * @return true 
- * @return false 
- */
-bool remote_ch32_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value)
-{
-    bool result  =  remote_ch32_riscv_dmi_read_rs(address, value);
-    if (1 || result)
-    {
-        dmi->fault = RV_DMI_SUCCESS;
-        return true;
-    }else
-    {
-        dmi->fault = RV_DMI_FAILURE;
-        return false;
-    }
-}
-/**
- * @brief 
- * 
- * @param dmi 
- * @param address 
- * @param value 
- * @return true 
- * @return false 
- */
-bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value)
-{
-    bool result  =  remote_ch32_riscv_dmi_write_rs(address, value);
-    if (1 || result)
-    {
-        dmi->fault = RV_DMI_SUCCESS;
-        return true;
-    }     else
-    {
-        dmi->fault = RV_DMI_FAILURE;
-        return false;
-    }
-}
-#else
 /**
  * @brief 
  * 
@@ -166,7 +120,6 @@ bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t va
         }     
     }
 }
-#endif
 /**
  * @brief 
  * 
