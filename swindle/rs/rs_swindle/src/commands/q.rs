@@ -20,10 +20,10 @@ use crate::commands::q_thread::{
 };
 use crate::commands::CallbackType;
 use crate::parsing_util;
-use crate::util::xmin;
+use crate::util::{xmin,do_crc32};
 
 use numtoa::NumToA;
-const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&GDB_CRC_ALG);
+
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
@@ -290,20 +290,10 @@ fn _qOffsets(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("Text=0;Data=0;Bss=0");
     true
 }
-// qCRC:addr hex,length hex’
-// return Ccrc32 hex
-const GDB_CRC_ALG: crc::Algorithm<u32> = crc::Algorithm {
-    width: 32,
-    poly: 0x04c11db7,
-    init: 0xffffffff,
-    refin: false,
-    refout: false,
-    xorout: 0x0000,
-    check: 0xaee7,
-    residue: 0x0000,
-};
-const CRC_BUFFER_SIZE: usize = 64;
 
+/**
+ * compute crc32 over bit of memory
+ */
 fn _qCRC(_command: &str, args: &[&str]) -> bool {
     if args.is_empty() {
         encoder::reply_e01();
@@ -323,47 +313,21 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
             return true;
         }
     }
-
-    // loop in crc
     
-    let mut digest = crc32_cksum.digest();
-    let mut buffer: [u8; CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
-
-    bmplog!("CRC : Adr 0x{:x}", address);
-    bmplog!("len {}\n", length);
-    //
-    //let crc = bmp_crc32(address,length);
-    // preamble if any
-    let tail = address + length;
-    let mut adr: u32 = address;
-    let mut block = 0;
-    while adr < tail {
-        block += 1;
-        if block > 64
-        // every 2k bytes or so
-        {
-            block = 0;
-            encoder::raw_send("+");
-            encoder::flush();
-            //            encoder::raw_send_u8(&[0]);
-            //            encoder::flush();
-        }
-        let rd: u32 = xmin(tail - adr, buffer.len() as u32);
-        if !crate::bmp::bmp_read_mem(adr, &mut buffer[0..(rd as usize)]) {
-            bmpwarning!("CRC : cant read memory 0x{:x}\n", adr);
-            encoder::error(1);
-            return true;
-        }
-
-        digest.update(&buffer[0..(rd as usize)]);
-        adr += rd;
+    let status : bool;
+    let crc: u32;
+    (status, crc) =do_crc32(address,length);
+    if !status {
+        encoder::reply_e01();
+        return false;
     }
-    let crc = digest.finalize();
+
     bmplog!("crc::<0x{:x}>\n", crc);
     {
         let mut e = encoder::new();
         e.begin();
         e.add("C");
+        let mut buffer: [u8; 10] = [0; 10];
         let hex = crc.numtoa_str(16, &mut buffer);
         e.add(hex); // INPUT_BUFFER_SIZE
         e.end();

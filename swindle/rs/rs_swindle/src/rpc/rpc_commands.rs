@@ -7,6 +7,7 @@ pub const RPC_GEN_PACKET: u8 = b'G';
 pub const RPC_HL_PACKET: u8 = b'H';
 pub const RPC_ADIV5_PACKET: u8 = b'A';
 pub const RPC_RV_PACKET: u8 = b'B';
+pub const RPC_SWINDLE_PACKET: u8 = b'Z';
 
 /* Generic protocol elements */
 pub const RPC_START: u8 = b'A';
@@ -74,3 +75,7 @@ pub const RPC_REMOTE_MEM_WRITE: u8 = b'M';
 pub const RPC_RV_RESET: u8 = b'S';
 pub const RPC_RV_DM_READ: u8 = b'r';
 pub const RPC_RV_DM_WRITE: u8 = b'w';
+
+/* swindle packet */
+pub const RPC_SWINDLE_CRC32 : u8 = b'C';
+/* -- */

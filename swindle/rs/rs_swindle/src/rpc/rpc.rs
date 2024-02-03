@@ -7,6 +7,7 @@ use crate::bmplogger::*;
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::parsing_util::ascii_octet_to_hex;
 use crate::poppingbuffer::popping_buffer;
+use crate::util::do_crc32;
 /**
  * This handles the low level RPC as used when BMP is running in hosted mode
  * It is a parralel path to the normal gdb command and is BMP specific
@@ -634,7 +635,8 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         bmplog!("Cmd : {}", input[1]);
         bmplog!("\n");
     }
-    match input[0] {
+    match input[0] {        
+        rpc_commands::RPC_SWINDLE_PACKET => rpc_swindle_packet(&input[1..]),
         rpc_commands::RPC_RV_PACKET => rpc_rv_packet(&input[1..]),
         rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&input[1..]),
         rpc_commands::RPC_JTAG_PACKET => rpc_jtag_packet(&input[1..]),
@@ -659,6 +661,23 @@ pub fn rpc(input: &[u8]) -> bool {
         );
     }
     true
+}
+/**
+ * 
+ */
+#[no_mangle]
+fn rpc_swindle_packet(input: &[u8]) -> bool {
+    match input[0] {        
+        rpc_commands::RPC_SWINDLE_CRC32 => {
+            let address: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[1..9]);
+            let len: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[9..]);
+            let (status, crc) = do_crc32(address,len );        
+            reply_rv_32(status, crc);
+            return true;
+            },
+    _ => (),
+    }
+    false
 }
 
 // EOF

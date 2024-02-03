@@ -94,4 +94,24 @@ pub fn remote_ch32_riscv_dmi_write_rs(address: u32, value: u32) -> bool {
     }
     true
 }
+
+#[no_mangle]
+pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_SWINDLE_PACKET, RPC_SWINDLE_CRC32]);
+    e.add_u32_le(address);
+    e.add_u32_le(length);
+    e.end();
+    // now get the reply
+    let reply = remote_get_reply();
+    if !check_reply(reply, 8) {
+        return false;
+    }
+    *out_crc=u8s_string_to_u32_le(&reply[1..]);
+    true
+}
+
+
+
 //
