@@ -8,7 +8,7 @@
             "name": "Hosted",
             "type": "lldb",
             "request": "launch",            
-            "program": "${workspaceFolder}/hosted/build/lnBMP_hosted",
+            "program": "${workspaceFolder}/hosted/build/swindle_hosted",
             "args": [],
             "cwd": "${workspaceFolder}"
         },
