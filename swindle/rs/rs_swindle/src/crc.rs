@@ -42,6 +42,10 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     bmpwarning!("XXCRC={:x}\n", crc);
     (true, crc)
 }
+/*
+TODO this does not work because we are not attached on the remote BMP
+TODO
+ */
 //----------
 // Local
 // In that case we compute the CRC directly on the BMP itself
