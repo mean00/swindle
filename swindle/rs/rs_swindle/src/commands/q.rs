@@ -314,10 +314,9 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
             return true;
         }
     }
-    
-    let status : bool;
+        
     let mut crc: u32 = 0;
-    status = abstract_crc32(address, length, &mut crc); // remote
+    let status = abstract_crc32(address, length, &mut crc); // remote
 
     if !status {
         encoder::reply_e01();

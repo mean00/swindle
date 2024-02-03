@@ -258,7 +258,7 @@ fn rpc_hl_packet(parser : &mut rpc_parameter_parser) -> bool {
             let value: u32;
             let fault: i32;
 
-            bmplog!("\t\t DP_READ: 0x{:x}\n", address as u32);
+            bmplog!("\t\t DP_READ: 0x{:x}\n", address );
             bmplog!("\t\t device_index  {}", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
             bmplog!(" dp_read at 0x{:x}", address);
@@ -538,7 +538,7 @@ fn rpc_swdp_packet(parser : &mut rpc_parameter_parser) -> bool {
 }
 /*
  */
-fn rpc_jtag_packet(parser : &mut rpc_parameter_parser) -> bool {
+fn rpc_jtag_packet(_parser : &mut rpc_parameter_parser) -> bool {
     bmplog!("jtag packet\n");
     false
 }

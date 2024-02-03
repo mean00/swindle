@@ -40,7 +40,7 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     }
     let crc = digest.finalize();
     bmpwarning!("XXCRC={:x}\n", crc);
-    return (true, crc);
+    (true, crc)
 }
 //----------
 // Local
@@ -51,7 +51,7 @@ pub fn abstract_crc32(address: u32, len: u32, crc: &mut u32) -> bool {
     let status: bool;
     bmpwarning!("local CRC\n");
     (status, *crc) = do_local_crc32(address, len); // Native
-    return status;
+    status
 }
 //----------
 // Remote
