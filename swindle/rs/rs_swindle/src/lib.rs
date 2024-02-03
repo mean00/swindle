@@ -18,6 +18,7 @@ mod poppingbuffer;
 mod rn_bmp_cmd_c;
 mod rpc;
 mod util;
+mod crc;
 
 // This should only be included in host mode
 #[cfg(not(target_os = "none"))]

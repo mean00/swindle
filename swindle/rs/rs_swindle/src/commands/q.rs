@@ -20,12 +20,14 @@ use crate::commands::q_thread::{
 };
 use crate::commands::CallbackType;
 use crate::parsing_util;
-use crate::util::{xmin,do_crc32};
+use crate::util::xmin;
+use crate::crc::abstract_crc32;
 
 use numtoa::NumToA;
 
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
+
 
 const q_command_tree: [CommandTree; 13] = [
     CommandTree {
@@ -290,7 +292,6 @@ fn _qOffsets(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("Text=0;Data=0;Bss=0");
     true
 }
-
 /**
  * compute crc32 over bit of memory
  */
@@ -315,8 +316,9 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
     }
     
     let status : bool;
-    let crc: u32;
-    (status, crc) =do_crc32(address,length);
+    let mut crc: u32 = 0;
+    status = abstract_crc32(address, length, &mut crc); // remote
+
     if !status {
         encoder::reply_e01();
         return false;

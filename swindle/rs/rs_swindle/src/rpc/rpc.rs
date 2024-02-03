@@ -4,10 +4,10 @@ use crate::encoder::*;
 use crate::rpc::rpc_commands;
 
 use crate::bmplogger::*;
+use crate::crc::do_local_crc32;
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::parsing_util::ascii_octet_to_hex;
 use crate::poppingbuffer::popping_buffer;
-use crate::util::do_crc32;
 /**
  * This handles the low level RPC as used when BMP is running in hosted mode
  * It is a parralel path to the normal gdb command and is BMP specific
@@ -27,6 +27,39 @@ fn rpc_message_out(message: &[u8]) {
 }
 fn rpc_message_out_no_flush(message: &[u8]) {
     encoder::raw_send_u8(message);
+}
+
+struct rpc_parameter_parser <'a> 
+{
+    data : &'a [u8]
+}
+/**
+ * 
+ */
+impl <'a> rpc_parameter_parser<'a>
+{
+    fn new(data : &'a[u8]) ->Self
+    {
+        rpc_parameter_parser { data} 
+    }
+    fn next_u32(&mut self) -> u32
+    {
+        let out: u32 = crate::parsing_util::u8s_string_to_u32_le( &self.data[0..8]);
+        self.data = &self.data[8..];
+        out
+    }
+    fn next_u8(&mut self) -> u32
+    {
+        let left: u32 = ascii_octet_to_hex(self.data[0], self.data[1]) as u32;
+        self.data = &self.data[2..];
+        left
+    }   
+    fn next_cmd(&mut self) -> u8
+    {
+        let cmd : u8 = self.data[0];
+        self.data = &self.data[1..];
+        cmd
+    }   
 }
 
 /**
@@ -383,23 +416,15 @@ fn rpc_gen_packet(input: &[u8]) -> bool {
     rpc_reply(rpc_commands::RPC_RESP_NOTSUP, 0);
     true
 }
-/*
- */
 
-fn nbTick(pin: &[u8]) -> u32 {
-    if pin.len() < 2 {
-        bmplog!("!!!! Size parm in swd SEQ too short\n");
-        return 0;
-    }
-    crate::parsing_util::ascii_octet_to_hex(pin[0], pin[1]) as u32
-}
 /*
 
 */
 #[no_mangle]
 fn rpc_swdp_packet(input: &[u8]) -> bool {
     bmplog!("\tswd:\n");
-    match input[0] {
+    let mut parser = rpc_parameter_parser::new(input);
+    match parser.next_cmd()  {
         rpc_commands::RPC_INIT => {
             bmplog!("\tinit swd\n");
             bmp::rpc_init_swd();
@@ -407,7 +432,7 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
             return true;
         }
         rpc_commands::RPC_IN_PAR => {
-            let tick = nbTick(&input[1..=2]);
+            let tick = parser.next_u8();
             bmplog!("\tIn_par bits  : {}", tick);
             bmplog!("\n");
             if tick == 0 {
@@ -440,7 +465,7 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
             return true;
         }
         rpc_commands::RPC_IN => {
-            let tick = nbTick(&input[1..=2]);
+            let tick = parser.next_u8();
             bmplog!("\tIn bits  : {}\n", tick);
             if tick == 0 {
                 return false;
@@ -459,12 +484,12 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
             return true;
         }
         rpc_commands::RPC_OUT_PAR => {
-            let tick = nbTick(&input[1..=2]);
+            let tick =  parser.next_u8();
             bmplog!("\tOut_par bits  : {}", tick);
             if tick == 0 {
                 return false;
             }
-            let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
+            let param = parser.next_u32();
             bmplog!("\tOut_par value  : {}\n", param);
 
             bmp::bmp_rpc_swd_out_par(param, tick);
@@ -472,7 +497,7 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
             return true;
         }
         rpc_commands::RPC_OUT => {
-            let tick = nbTick(&input[1..=2]);
+            let tick =  parser.next_u8();
             if tick == 0 {
                 return false;
             }
@@ -483,7 +508,7 @@ fn rpc_swdp_packet(input: &[u8]) -> bool {
                 return false;
             }
 
-            let param = crate::parsing_util::u8s_string_to_u32(&input[3..]);
+            let param =  parser.next_u32();
             bmplog!("\tOut_par value  : {}\n", param);
 
             bmp::bmp_rpc_swd_out(param, tick);
@@ -507,7 +532,8 @@ fn rpc_jtag_packet(_input: &[u8]) -> bool {
  */
 #[no_mangle]
 fn rpc_rv_packet(input: &[u8]) -> bool {
-    match input[0] {
+    let mut parser = rpc_parameter_parser::new(input);
+    match parser.next_cmd()  {
         rpc_commands::RPC_RV_RESET => {
             let success = bmp::bmp_rv_reset();
             reply_rv_32(success, 0);
@@ -516,14 +542,14 @@ fn rpc_rv_packet(input: &[u8]) -> bool {
         rpc_commands::RPC_RV_DM_READ => {
             let value: u32;
             let ok: bool;
-            let address: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[1..9]);
+            let address: u32 = parser.next_u32();
             (ok, value) = bmp::bmp_rv_read(address as u8);
             reply_rv_32(ok, value);
             return true;
         }
         rpc_commands::RPC_RV_DM_WRITE => {
-            let address: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[1..9]);
-            let value: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[9..]);
+            let address: u32 =  parser.next_u32();
+            let value: u32 =  parser.next_u32();
             //bmpwarning!("RV_DM_WRITE adr = {:x} val = {:x}\n",address,value);
             let ok = bmp::bmp_rv_write(address as u8, value);
             reply_rv_32(ok, 0);
@@ -635,7 +661,7 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         bmplog!("Cmd : {}", input[1]);
         bmplog!("\n");
     }
-    match input[0] {        
+    match input[0] {
         rpc_commands::RPC_SWINDLE_PACKET => rpc_swindle_packet(&input[1..]),
         rpc_commands::RPC_RV_PACKET => rpc_rv_packet(&input[1..]),
         rpc_commands::RPC_ADIV5_PACKET => rpc_adiv5_packet(&input[1..]),
@@ -663,19 +689,20 @@ pub fn rpc(input: &[u8]) -> bool {
     true
 }
 /**
- * 
+ * \fn rpc_swindle_packet
  */
 #[no_mangle]
 fn rpc_swindle_packet(input: &[u8]) -> bool {
-    match input[0] {        
+    let mut parser = rpc_parameter_parser::new(input);
+    match parser.next_cmd() {    
         rpc_commands::RPC_SWINDLE_CRC32 => {
-            let address: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[1..9]);
-            let len: u32 = crate::parsing_util::u8s_string_to_u32_le(&input[9..]);
-            let (status, crc) = do_crc32(address,len );        
+            let address: u32 = parser.next_u32();
+            let len: u32 = parser.next_u32();
+            let (status, crc) = do_local_crc32(address, len);
             reply_rv_32(status, crc);
             return true;
-            },
-    _ => (),
+        }
+        _ => (),
     }
     false
 }

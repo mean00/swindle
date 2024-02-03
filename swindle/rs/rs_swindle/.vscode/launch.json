@@ -8,7 +8,7 @@
             "name": "lldb_hosted",
             "type": "lldb",
             "request": "launch",            
-            "program": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted", 
+            "program": "${workspaceFolder}/../../../hosted/build/swindle_hosted", 
             "args": [],
             "cwd": "${workspaceFolder}"
         },
@@ -16,7 +16,7 @@
             "name": "gdb_hosted",
             "type": "gdb",
             "request": "launch",            
-            "target": "${workspaceFolder}/../../../hosted/build/lnBMP_hosted",            
+            "target": "${workspaceFolder}/../../../hosted/build/swindle_hosted",            
             "cwd": "${workspaceFolder}"
         },      
 {
