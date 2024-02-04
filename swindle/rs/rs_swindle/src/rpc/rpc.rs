@@ -529,17 +529,17 @@ fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
     //let ap_selection: u32 = ascii_octet_to_hex(input[3], input[4]) as u32;
     match parser.next_cmd() {
         rpc_commands::RPC_REMOTE_MEM_READ => {
-            bmplog!("\tMEM_READ UNIMPLEMENTED\n");
+            bmpwarning!("\tMEM_READ UNIMPLEMENTED\n");
         }
         rpc_commands::RPC_REMOTE_MEM_WRITE => {
-            bmplog!("\tMEM_WRITE UNIMPLEMENTED\n");
+            bmpwarning!("\tMEM_WRITE UNIMPLEMENTED\n");
         }
 
         rpc_commands::RPC_REMOTE_AP_READ => {
-            bmplog!("\tAP_READ UNIMPLEMENTED\n");
+            bmpwarning!("\tAP_READ UNIMPLEMENTED\n");
         }
         rpc_commands::RPC_REMOTE_AP_WRITE => {
-            bmplog!("\tAP_WRITE UNIMPLEMENTED\n");
+            bmpwarning!("\tAP_WRITE UNIMPLEMENTED\n");
         }
         rpc_commands::RPC_REMOTE_ADIV5_RAW_ACCESS => {
             // 'R'
