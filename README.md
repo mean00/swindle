@@ -2,15 +2,28 @@
 swindle : black magic probe with rust in it
 =====
 
+Overview
+=====
+
+
 swindle is a custom port of the amazing Black Magic Probe.
 
-swindle is made of 3 layers :
+
+
+
+A tiny rp2040-zero debugging a big CH32V307 eval board :
+
+![screenshot](assets/web/rp2040_ch32.png?raw=true "front")
+
+swindle is made of 3 layers : = 
 
 * A Gdb command parser written in rust.
 * Blackmagic probe debugger engine, pretty much untouched.
 * Low level stuff using lnArduino.
 * Limited FreeRTOS support
 * Partial Support for ch32vxx (riscv)
+
+A top level view of the software looks like this :
 
 ![screenshot](assets/web/swindle.png?raw=true "front")
 
