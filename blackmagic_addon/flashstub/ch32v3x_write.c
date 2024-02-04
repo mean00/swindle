@@ -40,7 +40,13 @@ bool ch32v3x_write(uint32_t dest, uint32_t adr_source, size_t len)
     }
     ret = true;
 qnext:
-    EXIT(ret);
+    if(ret)
+    {
+        EXIT_OK();
+    }else
+    {
+        EXIT_ERROR();  
+    }    
     return ret;
 }
 

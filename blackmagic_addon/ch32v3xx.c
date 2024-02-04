@@ -380,6 +380,12 @@ the_end:
     t->halt_request(t);
     if (!ret)
         debug("Exec error\n");
+    else
+    {
+        uint32_t a0;
+        t->reg_read(t, CHREG_A0, &a0, 4);
+        ret = (a0==0);
+    }
     return ret;
 }
 

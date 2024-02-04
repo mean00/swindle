@@ -142,10 +142,5 @@ typedef struct
 
 typedef void (*rv32_end)(void);
 
-#define EXIT(x)  __asm__("ebreak")
-
-#define EXIT2(x)                                                                                                        \
-    {                                                                                                                  \
-        rv32_end end = (rv32_end)0x20000000;                                                                           \
-        end();                                                                                                         \
-    }
+#define EXIT_OK() {     __asm__(   "li a0, 0 \n"  "ebreak"::); }
+#define EXIT_ERROR() {  __asm__(   "li a0, 1 \n"  "ebreak"::); }
