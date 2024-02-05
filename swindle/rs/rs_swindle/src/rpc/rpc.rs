@@ -448,7 +448,7 @@ fn rpc_swdp_packet(parser: &mut rpc_parameter_parser) -> bool {
             if tick == 0 {
                 return false;
             }
-            let param = parser.next_u32();
+            let param = parser.next_u32_be();
             bmplog!("\tOut_par value  : 0x{:x}\n", param);
 
             bmp::bmp_rpc_swd_out_par(param, tick);
@@ -463,7 +463,7 @@ fn rpc_swdp_packet(parser: &mut rpc_parameter_parser) -> bool {
             bmplog!("\tOut bits  :{} \n", tick);
             // total should be 1 (cmd) + 2 (size) + 2*x
 
-            let param = parser.next_u32();
+            let param = parser.next_u32_be();
             bmplog!("\tOut_par value  : 0x{:x}\n", param);
 
             bmp::bmp_rpc_swd_out(param, tick);
@@ -549,7 +549,7 @@ fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
             let device_index: u32 = parser.next_u8();
             let ap_selection: u32 = parser.next_u8();
             let address: u32 = parser.next_u16();
-            let value: u32 = parser.next_u32();
+            let value: u32 = parser.next_u32_be();
             let fault: i32;
             bmplog!("\t\t device_index {} ", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
@@ -568,7 +568,7 @@ fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
             //'d'
             let device_index: u32 = parser.next_u8();
             let ap_selection: u32 = parser.next_u8();
-            let address: u32 = parser.next_u32();
+            let address: u32 = parser.next_u32_be();
             let value: u32;
             let fault: i32;
 
