@@ -3,7 +3,7 @@ extern "C"
 {
 
 #include "ctype.h"
-//#include "gdb_hostio.h"
+// #include "gdb_hostio.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
 #include "general.h"
@@ -12,14 +12,14 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 }
-// C++ 
+// C++
 bool rv_dm_probe(uint32_t *chip_id); // C++
 // C
 extern "C"
 {
     extern "C" size_t xPortGetFreeHeapSize(void);
     extern "C" size_t xPortGetMinimumEverFreeHeapSize(void);
-    extern "C" int command_process(target_s *const t, const char *cmd_buffer);    
+    extern "C" int command_process(target_s *const t, const char *cmd_buffer);
     extern "C" bool bmd_crc32(target_s *const target, uint32_t *const result, const uint32_t base, const size_t len);
     target_s *cur_target;
     bool shutdown_bmda;
@@ -33,12 +33,13 @@ extern "C"
     }
     void gdb_target_printf(target_controller_s *tc, const char *fmt, va_list ap)
     {
-        xAssert(0);
+
+        // xAssert(0);
     }
     target_controller_s gdb_controller = {
         .destroy_callback = gdb_target_destroy_callback,
         .printf = gdb_target_printf,
-        .semihosting_buffer_ptr= NULL,
+        .semihosting_buffer_ptr = NULL,
     };
 
     /*
@@ -370,7 +371,7 @@ extern "C"
             return true;
         return false;
     }
-    
+
     /**
      */
     uint32_t free_heap_c()
@@ -417,7 +418,5 @@ extern "C"
     }
     */
 } // extern C
-
-
 
 // EOF
