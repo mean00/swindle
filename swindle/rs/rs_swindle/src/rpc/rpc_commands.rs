@@ -50,11 +50,14 @@ pub const RPC_HL_VERSION: u8 = 3;
 pub const RPC_HL_CHECK: u8 = b'C';
 pub const RPC_DP_READ: u8 = b'd';
 pub const RPC_LOW_ACCESS: u8 = b'L';
+pub const RPC_RAW_ACCESS_V3: u8 = b'R';
 pub const RPC_AP_READ: u8 = b'a';
 pub const RPC_AP_WRITE: u8 = b'A';
 //pub const RPC_AP_MEM_READ       : u8 = b'M';
 pub const RPC_MEM_READ: u8 = b'M';
 pub const RPC_MEM_WRITE: u8 = b'm';
+pub const RPC_MEM_READ_V3: u8 = b'm';
+pub const RPC_MEM_WRITE_V3: u8 = b'M';
 
 pub const RPC_REMOTE_ERROR_UNRECOGNISED: u8 = 1;
 pub const RPC_REMOTE_RESP: u8 = b'&';

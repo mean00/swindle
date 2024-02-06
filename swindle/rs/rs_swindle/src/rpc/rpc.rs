@@ -50,7 +50,7 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         rpc_commands::RPC_JTAG_PACKET => rpc_jtag_packet(&mut parser),
         rpc_commands::RPC_SWDP_PACKET => rpc_swdp_packet(&mut parser),
         rpc_commands::RPC_GEN_PACKET => rpc_gen_packet(&mut parser),
-        rpc_commands::RPC_HL_PACKET => rpc_hl_packet(&mut parser),
+        rpc_commands::RPC_HL_PACKET => rpc_hl_packet_v3(&mut parser),
         _ => {
             bmplog!("wrong RPC header\n");
             false
@@ -166,7 +166,146 @@ fn reply_adiv5_block(fault: i32, buffer: &[u8]) {
         rpc_reply_hex_string(rpc_commands::RPC_RESP_OK, buffer);
     }
 }
+/*
+ */
+fn rpc_hl_packet_v3(parser: &mut rpc_parameter_parser) -> bool {
+    bmplog!("\thl packet\n");
+    let cmd = parser.next_cmd();
+    if cmd == rpc_commands::RPC_HL_CHECK {
+        bmplog!("\t\tget version\n");
+        const force_version: u8 = 3; //rpc_commands::RPC_HL_VERSION ; // Force version X
+        rpc_reply(rpc_commands::RPC_RESP_OK, force_version); // Force version X                                                             
+        return true;
+    }
 
+    // the follow up is
+    // - index dp (2)
+    // - ap.apsel (2)
+    // 0   1    2    3    4    5    6    7    8
+    // CMD INDEXX    AP_SEL    ADDREEEEEEEEESSS
+    // [...]
+    let device_index: u32 = parser.next_u8();
+    let ap_selection: u32 = parser.next_u8(); //3 4
+
+    match cmd {
+        rpc_commands::RPC_RAW_ACCESS_V3 => { 
+            // index(u8) ap_sel(u8) addr(u16_be) data(u32_be) 
+            //--------------------------------------------
+            let address: u32 = parser.next_u16_be();
+            let mut value: u32 = 0;
+            if !parser.end().is_empty() {
+               value = parser.next_u32_be();
+            } 
+            let fault: i32;
+            bmplog!("\t\t LOW_ACCESS: {}\n", address);
+            bmplog!("\t\t device_index {} ", device_index);
+            bmplog!(" ap_selection at {}", ap_selection);
+            bmplog!("\t\taddress :0x{:x}\n", address);
+            bmplog!("\t\tvalue :{}\n", value);
+            let outvalue: u32;
+            (fault, outvalue) =
+                bmp::bmp_adiv5_full_dp_low_level(device_index, ap_selection, address as u16, value);
+            bmplog!("\t\toutvalue : 0x{:x} \n", outvalue);
+            reply_adiv5_32(fault, outvalue);
+            return true;
+        }
+        rpc_commands::RPC_AP_READ => { // x
+            // index(U8)  ap_sel(u8) addr(u16_be)
+            let address: u32 = parser.next_u16_be();
+            let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
+            bmplog!("\t\t AP_READ addr:{}\n", address);
+            bmplog!("\t\t value 0x{:x} \n", value);
+            reply_adiv5_32(0, value);
+            return true;
+        }
+        rpc_commands::RPC_DP_READ => { // x
+            // index(u8)  ap_self = 0xff (u8) ADDR16
+            let address: u32 = parser.next_u32_be();
+            let value: u32;
+            let fault: i32;
+
+            bmplog!("\t\t DP_READ: 0x{:x}\n", address);
+            bmplog!("\t\t device_index  {}", device_index);
+            bmplog!(" ap_selection at {}", ap_selection);
+            bmplog!(" dp_read at 0x{:x}", address);
+            (fault, value) =
+                bmp::bmp_adiv5_full_dp_read(device_index, ap_selection, address as u16);
+            bmplog!("\t\tvalue :0x{:x}\n", value);
+            reply_adiv5_32(fault, value);
+            return true;
+        }
+      
+        rpc_commands::RPC_AP_WRITE =>      { // 'A xx
+            // index (u8) ap_sel(u8) addr(u16_be) data(u32_be)
+            let address: u32 = parser.next_u16_be();
+            let value: u32 = parser.next_u32_be();
+            bmp::bmp_adiv5_ap_write(device_index, ap_selection, address, value);
+            bmplog!("\t\t AP_WRITE addr:0x{:x}\n", address);
+            bmplog!("\t\t value 0x{:x} \n", value);
+            reply_adiv5_32(0, 0);
+            return true;
+        }
+
+        rpc_commands::RPC_MEM_READ => { //M xx
+            // index(u8) ap_sel(u8) csw(u32_be) address(u32_be) count(u32)
+            //M0000a3000040e000edfc00000004
+            let csw1: u32 = parser.next_u32_be();
+            let address: u32 = parser.next_u32_be();
+            let length: u32 = parser.next_u32_be();
+            bmplog!("\t\t MEM READ CSW : 0x{:x} \n", csw1);
+            bmplog!("\t\t adr  :0x{:x}\n", address);
+            bmplog!("\t\t len  :{}\n", length);
+            if length > 1024 {
+                bmpwarning!("RPC_MEM_READ BLOCK TOO BIG len  :{}\n", length);
+                rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
+                return true;
+            }
+            let mut buffer: [u8; 1024] = [0; 1024];
+            let l: usize = length as usize;
+            let fault: i32 = bmp::bmp_adiv5_mem_read(
+                device_index,
+                ap_selection,
+                csw1,
+                address,
+                &mut buffer[0..l],
+            );
+            reply_adiv5_block(fault, &buffer[0..l]);  // xxx To check!
+            return true;
+        } // M
+        rpc_commands::RPC_MEM_WRITE => {            // m0000a300004002e000edfc0000000401040001
+            //  // index(u8) ap_sel(u8) csw(u32_be) align(u8) addr(u32_be) count(u32) then data...
+            let csw1: u32 = parser.next_u32_be();
+            let align: u32 = parser.next_u8();
+            let address: u32 = parser.next_u32_be();
+            let length: u32 = parser.next_u32_be();
+            bmplog!("\t\t RPC_MEM_WRITE CSW :0x{:x}\n", csw1);
+            bmplog!("\t\t adr  :0x{:x}\n", address);
+            bmplog!("\t\t len  :{}\n", length);
+            bmplog!("\t\t align  :{}\n", align);
+            if length > 1024 {
+                rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
+                return true;
+            }
+            let mut buffer: [u8; 1024] = [0; 1024];
+            let decoded = crate::parsing_util::u8_hex_string_to_u8s(parser.end(), &mut buffer);
+            let fault: i32 =
+                bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
+            reply_adiv5_32(fault, 0);
+            return true;
+        } // m
+
+        _ => (),
+    };
+
+    bmplog!("\t\t Other HL cmd \n");
+    //panic!();
+    bmpwarning!("\tunknown hl packet 0x{:x}\n", cmd);
+    rpc_reply(
+        rpc_commands::RPC_RESP_ERR,
+        rpc_commands::RPC_REMOTE_ERROR_UNRECOGNISED,
+    );
+    true
+}
 /*
  */
 fn rpc_hl_packet(parser: &mut rpc_parameter_parser) -> bool {
@@ -174,7 +313,7 @@ fn rpc_hl_packet(parser: &mut rpc_parameter_parser) -> bool {
     let cmd = parser.next_cmd();
     if cmd == rpc_commands::RPC_HL_CHECK {
         bmplog!("\t\tget version\n");
-        const force_version: u8 = 2; //rpc_commands::RPC_HL_VERSION ; // Force version X
+        const force_version: u8 = 3; //rpc_commands::RPC_HL_VERSION ; // Force version X
         rpc_reply(rpc_commands::RPC_RESP_OK, force_version); // Force version X                                                             
         return true;
     }
@@ -209,11 +348,11 @@ fn rpc_hl_packet(parser: &mut rpc_parameter_parser) -> bool {
             // L 00 00*00-04*50-00-00-00
             let address: u32 = parser.next_u16_be();
             let mut value: u32 = 0;
-            if parser.end().len()>0 {
+            if !parser.end().is_empty() {
                value = parser.next_u32_be();
             } 
             let fault: i32;
-            bmplog!("\t\t LOW_ACCESS: {}\n", address);
+            bmplog!("\t\t HL LOW_ACCESS: {}\n", address);
             bmplog!("\t\t device_index {} ", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
             bmplog!("\t\taddress :0x{:x}\n", address);
@@ -518,70 +657,118 @@ fn rpc_rv_packet(parser: &mut rpc_parameter_parser) -> bool {
  *
  */
 fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
-    // the follow up is
-    // - index dp (2)
-    // - ap.apsel (2)
-    // 0   1    2    3    4    5    6    7    8
-    // CMD INDEXX    AP_SEL    ADDREEEEEEEEESSS
-    // [...]
+    
+    let cmd = parser.next_cmd();
+    let device_index: u32 = parser.next_u8();
+    let ap_selection: u32 = parser.next_u8(); //3 4    
 
-    //let device_index: u32 = ascii_octet_to_hex(input[1], input[2]) as u32;
-    //let ap_selection: u32 = ascii_octet_to_hex(input[3], input[4]) as u32;
-    match parser.next_cmd() {
-        rpc_commands::RPC_REMOTE_MEM_READ => {
-            bmpwarning!("\tMEM_READ UNIMPLEMENTED\n");
-        }
-        rpc_commands::RPC_REMOTE_MEM_WRITE => {
-            bmpwarning!("\tMEM_WRITE UNIMPLEMENTED\n");
-        }
-
-        rpc_commands::RPC_REMOTE_AP_READ => {
-            bmpwarning!("\tAP_READ UNIMPLEMENTED\n");
-        }
-        rpc_commands::RPC_REMOTE_AP_WRITE => {
-            bmpwarning!("\tAP_WRITE UNIMPLEMENTED\n");
-        }
-        rpc_commands::RPC_REMOTE_ADIV5_RAW_ACCESS => {
-            // 'R'
-            //R 00  00     0000 00000004
-            //  dev apsel  addr value
-            bmplog!("\tRAW_ACCESS\n");
-            let device_index: u32 = parser.next_u8();
-            let ap_selection: u32 = parser.next_u8();
-            let address: u32 = parser.next_u16();
-            let value: u32 = parser.next_u32_be();
+    match cmd {
+        rpc_commands::RPC_RAW_ACCESS_V3 => { 
+            // index(u8) ap_sel(u8) addr(u16_be) data(u32_be) 
+            //--------------------------------------------
+            let address: u32 = parser.next_u16_be();
+            let mut value: u32 = 0;
+            if !parser.end().is_empty() {
+               value = parser.next_u32_be();
+            } 
             let fault: i32;
+            bmplog!("\t\t ADIV LOW_ACCESS: {}\n", address);
             bmplog!("\t\t device_index {} ", device_index);
             bmplog!(" ap_selection at {}", ap_selection);
-            bmplog!("\taddress : 0x{:x}", address);
-            bmplog!(" value : {}\n", value);
+            bmplog!("\t\taddress :0x{:x}\n", address);
+            bmplog!("\t\tvalue :{}\n", value);
             let outvalue: u32;
-            //pub fn  bmp_adiv5_full_dp_low_level( device_index : u32, ap_selection :u32, address : u16, value : u32) -> ( i32 , u32)
             (fault, outvalue) =
                 bmp::bmp_adiv5_full_dp_low_level(device_index, ap_selection, address as u16, value);
-            bmplog!("\t\toutvalue : {}", outvalue);
-            bmplog!(" fault : {}\n", fault as u32);
+            bmplog!("\t\toutvalue : 0x{:x} \n", outvalue);
             reply_adiv5_32(fault, outvalue);
             return true;
         }
-        rpc_commands::RPC_REMOTE_DP_READ => {
-            //'d'
-            let device_index: u32 = parser.next_u8();
-            let ap_selection: u32 = parser.next_u8();
+        rpc_commands::RPC_AP_READ => { // x
+            // index(U8)  ap_sel(u8) addr(u16_be)
+            let address: u32 = parser.next_u16_be();
+            let value = bmp::bmp_adiv5_ap_read(device_index, ap_selection, address);
+            bmplog!("\t\t AP_READ addr:{}\n", address);
+            bmplog!("\t\t value 0x{:x} \n", value);
+            reply_adiv5_32(0, value);
+            return true;
+        }
+        rpc_commands::RPC_DP_READ => { // x
+            // index(u8)  ap_self = 0xff (u8) ADDR16
             let address: u32 = parser.next_u32_be();
             let value: u32;
             let fault: i32;
 
-            bmplog!("\t\t RPC_REMOTE_DP_READ: \n");
-            bmplog!("\t\t device_index {} ", device_index);
-            bmplog!(" ap_selection at {} ", ap_selection);
-            bmplog!(" dp_read at  {}", address);
+            bmplog!("\t\t DP_READ: 0x{:x}\n", address);
+            bmplog!("\t\t device_index  {}", device_index);
+            bmplog!(" ap_selection at {}", ap_selection);
+            bmplog!(" dp_read at 0x{:x}", address);
             (fault, value) =
                 bmp::bmp_adiv5_full_dp_read(device_index, ap_selection, address as u16);
-            bmplog!("\t\tvalue : {}\n", value);
+            bmplog!("\t\tvalue :0x{:x}\n", value);
             reply_adiv5_32(fault, value);
             return true;
         }
+      
+        rpc_commands::RPC_AP_WRITE =>      { // 'A xx
+            // index (u8) ap_sel(u8) addr(u16_be) data(u32_be)
+            let address: u32 = parser.next_u16_be();
+            let value: u32 = parser.next_u32_be();
+            bmp::bmp_adiv5_ap_write(device_index, ap_selection, address, value);
+            bmplog!("\t\t AP_WRITE addr:0x{:x}\n", address);
+            bmplog!("\t\t value 0x{:x} \n", value);
+            reply_adiv5_32(0, 0);
+            return true;
+        }
+
+        rpc_commands::RPC_MEM_READ_V3 => { //m xx
+            // index(u8) ap_sel(u8) csw(u32_be) address(u32_be) count(u32)
+            let csw1: u32 = parser.next_u32_be();
+            let address: u32 = parser.next_u32_be();
+            let length: u32 = parser.next_u32_be();
+            bmplog!("\t\t MEM READ CSW : 0x{:x} \n", csw1);
+            bmplog!("\t\t adr  :0x{:x}\n", address);
+            bmplog!("\t\t len  :{}\n", length);
+            if length > 1024 {
+                bmpwarning!("RPC_MEM_READ BLOCK TOO BIG len  :{}\n", length);
+                rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
+                return true;
+            }
+            let mut buffer: [u8; 1024] = [0; 1024];
+            let l: usize = length as usize;
+            let fault: i32 = bmp::bmp_adiv5_mem_read(
+                device_index,
+                ap_selection,
+                csw1,
+                address,
+                &mut buffer[0..l],
+            );
+            reply_adiv5_block(fault, &buffer[0..l]);  // xxx To check!
+            return true;
+        } // M
+        rpc_commands::RPC_MEM_WRITE_V3 => {    
+            // AM0000a300004002e000edfc0000000401040001
+            // index(u8) ap_sel(u8) csw(u32_be) align(u8) addr(u32_be) count(u32) then data...
+            let csw1: u32 = parser.next_u32_be();
+            let align: u32 = parser.next_u8();
+            let address: u32 = parser.next_u32_be();
+            let length: u32 = parser.next_u32_be();
+            bmplog!("\t\t RPC_MEM_WRITE CSW :0x{:x}\n", csw1);
+            bmplog!("\t\t adr  :0x{:x}\n", address);
+            bmplog!("\t\t len  :{}\n", length);
+            bmplog!("\t\t align  :{}\n", align);
+            if length > 1024 {
+                rpc_reply(rpc_commands::RPC_REMOTE_RESP_PARERR, 0);
+                return true;
+            }
+            let mut buffer: [u8; 1024] = [0; 1024];
+            let decoded = crate::parsing_util::u8_hex_string_to_u8s(parser.end(), &mut buffer);
+            let fault: i32 =
+                bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
+            reply_adiv5_32(fault, 0);
+            return true;
+        } // m
+
         _ => (),
     };
     bmplog!("**** FAILED : adiv5 packet*********\n");
