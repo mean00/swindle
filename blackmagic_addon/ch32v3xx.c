@@ -150,12 +150,8 @@ static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t a
     return true;
 }
 
-/**
- * @brief
- *
- * @param flash
- * @return true
- * @return false
+/*
+    download the 2 flash stub once in ram so we can execute them later on
  */
 static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
 {
@@ -165,12 +161,8 @@ static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
     return true;
 }
 
-/**
- * @brief
- *
- * @param flash
- * @return true
- * @return false
+/*
+    Make sure the cpu is stopped
  */
 static bool ch32v3x_flash_done_flashstub(target_flash_s *flash)
 {
@@ -179,6 +171,7 @@ static bool ch32v3x_flash_done_flashstub(target_flash_s *flash)
 }
 
 /**
+    write a chunk of code in flash/rram through flashstub
  */
 static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t dest, const void *srcx, size_t len)
 {
