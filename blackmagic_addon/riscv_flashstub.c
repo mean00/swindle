@@ -20,7 +20,13 @@ bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t 
                       uint32_t temporary_stack)
 {
     bool ret = false;
+    uint32_t pc, sp, mie, zero = 0;
+    // save PC & SP
+    t->reg_read(t, RISCV_REG_PC, &pc, 4);
+    t->reg_read(t, RISCV_REG_SP, &sp, 4);
+    t->reg_read(t, RISCV_REG_MIE, &mie, 4);
 
+    t->reg_write(t, RISCV_REG_MIE, &zero, 4); // disable interrupt
     t->reg_write(t, RISCV_REG_A0, &param1, 4);
     t->reg_write(t, RISCV_REG_A1, &param2, 4);
     t->reg_write(t, RISCV_REG_A2, &param3, 4);
@@ -63,5 +69,10 @@ the_end:
         t->reg_read(t, RISCV_REG_A0, &a0, 4);
         ret = (a0 == 0);
     }
+    // restore PC & SP & MIE
+    t->reg_write(t, RISCV_REG_MIE, &mie, 4);
+    t->reg_write(t, RISCV_REG_PC, &pc, 4);
+    t->reg_write(t, RISCV_REG_SP, &sp, 4);
+
     return ret;
 }
