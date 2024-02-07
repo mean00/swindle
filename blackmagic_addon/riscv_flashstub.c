@@ -52,7 +52,6 @@ bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t 
         debug("OOPS executing code !\n");
         goto the_end;
     }
-    // printf("Okokok executing code !\n");
     ret = true;
 the_end:
     t->halt_request(t);
