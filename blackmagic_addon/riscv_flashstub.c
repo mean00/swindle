@@ -31,25 +31,25 @@
     }
 #endif
 /*
-    Execute code on the target to speed up flash operation
-    at the end of the execution, the code jumps back to the beginning of the RAM where
-    we put a breakpoint in _prepare.
+    Execute code on the target with the signature void function(a,b,c,d)
+        - codexec is the address the code to tun is located at
+        - param1/2/3/7 will end up as the 4 parameters of the stub function
+        - temporary stack if the address in ram of the temporary stack. It may be really small, like 100 bytes
 */
 bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2, uint32_t param3,
-                      uint32_t temporary_stack)
+                      uint32_t param4)
 {
     bool ret = false;
     uint32_t pc, sp, mie, zero = 0;
-    // save PC & SP
+    // save PC & MIE
     t->reg_read(t, RISCV_REG_PC, &pc, 4);
-    t->reg_read(t, RISCV_REG_SP, &sp, 4);
     t->reg_read(t, RISCV_REG_MIE, &mie, 4);
 
     t->reg_write(t, RISCV_REG_MIE, &zero, 4); // disable interrupt
     t->reg_write(t, RISCV_REG_A0, &param1, 4);
     t->reg_write(t, RISCV_REG_A1, &param2, 4);
     t->reg_write(t, RISCV_REG_A2, &param3, 4);
-    t->reg_write(t, RISCV_REG_SP, &temporary_stack, 4);
+    t->reg_write(t, RISCV_REG_A3, &param4, 4);
     t->reg_write(t, RISCV_REG_PC, &codeexec, 4);
 
     target_halt_reason_e reason = TARGET_HALT_RUNNING;
@@ -91,7 +91,5 @@ the_end:
     // restore PC & SP & MIE
     t->reg_write(t, RISCV_REG_MIE, &mie, 4);
     t->reg_write(t, RISCV_REG_PC, &pc, 4);
-    t->reg_write(t, RISCV_REG_SP, &sp, 4);
-
     return ret;
 }
