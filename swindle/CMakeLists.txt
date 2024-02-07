@@ -246,6 +246,12 @@ ENDIF()
 
 
 target_link_libraries( libswindle lnArduino)
+
+IF(USE_RP2040)
+        target_link_libraries( libswindle rplib)
+ENDIF()
+
+
 IF (SWINDLE_HOSTED) 
 ELSE()
     target_link_libraries( libswindle tinyUsb)

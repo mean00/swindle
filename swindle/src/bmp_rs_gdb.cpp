@@ -16,6 +16,11 @@ extern "C"
 #include "target.h"
 #include "version.h"
 }
+
+#ifdef USE_RP2040
+#include "pico/bootrom.h"
+#endif
+
 extern "C" void pins_init();
 extern void serialInit();
 extern void bmp_io_begin_session();
@@ -158,6 +163,8 @@ void goDfu()
     // + set marker in ram
     uint64_t *marker = (uint64_t *)0x0000000020000000;
     *marker = 0xDEADBEEFCC00FFEEULL;
+#else
+    reset_usb_boot(0, 0);
 #endif
     lnSoftSystemReset();
 }
