@@ -84,6 +84,7 @@ FILE(APPEND  ${BOARD_STUB_FILE} "#define LN_BOARDS_ENABLED \"${STR_BOARD_ENABLED
 SET(BMP_EXTRA  ${B}/../../blackmagic_addon/)
 SET(BOARDS      ${enabled_sources}
                 ${BMP_EXTRA}/ch32v3xx.c
+                ${BMP_EXTRA}/riscv_flashstub.c
                 ${B}/bmp_disabledBoard.cpp
                 ${T}/lpc_common.c                
                 CACHE INTERNAL ""
