@@ -19,7 +19,7 @@ bool ch32v3x_erase(uint32_t addr, size_t len)
         ch32v3x_ctl_clear(CH32V3XX_FMC_CTL_CH32_FASTERASE);
         cur_addr += 256;
     }
-    EXIT_OK();
+    riscv_stub_exit(0);
     return true;
 }
 
