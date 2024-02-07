@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "riscv_stub.h"
 #include "stdbool.h"
 #include "stddef.h"
 #include "stdint.h"
@@ -141,6 +142,3 @@ typedef struct
     }
 
 typedef void (*rv32_end)(void);
-
-#define EXIT_OK() {     __asm__(   "li a0, 0 \n"  "ebreak"::); }
-#define EXIT_ERROR() {  __asm__(   "li a0, 1 \n"  "ebreak"::); }

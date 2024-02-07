@@ -326,69 +326,6 @@ static bool ch32v3x_fast_lock(target_flash_s *flash)
 }
 #endif
 
-#define CHREG_A0 10
-#define CHREG_A1 11
-#define CHREG_A2 12
-#define CHREG_PC 32
-#define CHREG_SP 2
-
-/**
-    \brief Execute code on the target to speed up flash operation
-    at the end of the execution, the code jumps back to the beginning of the RAM where
-    we put a breakpoint in _prepare.
-*/
-bool exec_code(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2, uint32_t param3)
-{
-    bool ret = false;
-    uint32_t sp = STUB_STACKEND_LOCATION;
-    uint32_t pc = codeexec;
-
-    t->reg_write(t, CHREG_A0, &param1, 4);
-    t->reg_write(t, CHREG_A1, &param2, 4);
-    t->reg_write(t, CHREG_A2, &param3, 4);
-    t->reg_write(t, CHREG_SP, &sp, 4);
-    t->reg_write(t, CHREG_PC, &pc, 4);
-
-    target_halt_reason_e reason = TARGET_HALT_RUNNING;
-    t->halt_resume(t, false); // go!
-    platform_timeout_s timeout;
-    platform_timeout_set(&timeout, 10000);
-    while (reason == TARGET_HALT_RUNNING)
-    {
-        if (platform_timeout_is_expired(&timeout))
-        {
-            debug("Timeout executing code !\n");
-            goto the_end;
-        }
-        reason = t->halt_poll(t, NULL);
-    }
-
-    if (reason == TARGET_HALT_ERROR)
-    {
-        debug("Error executing code !\n");
-        goto the_end;
-    }
-
-    if (reason != TARGET_HALT_REQUEST)
-    {
-        debug("OOPS executing code !\n");
-        goto the_end;
-    }
-    // printf("Okokok executing code !\n");
-    ret = true;
-the_end:
-    t->halt_request(t);
-    if (!ret)
-        debug("Exec error\n");
-    else
-    {
-        uint32_t a0;
-        t->reg_read(t, CHREG_A0, &a0, 4);
-        ret = (a0==0);
-    }
-    return ret;
-}
-
 bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t addr, size_t len)
 {
     addr |= FLASH_OFFSET;
@@ -397,7 +334,7 @@ bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t addr, si
         uint32_t chunk = len;
         if (chunk > 1024)
             chunk = 1024;
-        if (!exec_code(flash->t, STUB_CODE_LOCATION_ERASE, addr, chunk, 0))
+        if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_ERASE, addr, chunk, 0, STUB_STACKEND_LOCATION))
             return false;
         addr += chunk;
         len -= chunk;
@@ -643,13 +580,14 @@ static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
 {
     uint32_t zero = 0;
     setupClock(flash);
-    riscv_csr_read(flash->t->priv, 0x304, &oldmie);                     //  save old mie
-    riscv_csr_write(flash->t->priv, 0x304, &zero);                      // disable all interrupts set MIE to zero
-    //target_breakwatch_set(flash->t, TARGET_BREAK_HARD, RAM_ADDRESS, 4); // at the end of write the stub will jump here
+    riscv_csr_read(flash->t->priv, 0x304, &oldmie); //  save old mie
+    riscv_csr_write(flash->t->priv, 0x304, &zero);  // disable all interrupts set MIE to zero
+    // target_breakwatch_set(flash->t, TARGET_BREAK_HARD, RAM_ADDRESS, 4); // at the end of write the stub will jump
+    // here
     target_mem_write(flash->t, STUB_CODE_LOCATION_ERASE, ch32v3x_erase_bin, sizeof(ch32v3x_erase_bin));
     target_mem_write(flash->t, STUB_CODE_LOCATION_WRITE, ch32v3x_write_bin, sizeof(ch32v3x_write_bin));
-    flash->t->reg_read(flash->t, CHREG_SP, &oldsp, 4); // save old sp
-    flash->t->reg_read(flash->t, CHREG_PC, &oldpc, 4); // save old PC
+    flash->t->reg_read(flash->t, RISCV_REG_SP, &oldsp, 4); // save old sp
+    flash->t->reg_read(flash->t, RISCV_REG_PC, &oldpc, 4); // save old PC
     ch32v3x_fast_unlock(flash->t);
     return true;
 }
@@ -665,8 +603,8 @@ static bool ch32v3x_flash_done_flashstub(target_flash_s *flash)
 {
     flash->t->halt_request(flash->t);
     target_breakwatch_clear(flash->t, TARGET_BREAK_HARD, RAM_ADDRESS, 4);
-    flash->t->reg_write(flash->t, CHREG_SP, &oldsp, 4);
-    flash->t->reg_write(flash->t, CHREG_PC, &oldpc, 4);
+    flash->t->reg_write(flash->t, RISCV_REG_SP, &oldsp, 4);
+    flash->t->reg_write(flash->t, RISCV_REG_PC, &oldpc, 4);
     riscv_csr_write(flash->t->priv, 0x304, &oldmie);
     return true;
 }
@@ -694,7 +632,8 @@ static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t d
         if (chunk > 1024)
             chunk = 1024;
         target_mem_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
-        if (!exec_code(flash->t, STUB_CODE_LOCATION_WRITE, addr, STUB_DATA_LOCATION, chunk))
+        if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_WRITE, addr, STUB_DATA_LOCATION, chunk,
+                              STUB_STACKEND_LOCATION))
             return false;
         addr += chunk;
         len -= chunk;
