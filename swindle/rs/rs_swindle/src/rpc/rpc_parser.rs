@@ -17,18 +17,18 @@ impl<'a> rpc_parameter_parser<'a> {
         rpc_parameter_parser { data }
     }
     pub fn next_u32(&mut self) -> u32 {
-        let n= xmin(self.data.len(),8);
+        let n = xmin(self.data.len(), 8);
         let out: u32 = crate::parsing_util::u8s_string_to_u32_le(&self.data[0..n]);
         self.data = &self.data[n..];
         out
     }
     pub fn next_u32_be(&mut self) -> u32 {
-        let n= xmin(self.data.len(),8);
+        let n = xmin(self.data.len(), 8);
         let out: u32 = crate::parsing_util::u8s_string_to_u32(&self.data[0..n]);
         self.data = &self.data[n..];
         out
     }
-    pub fn next_u8(&mut self) -> u32 {        
+    pub fn next_u8(&mut self) -> u32 {
         let left: u32 = ascii_octet_to_hex(self.data[0], self.data[1]) as u32;
         self.data = &self.data[2..];
         left
