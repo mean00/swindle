@@ -35,6 +35,7 @@
         - codexec is the address the code to tun is located at
         - param1/2/3/7 will end up as the 4 parameters of the stub function
         - temporary stack if the address in ram of the temporary stack. It may be really small, like 100 bytes
+    The flashstub must not use the stack at all.
 */
 bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2, uint32_t param3,
                       uint32_t param4)
@@ -88,7 +89,7 @@ the_end:
         t->reg_read(t, RISCV_REG_A0, &a0, 4);
         ret = (a0 == 0);
     }
-    // restore PC & SP & MIE
+    // restore PC & MIE
     t->reg_write(t, RISCV_REG_MIE, &mie, 4);
     t->reg_write(t, RISCV_REG_PC, &pc, 4);
     return ret;
