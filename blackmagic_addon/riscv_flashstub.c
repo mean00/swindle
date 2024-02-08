@@ -33,9 +33,11 @@
 /*
     Execute code on the target with the signature void function(a,b,c,d)
         - codexec is the address the code to tun is located at
-        - param1/2/3/7 will end up as the 4 parameters of the stub function
-        - temporary stack if the address in ram of the temporary stack. It may be really small, like 100 bytes
+        - param1/2/3/4 will end up as the 4 parameters of the stub function
+
     The flashstub must not use the stack at all.
+    It returns true on success, false on error
+    There is a built-in timeout of 10 seconds
 */
 bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2, uint32_t param3,
                       uint32_t param4)
@@ -44,9 +46,9 @@ bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t 
     uint32_t pc, sp, mie, zero = 0;
     // save PC & MIE
     t->reg_read(t, RISCV_REG_PC, &pc, 4);
-    t->reg_read(t, RISCV_REG_MIE, &mie, 4);
+    t->reg_read(t, RV_CSR_MIE, &mie, 4);
 
-    t->reg_write(t, RISCV_REG_MIE, &zero, 4); // disable interrupt
+    t->reg_write(t, RV_CSR_MIE, &zero, 4); // disable interrupt
     t->reg_write(t, RISCV_REG_A0, &param1, 4);
     t->reg_write(t, RISCV_REG_A1, &param2, 4);
     t->reg_write(t, RISCV_REG_A2, &param3, 4);
@@ -90,7 +92,7 @@ the_end:
         ret = (a0 == 0);
     }
     // restore PC & MIE
-    t->reg_write(t, RISCV_REG_MIE, &mie, 4);
+    t->reg_write(t, RV_CSR_MIE, &mie, 4);
     t->reg_write(t, RISCV_REG_PC, &pc, 4);
     return ret;
 }
