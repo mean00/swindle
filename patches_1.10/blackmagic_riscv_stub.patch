@@ -15,14 +15,14 @@ index 8af394a7..727fe23b 100644
 +#define RISCV_REG_SP 2
 +
 +/*
-+    Execute code on the target with the signature void function(a,b,c,d)
-+        - codexec is the address the code to tun is located at
++    Execute code on the target with the signature void stub_function(a,b,c,d)
++        - codexec is the address the code to run is located at
 +        - param1/2/3/4 will end up as the 4 parameters of the stub function
 +        
 +    The flashstub must not use the stack at all.
 +    It returns true on success, false on error
 +    There is a built-in timeout of 10 seconds
 +*/
-+bool riscv32_run_stub(target_s *target, uint32_t loadaddr, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t temporary_stack);
++bool riscv32_run_stub(target_s *target, uint32_t loadaddr, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3);
 +
  #endif /*TARGET_RISCV_DEBUG_H*/
