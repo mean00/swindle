@@ -1,0 +1,110 @@
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 78d5e52d..d8fe7197 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -157,6 +157,15 @@ static const riscv_csr_descriptor_s riscv_csrs[]={
+ 	{"mtval",	RV_CSR_MTVAL},
+ 	{"mip",	RV_CSR_MIP},
+ };
++// fpu registers straight from gdb https://patchwork.kernel.org/project/qemu-devel/patch/20181228220731.4753-1-jimw@sifive.com/
++// actual order from gdb 13.2
++static const char *riscv_fpu_regs[] ={"t0","t1","t2", "t3","t4","t5","t6","t7",
++										"s0","s1","a0","a1","a2","a3","a4",
++										"a5","a6","a7","s2","s3","s4","s5",
++										"s6","s7","s8","s9","s10","s11","t8",
++										"t9","t10","t11"};
++
++static const char *riscv_fpu_ctrl_regs[]={"flags","rm","csr"};
+ 
+ // clang-format on
+ 
+@@ -965,6 +974,45 @@ static const char *riscv_fpu_ext_string(const uint32_t extensions)
+  * Both are then continued with:
+  * "		<reg name=\"pc\" bitsize=\"[address_width]\" type=\"code_ptr\"/>"
+  * "	</feature>"
++ * The following are only generated for an F core (single precision HW float support):
++ * <feature name="org.gnu.gdb.riscv.fpu">
++ *			<reg name="ft0" bitsize="32" type="ieee_single" regnum="33" group="float"/>
++ *			<reg name="ft1" bitsize="32" type="ieee_single" regnum="34" group="float"/>
++ *			<reg name="ft2" bitsize="32" type="ieee_single" regnum="35" group="float"/>
++ *			<reg name="ft3" bitsize="32" type="ieee_single" regnum="36" group="float"/>
++ *			<reg name="ft4" bitsize="32" type="ieee_single" regnum="37" group="float"/>
++ *			<reg name="ft5" bitsize="32" type="ieee_single" regnum="38" group="float"/>
++ *			<reg name="ft6" bitsize="32" type="ieee_single" regnum="39" group="float"/>
++ *			<reg name="ft7" bitsize="32" type="ieee_single" regnum="40" group="float"/>
++ *			<reg name="fs0" bitsize="32" type="ieee_single" regnum="41" group="float"/>
++ *			<reg name="fs1" bitsize="32" type="ieee_single" regnum="42" group="float"/>
++ *			<reg name="fa0" bitsize="32" type="ieee_single" regnum="43" group="float"/>
++ *			<reg name="fa1" bitsize="32" type="ieee_single" regnum="44" group="float"/>
++ *			<reg name="fa2" bitsize="32" type="ieee_single" regnum="45" group="float"/>
++ *			<reg name="fa3" bitsize="32" type="ieee_single" regnum="46" group="float"/>
++ *			<reg name="fa4" bitsize="32" type="ieee_single" regnum="47" group="float"/>
++ *			<reg name="fa5" bitsize="32" type="ieee_single" regnum="48" group="float"/>
++ *			<reg name="fa6" bitsize="32" type="ieee_single" regnum="49" group="float"/>
++ *			<reg name="fa7" bitsize="32" type="ieee_single" regnum="50" group="float"/>
++ *			<reg name="fs2" bitsize="32" type="ieee_single" regnum="51" group="float"/>
++ *			<reg name="fs3" bitsize="32" type="ieee_single" regnum="52" group="float"/>
++ *			<reg name="fs4" bitsize="32" type="ieee_single" regnum="53" group="float"/>
++ *			<reg name="fs5" bitsize="32" type="ieee_single" regnum="54" group="float"/>
++ *			<reg name="fs6" bitsize="32" type="ieee_single" regnum="55" group="float"/>
++ *			<reg name="fs7" bitsize="32" type="ieee_single" regnum="56" group="float"/>
++ *			<reg name="fs8" bitsize="32" type="ieee_single" regnum="57" group="float"/>
++ *			<reg name="fs9" bitsize="32" type="ieee_single" regnum="58" group="float"/>
++ *			<reg name="fs10" bitsize="32" type="ieee_single" regnum="59" group="float"/>
++ *			<reg name="fs11" bitsize="32" type="ieee_single" regnum="60" group="float"/>
++ *			<reg name="ft8" bitsize="32" type="ieee_single" regnum="61" group="float"/>
++ *			<reg name="ft9" bitsize="32" type="ieee_single" regnum="62" group="float"/>
++ *			<reg name="ft10" bitsize="32" type="ieee_single" regnum="63" group="float"/>
++ *			<reg name="ft11" bitsize="32" type="ieee_single" regnum="64" group="float"/>
++ *			<reg name="fflags" bitsize="32" type="int" regnum="66" group="float" save-restore="no"/>
++ *			<reg name="frm" bitsize="32" type="int" regnum="67" group="float" save-restore="no"/>
++ *			<reg name="fcsr" bitsize="32" type="int" regnum="68" group="float" save-restore="no"/>
++ *</feature>
++
+  * "</target>"
+  */
+ static size_t riscv_build_target_description(
+@@ -999,7 +1047,34 @@ static size_t riscv_build_target_description(
+ 	offset += snprintf(buffer + offset, print_size, "<reg name=\"pc\" bitsize=\"%u\"%s/>", address_width,
+ 		gdb_reg_type_strings[GDB_TYPE_CODE_PTR]);
+ 
+-	/* XXX: TODO - implement generation of the FPU feature and registers */
++	
++
++	/* Basic single precision support */
++	if (extensions & RV_ISA_EXT_SINGLE_FLOAT) {
++		const int first_fpu_register = 33;         // fixme!
++		const int first_fpu_control_register = 66; // fixme!
++
++		if (max_length != 0)
++			print_size = max_length - (size_t)offset;
++		offset += snprintf(buffer + offset, print_size, "</feature><feature name=\"org.gnu.gdb.riscv.fpu\">");
++
++		for (int i = 0; i < sizeof(riscv_fpu_regs) / sizeof(riscv_fpu_regs[0]); i++) {
++			if (max_length != 0)
++				print_size = max_length - (size_t)offset;
++			offset += snprintf(buffer + offset, print_size,
++				"<reg name=\"f%s\" bitsize=\"32\" type=\"ieee_single\" regnum=\"%u\" group=\"float\"/>",
++				riscv_fpu_regs[i], i + first_fpu_register);
++		}
++		for (int i = 0; i < sizeof(riscv_fpu_ctrl_regs) / sizeof(riscv_fpu_ctrl_regs[0]); i++) {
++			if (max_length != 0)
++				print_size = max_length - (size_t)offset;
++			offset += snprintf(buffer + offset, print_size,
++				"<reg name=\"f%s\" bitsize=\"32\" type=\"int\" regnum=\"%u\" group=\"float\" save-restore=\"no\"/>",
++				riscv_fpu_ctrl_regs[i], i + first_fpu_control_register);
++		}
++	}
++
++	/* XXX: TODO - implement generation of the FPU feature and registers, double precision */
+ 
+ 	/* Add main CSR registers*/
+ 	if (max_length != 0)
+@@ -1012,6 +1087,7 @@ static size_t riscv_build_target_description(
+ 			riscv_csrs[i].name, address_width, riscv_csrs[i].csr_number + RV_CSR_GDB_OFFSET,
+ 			gdb_reg_save_restore_strings[GDB_SAVE_RESTORE_NO]);
+ 	}
++
+ 	/* Add the closing tags required */
+ 	if (max_length != 0)
+ 		print_size = max_length - (size_t)offset;
