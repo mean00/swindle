@@ -11,5 +11,7 @@ APPLY_PATCH_IF_NEEDED3(patched14 ${BMP_PATCH_FOLDER}/blackmagic_disable_snprintf
 APPLY_PATCH_IF_NEEDED3(patched13 ${BMP_PATCH_FOLDER}/blackmagic_rvswd_perigoso.patch             ${LNBMP_TOP_FOLDER}   "add rvswd support (based on perigoso work)")
 #APPLY_PATCH_IF_NEEDED3(patched16 ${BMP_PATCH_FOLDER}/blackmagic_make_ebreak_work.patch           ${LNBMP_TOP_FOLDER}   "riscv make sw breakpoint work")
 APPLY_PATCH_IF_NEEDED3(patched17 ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_warning.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
-APPLY_PATCH_IF_NEEDED3(patched18 ${BMP_PATCH_FOLDER}/blackmagic_riscv_stub.patch                 ${LNBMP_TOP_FOLDER}   "declare flashstub function")
+#APPLY_PATCH_IF_NEEDED3(patched18 ${BMP_PATCH_FOLDER}/blackmagic_riscv_stub.patch                 ${LNBMP_TOP_FOLDER}   "declare flashstub function")
+APPLY_PATCH_IF_NEEDED3(patched19 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
+APPLY_PATCH_IF_NEEDED3(patched21 ${BMP_PATCH_FOLDER}/blackmagic_riscv_flashstub_vanilla.patch    ${LNBMP_TOP_FOLDER}   "declare flashstub function")
 

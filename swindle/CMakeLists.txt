@@ -74,17 +74,18 @@ DECLARE_MCU( STM32H7 stm32h7.c  stm32h7_probe )
 DECLARE_MCU( STM32L0 stm32l0.c  stm32l0_probe )
 DECLARE_MCU( STM32L4 stm32l4.c  stm32l4_probe )
 DECLARE_MCU( STM32MP15 stm32mp15.c stm32mp15_cm4_probe )
-DECLARE_MCU( AT32FXXX at32f43x.c  at32f43x_probe ) 
+DECLARE_MCU( AT32FXXX  at32f43x.c  at32f43x_probe ) 
 DECLARE_MCU( MSP432P4  msp432p4.c  msp432p4_probe  )
-DECLARE_MCU( HC32L110 hc32l110.c  hc32l110_probe  )
+DECLARE_MCU( HC32L110  hc32l110.c  hc32l110_probe  )
 DECLARE_MCU( MSP432E4  msp432e4.c  msp432e4_probe  )
+DECLARE_MCU( S32K3XX   s32k3xx.c   s32k3xx_probe  )
 
    
 FILE(APPEND  ${BOARD_STUB_FILE} "#define LN_BOARDS_ENABLED \"${STR_BOARD_ENABLED}\"\n")
 SET(BMP_EXTRA  ${B}/../../blackmagic_addon/)
 SET(BOARDS      ${enabled_sources}
                 ${BMP_EXTRA}/ch32v3xx.c
-                ${BMP_EXTRA}/riscv_flashstub.c
+                #${BMP_EXTRA}/riscv_flashstub.c
                 ${B}/bmp_disabledBoard.cpp
                 ${T}/lpc_common.c                
                 CACHE INTERNAL ""
