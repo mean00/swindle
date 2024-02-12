@@ -30,6 +30,34 @@
     {                                                                                                                  \
     }
 #endif
+
+#define RISCV_REG_A0 10
+#define RISCV_REG_A1 11
+#define RISCV_REG_A2 12
+#define RISCV_REG_A3 13
+#define RISCV_REG_PC 32
+#define RISCV_REG_SP 2
+
+/*
+    Small helper function to translate target to hart and simplify parameters
+    We assume it is 32 bits
+*/
+static bool riscv32_target_csr_write(target_s *target, const uint16_t reg, uint32_t val)
+{
+    riscv_hart_s *const hart = riscv_hart_struct(target);
+    return riscv_csr_write(hart, reg, &val);
+}
+
+/*
+    Small helper function to translate target to hart and simplify parameters
+    We assume it is 32 bits
+*/
+static bool riscv32_target_csr_read(target_s *target, const uint16_t reg, uint32_t *val)
+{
+    riscv_hart_s *const hart = riscv_hart_struct(target);
+    return riscv_csr_read(hart, reg, val);
+}
+
 /*
     Execute code on the target with the signature void function(a,b,c,d)
         - codexec is the address the code to tun is located at
@@ -43,12 +71,11 @@ bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t 
                       uint32_t param4)
 {
     bool ret = false;
-    uint32_t pc, sp, mie, zero = 0;
+    uint32_t pc, mie, zero = 0;
     // save PC & MIE
     t->reg_read(t, RISCV_REG_PC, &pc, 4);
-    t->reg_read(t, RV_CSR_MIE, &mie, 4);
-
-    t->reg_write(t, RV_CSR_MIE, &zero, 4); // disable interrupt
+    riscv32_target_csr_read(t, RV_CSR_MIE, &mie);
+    riscv32_target_csr_write(t, RV_CSR_MIE, zero); // disable interrupt
     t->reg_write(t, RISCV_REG_A0, &param1, 4);
     t->reg_write(t, RISCV_REG_A1, &param2, 4);
     t->reg_write(t, RISCV_REG_A2, &param3, 4);
@@ -63,7 +90,6 @@ bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t 
     {
         if (platform_timeout_is_expired(&timeout))
         {
-            debug("Timeout executing code !\n");
             goto the_end;
         }
         reason = t->halt_poll(t, NULL);
@@ -71,28 +97,25 @@ bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t 
 
     if (reason == TARGET_HALT_ERROR)
     {
-        debug("Error executing code !\n");
         goto the_end;
     }
 
     if (reason != TARGET_HALT_REQUEST)
     {
-        debug("OOPS executing code !\n");
         goto the_end;
     }
     ret = true;
 the_end:
     t->halt_request(t);
-    if (!ret)
-        debug("Exec error\n");
-    else
+    if (ret)
     {
         uint32_t a0;
         t->reg_read(t, RISCV_REG_A0, &a0, 4);
         ret = (a0 == 0);
     }
     // restore PC & MIE
-    t->reg_write(t, RV_CSR_MIE, &mie, 4);
+    riscv32_target_csr_write(t, RV_CSR_MIE, mie); // put back MIE
     t->reg_write(t, RISCV_REG_PC, &pc, 4);
     return ret;
 }
+//----
