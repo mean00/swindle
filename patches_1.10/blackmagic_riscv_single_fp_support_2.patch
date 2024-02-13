@@ -1,0 +1,28 @@
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 365126cf..1285b3bb 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -153,6 +158,9 @@ static ssize_t riscv32_reg_read(target_s *target, const uint32_t reg, void *data
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, RV_DPC, data));
+ 	if (reg >= RV_CSR_GDB_OFFSET)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, reg - RV_CSR_GDB_OFFSET, data));
++	if(reg >= RV_FPU_GDB_FIRST_REGISTER) {
++		return riscv32_bool_to_4(riscv_csr_read(hart, RV_FP_BASE + reg - RV_FPU_GDB_FIRST_REGISTER, data));
++	}	
+ 	return -1;
+ }
+ 
+@@ -166,8 +174,12 @@ static ssize_t riscv32_reg_write(target_s *const target, const uint32_t reg, con
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_GPR_BASE + reg, data));
+ 	if (reg == 32)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_DPC, data));
+-	if (reg >= RV_CSR_GDB_OFFSET)
++	if (reg >= RV_CSR_GDB_OFFSET )
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, reg - RV_CSR_GDB_OFFSET, data));
++	if(reg >= RV_FPU_GDB_FIRST_REGISTER) {
++		return riscv32_bool_to_4(riscv_csr_write(hart, RV_FP_BASE + reg - RV_FPU_GDB_FIRST_REGISTER, data));
++	}
++
+ 	return -1;
+ }
+ 

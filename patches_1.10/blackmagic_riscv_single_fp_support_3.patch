@@ -1,0 +1,12 @@
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+index 8af394a7..2085a819 100644
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -204,6 +204,7 @@ typedef struct riscv_hart {
+ // so they cannot collide with GPR registers, so you have to subtract
+ // RV_CSR_GDB_OFFSET from the value received from gdb
+ #define RV_CSR_GDB_OFFSET 128
++#define RV_FPU_GDB_FIRST_REGISTER 33
+ #define RV_CSR_STATUS     0x300
+ #define RV_CSR_MISA       0x301
+ #define RV_CSR_MIE        0x304
