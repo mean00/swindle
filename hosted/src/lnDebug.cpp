@@ -29,7 +29,7 @@ uint32_t getTick()
 /**
 
 */
-static void LoggerInternal(const char *fmt, va_list &args)
+static void LoggerInternalTimeStamp(const char *fmt, va_list &args)
 {
     if (!originalTick)
         originalTick = getTick();
@@ -43,6 +43,13 @@ static void LoggerInternal(const char *fmt, va_list &args)
     int ln = strlen(buffer);
 
     vsnprintf(buffer + ln, OUTER_BUFFER_SIZE, fmt, args);
+    buffer[OUTER_BUFFER_SIZE + PREFIX_BUFFER_SIZE] = 0;
+    printf("%s", buffer);
+}
+static void LoggerInternal(const char *fmt, va_list &args)
+{
+    static char buffer[PREFIX_BUFFER_SIZE + OUTER_BUFFER_SIZE + 1];
+    vsnprintf(buffer, OUTER_BUFFER_SIZE, fmt, args);
     buffer[OUTER_BUFFER_SIZE + PREFIX_BUFFER_SIZE] = 0;
     printf("%s", buffer);
 }
@@ -92,6 +99,15 @@ void LoggerInit()
     originalTick = getTick();
 }
 
+extern "C" void bmploggerh(const char *fmt...)
+{
+    if (!fmt[0])
+        return;
+    va_list va;
+    va_start(va, fmt);
+    LoggerInternalTimeStamp(fmt, va);
+    va_end(va);
+}
 extern "C" void bmplogger(const char *fmt...)
 {
     if (!fmt[0])

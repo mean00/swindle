@@ -34,17 +34,37 @@ extern "C"
     }
 
 //-- disable debug
+#if 0
 #undef QBMPLOG
 #undef QBMPLOGN
 #define QBMPLOG(...)                                                                                                   \
     {                                                                                                                  \
     }
+#define QBMPLOGH(...)                                                                                                  \
+    {                                                                                                                  \
+    }
 #define QBMPLOGN(...)                                                                                                  \
     {                                                                                                                  \
     }
+#define QCALL(...)                                                                                                     \
+    {                                                                                                                  \
+    }
+#else
+#define QCALL(x) x
+#endif
 
 QSerialPort *qserial = NULL;
+extern "C" void platform_write_flush();
+extern "C" int platform_buffer_write_buffered(const uint8_t *data, int size);
+extern "C" int platform_buffer_read(uint8_t *data, int maxsize);
+extern "C" int platform_buffer_write(const uint8_t *data, int size);
+void decoderRequest(int size, const uint8_t *data);
 
+/**
+ */
+#define PLATFORM_BUFFER_SIZE 512
+static int plf_write_index = 0;
+static uint8_t platform_buffer[PLATFORM_BUFFER_SIZE];
 /**
  */
 
@@ -121,6 +141,33 @@ bool readChar(uint8_t *data)
     }
 }
 /**
+ *
+ *
+ */
+extern "C" int platform_buffer_write_buffered(const uint8_t *data, int size)
+{
+    if (size + plf_write_index >= PLATFORM_BUFFER_SIZE)
+        platform_write_flush();
+
+    if (size + plf_write_index >= PLATFORM_BUFFER_SIZE)
+        xAssert(0);
+    memcpy(platform_buffer + plf_write_index, data, size);
+    plf_write_index += size;
+    return size;
+}
+/**
+ *
+ */
+extern "C" void platform_write_flush()
+{
+    if (!plf_write_index)
+        return;
+    platform_buffer_write(platform_buffer, plf_write_index);
+    plf_write_index = 0;
+}
+
+/**
+ *
  */
 extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
 {
@@ -183,6 +230,7 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
 extern "C" int platform_buffer_write(const uint8_t *data, int size)
 {
     int orgsize = size;
+    QCALL(decoderRequest(orgsize, data));
     while (size)
     {
         int nb = qserial->write((const char *)data, size);
@@ -192,16 +240,17 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
             exit(-1);
             break;
         }
-        QBMPLOG("Write %d bytes", nb);
+        // QBMPLOG("Write %d bytes", nb);
+        QBMPLOGH("Write:");
         QBMPLOGN(nb, (const char *)data);
-        QBMPLOG("\n");
+        QBMPLOG("(%d bytes)\n", nb);
         size -= nb;
         data += nb;
     }
-    QBMPLOG("-- flush in \n");
+    // QBMPLOG("-- flush in \n");
     qserial->flush();
-    QBMPLOG("-- flush end \n");
-    QBMPLOG("Write %d bytes\n", orgsize);
+    // QBMPLOG("-- flush end \n");
+    // QBMPLOG("Write %d bytes\n", orgsize);
     return size;
 }
 /**
