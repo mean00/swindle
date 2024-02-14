@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "riscv_stub.h"
+#include "flashstub/riscv32_flashstub.h"
 #include "stdbool.h"
 #include "stddef.h"
 #include "stdint.h"
