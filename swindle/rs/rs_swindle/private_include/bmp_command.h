@@ -96,5 +96,6 @@ bool bmp_rv_dm_reset_c();
 bool bmp_rv_rvswd_probe_c(uint32_t *id);
 
 int platform_buffer_read(uint8_t *data, int maxsize);
- int platform_buffer_write(const uint8_t *data, int size);
- 
+int platform_buffer_write(const uint8_t *data, int size);
+int platform_buffer_write_buffered(const uint8_t *data, int size);
+void platform_write_flush();

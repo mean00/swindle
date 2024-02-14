@@ -16,7 +16,8 @@
 
 use crate::packet_symbols;
 use crate::parsing_util::{u8_to_ascii, u8_to_ascii_to_buffer};
-use crate::rn_bmp_cmd_c::platform_buffer_write;
+use crate::rn_bmp_cmd_c::platform_buffer_write_buffered;
+use crate::rn_bmp_cmd_c::platform_write_flush;
 use crate::{rngdb_output_flush, rngdb_send_data, rngdb_send_data_u8};
 
 // DF -- not thread safe, not re-entrant,ugly but simple
@@ -221,11 +222,11 @@ impl rpc_encoder {
     //
     pub fn raw_send_u8(data: &[u8]) {
         unsafe {
-            platform_buffer_write(data.as_ptr(), data.len() as i32);
+            platform_buffer_write_buffered(data.as_ptr(), data.len() as i32);
         }
         //rngdb_send_data_u8(data);
     }
     pub fn flush() {
-        //rngdb_output_flush();
+        unsafe {platform_write_flush();}
     }
 }

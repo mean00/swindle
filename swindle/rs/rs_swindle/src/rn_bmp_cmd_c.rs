@@ -369,3 +369,12 @@ extern "C" {
 extern "C" {
     pub fn platform_buffer_write(data: *const u8, size: core::ffi::c_int) -> core::ffi::c_int;
 }
+extern "C" {
+    pub fn platform_buffer_write_buffered(
+        data: *const u8,
+        size: core::ffi::c_int,
+    ) -> core::ffi::c_int;
+}
+extern "C" {
+    pub fn platform_write_flush();
+}
