@@ -59,6 +59,7 @@ extern "C" int platform_buffer_write_buffered(const uint8_t *data, int size);
 extern "C" int platform_buffer_read(uint8_t *data, int maxsize);
 extern "C" int platform_buffer_write(const uint8_t *data, int size);
 void decoderRequest(int size, const uint8_t *data);
+void decoderReply(int size, const uint8_t *data);
 
 /**
  */
@@ -206,6 +207,7 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
                 QBMPLOGN(nb, (const char *)data);
                 QBMPLOG("\n");
                 serial_auto = SERIAL_DONE;
+                QCALL(decoderReply(nb, data));
                 return nb;
             }
             data[nb++] = c;

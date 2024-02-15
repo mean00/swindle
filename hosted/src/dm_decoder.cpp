@@ -1,3 +1,8 @@
+/**
+ * @file dm_decoder.cpp
+ * @brief This decodes DM requests & reply
+ *
+ */
 #include "stdarg.h"
 #include "stdint.h"
 #include "stdio.h"
@@ -7,6 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 
+void decoderDMReg(int reg, uint32_t value);
 #if 0
 #undef QBMPLOG
 #undef QBMPLOGN
@@ -67,8 +73,11 @@ typedef struct DM_registers
     const char *name;
 };
 
+#define DM_DATA0 0x04
 #define DM_STATUS 0x11
 #define DM_CONTROL 0x10
+#define DM_ABSTRACTCS 0x16
+#define DM_ABSTRACTCMD 0x17
 
 DM_registers dm_regs[] = {
     {0x04, "Abstract Data 0 (data0)"},
@@ -119,6 +128,60 @@ const char *lookup_dm_reg(int reg)
 }
 static int last_cmd = 0;
 /**
+ * @brief
+ *
+ * @param reg
+ * @param value
+ */
+void decoderReply(int size, const uint8_t *data)
+{
+    if (size < 9)
+        return;
+    uint32_t reg = readLE(data + 1, 4);
+    if (!last_cmd)
+    {
+        QBMPLOG("?? not a reply ??");
+    }
+    else
+    {
+        decoderDMReg(last_cmd, reg);
+    }
+    QBMPLOG("\n");
+    last_cmd = 0;
+}
+/**
+ * @brief
+ *
+ * @param reg
+ * @param value
+ */
+void decoderDMReg(int reg, uint32_t value)
+{
+    switch (reg)
+    {
+    case DM_STATUS:
+        if (value & (1 << 5))
+            QBMPLOG("resetReq");
+        if (value & (1 << 8))
+            QBMPLOG("anyhalted");
+        if (value & (1 << 11))
+            QBMPLOG("allrunning");
+        break;
+    case DM_DATA0:
+        QBMPLOG("data=0x%x", value);
+        break;
+    case DM_ABSTRACTCS:
+        QBMPLOG("progbufSize=%d words Err=%d datacount=%d ", (value >> 24) & 0xf, (value >> 8) & 0x3, (value & 0xf));
+        break;
+    case DM_ABSTRACTCMD:
+        QBMPLOG("cmd=0x%x control=0x%x ", (value >> 24) & 0xff, (value) & 0xffffff);
+        break;
+    default:
+        QBMPLOG("???");
+        break;
+    }
+}
+/**
  *
  *
  */
@@ -144,7 +207,7 @@ void decoderRequest(int size, const uint8_t *data)
                 QBMPLOG("DMI READ ");
                 uint32_t reg = readLE(data + 3, 1);
                 QBMPLOG("Reg %s (0x%x) ", lookup_dm_reg(reg), reg);
-                last_cmd = 0x11;
+                last_cmd = reg;
             }
             break;
 
@@ -154,6 +217,8 @@ void decoderRequest(int size, const uint8_t *data)
                 uint32_t reg = readLE(data + 3, 4);
                 uint32_t value = readLE(data + 3 + 4 * 2, 4);
                 QBMPLOG("Reg %s (0x%x) Data=0x%x ", lookup_dm_reg(reg), reg, value);
+                decoderDMReg(reg, value);
+                last_cmd = 0;
             }
             break;
             default:
