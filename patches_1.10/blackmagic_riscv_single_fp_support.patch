@@ -1,5 +1,33 @@
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 365126cf..d193d291 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -153,6 +153,9 @@ static ssize_t riscv32_reg_read(target_s *target, const uint32_t reg, void *data
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, RV_DPC, data));
+ 	if (reg >= RV_CSR_GDB_OFFSET)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, reg - RV_CSR_GDB_OFFSET, data));
++	if(reg >= RV_FPU_GDB_FIRST_REGISTER) {
++		return riscv32_bool_to_4(riscv_csr_read(hart, RV_FP_BASE + reg - RV_FPU_GDB_FIRST_REGISTER, data));
++	}	
+ 	return -1;
+ }
+ 
+@@ -166,8 +169,12 @@ static ssize_t riscv32_reg_write(target_s *const target, const uint32_t reg, con
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_GPR_BASE + reg, data));
+ 	if (reg == 32)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_DPC, data));
+-	if (reg >= RV_CSR_GDB_OFFSET)
++	if (reg >= RV_CSR_GDB_OFFSET )
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, reg - RV_CSR_GDB_OFFSET, data));
++	if(reg >= RV_FPU_GDB_FIRST_REGISTER) {
++		return riscv32_bool_to_4(riscv_csr_write(hart, RV_FP_BASE + reg - RV_FPU_GDB_FIRST_REGISTER, data));
++	}
++
+ 	return -1;
+ }
+ 
 diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
-index 78d5e52d..d8fe7197 100644
+index 78d5e52d..61748400 100644
 --- a/src/target/riscv_debug.c
 +++ b/src/target/riscv_debug.c
 @@ -157,6 +157,15 @@ static const riscv_csr_descriptor_s riscv_csrs[]={
@@ -73,21 +101,21 @@ index 78d5e52d..d8fe7197 100644
 +
 +	/* Basic single precision support */
 +	if (extensions & RV_ISA_EXT_SINGLE_FLOAT) {
-+		const int first_fpu_register = 33;         // fixme!
-+		const int first_fpu_control_register = 66; // fixme!
++		const int first_fpu_register = RV_FPU_GDB_FIRST_REGISTER;         // fixme!
++		const int first_fpu_control_register = RV_FPU_GDB_CSR_REGISTER; // fixme!
 +
 +		if (max_length != 0)
 +			print_size = max_length - (size_t)offset;
 +		offset += snprintf(buffer + offset, print_size, "</feature><feature name=\"org.gnu.gdb.riscv.fpu\">");
 +
-+		for (int i = 0; i < sizeof(riscv_fpu_regs) / sizeof(riscv_fpu_regs[0]); i++) {
++		for (unsigned int i = 0; i < sizeof(riscv_fpu_regs) / sizeof(riscv_fpu_regs[0]); i++) {
 +			if (max_length != 0)
 +				print_size = max_length - (size_t)offset;
 +			offset += snprintf(buffer + offset, print_size,
 +				"<reg name=\"f%s\" bitsize=\"32\" type=\"ieee_single\" regnum=\"%u\" group=\"float\"/>",
 +				riscv_fpu_regs[i], i + first_fpu_register);
 +		}
-+		for (int i = 0; i < sizeof(riscv_fpu_ctrl_regs) / sizeof(riscv_fpu_ctrl_regs[0]); i++) {
++		for (unsigned int i = 0; i < sizeof(riscv_fpu_ctrl_regs) / sizeof(riscv_fpu_ctrl_regs[0]); i++) {
 +			if (max_length != 0)
 +				print_size = max_length - (size_t)offset;
 +			offset += snprintf(buffer + offset, print_size,
@@ -108,3 +136,16 @@ index 78d5e52d..d8fe7197 100644
  	/* Add the closing tags required */
  	if (max_length != 0)
  		print_size = max_length - (size_t)offset;
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+index 8af394a7..eb2314be 100644
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -204,6 +204,8 @@ typedef struct riscv_hart {
+ // so they cannot collide with GPR registers, so you have to subtract
+ // RV_CSR_GDB_OFFSET from the value received from gdb
+ #define RV_CSR_GDB_OFFSET 128
++#define RV_FPU_GDB_FIRST_REGISTER 33
++#define RV_FPU_GDB_CSR_REGISTER 66
+ #define RV_CSR_STATUS     0x300
+ #define RV_CSR_MISA       0x301
+ #define RV_CSR_MIE        0x304
