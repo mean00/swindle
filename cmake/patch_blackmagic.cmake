@@ -19,3 +19,4 @@ APPLY_PATCH_IF_NEEDED3(patched19 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_
 #APPLY_PATCH_IF_NEEDED3(patched22 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_2.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
 #APPLY_PATCH_IF_NEEDED3(patched23 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_3.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
 
+APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/blackmagic_riscv_disable_interrupt_during_step.patch ${LNBMP_TOP_FOLDER}   "disable interrupt during single step")

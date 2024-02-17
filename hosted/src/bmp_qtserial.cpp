@@ -34,7 +34,7 @@ extern "C"
     }
 
 //-- disable debug
-#if 0
+#if 1
 #undef QBMPLOG
 #undef QBMPLOGN
 #define QBMPLOG(...)                                                                                                   \
