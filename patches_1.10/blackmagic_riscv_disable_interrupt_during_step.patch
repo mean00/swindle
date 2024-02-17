@@ -1,0 +1,17 @@
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 78d5e52d..b8a425f6 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -831,8 +840,10 @@ static void riscv_halt_resume(target_s *target, const bool step)
+ 	uint32_t stepping_config = 0U;
+ 	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
+ 		return;
+-	if (step)
+-		stepping_config |= RV_DCSR_STEP | RV_DCSR_STEPIE;
++	if (step) {
++		stepping_config |= RV_DCSR_STEP;
++		stepping_config &= ~RV_DCSR_STEPIE; // disable interrupt during single step
++	}
+ 	else {
+ 		stepping_config &= ~(RV_DCSR_STEP | RV_DCSR_STEPIE);
+ 		stepping_config |= RV_DCSR_EBREAK_MACHINE;
