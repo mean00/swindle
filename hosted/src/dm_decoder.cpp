@@ -74,6 +74,7 @@ typedef struct DM_registers
 };
 
 #define DM_DATA0 0x04
+#define DM_DATA11 0x0F
 #define DM_STATUS 0x11
 #define DM_CONTROL 0x10
 #define DM_ABSTRACTCS 0x16
@@ -149,6 +150,24 @@ void decoderReply(int size, const uint8_t *data)
     QBMPLOG("\n");
     last_cmd = 0;
 }
+
+const char *regname(int reg)
+{
+    if (reg < 0x1000)
+    {
+        return "CSR";
+    }
+    if (reg < 0x1020)
+    {
+        return "GPR";
+    }
+    if (reg < 0x1040)
+    {
+        return "FPU";
+    }
+    return "???";
+}
+
 /**
  * @brief
  *
@@ -168,14 +187,44 @@ void decoderDMReg(int reg, uint32_t value)
             QBMPLOG("allrunning");
         break;
     case DM_DATA0:
-        QBMPLOG("data=0x%x", value);
+        QBMPLOG("data0=0x%x", value);
         break;
     case DM_ABSTRACTCS:
-        QBMPLOG("progbufSize=%d words Err=%d datacount=%d ", (value >> 24) & 0xf, (value >> 8) & 0x3, (value & 0xf));
+        QBMPLOG("raw=0x%x progbufSize=%d words Err=%d datacount=%d ", value, (value >> 24) & 0xf, (value >> 8) & 0x3,
+                (value & 0xf));
         break;
-    case DM_ABSTRACTCMD:
-        QBMPLOG("cmd=0x%x control=0x%x ", (value >> 24) & 0xff, (value) & 0xffffff);
+    case DM_ABSTRACTCMD: {
+        int cmd = (value >> 24) & 0xff;
+        int control = (value & 0xffffff);
+        QBMPLOG("cmd=0x%x control=0x%x ", cmd, control);
+        switch (cmd)
+        {
+        case 0:
+            QBMPLOG(" RegisterAccess reg=%s (%d) write=%d autoinc=%d", regname(control & 0xffff), control & 0xffff,
+                    (control >> 16) & 1, (control >> 19) & 1);
+            break;
+        case 1:
+            QBMPLOG(" QuickAccess ");
+            break;
+        case 2: {
+            bool write = (control >> 16) & 1, post_inc = (cmd >> 19) & 1;
+            if (write)
+            {
+                QBMPLOG(" MemoryAccess arg0 -> [arg1] size=%d bytes postincrement=%d", (control >> 20) & 3, post_inc);
+            }
+            else
+            {
+                QBMPLOG(" MemoryAccess  [arg1] ->arg0 size=%d bytes write=%d postincrement=%d", (control >> 20) & 3,
+                        post_inc);
+            }
+        }
         break;
+        default:
+            QBMPLOG("???");
+            break;
+        }
+    }
+    break;
     default:
         QBMPLOG("???");
         break;
