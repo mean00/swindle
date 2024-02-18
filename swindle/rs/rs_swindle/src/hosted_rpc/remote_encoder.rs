@@ -14,6 +14,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use core::ptr::addr_of_mut;
 use crate::packet_symbols;
 use crate::parsing_util::{u8_to_ascii, u8_to_ascii_to_buffer};
 use crate::rn_bmp_cmd_c::platform_buffer_write_buffered;
@@ -36,7 +37,7 @@ pub struct rpc_encoder {
 // only in a single shot
 
 fn get_temp_buffer() -> &'static mut [u8] {
-    unsafe { &mut temp_buffer }
+    unsafe { &mut * addr_of_mut!(temp_buffer) }
 }
 //
 //

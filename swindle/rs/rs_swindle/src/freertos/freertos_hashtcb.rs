@@ -3,6 +3,7 @@
  *   whatever freertos compilation options are.
  *
  */
+use core::ptr::addr_of_mut;
 use hashbrown::HashMap;
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning, gdb_print};
@@ -58,7 +59,7 @@ pub fn get_hashtcb() -> &'static mut hashed_tcb {
         if tcb_hashmap.is_none() {
             tcb_hashmap = Some(hashed_tcb::new());
         }
-        match &mut tcb_hashmap {
+        match &mut * addr_of_mut!(tcb_hashmap) {
             Some(ref mut x) => x,
             None => panic!("hashap"),
         }

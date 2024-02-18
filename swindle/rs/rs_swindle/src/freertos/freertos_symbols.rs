@@ -1,3 +1,4 @@
+use core::ptr::addr_of_mut;
 use crate::bmp::{bmp_read_mem, bmp_read_mem32};
 use crate::encoder::encoder;
 use crate::parsing_util;
@@ -48,7 +49,7 @@ static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
  *
  */
 pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
-    unsafe { &mut freeRtosSymbols_internal }
+    unsafe { &mut * addr_of_mut!(freeRtosSymbols_internal) }
 }
 /**
  * \brief : ask gdb for pxCurrentTCB address
