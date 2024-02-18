@@ -39,7 +39,7 @@ index 00000000..36a1d0b9
 +
 +#endif
 diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index c15ce02c..0d7536c3 100644
+index c15ce02c..edf34a2b 100644
 --- a/src/target/riscv32.c
 +++ b/src/target/riscv32.c
 @@ -30,7 +30,6 @@
@@ -56,9 +56,9 @@ index c15ce02c..0d7536c3 100644
  }
 +
 +/*
-+    Small helper function to translate target to hart and simplify parameters
-+    We assume it is 32 bits
-+*/
++ *   Small helper function to translate target to hart and simplify parameters
++ *   We assume it is 32 bits
++ */
 +static inline bool riscv32_target_csr_write(target_s *target, const uint16_t reg, uint32_t val)
 +{
 +	riscv_hart_s *const hart = riscv_hart_struct(target);
@@ -66,9 +66,9 @@ index c15ce02c..0d7536c3 100644
 +}
 +
 +/*
-+    Small helper function to translate target to hart and simplify parameters
-+    We assume it is 32 bits
-+*/
++ *   Small helper function to translate target to hart and simplify parameters
++ *   We assume it is 32 bits
++ */
 +static inline bool riscv32_target_csr_read(target_s *target, const uint16_t reg, uint32_t *val)
 +{
 +	riscv_hart_s *const hart = riscv_hart_struct(target);
@@ -76,14 +76,14 @@ index c15ce02c..0d7536c3 100644
 +}
 +
 +/*
-+    Execute code on the target with the signature void function(a,b,c,d)
-+        - codexec is the address the code to tun is located at
-+        - param1/2/3/4 will end up as the 4 parameters of the stub function
-+
-+    The flashstub must not use the stack at all.
-+    It returns true on success, false on error
-+    There is a built-in timeout of 10 seconds
-+*/
++ *   Execute code on the target with the signature void function(a,b,c,d)
++ *       - codexec is the address the code to tun is located at
++ *       - param1/2/3/4 will end up as the 4 parameters of the stub function
++ *
++ *   The flashstub must not use the stack at all.
++ *   It returns true on success, false on error
++ *   There is a built-in timeout of 10 seconds
++ */
 +bool riscv32_run_stub(
 +	target_s *target, uint32_t loadaddr, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4)
 +{
@@ -133,7 +133,7 @@ index c15ce02c..0d7536c3 100644
 +	return ret;
 +}
 diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
-index bdbc4f89..b7de0d33 100644
+index bdbc4f89..e235bead 100644
 --- a/src/target/riscv_debug.h
 +++ b/src/target/riscv_debug.h
 @@ -221,6 +221,14 @@ typedef struct riscv_hart {
@@ -156,14 +156,14 @@ index bdbc4f89..b7de0d33 100644
  void riscv32_mem_write(target_s *target, target_addr_t dest, const void *src, size_t len);
  
 +/*
-+    Execute code on the target with the signature void stub_function(a,b,c,d)
-+        - codexec is the address the code to run is located at
-+        - param1/2/3/4 will end up as the 4 parameters of the stub function
-+        
-+    The flashstub must not use the stack at all.
-+    The flashstub must return 0 on success, not 0 on error
-+    There is a built-in timeout of 10 seconds
-+*/
++ *   Execute code on the target with the signature void stub_function(a,b,c,d)
++ *       - codexec is the address the code to run is located at
++ *       - param1/2/3/4 will end up as the 4 parameters of the stub function
++ *       
++ *   The flashstub must not use the stack at all.
++ *   The flashstub must return 0 on success, not 0 on error
++ *   There is a built-in timeout of 10 seconds
++ */
 +bool riscv32_run_stub(target_s *target, uint32_t loadaddr, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3);
 +
  #endif /*TARGET_RISCV_DEBUG_H*/
