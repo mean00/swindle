@@ -15,7 +15,7 @@ APPLY_PATCH_IF_NEEDED3(patched17 ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_wa
 APPLY_PATCH_IF_NEEDED3(patched21 ${BMP_PATCH_FOLDER}/blackmagic_riscv_flashstub_vanilla.patch    ${LNBMP_TOP_FOLDER}   "declare flashstub function")
 
 
-APPLY_PATCH_IF_NEEDED3(patched19 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
+#APPLY_PATCH_IF_NEEDED3(patched19 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
 #APPLY_PATCH_IF_NEEDED3(patched22 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_2.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
 #APPLY_PATCH_IF_NEEDED3(patched23 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_3.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
 
