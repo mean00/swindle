@@ -1,15 +1,19 @@
-/*
-https://en.wikichip.org/wiki/risc-v/registers
+/**
+ * \brief this is basic rv32imac style freertos support for riscv 32 bits
+ * It does not support float or rv64
+
+ Mapping between x1...x31 and usage name (s0, ...)    can be found here
+    https://en.wikichip.org/wiki/risc-v/registers
 */
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
 /**
  *
  */
 use crate::freertos::freertos_trait::freertos_switch_handler;
+use crate::{bmplog, bmpwarning};
 
 const RV32_GPRS_REGISTER: usize = 28;
 const RV32_TOP_REGISTER: usize = 2;
@@ -44,6 +48,7 @@ struct rv32_gprs {
     pointer: u32,
 }
 /**
+ *
  *
  */
 impl rv32_gprs {
@@ -127,12 +132,11 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
      */
     fn read_current_registers(&mut self) -> bool {
         let regs = bmp_read_registers();
-        if regs.len() <33
-        {
+        if regs.len() < 33 {
             bmpwarning!("Incorrect # of registers {}", regs.len());
             return false;
-        }        
-        self.gprs.gprs[1..32].copy_from_slice( &regs[1..32]);        
+        }
+        self.gprs.gprs[1..32].copy_from_slice(&regs[1..32]);
         self.gprs.sp = regs[2];
         self.gprs.pc = regs[32];
         // mstatus missing
