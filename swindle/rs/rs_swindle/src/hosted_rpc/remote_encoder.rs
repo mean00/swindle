@@ -14,12 +14,12 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use core::ptr::addr_of_mut;
 use crate::packet_symbols;
 use crate::parsing_util::{u8_to_ascii, u8_to_ascii_to_buffer};
 use crate::rn_bmp_cmd_c::platform_buffer_write_buffered;
 use crate::rn_bmp_cmd_c::platform_write_flush;
 use crate::{rngdb_output_flush, rngdb_send_data, rngdb_send_data_u8};
+use core::ptr::addr_of_mut;
 
 // DF -- not thread safe, not re-entrant,ugly but simple
 const TEMP_BUFFER_SIZE: usize = 64;
@@ -37,7 +37,7 @@ pub struct rpc_encoder {
 // only in a single shot
 
 fn get_temp_buffer() -> &'static mut [u8] {
-    unsafe { &mut * addr_of_mut!(temp_buffer) }
+    unsafe { &mut *addr_of_mut!(temp_buffer) }
 }
 //
 //
@@ -228,6 +228,8 @@ impl rpc_encoder {
         //rngdb_send_data_u8(data);
     }
     pub fn flush() {
-        unsafe {platform_write_flush();}
+        unsafe {
+            platform_write_flush();
+        }
     }
 }

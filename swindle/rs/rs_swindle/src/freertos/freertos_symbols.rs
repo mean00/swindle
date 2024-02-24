@@ -1,8 +1,8 @@
-use core::ptr::addr_of_mut;
 use crate::bmp::{bmp_read_mem, bmp_read_mem32};
 use crate::encoder::encoder;
 use crate::parsing_util;
 use alloc::vec::Vec;
+use core::ptr::addr_of_mut;
 
 use crate::freertos::freertos_trait::{freertos_task_info, freertos_task_state};
 use crate::freertos::LN_MCU_CORE;
@@ -49,7 +49,7 @@ static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
  *
  */
 pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
-    unsafe { &mut * addr_of_mut!(freeRtosSymbols_internal) }
+    unsafe { &mut *addr_of_mut!(freeRtosSymbols_internal) }
 }
 /**
  * \brief : ask gdb for pxCurrentTCB address

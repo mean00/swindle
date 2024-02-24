@@ -59,7 +59,7 @@ pub fn get_hashtcb() -> &'static mut hashed_tcb {
         if tcb_hashmap.is_none() {
             tcb_hashmap = Some(hashed_tcb::new());
         }
-        match &mut * addr_of_mut!(tcb_hashmap) {
+        match &mut *addr_of_mut!(tcb_hashmap) {
             Some(ref mut x) => x,
             None => panic!("hashap"),
         }
