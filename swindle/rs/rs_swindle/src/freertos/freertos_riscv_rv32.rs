@@ -3,6 +3,9 @@ https://en.wikichip.org/wiki/risc-v/registers
 */
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
+
+crate::setup_log!(false);
+use crate::{bmplog, bmpwarning};
 /**
  *
  */
@@ -124,9 +127,12 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
      */
     fn read_current_registers(&mut self) -> bool {
         let regs = bmp_read_registers();
-        for i in 1..=31 {
-            self.gprs.gprs[i] = regs[i];
-        }
+        if regs.len() <33
+        {
+            bmpwarning!("Incorrect # of registers {}", regs.len());
+            return false;
+        }        
+        self.gprs.gprs[1..32].copy_from_slice( &regs[1..32]);        
         self.gprs.sp = regs[2];
         self.gprs.pc = regs[32];
         // mstatus missing
