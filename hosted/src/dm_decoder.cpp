@@ -67,11 +67,11 @@ uint32_t readLE(const uint8_t *data, const int nbBytes)
     return val;
 }
 
-typedef struct DM_registers
+typedef struct
 {
     uint32_t num;
     const char *name;
-};
+} DM_registers;
 
 #define DM_DATA0 0x04
 #define DM_DATA11 0x0F
