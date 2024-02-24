@@ -6,6 +6,7 @@ pub mod freertos_arm_core;
 pub mod freertos_arm_m0;
 pub mod freertos_arm_m3;
 pub mod freertos_arm_m33;
+pub mod freertos_riscv_rv32;
 pub mod freertos_hashtcb;
 mod freertos_list;
 pub mod freertos_symbols;
@@ -32,6 +33,7 @@ pub enum LN_MCU_CORE {
     LN_MCU_CM3,
     LN_MCU_CM4,
     LN_MCU_CM33,
+    LN_MCU_RV32,
     LN_MCU_NONE,
 }
 
@@ -69,7 +71,8 @@ pub fn enable_freertos(flavor: &str) -> bool {
         "M0" => LN_MCU_CORE::LN_MCU_CM0,
         "M3" => LN_MCU_CORE::LN_MCU_CM3,
         "M4" => LN_MCU_CORE::LN_MCU_CM4,
-        "M33" => LN_MCU_CORE::LN_MCU_CM33,
+        "M33" => LN_MCU_CORE::LN_MCU_CM33,    
+        "RV32" => LN_MCU_CORE::LN_MCU_RV32,
         "" | "AUTO" => LN_MCU_CORE::LN_MCU_AUTO,
         "NONE" | "OFF" => {
             os_detach();

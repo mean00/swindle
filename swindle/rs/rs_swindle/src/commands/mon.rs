@@ -159,7 +159,7 @@ pub fn _fos(command: &str, _args: &[&str]) -> bool {
         encoder::reply_ok();
         true
     } else {
-        gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|NONE|AUTO]\n");
+        gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|RV32|NONE|AUTO]\n");
         encoder::reply_e01();
         true
     }
