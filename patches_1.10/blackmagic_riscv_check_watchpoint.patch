@@ -1,0 +1,106 @@
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 69e2364b..86430171 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -54,6 +54,7 @@ typedef struct riscv32_regs {
+ #define RV32_MATCH_READ 0x00000001U
+ /* Match when the processor tries to write the location */
+ #define RV32_MATCH_WRITE 0x00000002U
++
+ /* Define that the match should occur in all/any mode */
+ #define RV32_MATCH_ANY_MODE 0x00000058U
+ /* Set the match action to raise a breakpoint exception */
+@@ -659,7 +660,7 @@ static int riscv32_breakwatch_set(target_s *const target, breakwatch_s *const br
+ 	}
+ 	/* Grab the address to set the breakwatch on and configure the hardware */
+ 	const uint32_t address = breakwatch->addr;
+-	const bool result = riscv_config_trigger(hart, trigger, mode, &config, &address);
++	const bool result = riscv_config_trigger32(hart, trigger, mode, config, address);
+ 	/* If configuration succeeds, store the trigger index in the breakwatch structure */
+ 	if (result)
+ 		breakwatch->reserved[0] = trigger;
+@@ -672,7 +673,7 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	const uint32_t config = RV32_MATCH_ADDR_DATA_TRIGGER;
+ 	const uint32_t address = 0;
+-	return riscv_config_trigger(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, &config, &address) ? 0 : -1;
++	return riscv_config_trigger32(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, config, address) ? 0 : -1;
+ }
+ 
+ /*
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 458103f3..65ea8a7b 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -793,6 +793,48 @@ riscv_match_size_e riscv_breakwatch_match_size(const size_t size)
+ 	return 0;
+ }
+ 
++/* All possible match modes */
++#define RV32_MATCH_MASK 0x00000007U
++
++/**
++ * @brief 
++ * 
++ * @param hart 
++ * @param trigger 
++ * @param mode 
++ * @param config 
++ * @param address 
++ * @return true 
++ * @return false 
++ */
++bool riscv_config_trigger32(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
++	const uint32_t config, const uint32_t address)
++{
++	/*
++	 * Select the trigger and write the new configuration to it provided by config.
++	 * tdata1 (RV_TRIG_DATA_1) becomes mcontrol (match control) for this -
++	 * see §5.2.9 pg53 of the RISC-V debug spec v0.13.2 for more details.
++	 */
++	bool result = riscv_csr_write(hart, RV_TRIG_SELECT | RV_CSR_FORCE_32_BIT, &trigger) &&
++		riscv_csr_write(hart, RV_TRIG_DATA_1, &config) && riscv_csr_write(hart, RV_TRIG_DATA_2, &address);
++	if (result) {
++		/* If that succeeds, verify the mode was taken into account */
++		uint32_t read_back;
++		result = riscv_csr_read(hart, RV_TRIG_DATA_1, &read_back) &&
++			((read_back & RV32_MATCH_MASK) == (config & RV32_MATCH_MASK));
++		if (!result) {
++			read_back = 0;
++			riscv_csr_write(hart, RV_TRIG_DATA_1, &read_back);
++		}
++	}
++	if (result) {
++		/* If that succeeds, update the slot with the new mode it's in */
++		hart->trigger_uses[trigger] &= ~RV_TRIGGER_MODE_MASK;
++		hart->trigger_uses[trigger] |= mode;
++	}
++	return result;
++}
++
+ bool riscv_config_trigger(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
+ 	const void *const config, const void *const address)
+ {
+@@ -876,8 +918,7 @@ static void riscv_halt_resume(target_s *target, const bool step)
+ 	if (step) {
+ 		stepping_config |= RV_DCSR_STEP;
+ 		stepping_config &= ~RV_DCSR_STEPIE; // disable interrupt during single step
+-	}
+-	else {
++	} else {
+ 		stepping_config &= ~(RV_DCSR_STEP | RV_DCSR_STEPIE);
+ 		stepping_config |= RV_DCSR_EBREAK_MACHINE;
+ 	}
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+index e235bead..109928e4 100644
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -241,6 +241,8 @@ bool riscv_csr_write(riscv_hart_s *hart, uint16_t reg, const void *data);
+ riscv_match_size_e riscv_breakwatch_match_size(size_t size);
+ bool riscv_config_trigger(
+ 	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, const void *config, const void *address);
++bool riscv_config_trigger32(
++	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, uint32_t config, uint32_t address);
+ 
+ uint8_t riscv_mem_access_width(const riscv_hart_s *hart, target_addr_t address, size_t length);
+ void riscv32_unpack_data(void *dest, uint32_t data, uint8_t access_width);

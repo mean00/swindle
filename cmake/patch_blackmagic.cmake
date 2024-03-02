@@ -20,3 +20,4 @@ APPLY_PATCH_IF_NEEDED3(patched21 ${BMP_PATCH_FOLDER}/blackmagic_riscv_flashstub_
 #APPLY_PATCH_IF_NEEDED3(patched23 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_3.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
 
 APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/blackmagic_riscv_disable_interrupt_during_step.patch ${LNBMP_TOP_FOLDER}   "disable interrupt during single step")
+APPLY_PATCH_IF_NEEDED3(patched26 ${BMP_PATCH_FOLDER}/blackmagic_riscv_check_watchpoint.patch ${LNBMP_TOP_FOLDER}   "explictely fail when we cant put watchpoints")
