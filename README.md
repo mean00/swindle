@@ -4,6 +4,8 @@ SWINDLE
 
 A derivative of the black magic probe with rust in it
 
+Works on GD32F3x, CH32v2x and RP2040.
+
 Overview
 =====
 
