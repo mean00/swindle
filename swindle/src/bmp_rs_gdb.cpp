@@ -110,6 +110,8 @@ class BufferGdb
         {
         case lnUsbCDC::CDC_SET_SPEED:
             break;
+        case lnUsbCDC::CDC_WRITE_AVAILABLE: // ignore
+            break;
         case lnUsbCDC::CDC_DATA_AVAILABLE:
             xAssert(_eventGroup);
             _eventGroup->setEvents(GDB_CDC_DATA_AVAILABLE);
