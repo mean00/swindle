@@ -154,15 +154,15 @@
                 "name": "Arm",
                 "cwd": "${workspaceFolder}",
                 "svdFile" : "${workspaceRoot}/.vscode/STM32F103.svd",              
-                "executable": "build/lnBMP_default_pinout_M4_96M_CLANG.elf",
-      
+                "executable": "build/swindle_default_pinout_M4_96M_CLANG.elf",
+                "gdbPath" : "${config:armToolchainPath}/arm-none-eabi-gdb", 
                 "request": "launch",
                 "type": "cortex-debug",
                 "runToEntryPoint": "main",
                 "servertype": "bmp",
                 "interface": "swd",
                 "device": "STM32F103",
-                "BMPGDBSerialPort" : "/dev/ttyBmpGdb",
+                "BMPGDBSerialPort" : "/dev/ttyBmpGdb2",
                 "runToMain": true,
                 "preLaunchCommands":[
                 "b deadEnd",
