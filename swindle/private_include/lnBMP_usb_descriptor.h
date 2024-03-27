@@ -13,24 +13,24 @@
 #ifdef USE_RP2040
 #define USB_PID 0x6050
 const char *descriptor[] = {
-    (const char[]){0x09, 0x04},            // 0: is supported language is English (0x0409)
-    "picolnBlackMagic",                    // 1: Manufacturer
-    "Custom implementation of BMP (pico)", // 2: Product
-    "45678",                               // 3: Serials, should use chip ID
-    "plnBMP GDB Server",                   // 4: CDC Interface
-    "plnBMP GDB Uart",                     // 5: CDC Interface
-    "plnBMP DFU",                          // 6: DFU Interface
+    (const char[]){0x09, 0x04},                     // 0: is supported language is English (0x0409)
+    "picolnSwindle",                                // 1: Manufacturer
+    "Swindle, Custom implementation of BMP (pico)", // 2: Product
+    "45678",                                        // 3: Serials, should use chip ID
+    "pswindle GDB Server",                          // 4: CDC Interface
+    "pswindle GDB Uart",                            // 5: CDC Interface
+    "pswindle DFU",                                 // 6: DFU Interface
 };
 #else
 #define USB_PID 0x6030
 const char *descriptor[] = {
-    (const char[]){0x09, 0x04},     // 0: is supported language is English (0x0409)
-    "lnBlackMagic",                 // 1: Manufacturer
-    "Custom implementation of BMP", // 2: Product
-    "45678",                        // 3: Serials, should use chip ID
-    "lnBMP GDB Server",             // 4: CDC Interface
-    "lnBMP GDB Uart",               // 5: CDC Interface
-    "lnBMP DFU",                    // 6: DFU Interface
+    (const char[]){0x09, 0x04},              // 0: is supported language is English (0x0409)
+    "swindle",                               // 1: Manufacturer
+    "Swindle, Custom implementation of BMP", // 2: Product
+    "45678",                                 // 3: Serials, should use chip ID
+    "swindle GDB Server",                    // 4: CDC Interface
+    "swindle GDB Uart",                      // 5: CDC Interface
+    "swindle DFU",                           // 6: DFU Interface
 };
 #endif
 const tusb_desc_device_t desc_device = {
