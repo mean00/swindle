@@ -50,7 +50,7 @@ class lnPump
  * @brief
  *
  */
-class BMPSerial : public xTask
+class BMPSerial : public lnTask
 {
 
   public:
@@ -61,11 +61,11 @@ class BMPSerial : public xTask
      * @param serialInstance
      */
     BMPSerial(int usbInst, int serialInstance)
-        : xTask("usbserial", TASK_BMP_SERIAL_PRIORITY, TASK_BMP_SERIAL_STACK_SIZE)
+        : lnTask("usbserial", TASK_BMP_SERIAL_PRIORITY, TASK_BMP_SERIAL_STACK_SIZE)
     {
         _usbInstance = usbInst;
         _serialInstance = serialInstance;
-        _evGroup = new xFastEventGroup;
+        _evGroup = new lnFastEventGroup;
         _usb = new lnUsbCDC(_usbInstance);
         bool dma = true;
         _serial = createLnSerialRxTx(_serialInstance, LN_BMP_BUFFER_SIZE, dma); // no dma
@@ -299,7 +299,7 @@ class BMPSerial : public xTask
     lnSerialRxTx *_serial;
     lnUsbCDC *_usb;
 
-    xFastEventGroup *_evGroup;
+    lnFastEventGroup *_evGroup;
     lnPump _usb2serial;
     lnPump _serial2usb;
 };
