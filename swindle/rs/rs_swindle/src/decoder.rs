@@ -33,7 +33,7 @@ enum PARSER_AUTOMATON {
     PARSER_AUTOMATON_RPC2_HEAD1, // alternat RPC starting by a '+'
     Error,
 }
-/**
+/*
  * This returns the state of the internal automaton
  * Continue : Need more data
  * Read     : Decoded packet available
@@ -66,13 +66,13 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
             checksum_received: [0, 0], // 2 Hex digits
         }
     }
-    /**
+    /*
      *
      */
     pub fn reset(&mut self) {
         self.automaton = PARSER_AUTOMATON::Idle;
     }
-    /**
+    /*
      *
      */
     pub fn get_result(&mut self) -> &[u8] {
@@ -80,7 +80,7 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
         &self.input_buffer[0..self.indx]
     }
 
-    /**
+    /*
      *
      */
     pub fn parse(&mut self, data: &[u8]) -> (usize, RESULT_AUTOMATON) {

@@ -4,12 +4,12 @@ use crate::parsing_util::ascii_octet_to_hex;
 use crate::util::xmin;
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
-/**
+/*
  */
 pub struct rpc_parameter_parser<'a> {
     data: &'a [u8],
 }
-/**
+/*
  *
  */
 impl<'a> rpc_parameter_parser<'a> {
@@ -36,13 +36,13 @@ impl<'a> rpc_parameter_parser<'a> {
     pub fn next_u16_be(&mut self) -> u32 {
         let left = self.next_u8();
         let right = self.next_u8();
-        (left << 8) + (right << 0)
+        (left << 8) + right
     }
 
     pub fn next_u16(&mut self) -> u32 {
         let left = self.next_u8();
         let right = self.next_u8();
-        (left << 0) + (right << 8)
+        left + (right << 8)
     }
     pub fn next_cmd(&mut self) -> u8 {
         let cmd: u8 = self.data[0];

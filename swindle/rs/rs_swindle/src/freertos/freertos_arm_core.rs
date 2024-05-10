@@ -1,20 +1,20 @@
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
-/**
+/*
  *  Basic functions for cortex M Core
  *
  */
 use crate::freertos::freertos_trait::freertos_switch_handler;
 
 const CORTEXM_GPR_REG_COUNT: usize = 17; // r00..r15+xpr = 17 reg
-/**
- *
- */
+                                         /*
+                                          *
+                                          */
 pub struct freertos_cortexm_core {
     pub registers: [u32; CORTEXM_GPR_REG_COUNT], // R0..R15 + PSR
     pub pointer: u32,                            // pseudo stack
 }
-/**
+/*
  *
  */
 impl freertos_cortexm_core {
@@ -24,7 +24,7 @@ impl freertos_cortexm_core {
             pointer: 0,
         }
     }
-    /**
+    /*
      * write internal to actual registers
      */
     pub fn write_current_gpr_registers(&self) -> bool {
@@ -33,7 +33,7 @@ impl freertos_cortexm_core {
         }
         true
     }
-    /**
+    /*
      * copy actual registers to internal
      */
     pub fn read_current_gpr_registers(&mut self) -> bool {
@@ -44,13 +44,13 @@ impl freertos_cortexm_core {
         self.registers[..CORTEXM_GPR_REG_COUNT].copy_from_slice(&regs[..CORTEXM_GPR_REG_COUNT]);
         true
     }
-    /**
+    /*
      *
      */
     pub fn get_sp(&self) -> u32 {
         self.registers[13]
     }
-    /**
+    /*
      *
      */
     pub fn push(&mut self, first: usize, last: usize) -> bool {
@@ -59,7 +59,7 @@ impl freertos_cortexm_core {
         let current = self.pointer;
         bmp_write_mem32(current, &self.registers[first..last])
     }
-    /**
+    /*
      *
      */
     pub fn pop(&mut self, first: usize, last: usize) -> bool {

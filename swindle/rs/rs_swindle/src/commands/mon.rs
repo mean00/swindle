@@ -13,7 +13,7 @@ use crate::{bmplog, bmpwarning, gdb_print};
 extern "C" {
     pub fn _Z17lnSoftSystemResetv();
 }
-/**
+/*
  *
  */
 fn systemReset() {
@@ -124,7 +124,7 @@ const help_tree : [HelpTree;12]=
     HelpTree{ command: "reset",help :"Reset the debugger." },
 ];
 
-/**
+/*
  *
  */
 pub fn _reset(_command: &str, _args: &[&str]) -> bool {
@@ -132,7 +132,7 @@ pub fn _reset(_command: &str, _args: &[&str]) -> bool {
     systemReset();
     true
 }
-/**
+/*
  *
  */
 pub fn _fos_info(_command: &str, _args: &[&str]) -> bool {
@@ -141,7 +141,7 @@ pub fn _fos_info(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
-/**
+/*
  *
  */
 pub fn _fos(command: &str, _args: &[&str]) -> bool {
@@ -164,7 +164,7 @@ pub fn _fos(command: &str, _args: &[&str]) -> bool {
         true
     }
 }
-/**
+/*
  *
  */
 pub fn _ram(_command: &str, _args: &[&str]) -> bool {
@@ -252,7 +252,7 @@ pub fn _qRcmd(command: &str, _args: &[&str]) -> bool {
     exec_one(&mon_command_tree, as_string, args)
 }
 
-/**
+/*
  *
  */
 pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
@@ -292,7 +292,7 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
-/**
+/*
  *
  */
 pub fn _ws(_command: &str, _args: &[&str]) -> bool {

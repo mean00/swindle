@@ -2,7 +2,7 @@ use alloc::alloc::alloc;
 use alloc::alloc::Layout;
 use cty::size_t;
 
-/**
+/*
  *
  */
 #[cfg(feature = "hosted")]

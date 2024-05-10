@@ -1,4 +1,4 @@
-/**
+/*
  * This handles the low level RPC as used when BMP is running in hosted mode
  * It is a parralel path to the normal gdb command and is BMP specific
  */
@@ -13,7 +13,7 @@ use crate::rpc::rpc_parser::rpc_parameter_parser;
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 //-------------------------------
-/**
+/*
  *
  */
 fn rpc_message_out(message: &[u8]) {
@@ -57,7 +57,7 @@ fn rpc_wrapper(input: &[u8]) -> bool {
         }
     }
 }
-/**
+/*
  *
  */
 fn rpc_reply(code: u8, subcode: u8) {
@@ -72,7 +72,7 @@ fn rpc_reply(code: u8, subcode: u8) {
     reply[4] = crate::packet_symbols::RPC_END;
     rpc_message_out(&reply);
 }
-/**
+/*
  *
  */
 fn rpc_reply32(code: u8, subcode: u32) {
@@ -88,7 +88,7 @@ fn rpc_reply32(code: u8, subcode: u32) {
     reply[10] = crate::packet_symbols::RPC_END;
     rpc_message_out(&reply);
 }
-/**
+/*
  *
  */
 fn rpc_reply32_le(code: u8, subcode: u32) {
@@ -107,7 +107,7 @@ fn rpc_reply32_le(code: u8, subcode: u32) {
     rpc_message_out(&reply);
 }
 
-/**
+/*
  *
  */
 #[no_mangle]
@@ -116,7 +116,7 @@ fn rpc_reply_string(code: u8, s: &[u8]) {
     rpc_message_out_no_flush(s);
     rpc_message_out(&[crate::packet_symbols::RPC_END]);
 }
-/**
+/*
  *
  */
 fn rpc_reply_hex_string(code: u8, s: &[u8]) {
@@ -124,7 +124,7 @@ fn rpc_reply_hex_string(code: u8, s: &[u8]) {
     encoder::hexify_and_raw_send(s);
     rpc_message_out(&[crate::packet_symbols::RPC_END]);
 }
-/**
+/*
  *
  */
 fn reply_adiv5_32(fault: i32, value: u32) {
@@ -138,7 +138,7 @@ fn reply_adiv5_32(fault: i32, value: u32) {
         rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
     }
 }
-/**
+/*
  *
  */
 fn reply_rv_32(ok: bool, value: u32) {
@@ -152,7 +152,7 @@ fn reply_rv_32(ok: bool, value: u32) {
         rpc_reply32_le(rpc_commands::RPC_RESP_OK, value);
     }
 }
-/**
+/*
  *
  */
 fn reply_adiv5_block(fault: i32, buffer: &[u8]) {
@@ -626,7 +626,7 @@ fn rpc_jtag_packet(_parser: &mut rpc_parameter_parser) -> bool {
     false
 }
 
-/**
+/*
  *
  */
 #[no_mangle]
@@ -658,7 +658,7 @@ fn rpc_rv_packet(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("**** unsupported rv packet*********\n");
     false
 }
-/**
+/*
  *
  */
 fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
@@ -783,7 +783,7 @@ fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
     false
 }
 
-/**
+/*
  *
  */
 pub fn rpc(input: &[u8]) -> bool {
@@ -795,7 +795,7 @@ pub fn rpc(input: &[u8]) -> bool {
     }
     true
 }
-/**
+/*
  * \fn rpc_swindle_packet
  */
 #[no_mangle]

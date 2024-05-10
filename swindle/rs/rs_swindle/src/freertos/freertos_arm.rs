@@ -38,7 +38,7 @@ pub struct FreeRTOS_switcher {
 }
 
 static mut FreeRTOS_switcher_internal: FreeRTOS_switcher = FreeRTOS_switcher { switcher: None };
-/**
+/*
  *
  */
 
@@ -56,7 +56,7 @@ fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> 
     cortex.write_current_registers();
     saved_stack
 }
-/**
+/*
  * switch to new TCB whose stack is new_stack
  * returns the old TCB new stack value
  */
@@ -69,7 +69,7 @@ pub fn freertos_switch_task_action_arm(new_stack: u32) -> u32 {
     }
 }
 
-/**
+/*
  *
  */
 const mul: u32 = 0;
@@ -108,7 +108,7 @@ pub fn freertos_can_switch_arm() -> bool {
     unsafe { FreeRTOS_switcher_internal.switcher.is_some() }
 }
 
-/**
+/*
  *
  */
 pub fn freertos_detach_arm() {

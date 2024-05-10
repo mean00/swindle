@@ -1,4 +1,4 @@
-/**
+/*
  *  Stack layout for cortex M33 without FPU without MPU
 Newer stack
     Extra
@@ -27,13 +27,13 @@ use crate::freertos::freertos_trait::freertos_switch_handler;
 
 const STACKED_REGISTER_SIZE: u32 = 72;
 const PSPLIM: usize = 14;
-/**
+/*
  *
  */
 pub struct freertos_switch_handler_m33 {
     gpr: freertos_cortexm_core,
 }
-/**
+/*
  *
  */
 impl freertos_switch_handler_m33 {
@@ -44,23 +44,23 @@ impl freertos_switch_handler_m33 {
     }
 }
 
-/**
+/*
  *
  */
 impl freertos_switch_handler for freertos_switch_handler_m33 {
-    /**
+    /*
      * write internal to actual registers
      */
     fn write_current_registers(&self) -> bool {
         self.gpr.write_current_gpr_registers()
     }
-    /**
+    /*
      * copy actual registers to internal
      */
     fn read_current_registers(&mut self) -> bool {
         self.gpr.read_current_gpr_registers()
     }
-    /**
+    /*
      * write register dump to adr, careful the register are out of order
      * We write them as if it was a freertos task switch
      */
@@ -78,7 +78,7 @@ impl freertos_switch_handler for freertos_switch_handler_m33 {
 
         true
     }
-    /**
+    /*
      * read register dump from adr, careful the register are out of order
      */
     fn read_registers_from_addr(&mut self, address: u32) -> bool {

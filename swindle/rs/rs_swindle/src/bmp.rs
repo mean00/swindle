@@ -171,7 +171,7 @@ pub fn bmp_write_mem32(address: u32, data: &[u32]) -> bool {
         ))
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_cpuid() -> u32 {
@@ -223,7 +223,7 @@ pub fn bmp_set_wait_state(ws: u32) {
         rn_bmp_cmd_c::bmp_set_wait_state_c(ws);
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_get_wait_state() -> u32 {
@@ -338,7 +338,7 @@ pub fn bmp_platform_nrst_get_val() -> bool {
 pub fn bmp_platform_target_clk_output_enable(enable: bool) {
     unsafe { rn_bmp_cmd_c::platform_target_clk_output_enable(enable as i32) }
 }
-/**
+/*
  *
  */
 pub fn bmplog(s: &str) {
@@ -346,13 +346,13 @@ pub fn bmplog(s: &str) {
         rn_bmp_cmd_c::Logger2(s.len() as i32, s.as_ptr() as *const i8);
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_adiv5_ap_read(device_index: u32, ap_selection: u32, address: u32) -> u32 {
     unsafe { rn_bmp_cmd_c::bmp_adiv5_ap_read_c(device_index, ap_selection, address) }
 }
-/**
+/*
  *
  */
 pub fn bmp_adiv5_mem_read(
@@ -373,7 +373,7 @@ pub fn bmp_adiv5_mem_read(
         )
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_adiv5_mem_write(
@@ -391,12 +391,12 @@ pub fn bmp_adiv5_mem_write(
             csw,
             address,
             align,
-            buffer.as_ptr() as *const u8,
+            buffer.as_ptr(),
             buffer.len() as u32,
         )
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_adiv5_ap_write(device_index: u32, ap_selection: u32, address: u32, value: u32) {
@@ -404,7 +404,7 @@ pub fn bmp_adiv5_ap_write(device_index: u32, ap_selection: u32, address: u32, va
         rn_bmp_cmd_c::bmp_adiv5_ap_write_c(device_index, ap_selection, address, value);
     }
 }
-/**
+/*
  *
  */
 
@@ -445,7 +445,7 @@ pub fn bmp_adiv5_full_dp_read(device_index: u32, ap_selection: u32, address: u16
         (ret, value)
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_supported_boards() -> &'static str {
@@ -459,7 +459,7 @@ pub fn bmp_supported_boards() -> &'static str {
     }
     "--error--"
 }
-/**
+/*
  *
  */
 pub fn bmp_get_version() -> &'static str {
@@ -470,19 +470,19 @@ pub fn bmp_get_version() -> &'static str {
         }
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_mon(input_as_string: &str) -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_mon_c(input_as_string.as_ptr())) }
 }
-/**
+/*
  *
  */
 pub fn free_heap() -> u32 {
     unsafe { rn_bmp_cmd_c::free_heap_c() }
 }
-/**
+/*
  *
  */
 pub fn min_free_heap() -> u32 {
@@ -509,7 +509,7 @@ pub fn bmp_rv_reset() -> bool {
     }
 }
 
-/**
+/*
  *
  */
 
@@ -522,7 +522,7 @@ pub fn bmp_rv_read(adr: u8) -> (bool, u32) {
         (status, ret)
     }
 }
-/**
+/*
  *
  */
 pub fn bmp_rv_write(adr: u8, data: u32) -> bool {

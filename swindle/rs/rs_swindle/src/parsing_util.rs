@@ -17,7 +17,7 @@ pub fn ascii_hex_string_to_u8s<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&
     }
     Ok(&sout[..s])
 }
-/**
+/*
  *
  */
 pub fn ascii_hex_string_to_str<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&'a str, i32> {
@@ -41,7 +41,7 @@ pub fn u8_hex_string_to_u8s<'a>(sin: &'a [u8], sout: &'a mut [u8]) -> &'a [u8] {
     &sout[..s]
 }
 
-/**
+/*
  *
  */
 fn _hex(digit: u8) -> u8 {

@@ -1,7 +1,7 @@
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
-/**
+/*
  *
  */
 
@@ -52,7 +52,7 @@ impl freertos_task_info {
     }
 }
 
-/**
+/*
  *
  */
 pub trait freertos_switch_handler {

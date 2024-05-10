@@ -45,7 +45,7 @@ const FreeRTOSSymbolName: [&str; 5] = [
 ];
 
 //--
-/**
+/*
  *
  */
 
@@ -79,7 +79,7 @@ fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> 
     })
 }
 
-/**
+/*
  *
  */
 pub fn freertos_collect_information() -> Vec<freertos_task_info> {
@@ -129,7 +129,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
     }
     output
 }
-/**
+/*
  *
  */
 pub fn get_threads() -> Vec<u32> {
@@ -144,7 +144,7 @@ pub fn get_threads() -> Vec<u32> {
     }
     output
 }
-/**
+/*
  *
  */
 pub fn get_current_thread_id() -> Option<u32> {
@@ -166,7 +166,7 @@ pub fn get_current_thread_id() -> Option<u32> {
     None
 }
 
-/**
+/*
  *
  */
 pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
@@ -178,7 +178,7 @@ pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
     t.into_iter().find(|i| i.tcb_no == id)
 }
 
-/**
+/*
  * \fn return a copy of pxCurrentTCB
  */
 pub fn get_pxCurrentTCB() -> Option<u32> {
@@ -189,7 +189,7 @@ pub fn get_pxCurrentTCB() -> Option<u32> {
     }
     Some(data[0])
 }
-/**
+/*
  *
  */
 pub fn set_pxCurrentTCB(tcb: u32) -> bool {

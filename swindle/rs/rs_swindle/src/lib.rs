@@ -86,7 +86,7 @@ fn rngdb_send_data_u8(data: &[u8]) {
         rngdb_send_data_c(data.len() as u32, data.as_ptr());
     }
 }
-/**
+/*
  *
  *
  */

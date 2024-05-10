@@ -1,4 +1,4 @@
-/**
+/*
  * \brief this is basic rv32imac style freertos support for riscv 32 bits
  * It does not support float or rv64
 
@@ -9,7 +9,7 @@ use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
 
 crate::setup_log!(false);
-/**
+/*
  *
  */
 use crate::freertos::freertos_trait::freertos_switch_handler;
@@ -18,7 +18,7 @@ use crate::{bmplog, bmpwarning};
 const RV32_GPRS_REGISTER: usize = 28;
 const RV32_TOP_REGISTER: usize = 2;
 const STACKED_REGISTER_SIZE: usize = 4 * (RV32_GPRS_REGISTER + RV32_TOP_REGISTER);
-/**
+/*
  *  Stack layout for LN_MCU_RV32  : Total = 28+2 = 30 x 32 bits register
         PC       2
         MSTATUS
@@ -37,7 +37,7 @@ const STACKED_REGISTER_SIZE: usize = 4 * (RV32_GPRS_REGISTER + RV32_TOP_REGISTER
         t3 t4 t5 t6
 */
 
-/**
+/*
  *
  */
 struct rv32_gprs {
@@ -47,12 +47,12 @@ struct rv32_gprs {
     gprs: [u32; 32], // x0...x31
     pointer: u32,
 }
-/**
+/*
  *
  *
  */
 impl rv32_gprs {
-    /**
+    /*
      *
      */
     pub fn new() -> Self {
@@ -64,7 +64,7 @@ impl rv32_gprs {
             pointer: 0,
         }
     }
-    /**
+    /*
      *
      */
     pub fn push(&mut self, first: usize, last: usize) -> bool {
@@ -73,7 +73,7 @@ impl rv32_gprs {
         self.pointer += 4 * to_push as u32;
         bmp_write_mem32(current, &self.gprs[first..last])
     }
-    /**
+    /*
      *
      */
     pub fn pop(&mut self, first: usize, last: usize) -> bool {
@@ -95,13 +95,13 @@ impl rv32_gprs {
     }
 }
 
-/**
+/*
  *
  */
 pub struct freertos_switch_handler_rv32 {
     gprs: rv32_gprs,
 }
-/**
+/*
  *
  */
 impl freertos_switch_handler_rv32 {
@@ -112,11 +112,11 @@ impl freertos_switch_handler_rv32 {
     }
 }
 
-/**
+/*
  *
  */
 impl freertos_switch_handler for freertos_switch_handler_rv32 {
-    /**
+    /*
      * write internal to actual registers
      */
     fn write_current_registers(&self) -> bool {
@@ -127,7 +127,7 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
         bmp_write_register(32, self.gprs.pc);
         true
     }
-    /**
+    /*
      * copy actual registers to internal
      */
     fn read_current_registers(&mut self) -> bool {
@@ -142,7 +142,7 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
         // mstatus missing
         true
     }
-    /**
+    /*
      * write register dump to adr, careful the register are out of order
      * We write them as if it was a freertos task switch
      */
@@ -157,7 +157,7 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
         self.gprs.push(5, 32); // x5..x31
         true
     }
-    /**
+    /*
      * read register dump from adr, careful the register are out of order
      */
     fn read_registers_from_addr(&mut self, address: u32) -> bool {

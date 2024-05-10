@@ -45,13 +45,13 @@ static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
     cpuid: 0,
     mcu_handler: LN_MCU_CORE::LN_MCU_NONE,
 };
-/**
+/*
  *
  */
 pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
     unsafe { &mut *addr_of_mut!(freeRtosSymbols_internal) }
 }
-/**
+/*
  * \brief : ask gdb for pxCurrentTCB address
  */
 
@@ -64,7 +64,7 @@ fn ask_for_next_symbol() -> bool {
     e.end();
     true
 }
-/**
+/*
  *
  */
 pub fn q_freertos_symbols(args: &[&str]) -> bool {
@@ -123,7 +123,7 @@ pub fn q_freertos_symbols(args: &[&str]) -> bool {
     false
 }
 
-/**
+/*
  *
  */
 pub fn get_current_tcb_address() -> u32 {
@@ -131,7 +131,7 @@ pub fn get_current_tcb_address() -> u32 {
     let px_adr: u32 = all_symbols.symbols[freeRtosSymbolIndex::pxCurrentTCB as usize];
     px_adr
 }
-/**
+/*
  *
  */
 pub fn freertos_symbol_valid() -> bool {

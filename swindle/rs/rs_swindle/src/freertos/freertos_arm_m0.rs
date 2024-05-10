@@ -1,6 +1,6 @@
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
-/**
+/*
  *
  */
 use crate::freertos::freertos_arm_core::freertos_cortexm_core;
@@ -8,7 +8,7 @@ use crate::freertos::freertos_trait::freertos_switch_handler;
 
 const STACKED_REGISTER_SIZE: u32 = 64;
 
-/**
+/*
  *  Stack layout for cortex M0/M0+
 Newer stack
     Extra
@@ -23,13 +23,13 @@ Newer stack
 Original stack
  */
 
-/**
+/*
  *
  */
 pub struct freertos_switch_handler_m0 {
     gpr: freertos_cortexm_core,
 }
-/**
+/*
  *
  */
 impl freertos_switch_handler_m0 {
@@ -40,23 +40,23 @@ impl freertos_switch_handler_m0 {
     }
 }
 
-/**
+/*
  *
  */
 impl freertos_switch_handler for freertos_switch_handler_m0 {
-    /**
+    /*
      * write internal to actual registers
      */
     fn write_current_registers(&self) -> bool {
         self.gpr.write_current_gpr_registers()
     }
-    /**
+    /*
      * copy actual registers to internal
      */
     fn read_current_registers(&mut self) -> bool {
         self.gpr.read_current_gpr_registers()
     }
-    /**
+    /*
      * write register dump to adr, careful the register are out of order
      * We write them as if it was a freertos task switch
      */
@@ -72,7 +72,7 @@ impl freertos_switch_handler for freertos_switch_handler_m0 {
 
         true
     }
-    /**
+    /*
      * read register dump from adr, careful the register are out of order
      */
     fn read_registers_from_addr(&mut self, address: u32) -> bool {

@@ -37,32 +37,32 @@ pub enum LN_MCU_CORE {
     LN_MCU_NONE,
 }
 
-/**
+/*
  *
  */
 pub fn os_attach(cpuid: u32) {
     freertos_attach_arm(cpuid);
 }
-/**
+/*
  *
  */
 pub fn os_detach() {
     freertos_detach_arm();
 }
-/**
+/*
  *
  */
 pub fn os_can_switch() -> bool {
     freertos_can_switch_arm()
 }
 
-/**
+/*
  *
  */
 pub fn freertos_switch_task_action(new_stack: u32) -> u32 {
     freertos_switch_task_action_arm(new_stack)
 }
-/**
+/*
  *
  */
 pub fn enable_freertos(flavor: &str) -> bool {
@@ -89,7 +89,7 @@ pub fn enable_freertos(flavor: &str) -> bool {
 
     true
 }
-/**
+/*
  *
  */
 

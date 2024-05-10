@@ -164,7 +164,7 @@ pub fn _qC(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
-/**
+/*
  *
  */
 pub fn _qSymbol(_command: &str, args: &[&str]) -> bool {
