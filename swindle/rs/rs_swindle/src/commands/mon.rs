@@ -27,7 +27,7 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 13] = [
+const mon_command_tree: [CommandTree; 14] = [
     CommandTree {
         command: "help",
         args: 0,
@@ -101,14 +101,20 @@ const mon_command_tree: [CommandTree; 13] = [
         cb: CallbackType::text(_fos),
     }, //
     CommandTree {
+        command: "reboot",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_reboot),
+    }, //
+    CommandTree {
         command: "reset",
         args: 0,
         require_connected: false,
-        cb: CallbackType::text(_reset),
+        cb: CallbackType::text(_target_reset),
     }, //
 ];
 //
-const help_tree : [HelpTree;12]=
+const help_tree : [HelpTree;13]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
@@ -121,13 +127,24 @@ const help_tree : [HelpTree;12]=
     HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
     HelpTree{ command: "os_info",help :"Dump FreeRTOS internal state." },
     HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
-    HelpTree{ command: "reset",help :"Reset the debugger." },
+    HelpTree{ command: "reboot",help :"Reboot the debugger." },
+    HelpTree{ command: "reset",help :"Reset the target." },
 ];
+/*
+ *
+ */
+pub fn _target_reset(_command: &str, _args: &[&str]) -> bool {
+    bmp::bmp_platform_nrst_set_val(true); 
+    rnarduino::rn_os_helper::delay_ms(20);
+    bmp::bmp_platform_nrst_set_val(false); 
+    encoder::reply_e01();
+    true
+}
 
 /*
  *
  */
-pub fn _reset(_command: &str, _args: &[&str]) -> bool {
+pub fn _reboot(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_e01();
     systemReset();
     true
