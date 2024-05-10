@@ -134,9 +134,9 @@ const help_tree : [HelpTree;13]=
  *
  */
 pub fn _target_reset(_command: &str, _args: &[&str]) -> bool {
-    bmp::bmp_platform_nrst_set_val(true); 
+    bmp::bmp_platform_nrst_set_val(true);
     rnarduino::rn_os_helper::delay_ms(20);
-    bmp::bmp_platform_nrst_set_val(false); 
+    bmp::bmp_platform_nrst_set_val(false);
     encoder::reply_e01();
     true
 }
