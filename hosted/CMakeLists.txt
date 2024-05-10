@@ -50,6 +50,7 @@ target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER})
 target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER}/boards/bluepill)
 target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/FreeRTOS/portable/GCC/ARM_CM3/)
 target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/mcus/arm_gd32fx/include)
+target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/mcus/common_bluepill/include)
 
 target_include_directories(lnArduino INTERFACE ${CMAKE_BINARY_DIR})
 
