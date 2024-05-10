@@ -26,7 +26,8 @@ Same value as bmp internal
 
  */
 enum Breakpoints {
-    Execute,
+    Execute_SW,
+    Execute_HW,
     Read,
     Write,
     Access,
@@ -34,16 +35,18 @@ enum Breakpoints {
 impl Breakpoints {
     pub fn from_int(val: u32) -> Self {
         match val {
-            0 | 1 => Breakpoints::Execute,
+            0 => Breakpoints::Execute_HW, // force HW breakpoing!
+            1 => Breakpoints::Execute_HW,
             2 => Breakpoints::Write,
             3 => Breakpoints::Read,
             4 => Breakpoints::Access,
             _ => panic!("Invalid watchpoint"),
         }
     }
-    pub fn to_int(b: &Self) -> u32 {
+    pub fn to_bmp(b: &Self) -> u32 {
         match b {
-            Breakpoints::Execute => 1,
+            Breakpoints::Execute_SW => 0,
+            Breakpoints::Execute_HW => 1,
             Breakpoints::Read => 3,
             Breakpoints::Write => 2,
             Breakpoints::Access => 4,
@@ -67,7 +70,7 @@ fn common_z(command: &str) -> bool {
     // remove
     {
         encoder::reply_bool(crate::bmp::bmp_remove_breakpoint(
-            Breakpoints::to_int(&breakpoint_watchpoint),
+            Breakpoints::to_bmp(&breakpoint_watchpoint),
             address,
             len,
         ));
@@ -77,7 +80,7 @@ fn common_z(command: &str) -> bool {
     // add
     {
         encoder::reply_bool(crate::bmp::bmp_add_breakpoint(
-            Breakpoints::to_int(&breakpoint_watchpoint),
+            Breakpoints::to_bmp(&breakpoint_watchpoint),
             address,
             len,
         ));
