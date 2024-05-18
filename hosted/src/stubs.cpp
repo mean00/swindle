@@ -8,12 +8,26 @@ extern "C"
 #include "src/remote.h"
 }
 
+#define UNIMPLEMENTED_STUB() { printf("UNIMPLEMENTED :%s\n",__PRETTY_FUNCTION__);xAssert(0);}
 void xAssert(int a)
 {
     printf("******* FAILURE *********\n");
     printf("******* FAILURE *********\n");
     printf("******* FAILURE *********\n");
     printf("******* FAILURE *********\n");
+    exit(0);
+}
+
+extern "C" bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+{
+    UNIMPLEMENTED_STUB();
+    return 0; 
+}
+
+extern "C" uint32_t adiv5_swd_read_no_check(const uint16_t addr)
+{
+    UNIMPLEMENTED_STUB();
+    return 0;
 }
 
 extern "C" void do_assert(const char *z)

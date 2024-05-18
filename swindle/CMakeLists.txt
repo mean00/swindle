@@ -187,6 +187,7 @@ ELSE()
                 ${B}/bmp_gpio.cpp  
                 ${B}/bmp_rvTap.cpp   
                 ${B}/bmp_swdTap.cpp   
+                ${B}/lnbmp_adiv5_swd.cpp   
                 ${B}/bmp_swdTap${EXTRA}.cpp   
                 ${B}/bmp_serial.cpp  
                 ${B}/bmp_rs_gdb.cpp                
@@ -271,7 +272,7 @@ include_directories( ${BMP}/src/target)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
 IF (SWINDLE_HOSTED) 
     include(rnCmake)
-    corrosion_import_crate(MANIFEST_PATH rs/rs_swindle/Cargo.toml    NO_DEFAULT_FEATURES      CFLAGS ${LN_LTO_RUST_FLAGS} )
+    corrosion_import_crate(MANIFEST_PATH rs/rs_swindle/Cargo.toml    NO_DEFAULT_FEATURES      FLAGS ${LN_LTO_RUST_FLAGS} )
     corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 ELSE (SWINDLE_HOSTED) 
         add_subdirectory( rs )

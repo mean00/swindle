@@ -1,4 +1,5 @@
 
+#include "lnArduino.h"
 #include "lnGPIO.h"
 
 /**
@@ -50,16 +51,26 @@ class SwdWaitPin : public SwdPin
     SwdWaitPin(lnBMPPins no) : SwdPin(no)
     {
     }
-    void clockOn()
+    LN_ALWAYS_INLINE void clockOn()
     {
         on();
         if (_wait)
             swait();
     }
-    void clockOff()
+    LN_ALWAYS_INLINE void clockOff()
     {
         off();
         if (_wait)
             swait();
+    }
+    LN_ALWAYS_INLINE void wait()
+    {
+        if (_wait)
+            swait();
+    }
+    LN_ALWAYS_INLINE void pulseClock()
+    {
+        clockOn();
+        clockOff();
     }
 };

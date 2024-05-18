@@ -14,11 +14,11 @@ class SwdPin
         output();
     }
 
-    void on() volatile
+    LN_ALWAYS_INLINE void on()  
     {
         _fast.on();
     }
-    void off() volatile
+    LN_ALWAYS_INLINE void off()  
     {
         _fast.off();
     }
@@ -52,5 +52,5 @@ class SwdPin
     lnPin _me;
     bool _output;
     bool _wait;
-    volatile lnFastIO _fast;
+    lnFastIO _fast;
 };

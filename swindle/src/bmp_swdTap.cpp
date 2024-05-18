@@ -50,7 +50,7 @@ static bool SwdRead_parity(uint32_t *ret, size_t ticks);
 static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
-static void swdioSetAsOutput(bool output);
+void swdioSetAsOutput(bool output);
 
 SwdPin pSWDIO(TSWDIO_PIN);
 SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
@@ -151,7 +151,7 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
 */
 static void SwdWrite(uint32_t MS, size_t ticks)
 {
-    int cnt;
+    //int cnt;
     swdioSetAsOutput(true);
     for (int i = 0; i < ticks; i++)
     {
@@ -187,8 +187,8 @@ void swdioSetAsOutput(bool output)
     {
     case false: // in
     {
-        pSWDIO.input();
-        pSWCLK.clockOff();
+        pSWDIO.input();  
+        pSWCLK.wait();
         pSWCLK.clockOn();
         break;
     }
@@ -197,6 +197,7 @@ void swdioSetAsOutput(bool output)
     {
         pSWCLK.clockOff();
         pSWCLK.clockOn();
+        pSWCLK.clockOff();
         pSWDIO.output();
         break;
     }
