@@ -44,6 +44,8 @@ extern "C"
 }
 
 extern "C" void bmp_set_wait_state_c(uint32_t ws);
+extern "C" uint32_t bmp_get_wait_state_c();
+
 extern void bmp_io_begin_session();
 extern void bmp_gpio_init();
 extern uint32_t swd_delay_cnt;
@@ -67,6 +69,7 @@ extern uint32_t swd_delay_cnt;
 #define RV_DMI_FAILURE  2U
 #define RV_DMI_TOO_SOON 3U
 
+#define BMP_MIN_WS 1
 
 
 
@@ -89,12 +92,9 @@ extern SwdReset pReset;
     pRVCLK.clockOff();                                                                                                 \
     pRVCLK.clockOn();                                                                                                  \
     x = pRVDIO.read(); // read bit on rising edge
-
+//6
 #define RV_WAIT()                                                                                                      \
     {                                                                                                                  \
-        __asm__("nop");                                                                                                \
-        __asm__("nop");                                                                                                \
-        __asm__("nop");                                                                                                \
         __asm__("nop");                                                                                                \
         __asm__("nop");                                                                                                \
         __asm__("nop");                                                                                                \
@@ -297,7 +297,9 @@ bool rv_dm_reset()
  */
  bool rv_dm_start()
 {
-    bmp_set_wait_state_c(15);
+    int ws = bmp_get_wait_state_c();
+    if(ws<BMP_MIN_WS) ws=BMP_MIN_WS;
+    bmp_set_wait_state_c(ws);
     bmp_gpio_init();
     bmp_io_begin_session();
 
