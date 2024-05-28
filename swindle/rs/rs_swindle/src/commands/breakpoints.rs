@@ -14,8 +14,10 @@ use crate::bmp;
 use alloc::vec;
 use alloc::vec::Vec;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
+use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};
 use crate::{bmplog, bmpwarning};
+
 /*
 Same value as bmp internal
     TARGET_BREAK_SOFT 0 ,
@@ -25,6 +27,7 @@ Same value as bmp internal
     TARGET_WATCH_ACCESS 4,
 
  */
+#[derive(PartialEq, Clone, Copy)]
 enum Breakpoints {
     Execute_SW,
     Execute_HW,
@@ -35,7 +38,7 @@ enum Breakpoints {
 impl Breakpoints {
     pub fn from_int(val: u32) -> Self {
         match val {
-            0 => Breakpoints::Execute_HW, // force HW breakpoing!
+            0 => Breakpoints::Execute_SW,
             1 => Breakpoints::Execute_HW,
             2 => Breakpoints::Write,
             3 => Breakpoints::Read,
@@ -69,6 +72,10 @@ fn common_z(command: &str) -> bool {
     if args[0].starts_with('z')
     // remove
     {
+        if breakpoint_watchpoint == Breakpoints::Execute_SW {
+            encoder::reply_bool(remove_sw_breakpoint(address, len));
+            return true;
+        }
         encoder::reply_bool(crate::bmp::bmp_remove_breakpoint(
             Breakpoints::to_bmp(&breakpoint_watchpoint),
             address,
@@ -79,6 +86,10 @@ fn common_z(command: &str) -> bool {
     if args[0].starts_with('Z')
     // add
     {
+        if breakpoint_watchpoint == Breakpoints::Execute_SW {
+            encoder::reply_bool(add_sw_breakpoint(address, len));
+            return true;
+        }
         encoder::reply_bool(crate::bmp::bmp_add_breakpoint(
             Breakpoints::to_bmp(&breakpoint_watchpoint),
             address,

@@ -17,6 +17,7 @@ mod packet_symbols;
 mod parsing_util;
 mod rn_bmp_cmd_c;
 mod rpc;
+mod sw_breakpoints;
 mod util;
 
 // This should only be included in host mode
