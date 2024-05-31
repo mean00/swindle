@@ -284,7 +284,7 @@ class BMPSerial : public lnTask
             break;
         case lnUsbCDC::CDC_SESSION_END: // it is unlikely we'll get that one, some prg always sets it to 1, it works one
                                         // time
-            _connected = false;
+            //_connected = false; The DTR acts funky!
             Logger("CDC SESSION END\n");
             break;
         default:
