@@ -4,7 +4,7 @@ extern "C"
 
 #include "adiv5.h"
 #include "ctype.h"
-//#include "gdb_hostio.h"
+// #include "gdb_hostio.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
 #include "general.h"
@@ -15,8 +15,8 @@ extern "C"
 #include "lnBMP_version.h"
 
 static adiv5_debug_port_s remote_dp = {
-    .ap_read = firmware_ap_read,
-    .ap_write = firmware_ap_write,
+    .ap_read = adiv5_ap_reg_read,
+    .ap_write = adiv5_ap_reg_write,
     .mem_read = advi5_mem_read_bytes,
     .mem_write = adiv5_mem_write_bytes,
 };
@@ -31,9 +31,13 @@ extern "C" int32_t semihosting_request(target_s *target, uint32_t syscall, uint3
 
 extern "C" bool bmp_rpc_init_swd_c()
 {
-    remote_dp.dp_read = firmware_swdp_read;
-    remote_dp.low_access = firmware_swdp_low_access;
-    remote_dp.abort = firmware_swdp_abort;
+    remote_dp.write_no_check = adiv5_swd_write_no_check;
+    remote_dp.read_no_check = adiv5_swd_read_no_check;
+    remote_dp.dp_read = adiv5_swd_read;
+    remote_dp.error = adiv5_swd_clear_error;
+    remote_dp.low_access = adiv5_swd_raw_access;
+    remote_dp.abort = adiv5_swd_abort;
+    //
     swdptap_init();
     return true;
 }
@@ -121,12 +125,12 @@ extern "C" int32_t bmp_adiv5_mem_read_c(const uint32_t device_index, const uint3
 }
 
 extern "C" int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
-                                         const uint32_t address, const uint32_t alin, const uint8_t *buffer,
+                                         const uint32_t address, const uint32_t align, const uint8_t *buffer,
                                          uint32_t len)
 {
     AP_PREAMBLE()
     remote_ap.csw = csw;
-    adiv5_mem_write_sized(&remote_ap, address, (const void *)buffer, (size_t)len, (align_e)alin);
+    adiv5_mem_write_aligned(&remote_ap, address, (const void *)buffer, (size_t)len, (align_e)align);
     return remote_dp.fault;
 }
 
@@ -134,6 +138,5 @@ extern "C" const char *bmp_get_version_string(void)
 {
     return "Version " LN_BMP_VERSION " Generated on " LN_BMP_GEN_DATE " (hash " LN_BMP_GIT_HASH ")\n";
 }
-
 
 // EOF

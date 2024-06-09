@@ -50,7 +50,7 @@ extern "C"
         if (!cur_target)
             return false;
 
-        return target_attached(cur_target);
+        return cur_target->attached;
     }
     /**
      */
@@ -274,7 +274,7 @@ extern "C"
     {
         if (!bmp_attached_c())
             return false;
-        if (target_mem_write(cur_target, addr, data, length))
+        if (target_mem32_write(cur_target, addr, data, length))
             return false;
         return true;
     }
@@ -310,7 +310,7 @@ extern "C"
     {
         if (!bmp_attached_c())
             return false;
-        if (!target_mem_read(cur_target, data, addr, length))
+        if (!target_mem32_read(cur_target, data, addr, length))
             return false;
         return true;
     }

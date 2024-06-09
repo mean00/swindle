@@ -95,9 +95,9 @@ typedef struct
 #define CH32VX_CHIPID_FAMILY_MASK (0xfffU << CH32VX_CHIPID_FAMILY_OFFSET)
 
 #define READ_FLASH_REG(target, reg)                                                                                    \
-    target_mem_read32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, reg))
+    target_mem32_read32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, reg))
 #define WRITE_FLASH_REG(target, reg, value)                                                                            \
-    target_mem_write32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, reg), value)
+    target_mem32_write32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, reg), value)
 
 const command_s ch32v3x_cmd_list[] = {{"", NULL, ""}};
 
@@ -155,8 +155,8 @@ static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t a
  */
 static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
 {
-    target_mem_write(flash->t, STUB_CODE_LOCATION_ERASE, ch32v3x_erase_bin, sizeof(ch32v3x_erase_bin));
-    target_mem_write(flash->t, STUB_CODE_LOCATION_WRITE, ch32v3x_write_bin, sizeof(ch32v3x_write_bin));
+    target_mem32_write(flash->t, STUB_CODE_LOCATION_ERASE, ch32v3x_erase_bin, sizeof(ch32v3x_erase_bin));
+    target_mem32_write(flash->t, STUB_CODE_LOCATION_WRITE, ch32v3x_write_bin, sizeof(ch32v3x_write_bin));
     ch32v3x_fast_unlock(flash->t);
     return true;
 }
@@ -182,7 +182,7 @@ static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t d
         uint32_t chunk = len;
         if (chunk > 1024)
             chunk = 1024;
-        target_mem_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
+        target_mem32_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
         if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_WRITE, addr, STUB_DATA_LOCATION, chunk,
                               STUB_STACKEND_LOCATION))
             return false;
@@ -225,7 +225,7 @@ bool ch32v3xx_probe(target_s *target)
     size_t erase_size = 256;
     size_t write_size = 256;
 
-    const uint32_t chipid = target_mem_read32(target, CH32VX_CHIPID);
+    const uint32_t chipid = target_mem32_read32(target, CH32VX_CHIPID);
 
     const uint16_t family = (chipid & CH32VX_CHIPID_FAMILY_MASK) >> CH32VX_CHIPID_FAMILY_OFFSET;
     bool detect_size = false;
@@ -295,7 +295,7 @@ bool ch32v3xx_probe(target_s *target)
         }
     }
     DEBUG_WARN("CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
-    target_add_ram(target, RAM_ADDRESS, ram_size * 1024U);
+    target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
     ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size);
     target_add_commands(target, ch32v3x_cmd_list, target->driver);
     return true;

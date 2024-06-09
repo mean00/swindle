@@ -62,16 +62,14 @@ extern uint32_t swd_delay_cnt;
 #define Rvswd_delay_cnt swd_delay_cnt
 
 #warning this is duplicated from riscv_jtag_dtm
-#define RV_DMI_NOOP     0U
-#define RV_DMI_READ     1U
-#define RV_DMI_WRITE    2U
-#define RV_DMI_SUCCESS  0U
-#define RV_DMI_FAILURE  2U
+#define RV_DMI_NOOP 0U
+#define RV_DMI_READ 1U
+#define RV_DMI_WRITE 2U
+#define RV_DMI_SUCCESS 0U
+#define RV_DMI_FAILURE 2U
 #define RV_DMI_TOO_SOON 3U
 
 #define BMP_MIN_WS 1
-
-
 
 bool rv_dm_reset();
 
@@ -92,7 +90,7 @@ extern SwdReset pReset;
     pRVCLK.clockOff();                                                                                                 \
     pRVCLK.clockOn();                                                                                                  \
     x = pRVDIO.read(); // read bit on rising edge
-//6
+// 6
 #define RV_WAIT()                                                                                                      \
     {                                                                                                                  \
         __asm__("nop");                                                                                                \
@@ -295,10 +293,11 @@ bool rv_dm_reset()
  * no fs => 12 sec
  * @return uint32_t
  */
- bool rv_dm_start()
+bool rv_dm_start()
 {
     int ws = bmp_get_wait_state_c();
-    if(ws<BMP_MIN_WS) ws=BMP_MIN_WS;
+    if (ws < BMP_MIN_WS)
+        ws = BMP_MIN_WS;
     bmp_set_wait_state_c(ws);
     bmp_gpio_init();
     bmp_io_begin_session();
@@ -316,14 +315,14 @@ bool rv_dm_probe(uint32_t *chip_id)
     //
     // init sequence, reverse eng from capture
     //----------------------------------------------
-    WR(0x10, 0x80000001UL);         // write DM CTROL =1
-    lnDelayMs(10);                      
-    WR(0x10, 0x80000001UL);         // write DM CTRL = 0x800000001 
+    WR(0x10, 0x80000001UL); // write DM CTROL =1
     lnDelayMs(10);
-    RD(0x11, 0x00030382UL);             // read DM_STATUS
+    WR(0x10, 0x80000001UL); // write DM CTRL = 0x800000001
     lnDelayMs(10);
-    RD(0x7f, 0x30700518UL);             // read 0x7f
-    *chip_id = out; // 0x203xxxx 0x303xxxx 0x305...
+    RD(0x11, 0x00030382UL); // read DM_STATUS
+    lnDelayMs(10);
+    RD(0x7f, 0x30700518UL); // read 0x7f
+    *chip_id = out;         // 0x203xxxx 0x303xxxx 0x305...
     lnDelayMs(10);
     WR(0x05, 0x1ffff704UL);
     lnDelayMs(10);
@@ -332,7 +331,7 @@ bool rv_dm_probe(uint32_t *chip_id)
     RD(0x04, 0x30700518UL);
     lnDelayMs(10);
     RD(0x05, 0x1ffff704UL);
-    return (*chip_id)!=0xffffffffUL;
+    return (*chip_id) != 0xffffffffUL;
 }
 /**
  * @brief
@@ -426,44 +425,42 @@ extern "C" bool rvswd_scan()
 }
 extern "C"
 {
-/**
-    * @brief 
-    * 
-    * @param adr 
-    * @param value 
-    * @return true 
-    * @return false 
-    */
-extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
-{
-    bool r= rv_dm_read(  adr,   value);
- //   Logger("bmp_rv_dm_read_c : ad=0x%x value=0x%x status=%d\n",adr,*value,r);
-    return r;    
-}
-/**
- * @brief 
- * 
- * @param adr 
- * @param value 
- * @return true 
- * @return false 
- */
-extern "C"  bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
-{
-    bool r=  rv_dm_write(  adr,   value);
-//     Logger("bmp_rv_dm_write_c : ad=0x%x value=0x%x stat=%d\n",adr,value,r);
-    return r;    
-
-}
-/**
- * @brief 
- * 
- */
-extern "C" bool bmp_rv_dm_reset_c()  
-{
-    return rv_dm_reset();
-}
-
+    /**
+     * @brief
+     *
+     * @param adr
+     * @param value
+     * @return true
+     * @return false
+     */
+    extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
+    {
+        bool r = rv_dm_read(adr, value);
+        //   Logger("bmp_rv_dm_read_c : ad=0x%x value=0x%x status=%d\n",adr,*value,r);
+        return r;
+    }
+    /**
+     * @brief
+     *
+     * @param adr
+     * @param value
+     * @return true
+     * @return false
+     */
+    extern "C" bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
+    {
+        bool r = rv_dm_write(adr, value);
+        //     Logger("bmp_rv_dm_write_c : ad=0x%x value=0x%x stat=%d\n",adr,value,r);
+        return r;
+    }
+    /**
+     * @brief
+     *
+     */
+    extern "C" bool bmp_rv_dm_reset_c()
+    {
+        return rv_dm_reset();
+    }
 }
 
 // EOF

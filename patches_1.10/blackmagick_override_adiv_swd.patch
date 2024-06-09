@@ -1,5 +1,5 @@
 diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
-index 4ae9223d..7fdeb421 100644
+index c779778c..ea162ab8 100644
 --- a/src/target/adiv5_swd.c
 +++ b/src/target/adiv5_swd.c
 @@ -31,6 +31,10 @@
@@ -31,22 +31,22 @@ index 4ae9223d..7fdeb421 100644
  {
  	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
  	swd_proc.seq_out(request, 8U);
-@@ -156,9 +160,14 @@ bool adiv5_swd_scan(const uint32_t targetid)
+@@ -156,9 +160,13 @@ bool adiv5_swd_scan(const uint32_t targetid)
  		DEBUG_ERROR("calloc: failed in %s\n", __func__);
  		return false;
  	}
-+#if PC_HOSTED == 0
- 
+-
++  #if PC_HOSTED == 0
  	dp->write_no_check = adiv5_swd_write_no_check;
  	dp->read_no_check = adiv5_swd_read_no_check;
-+#else  
++  #else
 +	dp->write_no_check = old_adiv5_swd_write_no_check;
 +	dp->read_no_check = old_adiv5_swd_read_no_check;
-+#endif
++  #endif
+ 	dp->dp_read = adiv5_swd_read;
+ 	dp->low_access = adiv5_swd_raw_access;
  	dp->error = adiv5_swd_clear_error;
- 	dp->dp_read = firmware_swdp_read;
- 	dp->low_access = firmware_swdp_low_access;
-@@ -245,7 +254,6 @@ bool adiv5_swd_scan(const uint32_t targetid)
+@@ -245,7 +253,6 @@ bool adiv5_swd_scan(const uint32_t targetid)
  		scan_multidrop = false;
  	}
  #endif
