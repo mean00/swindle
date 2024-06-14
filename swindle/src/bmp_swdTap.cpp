@@ -177,7 +177,7 @@ static void SwdWrite_parity(uint32_t MS, size_t ticks)
     properly invert SWDIO direction if needed
 */
 static bool oldDrive = false;
-void swdioSetAsOutput(bool output)
+void LN_FAST_CODE swdioSetAsOutput(bool output)
 {
     if (output == oldDrive)
         return;

@@ -8,10 +8,5 @@
             __asm__("nop");                                                                                            \
     }
 
-#ifdef USE_RP2040
-#include "lnBMP_swdio_rp2040.h"
-#else
 #include "lnBMP_swdio_ln.h"
-#endif
-
 #include "lnBMP_swdio_common.h"

@@ -29,7 +29,7 @@ extern "C" {
  * @param addr 
  * @return uint8_t 
  */
-static uint8_t xmake_packet_request(uint8_t RnW, uint16_t addr)
+static uint8_t LN_FAST_CODE xmake_packet_request(uint8_t RnW, uint16_t addr)
 {
 	bool APnDP = addr & ADIV5_APnDP;
 
@@ -86,7 +86,7 @@ void swd_line_reset_sequence(const bool idle_cycles)
  * @param addr 
  * @return int 
  */
-static int preamble( uint8_t access, const uint32_t addr)
+static int LN_FAST_CODE preamble( uint8_t access, const uint32_t addr)
 {
     uint8_t request = xmake_packet_request(access, addr);
     swdioSetAsOutput(true);
@@ -122,7 +122,7 @@ static int preamble( uint8_t access, const uint32_t addr)
  * @return true 
  * @return false 
  */
-bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+bool LN_FAST_CODE adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
     //return old_adiv5_swd_write_no_check(addr,data);
     int parity = __builtin_popcount(data) & 1;
@@ -161,7 +161,7 @@ bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
  * @param addr 
  * @return uint32_t 
  */
-uint32_t adiv5_swd_read_no_check(const uint16_t addr)
+uint32_t LN_FAST_CODE adiv5_swd_read_no_check(const uint16_t addr)
 {    
     uint32_t ret= preamble( ADIV5_LOW_READ,  addr);
     if(ret!=SWDP_ACK_OK)
@@ -184,7 +184,7 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
     }
     
     //    
-	swdioSetAsOutput(true);
+	  swdioSetAsOutput(true);
     pSWCLK.clockOff();
     pSWDIO.off();
     for(int i=0;i<8;i++)

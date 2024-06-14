@@ -119,7 +119,7 @@ static inline int parity8(uint8_t x)
  * @return true
  * @return false
  */
-bool rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
+bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
 {
     // start bit
     pRVDIO.output();
@@ -164,7 +164,7 @@ bool rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
  *
  * @return uint32_t
  */
-bool rv_end_frame(uint32_t *status)
+bool LN_FAST_CODE rv_end_frame(uint32_t *status)
 {
     uint32_t out = 0;
     uint8_t bit;
@@ -201,7 +201,7 @@ bool rv_end_frame(uint32_t *status)
 
 /**
  */
-bool rv_dm_write(uint32_t adr, uint32_t val)
+bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
 {
     uint32_t status = 0;
     rv_start_frame(adr, &status, true);
@@ -235,7 +235,7 @@ bool rv_dm_write(uint32_t adr, uint32_t val)
  * @return true
  * @return false
  */
-bool rv_dm_read(uint32_t adr, uint32_t *output)
+bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 {
     uint32_t status;
     rv_start_frame(adr, &status, false);
