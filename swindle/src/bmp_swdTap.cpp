@@ -151,7 +151,7 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
 */
 static void SwdWrite(uint32_t MS, size_t ticks)
 {
-    //int cnt;
+    // int cnt;
     swdioSetAsOutput(true);
     for (int i = 0; i < ticks; i++)
     {
@@ -187,7 +187,7 @@ void LN_FAST_CODE swdioSetAsOutput(bool output)
     {
     case false: // in
     {
-        pSWDIO.input();  
+        pSWDIO.input();
         pSWCLK.wait();
         pSWCLK.clockOn();
         break;
