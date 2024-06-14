@@ -8,7 +8,11 @@ extern "C"
 #include "src/remote.h"
 }
 
-#define UNIMPLEMENTED_STUB() { printf("UNIMPLEMENTED :%s\n",__PRETTY_FUNCTION__);xAssert(0);}
+#define UNIMPLEMENTED_STUB()                                                                                           \
+    {                                                                                                                  \
+        printf("UNIMPLEMENTED :%s\n", __PRETTY_FUNCTION__);                                                            \
+        xAssert(0);                                                                                                    \
+    }
 void xAssert(int a)
 {
     printf("******* FAILURE *********\n");
@@ -21,7 +25,7 @@ void xAssert(int a)
 extern "C" bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
     UNIMPLEMENTED_STUB();
-    return 0; 
+    return 0;
 }
 
 extern "C" uint32_t adiv5_swd_read_no_check(const uint16_t addr)
@@ -35,7 +39,7 @@ extern "C" void do_assert(const char *z)
     printf("FATAL ERROR :%s\n", z);
     exit(-1);
 }
-extern "C" void _putchar(char){};
+extern "C" void _putchar(char) {};
 /**
  * @brief
  *
@@ -237,7 +241,7 @@ extern "C"
     {
         return "lnbmpa";
     }
-#endif    
+#endif
     size_t xPortGetFreeHeapSize(void)
     {
         return 33;
@@ -270,14 +274,14 @@ extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
     return false;
 }
 /**
- * @brief 
- * 
- * @param adr 
- * @param value 
- * @return true 
- * @return false 
+ * @brief
+ *
+ * @param adr
+ * @param value
+ * @return true
+ * @return false
  */
-extern "C"  bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
+extern "C" bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
 {
     xAssert(0);
     return false;
@@ -288,9 +292,8 @@ extern "C" bool bmp_rv_dm_reset_c()
     return false;
 }
 /*
-*/
+ */
 extern "C" void swdptap_init(void)
 {
-
 }
 // -- eof --

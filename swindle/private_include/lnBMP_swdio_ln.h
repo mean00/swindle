@@ -14,11 +14,11 @@ class SwdPin
         output();
     }
 
-    LN_ALWAYS_INLINE void on()  
+    LN_ALWAYS_INLINE void on()
     {
         _fast.on();
     }
-    LN_ALWAYS_INLINE void off()  
+    LN_ALWAYS_INLINE void off()
     {
         _fast.off();
     }

@@ -3,8 +3,8 @@
  */
 extern "C"
 {
-#include "general.h"
 #include "exception.h"
+#include "general.h"
 #include "adiv5.h"
 #include "swd.h"
 #include "target.h"

@@ -1,9 +1,9 @@
 diff --git a/src/target/target.c b/src/target/target.c
-index 66b24e79..e9c68076 100644
+index d75bf320..6613e373 100644
 --- a/src/target/target.c
 +++ b/src/target/target.c
-@@ -30,6 +30,9 @@ target_s *target_list = NULL;
- #define STDOUT_READ_BUF_SIZE       64U
+@@ -43,6 +43,9 @@ target_s *target_list = NULL;
+ 
  #define FLASH_WRITE_BUFFER_CEILING 1024U
  
 +#define snprintf snprintf_
@@ -11,13 +11,12 @@ index 66b24e79..e9c68076 100644
 +
  static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
  static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
- 
-@@ -570,7 +573,7 @@ void tc_printf(target_s *t, const char *fmt, ...)
- 
+ static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
+@@ -596,6 +599,6 @@ void tc_printf(target_s *target, const char *fmt, ...)
+ 	va_list ap;
  	va_start(ap, fmt);
- 	t->tc->printf(t->tc, fmt, ap);
+ 	target->tc->printf(target->tc, fmt, ap);
 -	fflush(stdout);
-+	//fflush(stdout);
++	// MEANX fflush(stdout);
  	va_end(ap);
  }
- 

@@ -7,7 +7,7 @@
 // "Big" board = GPIO23
 // "Zero" board = GPIO16
 #define LED_WS2812 GPIO16 // GPIO16 for zero, GPIO23 for normal size RP2040
-//#define LED_WS2812 GPIO23 // GPIO16 for zero, GPIO23 for normal size RP2040
+// #define LED_WS2812 GPIO23 // GPIO16 for zero, GPIO23 for normal size RP2040
 extern "C" void user_init();
 
 #define STEP 8

@@ -79,6 +79,8 @@ DECLARE_MCU( MSP432P4  msp432p4.c  msp432p4_probe  )
 DECLARE_MCU( HC32L110  hc32l110.c  hc32l110_probe  )
 DECLARE_MCU( MSP432E4  msp432e4.c  msp432e4_probe  )
 DECLARE_MCU( S32K3XX   s32k3xx.c   s32k3xx_probe  )
+DECLARE_MCU( PUYA      puya.c    puya_probe  )
+DECLARE_MCU( CH579     ch576.c   ch579_probe  )
 
    
 FILE(APPEND  ${BOARD_STUB_FILE} "#define LN_BOARDS_ENABLED \"${STR_BOARD_ENABLED}\"\n")
@@ -137,6 +139,8 @@ IF (SWINDLE_HOSTED)
             ${HOSTED}/remote/protocol_v2.c  
             ${HOSTED}/remote/protocol_v3.c  
             ${HOSTED}/remote/protocol_v3_adiv5.c  
+            ${HOSTED}/remote/protocol_v4.c  
+            ${HOSTED}/remote/protocol_v4_adiv5.c  
 
             ${BMP_EXTRA}/hosted/remote_rv_protocol.c
 
@@ -227,6 +231,7 @@ SET(BM_TARGET
                 ${T}/target.c 
                 ${T}/sfdp.c
                 ${T}/spi.c
+                ${T}/stm32_common.c
                         #${T}/riscv64.c      
                         #${S}/gdb_hostio.c 
                         #${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c  
