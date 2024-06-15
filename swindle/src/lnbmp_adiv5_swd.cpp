@@ -10,7 +10,6 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 }
-extern uint32_t swd_delay_cnt;
 #include "lnGPIO.h"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
