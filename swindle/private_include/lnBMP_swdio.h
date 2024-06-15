@@ -8,6 +8,7 @@ extern uint32_t swd_delay_cnt;
         for (int lop = swd_delay_cnt; --lop > 0;)                                                                      \
             __asm__("nop");                                                                                            \
     }
-
+// clang-format off
 #include "lnBMP_swdio_ln.h"
 #include "lnBMP_swdio_common.h"
+// clang-format on

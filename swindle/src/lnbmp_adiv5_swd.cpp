@@ -1,6 +1,7 @@
 /*
  *  This is a streamlined version of adiv5_swd.c
  */
+// clang-format off
 extern "C"
 {
 #include "exception.h"
@@ -13,7 +14,7 @@ extern "C"
 #include "lnGPIO.h"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
-
+// clang-format on
 extern SwdPin pSWDIO;
 extern SwdWaitPin pSWCLK; // automatically add delay after toggle
 extern SwdReset pReset;
