@@ -76,7 +76,7 @@ fn get_list_ref() -> &'static mut list_of_sw_breakpoints {
     unsafe { &mut lsw }
 }
 
-/**
+/*
  *
  */
 pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
@@ -98,7 +98,7 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     // put new opcode
     let mut new_opcode: [u8; 4] = breakpoint.old_opcode;
     let offset: usize = (address & 2) as usize;
-    new_opcode[offset + 0] = ARM_BREAKPOINT_OPCODE0;
+    new_opcode[offset] = ARM_BREAKPOINT_OPCODE0;
     new_opcode[offset + 1] = ARM_BREAKPOINT_OPCODE1;
     if !crate::bmp::bmp_mem_write(aligned_address, &new_opcode) {
         bmplog!("cant write new sw value\n");
@@ -108,7 +108,7 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     get_list_ref().breakpoint.push(breakpoint);
     true
 }
-/**
+/*
  *
  */
 pub fn remove_sw_breakpoint(address: u32, _len: u32) -> bool {
