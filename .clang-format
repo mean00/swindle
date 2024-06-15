@@ -3,5 +3,7 @@ BasedOnStyle: Microsoft
 Language: Cpp
 Standard: Auto
 UseTab: Never
+SortIncludes: Never
+IncludeBlocks: Preserve
 
 ...
