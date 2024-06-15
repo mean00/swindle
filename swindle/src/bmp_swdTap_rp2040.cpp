@@ -50,7 +50,7 @@ void gmp_gpio_init_adc()
  */
 extern "C" float bmp_get_target_voltage_c()
 {
-    float vcc = 3219.; // lnBaseAdc::getVcc();
+    float vcc = 3.123; // lnBaseAdc::getVcc();
     return vcc;
 }
 /**
