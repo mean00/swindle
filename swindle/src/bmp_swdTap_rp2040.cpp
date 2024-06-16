@@ -37,20 +37,28 @@ extern "C"
 #include "general.h"
 #include "timing.h"
 }
-
+#include "lnADC.h"
 /**
  * @brief
  *
  */
+static lnSimpleADC *adc = NULL;
 void gmp_gpio_init_adc()
 {
+    if (!adc)
+    {
+        adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO); // this pins is connected to NRST/2
+    }
 }
 
 /*
  */
 extern "C" float bmp_get_target_voltage_c()
 {
-    float vcc = 3.123; // lnBaseAdc::getVcc();
+    xAssert(adc);
+    float vcc = (float)adc->simpleRead(16);
+    vcc = vcc * 3.3;
+    vcc /= 4095.;
     return vcc;
 }
 /**
