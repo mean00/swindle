@@ -139,12 +139,12 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
 {
     uint32_t res = 0;
     res = SwdRead(len);
-    int currentParity = __builtin_popcount(res) & 1;
-    int parityBit = pSWDIO.read();
+    bool currentParity = __builtin_parity(res);
+    bool parityBit = (pSWDIO.read() == 1);
     pSWCLK.clockOn();
     *ret = res;
     swdioSetAsOutput(true);
-    return 1 & (currentParity ^ parityBit); // should be equal
+    return currentParity == parityBit; // should be equal
 }
 /**
 
@@ -166,7 +166,7 @@ static void SwdWrite(uint32_t MS, size_t ticks)
  */
 static void SwdWrite_parity(uint32_t MS, size_t ticks)
 {
-    int parity = __builtin_popcount(MS) & 1;
+    bool parity = __builtin_parity(MS);
     SwdWrite(MS, ticks);
     pSWDIO.set(parity);
     pSWCLK.clockOn();
