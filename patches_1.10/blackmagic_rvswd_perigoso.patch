@@ -1,8 +1,8 @@
 diff --git a/src/command.c b/src/command.c
-index f77149b..9b8f584 100644
+index 243ea2b7..5c5f5309 100644
 --- a/src/command.c
 +++ b/src/command.c
-@@ -46,6 +46,7 @@
+@@ -50,6 +50,7 @@
  #include "traceswo.h"
  #endif
  
@@ -10,7 +10,7 @@ index f77149b..9b8f584 100644
  static bool cmd_version(target_s *t, int argc, const char **argv);
  static bool cmd_help(target_s *t, int argc, const char **argv);
  
-@@ -82,6 +83,7 @@ const command_s cmd_list[] = {
+@@ -90,6 +91,7 @@ const command_s cmd_list[] = {
  	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
  	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
  	{"swdp_scan", cmd_swd_scan, "Deprecated: use swd_scan instead"},
@@ -18,7 +18,7 @@ index f77149b..9b8f584 100644
  	{"auto_scan", cmd_auto_scan, "Automatically scan all chain types for devices"},
  	{"frequency", cmd_frequency, "set minimum high and low times: [FREQ]"},
  	{"targets", cmd_targets, "Display list of available targets"},
-@@ -689,3 +691,50 @@ static bool cmd_heapinfo(target_s *t, int argc, const char **argv)
+@@ -693,3 +695,50 @@ static bool cmd_heapinfo(target_s *t, int argc, const char **argv)
  		gdb_outf("%s\n", "Set semihosting heapinfo: HEAP_BASE HEAP_LIMIT STACK_BASE STACK_LIMIT");
  	return true;
  }
@@ -39,14 +39,14 @@ index f77149b..9b8f584 100644
 + 
 + 	bool scan_result = false;
 + 	volatile exception_s e;
-+ 	TRY_CATCH (e, EXCEPTION_ALL) {
++ 	TRY(EXCEPTION_ALL) {
 + #if PC_HOSTED == 1
 + 		scan_result = bmda_rvswd_scan();
 + #else
 + 		scan_result = rvswd_scan();
 + #endif
 + 	}
-+ 	switch (e.type) {
++ 	CATCH () {
 + 	case EXCEPTION_TIMEOUT:
 + 		gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
 + 		break;
