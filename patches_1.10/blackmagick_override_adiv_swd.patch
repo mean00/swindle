@@ -1,19 +1,18 @@
 diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
-index c779778c..ea162ab8 100644
+index 124195bb..6b78be13 100644
 --- a/src/target/adiv5_swd.c
 +++ b/src/target/adiv5_swd.c
-@@ -31,6 +31,10 @@
+@@ -31,6 +31,9 @@
  #include "target.h"
  #include "target_internal.h"
  
 +uint32_t adiv5_swd_read_no_check(const uint16_t addr);
 +bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
 +
-+
- uint8_t make_packet_request(uint8_t RnW, uint16_t addr)
+ uint8_t make_packet_request(uint8_t rnw, uint16_t addr)
  {
- 	bool APnDP = addr & ADIV5_APnDP;
-@@ -125,7 +129,7 @@ static void jtag_to_swd_sequence(void)
+ 	bool is_ap = addr & ADIV5_APnDP;
+@@ -125,7 +128,7 @@ static void jtag_to_swd_sequence(void)
  	swd_line_reset_sequence(true);
  }
  
@@ -22,7 +21,7 @@ index c779778c..ea162ab8 100644
  {
  	const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
  	swd_proc.seq_out(request, 8U);
-@@ -135,7 +139,7 @@ bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+@@ -135,7 +138,7 @@ bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
  	return res != SWDP_ACK_OK;
  }
  
@@ -31,7 +30,7 @@ index c779778c..ea162ab8 100644
  {
  	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
  	swd_proc.seq_out(request, 8U);
-@@ -156,9 +160,13 @@ bool adiv5_swd_scan(const uint32_t targetid)
+@@ -156,9 +159,13 @@ bool adiv5_swd_scan(const uint32_t targetid)
  		DEBUG_ERROR("calloc: failed in %s\n", __func__);
  		return false;
  	}
@@ -46,7 +45,7 @@ index c779778c..ea162ab8 100644
  	dp->dp_read = adiv5_swd_read;
  	dp->low_access = adiv5_swd_raw_access;
  	dp->error = adiv5_swd_clear_error;
-@@ -245,7 +253,6 @@ bool adiv5_swd_scan(const uint32_t targetid)
+@@ -245,7 +252,6 @@ bool adiv5_swd_scan(const uint32_t targetid)
  		scan_multidrop = false;
  	}
  #endif
