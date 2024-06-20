@@ -1,6 +1,12 @@
 
 include(applyPatch)
-APPLY_PATCH_IF_NEEDED3(patched6 ${BMP_PATCH_FOLDER}/blackmagic_small_exception.patch             ${LNBMP_TOP_FOLDER}   "use smaller setjmp/long jmp on smaller arm")
+#APPLY_PATCH_IF_NEEDED3(patched6 ${BMP_PATCH_FOLDER}/blackmagic_small_exception.patch             ${LNBMP_TOP_FOLDER}   "use smaller setjmp/long jmp on smaller arm")
+#APPLY_PATCH_IF_NEEDED3(patched16 ${BMP_PATCH_FOLDER}/blackmagic_make_ebreak_work.patch           ${LNBMP_TOP_FOLDER}   "riscv make sw breakpoint work")
+#APPLY_PATCH_IF_NEEDED3(patched18 ${BMP_PATCH_FOLDER}/blackmagic_riscv_stub.patch                 ${LNBMP_TOP_FOLDER}   "declare flashstub function")
+#APPLY_PATCH_IF_NEEDED3(patched19 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
+#APPLY_PATCH_IF_NEEDED3(patched22 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_2.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
+#APPLY_PATCH_IF_NEEDED3(patched23 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_3.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
+
 APPLY_PATCH_IF_NEEDED3(patched8 ${BMP_PATCH_FOLDER}/blackmagic_no_debug_bmp.patch                ${LNBMP_TOP_FOLDER}   "undefined bmp_debug removal")
 APPLY_PATCH_IF_NEEDED3(patched7 ${BMP_PATCH_FOLDER}/blackmagic_use_custom_target_mem_map.patch   ${LNBMP_TOP_FOLDER}   "use heap based mem map")
 APPLY_PATCH_IF_NEEDED3(patched9 ${BMP_PATCH_FOLDER}/blackmagic_no_libopencm3.patch               ${LNBMP_TOP_FOLDER}   "dont use opencm3 ")
@@ -9,18 +15,12 @@ APPLY_PATCH_IF_NEEDED3(patched11 ${BMP_PATCH_FOLDER}/blackmagic_use_embedded_pri
 APPLY_PATCH_IF_NEEDED3(patched12 ${BMP_PATCH_FOLDER}/blackmagic_disable_cortexr.patch            ${LNBMP_TOP_FOLDER}   "disable cortexr ")
 APPLY_PATCH_IF_NEEDED3(patched14 ${BMP_PATCH_FOLDER}/blackmagic_disable_snprintf_define.patch    ${LNBMP_TOP_FOLDER}   "disable snprintf define")
 APPLY_PATCH_IF_NEEDED3(patched13 ${BMP_PATCH_FOLDER}/blackmagic_rvswd_perigoso.patch             ${LNBMP_TOP_FOLDER}   "add rvswd support (based on perigoso work)")
-#APPLY_PATCH_IF_NEEDED3(patched16 ${BMP_PATCH_FOLDER}/blackmagic_make_ebreak_work.patch           ${LNBMP_TOP_FOLDER}   "riscv make sw breakpoint work")
 APPLY_PATCH_IF_NEEDED3(patched17 ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_warning.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
-#APPLY_PATCH_IF_NEEDED3(patched18 ${BMP_PATCH_FOLDER}/blackmagic_riscv_stub.patch                 ${LNBMP_TOP_FOLDER}   "declare flashstub function")
 APPLY_PATCH_IF_NEEDED3(patched21 ${BMP_PATCH_FOLDER}/blackmagic_riscv_flashstub_vanilla.patch    ${LNBMP_TOP_FOLDER}   "declare flashstub function")
 
 
-#APPLY_PATCH_IF_NEEDED3(patched19 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
-#APPLY_PATCH_IF_NEEDED3(patched22 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_2.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
-#APPLY_PATCH_IF_NEEDED3(patched23 ${BMP_PATCH_FOLDER}/blackmagic_riscv_single_fp_support_3.patch    ${LNBMP_TOP_FOLDER}   "declare fpu register in xml description file ")
-
 APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/blackmagic_riscv_disable_interrupt_during_step.patch ${LNBMP_TOP_FOLDER}   "disable interrupt during single step")
 APPLY_PATCH_IF_NEEDED3(patched26 ${BMP_PATCH_FOLDER}/blackmagic_riscv_check_watchpoint.patch ${LNBMP_TOP_FOLDER}   "explictely fail when we cant put watchpoints")
-APPLY_PATCH_IF_NEEDED3(patched30 ${BMP_PATCH_FOLDER}/blackmagick_override_adiv_swd.patch ${LNBMP_TOP_FOLDER}   "override adiv5 swd functions")
+APPLY_PATCH_IF_NEEDED3(patched30 ${BMP_PATCH_FOLDER}/blackmagic_override_adiv_swd.patch ${LNBMP_TOP_FOLDER}   "override adiv5 swd functions")
 
 
