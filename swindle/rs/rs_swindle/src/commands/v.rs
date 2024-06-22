@@ -72,6 +72,7 @@ fn _vAttach(_command: &str, _args: &[&str]) -> bool {
         return true;
     }
     os_detach();
+    crate::sw_breakpoints::clear_sw_breakpoint();
     encoder::reply_e01();
     true
 }

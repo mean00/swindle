@@ -18,8 +18,8 @@ use alloc::vec::Vec;
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
-const ARM_BREAKPOINT_OPCODE0: u8 = 0x00u8;
-const ARM_BREAKPOINT_OPCODE1: u8 = 0xbeu8;
+const ARM_BREAKPOINT_OPCODE: [u8;2] = [0x00u8, 0xbeu8];
+const RISCV_BREAKPOINT_OPCODE: [u8;2] = [0x02u8, 0x90u8];
 
 struct address_old_opcode {
     address: u32,
@@ -75,6 +75,12 @@ static mut lsw: list_of_sw_breakpoints = list_of_sw_breakpoints {
 fn get_list_ref() -> &'static mut list_of_sw_breakpoints {
     unsafe { &mut lsw }
 }
+/*
+*
+*/
+pub fn clear_sw_breakpoint() {
+    get_list_ref().breakpoint.clear();
+}
 
 /*
  *
@@ -98,8 +104,13 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     // put new opcode
     let mut new_opcode: [u8; 4] = breakpoint.old_opcode;
     let offset: usize = (address & 2) as usize;
-    new_opcode[offset] = ARM_BREAKPOINT_OPCODE0;
-    new_opcode[offset + 1] = ARM_BREAKPOINT_OPCODE1;
+    if true {
+        new_opcode[offset+0] = ARM_BREAKPOINT_OPCODE[0];
+        new_opcode[offset+1] = ARM_BREAKPOINT_OPCODE[1];
+    }else{
+        new_opcode[offset+0] = RISCV_BREAKPOINT_OPCODE[0];
+        new_opcode[offset+1] = RISCV_BREAKPOINT_OPCODE[1];
+    }
     if !crate::bmp::bmp_mem_write(aligned_address, &new_opcode) {
         bmplog!("cant write new sw value\n");
         return false;
