@@ -190,8 +190,8 @@ pub fn _ram(_command: &str, _args: &[&str]) -> bool {
     let (min_heap, heap) = bmp::get_heap_stats();
     gdb_print!(
         "Min Free Heap\t: {} kB \nFree Heap\t: {} kB\n",
-        min_heap,
-        heap
+        min_heap>>10,
+        heap>>10
     );
     encoder::reply_ok();
     true
