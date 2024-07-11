@@ -1,0 +1,20 @@
+; follow a 2/5/3 patter
+; [7,3] or [2,8]
+
+; SET pin 0 should be mapped to your WS2812B
+
+.program ws
+    pull     
+    set y, 23       ; #nb bits
+    set pins, 0     ; start low    
+    out x,8         ; skip 8 MSB bits    
+lp1:        
+    set pins, 1 [1]  ; Turn High    
+    out x,1          ; pop one LSB bit    
+    mov pins, x [4]  ; set LSB bit   
+    set pins, 0 [1]  ; Turn Low   
+    jmp y-- lp1      ; next bit   
+    
+    
+
+
