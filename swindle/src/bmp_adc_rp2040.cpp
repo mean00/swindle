@@ -61,12 +61,4 @@ extern "C" float bmp_get_target_voltage_c()
     vcc /= 4095.;
     return vcc;
 }
-/**
- * @brief
- *
- */
-void lnSoftSystemReset()
-{
-    xAssert(0);
-}
 // EOF
