@@ -155,7 +155,10 @@ void goDfu()
 {
     Logger("Rebooting to DFU...\n");
     // pull DP to low
-#ifndef USE_RP2040 //
+#ifdef USE_RP2040 //
+    reset_usb_boot(0, 0);
+    lnSoftSystemReset();
+#else
     lnDigitalWrite(PA12, 0);
     lnPinMode(PA12, lnOUTPUT);
     lnDelayMs(50);
@@ -165,8 +168,6 @@ void goDfu()
     // + set marker in ram
     uint64_t *marker = (uint64_t *)0x0000000020000000;
     *marker = 0xDEADBEEFCC00FFEEULL;
-#else
-    reset_usb_boot(0, 0);
 #endif
     lnSoftSystemReset();
 }
