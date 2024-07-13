@@ -18,7 +18,7 @@ extern "C"
 }
 
 #ifdef USE_RP2040
-#include "pico/bootrom.h"
+extern void lnRp2040_reboot_to_usb();
 #endif
 
 extern "C" void pins_init();
@@ -156,8 +156,7 @@ void goDfu()
     Logger("Rebooting to DFU...\n");
     // pull DP to low
 #ifdef USE_RP2040 //
-    reset_usb_boot(0, 0);
-    lnSoftSystemReset();
+    lnRp2040_reboot_to_usb();
 #else
     lnDigitalWrite(PA12, 0);
     lnPinMode(PA12, lnOUTPUT);
