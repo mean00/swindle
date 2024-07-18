@@ -47,7 +47,10 @@ class SwdPin
     {
         return lnDigitalRead(_me);
     }
-
+    const lnPin pin() const
+    {
+        return _me;
+    }
   protected:
     lnPin _me;
     bool _output;
