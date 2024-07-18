@@ -4,7 +4,7 @@
 #include "lnGPIO.h"
 #include "ln_rp_pio.h"
 #include "stdint.h"
-
+#include "../swindle/private_include/lnRP2040_pio.h"
 #define PICO_NO_HARDWARE 1
 #include "ws.h"
 
@@ -46,10 +46,10 @@ void loop()
     user_init();
 
     lnPin pin = PIN_TO_USE;
-    rpPIO xpio(0);
+    rpPIO xpio( LN_WS2812_PIO_ENGINE );
     rpPIO_SM *xsm = xpio.getSm(0);
 
-    lnPinMode(pin, lnRP_PIO0_MODE);
+    lnPinMode(pin, (lnGpioMode)(lnRP_PIO0_MODE+  LN_WS2812_PIO_ENGINE) );
 
     rpPIO_pinConfig pinConfig;
     pinConfig.sets.pinNb = 1;
