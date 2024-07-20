@@ -18,45 +18,15 @@ extern "C"
 // clang-format on
 extern SwdPin pSWDIO;
 extern SwdWaitPin pSWCLK; // automatically add delay after toggle
-
-extern void swdioSetAsOutput(bool output);
-#if 1
-#define SWD_SPEED 100 * 1000UL
-#else
-#define SWD_SPEED 4 * 1000 * 1000UL
-#endif
-#define PICO_NO_HARDWARE 1
-#define SWD_PIO_TO_USE 1
-#define SWD_SM_TO_USE 0
 #include "pio_swd.h"
-static rpPIO *swdpio;
-static rpPIO_SM *xsm;
+extern rpPIO_SM *xsm;
 
 #define LN_PARITY(x) __builtin_parity(x)
-/**
-    switch ((int)output)
-    {
-    case false: // out->in
-    {
-        pSWDIO.input();
-        pSWCLK.wait();
-        pSWCLK.clockOn();
-        break;
-    }
-    break;
-    case true: // in->out
-    {
-        pSWCLK.clockOff();
-        pSWCLK.clockOn();
-        pSWCLK.clockOff();
-        pSWDIO.output();
-        break;
-    }
-    default:
-        break;
-    }
-*/
-
+#if 1
+    #define dLogger Logger
+#else
+    #define dLogger(....) {}
+#endif
 /**
  *
  */
@@ -78,41 +48,15 @@ static uint32_t zread(uint32_t size)
     xsm->write(1, &zsize);
     xsm->waitRxReady();
     xsm->read(1, &value);
-    return value;
+    return value>>(32-size);
 }
 /**
  *
  */
 extern "C"
 {
-
     void adiv5_init()
     {
-        lnPin pin_swd = pSWDIO.pin();
-        lnPin pin_clk = pSWCLK.pin();
-        swdpio = new rpPIO(SWD_PIO_TO_USE);
-        xsm = swdpio->getSm(SWD_SM_TO_USE);
-
-        lnPinMode(pin_swd, (lnGpioMode)(lnRP_PIO0_MODE + SWD_PIO_TO_USE));
-        lnPinMode(pin_clk, (lnGpioMode)(lnRP_PIO0_MODE + SWD_PIO_TO_USE));
-
-        rpPIO_pinConfig pinConfig;
-        pinConfig.sets.pinNb = 1;
-        pinConfig.sets.startPin = pin_swd;
-        pinConfig.outputs.pinNb = 1;
-        pinConfig.outputs.startPin = pin_swd;
-        pinConfig.inputs.pinNb = 1;
-        pinConfig.inputs.startPin = pin_swd;
-
-        xsm->setSpeed(SWD_SPEED);
-        xsm->setBitOrder(false, false);
-        xsm->setPinDir(pin_swd, true);
-        xsm->setPinDir(pin_clk, true);
-        xsm->uploadCode(sizeof(swd_program_instructions) / 2, swd_program_instructions, swd_wrap_target, swd_wrap);
-        xsm->configure(pinConfig);
-        xsm->configureSideSet(pin_clk, 1, 2, true);
-        xsm->execute();
-        return;
     }
     /**
      * @brief
@@ -121,7 +65,7 @@ extern "C"
      * @param addr
      * @return uint8_t
      */
-    uint8_t LN_FAST_CODE xmake_packet_request(uint8_t RnW, uint16_t addr)
+    uint8_t xmake_packet_request(uint8_t RnW, uint16_t addr)
     {
         bool APnDP = addr & ADIV5_APnDP;
 
@@ -157,11 +101,10 @@ extern "C"
          * for robustness, we use 60 HIGH cycles and 4 idle cycles
          */
         zwrite(32, 0xFFFFFFFF);
-        zwrite(28, 0xFFFFFFFF);
+        int pulse = 28;
         if (idle_cycles)
-        {
-            zwrite(4, 0);
-        }
+            pulse = 32;
+        zwrite(pulse, 0x0FFF0000 + 0xFFFF);
     }
     /**
      * @brief
@@ -170,11 +113,20 @@ extern "C"
      * @param addr
      * @return int
      */
-    int LN_FAST_CODE preamble(uint8_t access, const uint32_t addr)
+    int preamble_w(uint8_t access, const uint32_t addr)
     {
         uint8_t request = xmake_packet_request(access, addr);
         zwrite(8, request);
-        return zread(4) >> 1; // one extra bit for turn (lsb)
+        uint32_t raw= zread(5);
+        return raw >> 1; // one extra bit for turn (lsb)
+    }
+    int preamble_r(uint8_t access, const uint32_t addr)
+    {
+        uint8_t request = xmake_packet_request(access, addr);
+        zwrite(8, request);
+        uint32_t raw=zread(4);
+        dLogger("Raw reply =0x%x\n",raw);
+        return raw >> 1;
     }
 
     /**
@@ -188,16 +140,15 @@ extern "C"
     bool LN_FAST_CODE adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
     {
         int parity = __builtin_popcount(data) & 1;
-        uint32_t res = preamble(ADIV5_LOW_WRITE, addr);
+        uint32_t res = preamble_w(ADIV5_LOW_WRITE, addr);
         if (res != SWDP_ACK_OK)
         {
-            Logger("SWD_WRITE: reply not ok 0x%x\n", res);
+            dLogger("SWD_WRITE: reply not ok 0x%x\n", res);
         }
-        zread(1); // one extra bit for turn (lsb)
         zwrite(32, data);
         // par
         zwrite(1, parity);
-        //--
+        //-- trailing bits
         zwrite(8, 0);
         return res != SWDP_ACK_OK;
     }
@@ -210,31 +161,157 @@ extern "C"
      */
     uint32_t LN_FAST_CODE adiv5_swd_read_no_check(const uint16_t addr)
     {
-        uint32_t ret = preamble(ADIV5_LOW_READ, addr);
+        uint32_t ret = preamble_r(ADIV5_LOW_READ, addr);
         if (ret != SWDP_ACK_OK)
         {
-            Logger("SWD_REAd: reply not ok 0x%x\n", ret);
+            dLogger("SWD_REAd: reply not ok 0x%x\n", ret);
         }
         //
         //-----
         ret = zread(32);
+        int oparity = zread(1);
+        int parity = __builtin_popcount(ret) & 1;
+        if (parity != oparity)
+        {
+            dLogger("SWD:Wrong read parity\n");
+        }
         zwrite(8, 0);
         return ret;
     }
-}
+    static int checkReply(adiv5_debug_port_s *dp, uint32_t ack)
+    {
+        ack&=7; // dafuq ?
+        switch (ack)
+        {
+        case SWDP_ACK_WAIT: {
+            dLogger("SWD access resulted in wait, aborting\n");
+            dp->abort(dp, ADIV5_DP_ABORT_DAPABORT);
+            dp->fault = ack;
+            return 0;
+            break;
+        }
 
-static uint32_t SwdRead(size_t ticks);
-static bool SwdRead_parity(uint32_t *ret, size_t ticks);
-static void SwdWrite(uint32_t MS, size_t ticks);
-static void SwdWrite_parity(uint32_t MS, size_t ticks);
+        case SWDP_ACK_FAULT: {
+            dLogger("SWD access resulted in fault\n");
+            dp->fault = ack;
+            return 0;
+            break;
+        }
 
-void swdioSetAsOutput(bool output);
+        case SWDP_ACK_NO_RESPONSE: {
+            dLogger("SWD access resulted in no response\n");
+            dp->fault = ack;
+            return 0;
+            break;
+        }
+        case SWDP_ACK_OK:
+            return 1;
+            break;
+        default: {
+            dLogger("SWD access has invalid ack %x\n", ack);
+            raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
+            return 0;
+            break;
+        }
+        }
+    }
 
-SwdPin pSWDIO(TSWDIO_PIN);
-SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
-SwdReset pReset(TRESET_PIN);
+    /**
+     */
+    void adiv_abort_current(adiv5_debug_port_s *dp)
+    {
 
-uint32_t swd_delay_cnt = 1;
+        // low_access(dp, ADIV5_LOW_WRITE, addr, value);
+        //  no need for retry (?)
+        adiv5_swd_write_no_check(ADIV5_DP_ABORT, ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR |
+                                                     ADIV5_DP_ABORT_STKERRCLR | ADIV5_DP_ABORT_STKCMPCLR);
+        // adiv5_swd_raw_access(dp, ADIV5_DP_ABORT,
+        //                         ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
+        //                         ADIV5_DP_ABORT_STKCMPCLR);
+    }
+
+    void LN_FAST_CODE adiv5_raw_write(const uint32_t ticks, const uint32_t value)
+    {
+        zwrite(ticks, value);
+    }
+
+    uint32_t LN_FAST_CODE adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
+                                               const uint32_t value)
+    {
+        if ((addr & ADIV5_APnDP) && dp->fault)
+            return 0;
+        uint32_t ack = SWDP_ACK_WAIT;
+        switch (rnw)
+        {
+        case ADIV5_LOW_READ: { // read or ...
+                               //_______________________________________________________
+            platform_timeout_s timeout;
+            platform_timeout_set(&timeout, 250U);
+            do
+            {
+                ack = preamble_r(ADIV5_LOW_READ, addr);
+                dLogger("ReadAck = 0x%x\n",ack);
+                if (ack == SWDP_ACK_FAULT)
+                {
+                    DEBUG_ERROR("SWD access resulted in fault, retrying\n");
+                    /* On fault, abort the request and repeat */
+                    /* Yes, this is self-recursive.. no, we can't think of a better option */
+                    adiv_abort_current(dp);
+                }
+            } while ((ack == SWDP_ACK_WAIT || ack == SWDP_ACK_FAULT) && !platform_timeout_is_expired(&timeout));
+            if(!checkReply(dp, ack)) //<=
+            {
+                dLogger("Bailing out\n");
+                return 0;
+            }
+            uint32_t response = zread(32);
+            int oparity = zread(1);
+            int parity = __builtin_popcount(response) & 1;
+            if (parity != oparity)
+            {
+                dLogger("SWD:Wrong read parity\n");
+                dp->fault = 1;
+                raise_exception(EXCEPTION_ERROR, "SWD read parity error");
+            }
+            zwrite(8, 0); // trailing bits
+            return response;
+        }
+        break;
+        case ADIV5_LOW_WRITE: { // write
+                                //_______________________________________________________
+            platform_timeout_s timeout;
+            platform_timeout_set(&timeout, 250U);
+            do
+            {
+                ack = preamble_w(ADIV5_LOW_READ, addr);
+                if (ack == SWDP_ACK_FAULT)
+                {
+                    DEBUG_ERROR("SWD access resulted in fault, retrying\n");
+                    /* On fault, abort the request and repeat */
+                    /* Yes, this is self-recursive.. no, we can't think of a better option */
+                    adiv_abort_current(dp);
+                }
+            } while ((ack == SWDP_ACK_WAIT || ack == SWDP_ACK_FAULT) && !platform_timeout_is_expired(&timeout));
+            if (!checkReply(dp, ack))
+            {
+                return 0;
+            }
+            int parity = __builtin_popcount(value) & 1;
+            zwrite(32, value);
+            zwrite(1, parity);
+            zwrite(8, 0); // trailing bits
+            return 0;
+        }
+        break;
+        default:
+            //______________________________________________
+            xAssert(0);
+            break;
+        }
+    }
+
+// uint32_t swd_delay_cnt = 1;
+#if 0
 /**
  * @brief
  *
@@ -251,98 +328,29 @@ extern "C" uint32_t bmp_get_wait_state_c()
 {
     return swd_delay_cnt;
 }
-extern void gmp_gpio_init_adc();
-/**
+#endif
+    extern void gmp_gpio_init_adc();
+    /**
 
-*/
-void bmp_gpio_init()
-{
-    pSWDIO.hiZ();
-    pSWDIO.hiZ();
-    pSWCLK.hiZ();
-    pSWCLK.hiZ();
-    pReset.hiZ(); // hi-z by default
-    pReset.off(); // hi-z by default
-
-    gmp_gpio_init_adc();
-}
-/**
- * @brief
- *
- */
-void bmp_io_begin_session()
-{
-}
-/**
- * @brief
- *
- */
-void bmp_io_end_session()
-{
-}
-
-/**
- */
-static uint32_t SwdRead(size_t len)
-{
-    return zread(len);
-}
-/**
- */
-static bool SwdRead_parity(uint32_t *ret, size_t len)
-{
-    uint32_t val = zread(len);
-    uint32_t parity = zread(1);
-    bool currentParity = __builtin_parity(val);
-    *ret = val;
-    return currentParity == parity; // should be equal
-}
-/**
-
-*/
-static void SwdWrite(uint32_t MS, size_t ticks)
-{
-    zwrite(ticks, MS);
-}
-/**
- */
-static void SwdWrite_parity(uint32_t MS, size_t ticks)
-{
-    bool parity = __builtin_parity(MS);
-    zwrite(ticks, MS);
-    zwrite(1, parity);
-}
-
-/**
- */
-extern "C" void platform_nrst_set_val(bool assert)
-{
-    if (assert) // force reset to low
+    */
+    void bmp_gpio_init()
     {
-        pReset.on();
+
+        gmp_gpio_init_adc();
     }
-    else // release reset
+    /**
+     * @brief
+     *
+     */
+    void bmp_io_begin_session()
     {
-        pReset.off();
+    }
+    /**
+     * @brief
+     *
+     */
+    void bmp_io_end_session()
+    {
     }
 }
-/**
- */
-extern "C" bool platform_nrst_get_val(void)
-{
-    return pReset.state();
-}
-
-swd_proc_s swd_proc;
-/**
-
-*/
-extern "C" void swdptap_init()
-{
-    swd_proc.seq_in = SwdRead;
-    swd_proc.seq_in_parity = SwdRead_parity;
-    swd_proc.seq_out = SwdWrite;
-    swd_proc.seq_out_parity = SwdWrite_parity;
-}
-
 //--

@@ -24,6 +24,10 @@ extern "C" bool old_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t
 extern void swdioSetAsOutput(bool output);
 extern "C"
 {
+    void adiv5_init()
+    {
+        
+    }
     /**
      * @brief
      *
