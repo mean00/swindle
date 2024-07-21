@@ -40,7 +40,7 @@ static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
 static void rp2040_swd_pio_init();
 
-#if 1
+#if 0
 #define SWD_SPEED 200 * 1000UL
 #else
 #define SWD_SPEED 10 * 1000 * 1000UL

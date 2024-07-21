@@ -72,10 +72,15 @@ extern uint32_t swd_delay_cnt;
 #define BMP_MIN_WS 1
 
 bool rv_dm_reset();
-
+#ifdef USE_RP2040
+SwdPin pSWDIO(TSWDIO_PIN);
+SwdWaitPin pSWCLK(TSWDCK_PIN);
+extern SwdReset pReset;
+#else USE_RP2040
 extern SwdPin pSWDIO;
 extern SwdWaitPin pSWCLK;
 extern SwdReset pReset;
+#endif //USE_RP2040
 
 // data is sampled on transition clock low => clock high
 

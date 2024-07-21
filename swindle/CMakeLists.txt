@@ -193,7 +193,7 @@ ELSE()
                 ENDIF()
         ELSE()
                 SET(EXTRA _rp2040)
-                SET(EXTRA_FILES ${B}/bmp_swdTap.cpp   )
+                SET(EXTRA_FILES ${B}/bmp_swdTap.cpp   ${B}/lnbmp_adiv5_swd.cpp   )
         ENDIF()
         SET(BRIDGE_SRCS 
                 ${EXTRA_FILES}
