@@ -189,7 +189,7 @@ ELSE()
                         SET(EXTRA_FILES  ${CMAKE_BINARY_DIR}/pio_swd.h ${B}/bmp_swdTap_rp2040.cpp ${B}/lnbmp_adiv5_swd_rp2040.cpp )
                 ELSE()
                         SET(EXTRA _ln)
-                        SET(EXTRA_FILES ${B}/bmp_swdTap.cpp   )
+                        SET(EXTRA_FILES ${B}/bmp_swdTap.cpp   ${B}/lnbmp_adiv5_swd.cpp   )
                 ENDIF()
         ELSE()
                 SET(EXTRA _rp2040)
@@ -200,7 +200,6 @@ ELSE()
                 ${B}/bridge.cpp 
                 ${B}/bmp_gpio.cpp  
                 ${B}/bmp_rvTap.cpp                   
-                ${B}/lnbmp_adiv5_swd.cpp   
                 ${B}/bmp_adc${EXTRA}.cpp   
                 ${B}/bmp_serial.cpp  
                 ${B}/bmp_rs_gdb.cpp                

@@ -73,8 +73,8 @@ extern uint32_t swd_delay_cnt;
 
 bool rv_dm_reset();
 
-extern SwdPin pSWDIO;
-extern SwdWaitPin pSWCLK;
+SwdPin pSWDIO(TTMS_PIN);
+SwdWaitPin pSWCLK(TTDI_PIN);
 extern SwdReset pReset;
 
 // data is sampled on transition clock low => clock high
