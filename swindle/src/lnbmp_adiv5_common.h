@@ -26,7 +26,7 @@ void adiv_abort_current(adiv5_debug_port_s *dp)
     //                         ADIV5_DP_ABORT_STKCMPCLR);
 }
 static int checkReply(adiv5_debug_port_s *dp, uint32_t ack)
-{    
+{
     switch (ack)
     {
     case SWDP_ACK_WAIT: {
