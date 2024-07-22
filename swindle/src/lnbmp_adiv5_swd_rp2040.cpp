@@ -31,7 +31,16 @@ extern "C"
     {                                                                                                                  \
     }
 #endif
+
+
+#ifdef USE_RP2040
+#define SWD_SPEED 10 * 1000 * 1000UL
+#else
+#define SWD_SPEED 200 * 1000UL
+#endif
+
 #include "lnbmp_adiv5_common.h"
+#include "lnRP2040_pio.h"
 
 extern void gmp_gpio_init_adc();
 static uint32_t SwdRead(size_t ticks);
@@ -40,14 +49,8 @@ static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
 static void rp2040_swd_pio_init();
 
-#if 0
-#define SWD_SPEED 200 * 1000UL
-#else
-#define SWD_SPEED 10 * 1000 * 1000UL
-#endif
 
 #define PICO_NO_HARDWARE 1
-#define SWD_SM_TO_USE 0
 #include "pio_swd.h"
 
 static rpPIO *swdpio;
@@ -142,14 +145,15 @@ extern "C"
         uint8_t request = xmake_packet_request(access, addr);
         zwrite(8, request);
         uint32_t raw = zread(5); // one extra bit for turn (lsb)
-        return raw >> 1;
+        dLogger("RAW ACK_W: %x\n",raw);
+        return (raw >> 1) & 7; // ignore 2nd turnaround
     }
     int preamble_r(uint8_t access, const uint32_t addr)
     {
         uint8_t request = xmake_packet_request(access, addr);
         zwrite(8, request);
-        uint32_t raw = zread(4);
-        dLogger("Raw reply =0x%x\n", raw);
+        uint32_t raw = zread(4);        
+        dLogger("RAW ACK_R: %x\n",raw);
         return raw >> 1;
     }
 
@@ -344,7 +348,7 @@ void rp2040_swd_pio_init()
     lnPin pin_swd = _mapping[TSWDIO_PIN];
     lnPin pin_clk = _mapping[TSWDCK_PIN];
     swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
-    xsm = swdpio->getSm(SWD_SM_TO_USE);
+    xsm = swdpio->getSm( 0);
 
     lnPinMode(pin_swd, (lnGpioMode)(lnRP_PIO0_MODE + LN_SWD_PIO_ENGINE));
     lnPinMode(pin_clk, (lnGpioMode)(lnRP_PIO0_MODE + LN_SWD_PIO_ENGINE));

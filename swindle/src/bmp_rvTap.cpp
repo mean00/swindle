@@ -56,7 +56,27 @@ extern uint32_t swd_delay_cnt;
 #endif
 
 #include "bmp_rvTap.h"
-
+#ifdef USE_RP2040
+extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
+{
+    xAssert(0);
+    return true;
+}
+extern "C" bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
+{
+    xAssert(0);
+    return true;
+}
+extern "C" bool bmp_rv_dm_reset_c()
+{
+    xAssert(0);
+    return true;
+}
+extern "C" bool rvswd_scan()
+{
+    return false;
+}
+#else
 #define pRVDIO pSWDIO
 #define pRVCLK pSWCLK
 #define Rvswd_delay_cnt swd_delay_cnt
@@ -467,5 +487,5 @@ extern "C"
         return rv_dm_reset();
     }
 }
-
+#endif
 // EOF

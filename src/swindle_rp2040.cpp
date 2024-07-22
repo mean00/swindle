@@ -45,6 +45,11 @@ void loop()
     Logger("Starting picoSwindle\n");
     user_init();
 
+    while (0)
+    {     
+        lnDelayMs(100);
+    }
+
     lnPin pin = PIN_TO_USE;
     rpPIO xpio( LN_WS2812_PIO_ENGINE );
     rpPIO_SM *xsm = xpio.getSm(0);
@@ -61,6 +66,7 @@ void loop()
     xsm->setBitOrder(false,true);
     xsm->uploadCode(sizeof(ws_program_instructions) / 2, ws_program_instructions, ws_wrap_target, ws_wrap);
     xsm->configure(pinConfig);
+    xsm->setPinDir(pin, true);
     xsm->execute();
 
     int pix = 0;
