@@ -54,7 +54,7 @@ void loop()
     rpPIO xpio( LN_WS2812_PIO_ENGINE );
     rpPIO_SM *xsm = xpio.getSm(0);
 
-    lnPinMode(pin, (lnGpioMode)(lnRP_PIO0_MODE+  LN_WS2812_PIO_ENGINE) );
+    lnPinModePIO(pin,   LN_WS2812_PIO_ENGINE );
 
     rpPIO_pinConfig pinConfig;
     pinConfig.sets.pinNb = 1;
