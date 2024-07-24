@@ -32,8 +32,8 @@ extern "C"
     }
 #endif
 
-#ifdef USE_RP2040
-#define SWD_SPEED 10 * 1000 * 1000UL
+#if 1 // USE_RP2040
+#define SWD_SPEED 40 * 1000 * 1000UL
 #else
 #define SWD_SPEED 200 * 1000UL
 #endif
@@ -152,7 +152,7 @@ extern "C"
         zwrite(8, request);
         uint32_t raw = zread(4);
         dLogger("RAW ACK_R: %x\n", raw);
-        return (raw >> 1)&7;
+        return (raw >> 1) & 7;
     }
 
     /**
@@ -348,8 +348,8 @@ void rp2040_swd_pio_init()
     swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
     xsm = swdpio->getSm(0);
 
-    lnPinMode(pin_swd, (lnGpioMode)(lnRP_PIO0_MODE + LN_SWD_PIO_ENGINE));
-    lnPinMode(pin_clk, (lnGpioMode)(lnRP_PIO0_MODE + LN_SWD_PIO_ENGINE));
+    lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE);
+    lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
 
     rpPIO_pinConfig pinConfig;
     pinConfig.sets.pinNb = 1;
