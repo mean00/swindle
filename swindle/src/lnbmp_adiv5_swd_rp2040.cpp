@@ -16,6 +16,11 @@ extern "C"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
 #include "ln_rp_pio.h"
+extern "C" {
+#include "hardware/structs/clocks.h"
+uint32_t clock_get_hz(enum clock_index clk_index);
+}
+
 // clang-format on
 #include "pio_swd.h"
 // #include "lnArduino.h"
@@ -32,7 +37,7 @@ extern "C"
     }
 #endif
 
-#if 1 // USE_RP2040
+#if 0 // USE_RP2040
 #define SWD_SPEED 40 * 1000 * 1000UL
 #else
 #define SWD_SPEED 200 * 1000UL
@@ -46,8 +51,8 @@ static uint32_t SwdRead(size_t ticks);
 static bool SwdRead_parity(uint32_t *ret, size_t ticks);
 static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
+static void rp2040_swd_pio_change_clock(uint32_t fq);
 static void rp2040_swd_pio_init();
-
 #define PICO_NO_HARDWARE 1
 #include "pio_swd.h"
 
@@ -301,6 +306,9 @@ extern "C"
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
     swd_delay_cnt = ws;
+    uint32_t fq=   clock_get_hz(clk_sys);
+    fq=fq/(3+ws);
+    rp2040_swd_pio_change_clock(fq);
 }
 /**
  * @brief
@@ -369,6 +377,15 @@ void rp2040_swd_pio_init()
     xsm->execute();
     return;
 }
+/**
+ */
+void rp2040_swd_pio_change_clock(uint32_t fq)
+{
+    xsm->stop();
+    xsm->setSpeed(fq);
+    xsm->execute();
+}
+
 /**
  */
 static uint32_t SwdRead(size_t len)
