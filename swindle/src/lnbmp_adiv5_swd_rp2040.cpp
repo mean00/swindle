@@ -168,7 +168,7 @@ extern "C"
      * @return true
      * @return false
      */
-    bool LN_FAST_CODE adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+    bool LN_FAST_CODE ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
     {
         int parity = lnOddParity(data);
         uint32_t res = preamble_w(ADIV5_LOW_WRITE, addr);
@@ -191,7 +191,7 @@ extern "C"
      * @param addr
      * @return uint32_t
      */
-    uint32_t LN_FAST_CODE adiv5_swd_read_no_check(const uint16_t addr)
+    uint32_t LN_FAST_CODE ln_adiv5_swd_read_no_check(const uint16_t addr)
     {
         uint32_t ret = preamble_r(ADIV5_LOW_READ, addr);
         if (ret != SWDP_ACK_OK)
@@ -212,18 +212,18 @@ extern "C"
         return ret;
     }
 
-    void LN_FAST_CODE adiv5_raw_write(const uint32_t ticks, const uint32_t value)
+    void LN_FAST_CODE ln_adiv5_raw_write(const uint32_t ticks, const uint32_t value)
     {
         zwrite(ticks, value);
     }
-    uint32_t LN_FAST_CODE adiv5_raw_read_parity(const uint32_t ticks)
+    uint32_t LN_FAST_CODE ln_adiv5_raw_read_parity(const uint32_t ticks)
     {
         uint32_t val = zread(32);
         zread(1);
         return val;
     }
 
-    uint32_t LN_FAST_CODE adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
+    uint32_t LN_FAST_CODE ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
                                                const uint32_t value)
     {
         if ((addr & ADIV5_APnDP) && dp->fault)

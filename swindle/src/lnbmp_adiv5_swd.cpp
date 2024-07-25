@@ -53,8 +53,6 @@ SwdPin pSWDIO(TSWDIO_PIN);
 SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
 SwdReset pReset(TRESET_PIN);
 
-extern "C" uint32_t old_adiv5_swd_read_no_check(const uint16_t addr);
-extern "C" bool old_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
 extern void swdioSetAsOutput(bool output);
 extern swd_proc_s swd_proc;
 #define LN_FAST_CODE
@@ -97,7 +95,7 @@ extern swd_proc_s swd_proc;
 extern "C"
 {
 
-    void LN_FAST_CODE adiv5_raw_write(const uint32_t ticks, const uint32_t value)
+    void LN_FAST_CODE ln_adiv5_raw_write(const uint32_t ticks, const uint32_t value)
     {
         uint32_t val = value;
         XOUTPUT();
@@ -107,7 +105,7 @@ extern "C"
             val >>= 1;
         }
     }
-    uint32_t LN_FAST_CODE adiv5_raw_read_parity(const uint32_t ticks)
+    uint32_t LN_FAST_CODE ln_adiv5_raw_read_parity(const uint32_t ticks)
     {
         uint32_t bit;
         uint32_t val = 0;
@@ -251,7 +249,7 @@ extern "C"
      * @return true
      * @return false
      */
-    bool LN_FAST_CODE adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+    bool LN_FAST_CODE ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
     {
         uint32_t cpy = data;
         int parity = lnOddParity(data);
@@ -285,7 +283,7 @@ extern "C"
      * @param addr
      * @return uint32_t
      */
-    uint32_t LN_FAST_CODE adiv5_swd_read_no_check(const uint16_t addr)
+    uint32_t LN_FAST_CODE ln_adiv5_swd_read_no_check(const uint16_t addr)
     {
         uint32_t ret = preamble_r(addr);
         if (ret != SWDP_ACK_OK)
@@ -323,7 +321,7 @@ extern "C"
     /**
                     RAW ACCESS
      */
-    uint32_t LN_FAST_CODE adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
+    uint32_t LN_FAST_CODE ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
                                                const uint32_t value)
     {
         if ((addr & ADIV5_APnDP) && dp->fault)
