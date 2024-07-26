@@ -1,5 +1,7 @@
 /*
  *  This is a streamlined version of adiv5_swd.c
+ *  The actual SWD fq is (125 Mhz/4) / (3+ws)
+ *  with a default ws value of 4 it means 4 Mb/s =~ 250 ns per tick
  */
 // clang-format off
 extern "C"
@@ -37,11 +39,6 @@ uint32_t clock_get_hz(enum clock_index clk_index);
     }
 #endif
 
-#if 0 // USE_RP2040
-#define SWD_SPEED 40 * 1000 * 1000UL
-#else
-#define SWD_SPEED 200 * 1000UL
-#endif
 
 #include "lnRP2040_pio.h"
 #include "lnbmp_adiv5_common.h"
@@ -60,6 +57,7 @@ static rpPIO *swdpio;
 rpPIO_SM *xsm;
 uint32_t swd_delay_cnt = 4;
 SwdReset pReset(TRESET_PIN);
+
 
 /**
  *  write size bits over PIO
@@ -84,6 +82,13 @@ static uint32_t zread(uint32_t size)
     xsm->read(1, &value);
     return value >> (32 - size);
 }
+
+ static uint32_t getFqFromWs()
+ {
+    uint32_t fq = clock_get_hz(clk_sys);
+    fq=fq/(3+swd_delay_cnt);
+    return fq;
+ }
 /**
  *
  */
@@ -304,11 +309,8 @@ extern "C"
  *
  */
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
-{
-    swd_delay_cnt = ws;
-    uint32_t fq=   clock_get_hz(clk_sys);
-    fq=fq/(3+ws);
-    rp2040_swd_pio_change_clock(fq);
+{    
+    rp2040_swd_pio_change_clock(getFqFromWs());
 }
 /**
  * @brief
@@ -367,7 +369,7 @@ void rp2040_swd_pio_init()
     pinConfig.inputs.pinNb = 1;
     pinConfig.inputs.startPin = pin_swd;
 
-    xsm->setSpeed(SWD_SPEED);
+    xsm->setSpeed(getFqFromWs());
     xsm->setBitOrder(true, false);
     xsm->setPinDir(pin_swd, true);
     xsm->setPinDir(pin_clk, true);
