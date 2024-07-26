@@ -35,30 +35,24 @@ IO is sampled when clock goes ___---
 
  */
 #include "lnArduino.h"
-#include "lnBMP_pinout.h"
 
 extern "C"
 {
 #include "jep106.h"
 #include "riscv_debug.h"
 }
+#include "ln_rp_pio.h"
 
-extern "C" void bmp_set_wait_state_c(uint32_t ws);
-extern "C" uint32_t bmp_get_wait_state_c();
+extern rpPIO_SM *xsm;
+
 
 extern void bmp_io_begin_session();
 extern void bmp_gpio_init();
 extern uint32_t swd_delay_cnt;
 
-#include "lnBMP_swdio.h"
-#if PC_HOSTED == 0
-#include "lnBMP_pinout.h"
-#endif
 
 #include "bmp_rvTap.h"
-#define pRVDIO pSWDIO
-#define pRVCLK pSWCLK
-#define Rvswd_delay_cnt swd_delay_cnt
+#include "lnBMP_swdio.h"
 
 #warning this is duplicated from riscv_jtag_dtm
 #define RV_DMI_NOOP 0U
@@ -71,9 +65,8 @@ extern uint32_t swd_delay_cnt;
 #define BMP_MIN_WS 1
 
 bool rv_dm_reset();
-extern SwdPin pSWDIO;
-extern SwdWaitPin pSWCLK;
 extern SwdReset pReset;
+
 // data is sampled on transition clock low => clock high
 
 #define PUT_BIT(x)                                                                                                     \
@@ -106,6 +99,30 @@ static inline int parity8(uint8_t x)
 {
     return (par_table[x >> 4] ^ par_table[x & 0xf]);
 }
+
+/**
+ *  write size bits over PIO
+ */
+static void zwrite(uint32_t size, uint32_t value)
+{
+    uint32_t zsize = ((size - 1) << 1) | 1;
+    xsm->waitTxEmpty();
+    xsm->write(1, &zsize);
+    xsm->write(1, &value);
+}
+/**
+ *  read size bits over PIO
+ */
+static uint32_t zread(uint32_t size)
+{
+    uint32_t zsize = ((size - 1) << 1) | 0;
+    uint32_t value = 0;
+    xsm->waitTxEmpty();
+    xsm->write(1, &zsize);
+    xsm->waitRxReady();
+    xsm->read(1, &value);
+    return value >> (32 - size);
+}
 /**
  * @brief
  *
@@ -116,6 +133,7 @@ static inline int parity8(uint8_t x)
  */
 bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
 {
+#ifdef NONONO    
     // start bit
     pRVDIO.output();
     pRVDIO.off(); // io going low if CLK is high = start
@@ -153,6 +171,8 @@ bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
     pRVCLK.clockOn();
 
     return true;
+#endif
+    return false;    
 }
 /**
  * @brief read 4 status bit then send a stop bit
@@ -161,6 +181,7 @@ bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
  */
 bool LN_FAST_CODE rv_end_frame(uint32_t *status)
 {
+    #ifdef NONONO
     uint32_t out = 0;
     uint8_t bit;
 
@@ -192,12 +213,15 @@ bool LN_FAST_CODE rv_end_frame(uint32_t *status)
         return false;
     }
     return out;
+    #endif
+    return 0;
 }
 
 /**
  */
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
 {
+    #ifdef NONONO
     uint32_t status = 0;
     rv_start_frame(adr, &status, true);
 
@@ -221,6 +245,9 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
         return false;
     }
     return true;
+    #endif
+    return false;
+
 }
 /**
  * @brief
@@ -232,6 +259,7 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
  */
 bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 {
+    #ifdef NONONO
     uint32_t status;
     rv_start_frame(adr, &status, false);
 
@@ -254,6 +282,8 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
         return false;
     }
     return true;
+    #endif
+    return false;
 }
 /**
  * @brief
@@ -263,6 +293,7 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
  */
 bool rv_dm_reset()
 {
+    #ifdef NONONO
     // toggle the clock 100 times
     pRVDIO.output();
     pRVDIO.off(); //
@@ -277,6 +308,8 @@ bool rv_dm_reset()
     RV_WAIT();
     lnDelayMs(10);
     return true;
+    #endif
+    return false;
 }
 
 #define WR(a, b) rv_dm_write(a, b)
@@ -292,6 +325,7 @@ bool rv_dm_reset()
  */
 bool rv_dm_start()
 {
+    #ifdef NONONO
     int ws = bmp_get_wait_state_c();
     if (ws < BMP_MIN_WS)
         ws = BMP_MIN_WS;
@@ -301,6 +335,8 @@ bool rv_dm_start()
 
     rv_dm_reset();
     return true;
+    #endif
+    return false;
 }
 
 bool rv_dm_probe(uint32_t *chip_id)
@@ -459,4 +495,5 @@ extern "C"
         return rv_dm_reset();
     }
 }
+
 // EOF
