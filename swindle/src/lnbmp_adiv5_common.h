@@ -13,13 +13,14 @@ static inline uint32_t lnOddParity(uint32_t value)
 }
 /**
  */
+extern "C" bool LN_FAST_CODE ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
 void adiv_abort_current(adiv5_debug_port_s *dp)
 {
     // We change a bit the sequence here to avoid recursion
     // not completely sure it is ok
     // low_access(dp, ADIV5_LOW_WRITE, addr, value);
 
-    adiv5_swd_write_no_check(ADIV5_DP_ABORT, ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR |
+    ln_adiv5_swd_write_no_check(ADIV5_DP_ABORT, ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR |
                                                  ADIV5_DP_ABORT_STKERRCLR | ADIV5_DP_ABORT_STKCMPCLR);
     // adiv5_swd_raw_access(dp, ADIV5_DP_ABORT,
     //                         ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
