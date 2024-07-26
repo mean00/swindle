@@ -356,7 +356,7 @@ void rp2040_swd_pio_init()
     swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
     xsm = swdpio->getSm(0);
 
-    lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE);
+    lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE,true);
     lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
 
     rpPIO_pinConfig pinConfig;
