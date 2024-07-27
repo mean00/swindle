@@ -1,0 +1,38 @@
+;
+; Write 2 words
+;    nb Write bits (8 or 32)
+;    value to write
+; 
+;
+.program swd
+.side_set 1 opt
+begin:
+    pull            ; size (8..32 bits)
+    out  y 1 
+    jmp !y rread 
+;;_______________________________
+;; write : Sample on rising edge clock
+;;_______________________________
+    out  y,8      
+    pull                  ; value (8..32 bits)
+    set pindirs 1         ; start SWDIO low    / SWCLK low    
+lp1:        
+    out x,1      side 0   ; pop one LSB bit    
+    mov pins, x           ; out data
+    nop
+    jmp y-- lp1  side 1   ; and clock out
+out1:
+    jmp begin    
+;;_______________________________
+;; read : sample on falling edge
+;;_______________________________
+rread:
+    set pindirs  0        ; SWDIO as input 
+    out  y,8     side 1     
+lp2:        
+    nop          side 0
+    in  pins,1   side 0         ; pop one LSB bit    
+    jmp y-- lp2  side 1       
+out2:
+    push        
+

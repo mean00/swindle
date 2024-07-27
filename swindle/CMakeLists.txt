@@ -183,15 +183,20 @@ ELSE()
         #  add swindle target code and host connection stuff
         IF(USE_RP2040)
             SET(EXTRA _rp2040)
+            IF(FALSE)
+                    RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/swd.pio ${CMAKE_BINARY_DIR}/bmp_pio_swd.h)
+                    SET( EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${B}/bmp_rvTap${EXTRA}.cpp   ${B}/bmp_swdTap${EXTRA}.cpp   )
+            ELSE()
+                    SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp   )
+            ENDIF()
         ELSE()
             SET(EXTRA _ln)
+            SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp   )
         ENDIF()
         SET(BRIDGE_SRCS 
                 ${B}/bridge.cpp 
                 ${B}/bmp_gpio.cpp  
-                ${B}/bmp_rvTap${EXTRA}.cpp   
-                ${B}/bmp_swdTap${EXTRA}.cpp   
-                ${B}/lnbmp_adiv5_swd.cpp   
+                #${B}/lnbmp_adiv5_swd.cpp   
                 ${B}/bmp_adc${EXTRA}.cpp   
                 ${B}/bmp_serial.cpp  
                 ${B}/bmp_rs_gdb.cpp                
@@ -243,7 +248,7 @@ SET(BM_TARGET
                 )
 #----------
 
-add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} )
+add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE} )
 target_include_directories( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 IF (_HOSTED) 

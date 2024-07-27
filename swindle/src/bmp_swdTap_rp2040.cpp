@@ -36,25 +36,69 @@ extern "C"
 #include "general.h"
 #include "timing.h"
 }
-extern void gmp_gpio_init_adc();
 
-uint32_t swd_delay_cnt = 4;
-
-#include "lnBMP_swdio.h"
-#if PC_HOSTED == 0
 #include "lnBMP_pinout.h"
-#endif
+#include "lnBMP_swdio.h"
+#include "ln_rp_pio.h"
+// clang-format on
+#include "lnRP2040_pio.h"
+extern "C"
+{
+#include "hardware/structs/clocks.h"
+    uint32_t clock_get_hz(enum clock_index clk_index);
+#include "bmp_pio_swd.h"
+}
 
+extern void gmp_gpio_init_adc();
 static uint32_t SwdRead(size_t ticks);
 static bool SwdRead_parity(uint32_t *ret, size_t ticks);
 static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
-void swdioSetAsOutput(bool output);
-
-SwdPin pSWDIO(TSWDIO_PIN);
-SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
+static rpPIO *swdpio;
+rpPIO_SM *xsm;
+uint32_t swd_delay_cnt = 4;
 SwdReset pReset(TRESET_PIN);
+
+/**
+ *  write size bits over PIO
+ */
+static void zwrite(uint32_t size, uint32_t value)
+{
+    uint32_t zsize = ((size - 1) << 1) | 1;
+    xsm->waitTxEmpty();
+    xsm->write(1, &zsize);
+    xsm->write(1, &value);
+}
+/**
+ *  read size bits over PIO
+ */
+static uint32_t zread(uint32_t size)
+{
+    uint32_t zsize = ((size - 1) << 1) | 0;
+    uint32_t value = 0;
+    xsm->waitTxEmpty();
+    xsm->write(1, &zsize);
+    xsm->waitRxReady();
+    xsm->read(1, &value);
+    return value >> (32 - size);
+}
+/**
+ */
+static uint32_t getFqFromWs()
+{
+    uint32_t fq = clock_get_hz(clk_sys);
+    fq = fq / (3 + swd_delay_cnt);
+    return fq;
+}
+/**
+ */
+void rp2040_swd_pio_change_clock(uint32_t fq)
+{
+    xsm->stop();
+    xsm->setSpeed(fq);
+    xsm->execute();
+}
 
 /**
  * @brief
@@ -63,6 +107,7 @@ SwdReset pReset(TRESET_PIN);
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
     swd_delay_cnt = ws;
+    rp2040_swd_pio_change_clock(getFqFromWs());
 }
 /**
  * @brief
@@ -78,11 +123,31 @@ extern "C" uint32_t bmp_get_wait_state_c()
 */
 void bmp_gpio_init()
 {
-    pSWDIO.hiZ();
-    pSWDIO.hiZ();
-    pSWCLK.hiZ();
-    pSWCLK.hiZ();
-    pReset.hiZ(); // hi-z by default
+    lnPin pin_swd = _mapping[TSWDIO_PIN];
+    lnPin pin_clk = _mapping[TSWDCK_PIN];
+    swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
+    xsm = swdpio->getSm(0);
+
+    lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE, true);
+    lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
+
+    rpPIO_pinConfig pinConfig;
+    pinConfig.sets.pinNb = 1;
+    pinConfig.sets.startPin = pin_swd;
+    pinConfig.outputs.pinNb = 1;
+    pinConfig.outputs.startPin = pin_swd;
+    pinConfig.inputs.pinNb = 1;
+    pinConfig.inputs.startPin = pin_swd;
+
+    xsm->setSpeed(getFqFromWs());
+    xsm->setBitOrder(true, false);
+    xsm->setPinDir(pin_swd, true);
+    xsm->setPinDir(pin_clk, true);
+    xsm->uploadCode(sizeof(swd_program_instructions) / 2, swd_program_instructions, swd_wrap_target, swd_wrap);
+    xsm->configure(pinConfig);
+    xsm->configureSideSet(pin_clk, 1, 2, true);
+    xsm->execute();
+
     pReset.off(); // hi-z by default
 
     gmp_gpio_init_adc();
@@ -93,10 +158,6 @@ void bmp_gpio_init()
  */
 void bmp_io_begin_session()
 {
-    pSWDIO.on();
-    pSWDIO.output();
-    pSWCLK.clockOn();
-    pSWCLK.output();
     pReset.off(); // hi-z by default
 }
 /**
@@ -105,10 +166,6 @@ void bmp_io_begin_session()
  */
 void bmp_io_end_session()
 {
-    pSWDIO.hiZ();
-    pSWDIO.hiZ();
-    pSWCLK.hiZ();
-    pSWCLK.hiZ();
     pReset.off(); // hi-z by default
 }
 
@@ -116,6 +173,7 @@ void bmp_io_end_session()
  */
 static uint32_t SwdRead(size_t len)
 {
+    /*
     uint32_t index = 1;
     uint32_t ret = 0;
     int bit;
@@ -132,11 +190,14 @@ static uint32_t SwdRead(size_t len)
     }
     pSWCLK.clockOff();
     return ret;
+    */
+    return 0;
 }
 /**
  */
 static bool SwdRead_parity(uint32_t *ret, size_t len)
 {
+    /*
     uint32_t res = 0;
     res = SwdRead(len);
     bool currentParity = __builtin_parity(res);
@@ -145,12 +206,15 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
     *ret = res;
     swdioSetAsOutput(true);
     return currentParity == parityBit; // should be equal
+    */
+    return 0;
 }
 /**
 
 */
 static void SwdWrite(uint32_t MS, size_t ticks)
 {
+    /*
     // int cnt;
     swdioSetAsOutput(true);
     for (int i = 0; i < ticks; i++)
@@ -161,16 +225,20 @@ static void SwdWrite(uint32_t MS, size_t ticks)
         MS >>= 1;
     }
     pSWCLK.clockOff();
+    */
 }
 /**
  */
 static void SwdWrite_parity(uint32_t MS, size_t ticks)
 {
+
+    /*
     bool parity = __builtin_parity(MS);
     SwdWrite(MS, ticks);
     pSWDIO.set(parity);
     pSWCLK.clockOn();
     pSWCLK.clockOff();
+    */
 }
 
 /**
@@ -187,18 +255,22 @@ void LN_FAST_CODE swdioSetAsOutput(bool output)
     {
     case false: // in
     {
+        /*
         pSWDIO.input();
         pSWCLK.wait();
         pSWCLK.clockOn();
+        */
         break;
     }
     break;
     case true: // out
     {
+        /*
         pSWCLK.clockOff();
         pSWCLK.clockOn();
         pSWCLK.clockOff();
         pSWDIO.output();
+        */
         break;
     }
     default:
