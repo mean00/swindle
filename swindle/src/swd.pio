@@ -31,8 +31,8 @@ rread:
     out  y,8     side 1     
 lp2:        
     nop          side 0
-    in  pins,1   side 0         ; pop one LSB bit    
+    in  pins,1   side 0   ; pop one LSB bit    
     jmp y-- lp2  side 1       
 out2:
-    push        
+    push         side 0
 
