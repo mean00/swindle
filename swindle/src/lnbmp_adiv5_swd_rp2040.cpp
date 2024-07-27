@@ -310,6 +310,7 @@ extern "C"
  */
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {    
+    swd_delay_cnt=ws;
     rp2040_swd_pio_change_clock(getFqFromWs());
 }
 /**
