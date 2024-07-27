@@ -189,8 +189,8 @@ ELSE()
         SET(BRIDGE_SRCS 
                 ${B}/bridge.cpp 
                 ${B}/bmp_gpio.cpp  
-                ${B}/bmp_rvTap.cpp   
-                ${B}/bmp_swdTap.cpp   
+                ${B}/bmp_rvTap${EXTRA}.cpp   
+                ${B}/bmp_swdTap${EXTRA}.cpp   
                 ${B}/lnbmp_adiv5_swd.cpp   
                 ${B}/bmp_adc${EXTRA}.cpp   
                 ${B}/bmp_serial.cpp  
