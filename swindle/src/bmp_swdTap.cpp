@@ -44,6 +44,7 @@ uint32_t swd_delay_cnt = 4;
 #if PC_HOSTED == 0
 #include "lnBMP_pinout.h"
 #endif
+#include "lnbmp_parity.h"
 
 static uint32_t SwdRead(size_t ticks);
 static bool SwdRead_parity(uint32_t *ret, size_t ticks);
@@ -227,6 +228,18 @@ extern "C" bool platform_nrst_get_val(void)
 }
 
 swd_proc_s swd_proc;
+
+#define LN_READ_BIT(value)                                                                                             \
+    pSWCLK.pulseClock();                                                                                               \
+    uint32_t bit = pSWDIO.read();                                                                                      \
+    if (bit)                                                                                                           \
+        value |= index;                                                                                                \
+    index <<= 1;
+
+#define LN_WRITE_BIT(value)                                                                                            \
+    pSWDIO.set(value & 1);                                                                                             \
+    pSWCLK.pulseClock();
+
 /**
 
 */
@@ -238,25 +251,102 @@ extern "C" void swdptap_init()
     swd_proc.seq_out_parity = SwdWrite_parity;
 }
 /**
+    \fn ln_adiv5_swd_write_no_check
  */
 extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
-    const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
-    swd_proc.seq_out(request, 8U);
-    const uint8_t res = swd_proc.seq_in(3U);
-    swd_proc.seq_out_parity(data, 32U);
-    swd_proc.seq_out(0, 8U);
-    return res != SWDP_ACK_OK;
+    uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
+    uint32_t index;
+    uint32_t ack;
+
+    xAssert(oldDrive);
+    for (int i = 0; i < 8; i++)
+    {
+        LN_WRITE_BIT(request & 1);
+        request >>= 1;
+    }
+    index = 1;
+    ack = 0;
+    oldDrive = false;
+    pSWDIO.input();
+    // pSWCLK.wait();
+
+    for (int i = 0; i < 3; i++)
+    {
+        LN_READ_BIT(ack);
+    }
+
+    //--
+    uint32_t MS = data;
+    bool parity = lnOddParity(MS);
+    pSWDIO.output();
+    oldDrive = true;
+    LN_WRITE_BIT(1);
+    LN_WRITE_BIT(1);
+
+    for (int i = 0; i < 32; i++)
+    {
+        LN_WRITE_BIT(MS);
+        MS >>= 1;
+    }
+    LN_WRITE_BIT(parity);
+
+    for (int i = 0; i < 8; i++)
+    {
+        LN_WRITE_BIT(0);
+    }
+    oldDrive = true;
+    return ack != SWDP_ACK_OK;
 }
 
+/**
+        \fn ln_adiv5_swd_read_no_check
+
+ */
 extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
-    const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
-    swd_proc.seq_out(request, 8U);
-    const uint8_t res = swd_proc.seq_in(3U);
+    uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
+    uint32_t index;
+
+    xAssert(oldDrive);
+
+    // Request
+    for (int i = 0; i < 8; i++)
+    {
+        LN_WRITE_BIT(request);
+        request >>= 1;
+    }
+
+    pSWDIO.input();
+    pSWCLK.wait();
+
+    index = 1;
+    uint32_t ack = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        LN_READ_BIT(ack);
+    }
+
     uint32_t data = 0;
-    swd_proc.seq_in_parity(&data, 32U);
-    swd_proc.seq_out(0, 8U);
-    return res == SWDP_ACK_OK ? data : 0;
+    index = 1;
+    for (int i = 0; i < 32; i++)
+    {
+        LN_READ_BIT(data);
+    }
+    // bool currentParity = __builtin_parity(data); ignore parity lnOddParity
+    index = 1;
+    bool parityBit = 0;
+    LN_READ_BIT(parityBit);
+    //--
+    // swdioSetAsOutput(true);
+    oldDrive = true;
+    // LN_WRITE_BIT(0);
+    pSWDIO.output();
+    LN_WRITE_BIT(0);
+    for (int i = 0; i < 7; i++)
+    {
+        LN_WRITE_BIT(0);
+    }
+    return ack == SWDP_ACK_OK ? data : 0;
 }
 // EOF
