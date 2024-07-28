@@ -21,11 +21,12 @@ begin:
     pull                  ; value (8..32 bits)
     set pindirs 1         ; start SWDIO low    / SWCLK low    
 lp1:        
-    out x,1      side 0   ; pop one LSB bit    
+    out x,1               ; pop one LSB bit    
     mov pins, x           ; out data
     jmp y-- lp1  side 1   ; and clock out
+    nop          side 0
 out1:
-    jmp begin    side 0
+    jmp begin    
 ;;_______________________________
 ;; read : sample on falling edge
 ;;_______________________________
@@ -33,9 +34,10 @@ rread:
     set pindirs  0        ; SWDIO as input 
     out  y,8     
 lp2:       
-    nop          side 0     
+    nop          side 1
+    nop          side 0
     in  pins,1            ; pop one LSB bit        
-    jmp y-- lp2  side 1        
+    jmp y-- lp2  
 out2:
-    push         side 0
+    push         
 
