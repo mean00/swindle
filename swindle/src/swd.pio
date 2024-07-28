@@ -32,10 +32,10 @@ out1:
 rread:
     set pindirs  0        ; SWDIO as input 
     out  y,8     
-lp2:        
-    nop          side 1
-    in  pins,1   side 0   ; pop one LSB bit    
-    jmp y-- lp2          
+lp2:       
+    nop          side 0     
+    in  pins,1            ; pop one LSB bit        
+    jmp y-- lp2  side 1        
 out2:
-    push         
+    push         side 0
 

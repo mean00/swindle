@@ -22,5 +22,6 @@ APPLY_PATCH_IF_NEEDED3(patched21 ${BMP_PATCH_FOLDER}/blackmagic_riscv_flashstub_
 APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/blackmagic_riscv_disable_interrupt_during_step.patch ${LNBMP_TOP_FOLDER}   "disable interrupt during single step")
 APPLY_PATCH_IF_NEEDED3(patched26 ${BMP_PATCH_FOLDER}/blackmagic_riscv_check_watchpoint.patch ${LNBMP_TOP_FOLDER}   "explictely fail when we cant put watchpoints")
 #APPLY_PATCH_IF_NEEDED3(patched30 ${BMP_PATCH_FOLDER}/blackmagic_override_adiv_swd.patch ${LNBMP_TOP_FOLDER}   "override adiv5 swd functions")
+APPLY_PATCH_IF_NEEDED3(patched31 ${BMP_PATCH_FOLDER}/blackmagic_redirect_adiv5_to_ln.patch ${LNBMP_TOP_FOLDER}   "redirect adiv5_xx_no_check to ln_adiv5xxx_no_check swd functions")
 
 

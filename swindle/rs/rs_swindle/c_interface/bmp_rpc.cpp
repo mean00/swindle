@@ -14,6 +14,9 @@ extern "C"
 }
 #include "lnBMP_version.h"
 
+extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
+extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
+
 static adiv5_debug_port_s remote_dp = {
     .ap_read = adiv5_ap_reg_read,
     .ap_write = adiv5_ap_reg_write,
@@ -31,8 +34,8 @@ extern "C" int32_t semihosting_request(target_s *target, uint32_t syscall, uint3
 
 extern "C" bool bmp_rpc_init_swd_c()
 {
-    remote_dp.write_no_check = adiv5_swd_write_no_check;
-    remote_dp.read_no_check = adiv5_swd_read_no_check;
+    remote_dp.write_no_check = ln_adiv5_swd_write_no_check;
+    remote_dp.read_no_check = ln_adiv5_swd_read_no_check;
     remote_dp.dp_read = adiv5_swd_read;
     remote_dp.error = adiv5_swd_clear_error;
     remote_dp.low_access = adiv5_swd_raw_access;

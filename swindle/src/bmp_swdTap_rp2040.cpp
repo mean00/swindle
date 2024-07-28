@@ -48,7 +48,7 @@ extern "C"
     uint32_t clock_get_hz(enum clock_index clk_index);
 #include "bmp_pio_swd.h"
 }
-
+#include "lnbmp_parity.h"
 extern void gmp_gpio_init_adc();
 static uint32_t SwdRead(size_t ticks);
 static bool SwdRead_parity(uint32_t *ret, size_t ticks);
@@ -57,9 +57,9 @@ static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
 static rpPIO *swdpio;
 rpPIO_SM *xsm;
-uint32_t swd_delay_cnt = 4;
+uint32_t swd_delay_cnt = 50;
 SwdReset pReset(TRESET_PIN);
-
+#define lnOddParity __builtin_parity
 /**
  *  write size bits over PIO
  */
@@ -83,6 +83,7 @@ static uint32_t zread(uint32_t size)
     xsm->read(1, &value);
     return value >> (32 - size);
 }
+
 /**
  */
 static uint32_t getFqFromWs()
@@ -170,9 +171,49 @@ void bmp_io_end_session()
 }
 
 /**
+    properly invert SWDIO direction if needed
+*/
+static bool oldDrive = true;
+static void swdioSetAsOutput(bool output)
+{
+    if (output == oldDrive)
+        return;
+    oldDrive = output;
+
+    switch ((int)output)
+    {
+    case false: // write->read
+    {
+        zwrite(1, 1);
+        /*
+        pSWDIO.input();
+        pSWCLK.wait();
+        pSWCLK.clockOn();
+        */
+        break;
+    }
+    break;
+    case true: // read->write
+    {
+        zwrite(2, 3);
+        /*
+        pSWCLK.clockOff();
+        pSWCLK.clockOn();
+        pSWCLK.clockOff();
+        pSWDIO.output();
+        */
+        break;
+    }
+    default:
+        break;
+    }
+}
+/**
  */
 static uint32_t SwdRead(size_t len)
 {
+    swdioSetAsOutput(false);
+    return zread(len);
     /*
     uint32_t index = 1;
     uint32_t ret = 0;
@@ -197,85 +238,41 @@ static uint32_t SwdRead(size_t len)
  */
 static bool SwdRead_parity(uint32_t *ret, size_t len)
 {
-    /*
-    uint32_t res = 0;
-    res = SwdRead(len);
-    bool currentParity = __builtin_parity(res);
-    bool parityBit = (pSWDIO.read() == 1);
-    pSWCLK.clockOn();
-    *ret = res;
-    swdioSetAsOutput(true);
-    return currentParity == parityBit; // should be equal
-    */
-    return 0;
+
+    *ret = SwdRead(len);
+    uint32_t par = SwdRead(1) & 1;
+    bool currentParity = lnOddParity(*ret);
+    // swdioSetAsOutput(true);
+    oldDrive = true;
+    return true; // currentParity == par; // should be equal
 }
 /**
 
 */
 static void SwdWrite(uint32_t MS, size_t ticks)
 {
-    /*
-    // int cnt;
     swdioSetAsOutput(true);
-    for (int i = 0; i < ticks; i++)
-    {
+    zwrite(ticks, MS);
+
+    /*
+      for (int i = 0; i < ticks; i++)
+        {
+            pSWCLK.clockOff();
+            pSWDIO.set(MS & 1);
+            pSWCLK.clockOn();
+            MS >>= 1;
+        }
         pSWCLK.clockOff();
-        pSWDIO.set(MS & 1);
-        pSWCLK.clockOn();
-        MS >>= 1;
-    }
-    pSWCLK.clockOff();
     */
 }
 /**
  */
 static void SwdWrite_parity(uint32_t MS, size_t ticks)
 {
-
-    /*
-    bool parity = __builtin_parity(MS);
-    SwdWrite(MS, ticks);
-    pSWDIO.set(parity);
-    pSWCLK.clockOn();
-    pSWCLK.clockOff();
-    */
-}
-
-/**
-    properly invert SWDIO direction if needed
-*/
-static bool oldDrive = false;
-void LN_FAST_CODE swdioSetAsOutput(bool output)
-{
-    if (output == oldDrive)
-        return;
-    oldDrive = output;
-
-    switch ((int)output)
-    {
-    case false: // in
-    {
-        /*
-        pSWDIO.input();
-        pSWCLK.wait();
-        pSWCLK.clockOn();
-        */
-        break;
-    }
-    break;
-    case true: // out
-    {
-        /*
-        pSWCLK.clockOff();
-        pSWCLK.clockOn();
-        pSWCLK.clockOff();
-        pSWDIO.output();
-        */
-        break;
-    }
-    default:
-        break;
-    }
+    bool parity = lnOddParity(MS);
+    swdioSetAsOutput(true);
+    zwrite(ticks, MS);
+    zwrite(1, parity);
 }
 
 /**

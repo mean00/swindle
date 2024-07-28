@@ -237,5 +237,26 @@ extern "C" void swdptap_init()
     swd_proc.seq_out = SwdWrite;
     swd_proc.seq_out_parity = SwdWrite_parity;
 }
+/**
+ */
+extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+{
+    const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
+    swd_proc.seq_out(request, 8U);
+    const uint8_t res = swd_proc.seq_in(3U);
+    swd_proc.seq_out_parity(data, 32U);
+    swd_proc.seq_out(0, 8U);
+    return res != SWDP_ACK_OK;
+}
 
+extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
+{
+    const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
+    swd_proc.seq_out(request, 8U);
+    const uint8_t res = swd_proc.seq_in(3U);
+    uint32_t data = 0;
+    swd_proc.seq_in_parity(&data, 32U);
+    swd_proc.seq_out(0, 8U);
+    return res == SWDP_ACK_OK ? data : 0;
+}
 // EOF
