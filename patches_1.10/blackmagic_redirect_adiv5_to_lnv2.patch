@@ -1,0 +1,119 @@
+diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
+index 124195bb..362df9d8 100644
+--- a/src/target/adiv5_swd.c
++++ b/src/target/adiv5_swd.c
+@@ -53,7 +53,7 @@ uint8_t make_packet_request(uint8_t rnw, uint16_t addr)
+ }
+ 
+ /* Provide bare DP access functions without timeout and exception */
+-
++extern void ln_raw_swd_write(uint32_t tick, uint32_t value);
+ static void swd_line_reset_sequence(const bool idle_cycles)
+ {
+ 	/*
+@@ -62,8 +62,11 @@ static void swd_line_reset_sequence(const bool idle_cycles)
+ 	 *
+ 	 * for robustness, we use 60 HIGH cycles and 4 idle cycles
+ 	 */
+-	swd_proc.seq_out(0xffffffffU, 32U);                     /* 32 cycles HIGH */
+-	swd_proc.seq_out(0x0fffffffU, idle_cycles ? 32U : 28U); /* 28 cycles HIGH + 4 idle cycles if idle is requested */
++	//swd_proc.seq_out(0xffffffffU, 32U);                     /* 32 cycles HIGH */
++	//swd_proc.seq_out(0x0fffffffU, idle_cycles ? 32U : 28U); /* 28 cycles HIGH + 4 idle cycles if idle is requested */
++	ln_raw_swd_write(32, 0xffffffffU);
++	ln_raw_swd_write(idle_cycles ? 32U : 28U, 0x0fffffffU);
++
+ }
+ 
+ /* Switch out of dormant state into SWD */
+@@ -79,10 +82,14 @@ static void dormant_to_swd_sequence(void)
+ 	/* Send at least 8 SWCLKTCK cycles with SWDIOTMS HIGH */
+ 	swd_line_reset_sequence(false);
+ 	/* Send the 128-bit Selection Alert sequence on SWDIOTMS */
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_0, 32U);
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_1, 32U);
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_2, 32U);
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_3, 32U);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_0);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_1);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_2);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_3);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_0, 32U);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_1, 32U);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_2, 32U);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_3, 32U);
+ 	/*
+ 	 * We combine the last two sequences in a single seq_out as an optimization
+ 	 *
+@@ -92,7 +99,8 @@ static void dormant_to_swd_sequence(void)
+ 	 * The bits are shifted out to the right, so we shift the second sequence left by the size of the first sequence
+ 	 * The first sequence is 4 bits and the second 8 bits, totaling 12 bits in the combined sequence
+ 	 */
+-	swd_proc.seq_out(ADIV5_ACTIVATION_CODE_ARM_SWD_DP << 4U, 12U);
++	//swd_proc.seq_out(ADIV5_ACTIVATION_CODE_ARM_SWD_DP << 4U, 12U);
++	ln_raw_swd_write(12,ADIV5_ACTIVATION_CODE_ARM_SWD_DP << 4U);
+ 
+ 	/*
+ 	 * The target is in the protocol error state after selecting SWD
+@@ -116,7 +124,8 @@ static void jtag_to_swd_sequence(void)
+ 	swd_line_reset_sequence(false);
+ 
+ 	/* Send the 16-bit JTAG-to-SWD select sequence on SWDIO/TMS */
+-	swd_proc.seq_out(ADIV5_JTAG_TO_SWD_SELECT_SEQUENCE, 16U);
++	//swd_proc.seq_out(ADIV5_JTAG_TO_SWD_SELECT_SEQUENCE, 16U);
++	ln_raw_swd_write(16,ADIV5_JTAG_TO_SWD_SELECT_SEQUENCE);
+ 
+ 	/*
+ 	 * This ensures that if a SWD/JTAG DP was already in SWD operation before sending the select sequence,
+@@ -125,7 +134,7 @@ static void jtag_to_swd_sequence(void)
+ 	swd_line_reset_sequence(true);
+ }
+ 
+-bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
++bool xadiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+ {
+ 	const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
+ 	swd_proc.seq_out(request, 8U);
+@@ -135,7 +144,7 @@ bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+ 	return res != SWDP_ACK_OK;
+ }
+ 
+-uint32_t adiv5_swd_read_no_check(const uint16_t addr)
++uint32_t xadiv5_swd_read_no_check(const uint16_t addr)
+ {
+ 	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
+ 	swd_proc.seq_out(request, 8U);
+@@ -145,7 +154,10 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
+ 	swd_proc.seq_out(0, 8U);
+ 	return res == SWDP_ACK_OK ? data : 0;
+ }
+-
++//
++extern bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
++extern uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
++extern uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value);
+ bool adiv5_swd_scan(const uint32_t targetid)
+ {
+ 	/* Free the device list if any */
+@@ -157,10 +169,10 @@ bool adiv5_swd_scan(const uint32_t targetid)
+ 		return false;
+ 	}
+ 
+-	dp->write_no_check = adiv5_swd_write_no_check;
+-	dp->read_no_check = adiv5_swd_read_no_check;
++	dp->write_no_check = ln_adiv5_swd_write_no_check;
++	dp->read_no_check = ln_adiv5_swd_read_no_check;
+ 	dp->dp_read = adiv5_swd_read;
+-	dp->low_access = adiv5_swd_raw_access;
++	dp->low_access = ln_adiv5_swd_raw_access;
+ 	dp->error = adiv5_swd_clear_error;
+ 	dp->abort = adiv5_swd_abort;
+ 
+@@ -375,7 +387,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
+ 	return err;
+ }
+ 
+-uint32_t adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value)
++uint32_t xadiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value)
+ {
+ 	if ((addr & ADIV5_APnDP) && dp->fault)
+ 		return 0;
