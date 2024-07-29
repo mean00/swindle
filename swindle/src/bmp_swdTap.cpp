@@ -112,11 +112,11 @@ void bmp_io_end_session()
     pSWCLK.hiZ();
     pReset.off(); // hi-z by default
 }
-
 /**
  */
 static uint32_t SwdRead(size_t len)
 {
+    xAssert(0);
     uint32_t index = 1;
     uint32_t ret = 0;
     int bit;
@@ -138,6 +138,7 @@ static uint32_t SwdRead(size_t len)
  */
 static bool SwdRead_parity(uint32_t *ret, size_t len)
 {
+    xAssert(0);
     uint32_t res = 0;
     res = SwdRead(len);
     bool currentParity = __builtin_parity(res);
@@ -152,6 +153,7 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
 */
 static void SwdWrite(uint32_t MS, size_t ticks)
 {
+    xAssert(0);
     // int cnt;
     swdioSetAsOutput(true);
     for (int i = 0; i < ticks; i++)
@@ -167,6 +169,7 @@ static void SwdWrite(uint32_t MS, size_t ticks)
  */
 static void SwdWrite_parity(uint32_t MS, size_t ticks)
 {
+    xAssert(0);
     bool parity = __builtin_parity(MS);
     SwdWrite(MS, ticks);
     pSWDIO.set(parity);
@@ -392,11 +395,8 @@ done:
     {
         uint32_t index = 1;
         uint32_t response = zread(32);
-
-        //--
-        bool currentParity = lnOddParity(response);
         bool parityBit = zread(3) & 1;
-
+        bool currentParity = lnOddParity(response);
         pSWDIO.output();
         zwrite(8, 0);
         oldDrive = true;
@@ -419,5 +419,14 @@ done:
     zwrite(8, 0);
     return 0;
     //--
+}
+
+/**
+ */
+extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
+{
+    pSWDIO.output();
+    oldDrive = 1;
+    zwrite(tick, value);
 }
 // EOF
