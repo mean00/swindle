@@ -183,7 +183,7 @@ ELSE()
         #  add swindle target code and host connection stuff
         IF(USE_RP2040)
             SET(EXTRA _rp2040)
-            IF(FALSE)
+            IF(TRUE)
                     RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/swd.pio ${CMAKE_BINARY_DIR}/bmp_pio_swd.h)
                     SET( EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${B}/bmp_rvTap${EXTRA}.cpp   ${B}/bmp_swdTap${EXTRA}.cpp   )
             ELSE()

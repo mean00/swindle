@@ -50,10 +50,25 @@ extern "C"
 }
 #include "lnbmp_parity.h"
 extern void gmp_gpio_init_adc();
-static uint32_t SwdRead(size_t ticks);
-static bool SwdRead_parity(uint32_t *ret, size_t ticks);
-static void SwdWrite(uint32_t MS, size_t ticks);
-static void SwdWrite_parity(uint32_t MS, size_t ticks);
+
+static uint32_t SwdRead(size_t ticks)
+{
+    xAssert(0);
+    return 0;
+}
+static bool SwdRead_parity(uint32_t *ret, size_t ticks)
+{
+    xAssert(0);
+    return 0;
+}
+static void SwdWrite(uint32_t MS, size_t ticks)
+{
+    xAssert(0);
+}
+static void SwdWrite_parity(uint32_t MS, size_t ticks)
+{
+    xAssert(0);
+}
 
 static rpPIO *swdpio;
 rpPIO_SM *xsm;
@@ -169,112 +184,6 @@ void bmp_io_end_session()
 {
     pReset.off(); // hi-z by default
 }
-
-/**
-    properly invert SWDIO direction if needed
-*/
-static bool oldDrive = true;
-static void swdioSetAsOutput(bool output)
-{
-    if (output == oldDrive)
-        return;
-    oldDrive = output;
-
-    switch ((int)output)
-    {
-    case false: // write->read
-    {
-        zwrite(1, 1);
-        /*
-        pSWDIO.input();
-        pSWCLK.wait();
-        pSWCLK.clockOn();
-        */
-        break;
-    }
-    break;
-    case true: // read->write
-    {
-        zwrite(2, 3);
-        /*
-        pSWCLK.clockOff();
-        pSWCLK.clockOn();
-        pSWCLK.clockOff();
-        pSWDIO.output();
-        */
-        break;
-    }
-    default:
-        break;
-    }
-}
-/**
- */
-static uint32_t SwdRead(size_t len)
-{
-    swdioSetAsOutput(false);
-    return zread(len);
-    /*
-    uint32_t index = 1;
-    uint32_t ret = 0;
-    int bit;
-
-    swdioSetAsOutput(false);
-    for (int i = 0; i < len; i++)
-    {
-        pSWCLK.clockOff();
-        bit = pSWDIO.read();
-        if (bit)
-            ret |= index;
-        pSWCLK.clockOn();
-        index <<= 1;
-    }
-    pSWCLK.clockOff();
-    return ret;
-    */
-    return 0;
-}
-/**
- */
-static bool SwdRead_parity(uint32_t *ret, size_t len)
-{
-
-    *ret = SwdRead(len);
-    uint32_t par = SwdRead(1) & 1;
-    bool currentParity = lnOddParity(*ret);
-    // swdioSetAsOutput(true);
-    oldDrive = true;
-    return true; // currentParity == par; // should be equal
-}
-/**
-
-*/
-static void SwdWrite(uint32_t MS, size_t ticks)
-{
-    swdioSetAsOutput(true);
-    zwrite(ticks, MS);
-
-    /*
-      for (int i = 0; i < ticks; i++)
-        {
-            pSWCLK.clockOff();
-            pSWDIO.set(MS & 1);
-            pSWCLK.clockOn();
-            MS >>= 1;
-        }
-        pSWCLK.clockOff();
-    */
-}
-/**
- */
-static void SwdWrite_parity(uint32_t MS, size_t ticks)
-{
-    bool parity = lnOddParity(MS);
-    swdioSetAsOutput(true);
-    zwrite(ticks, MS);
-    zwrite(1, parity);
-}
-
 /**
  */
 extern "C" void platform_nrst_set_val(bool assert)
@@ -307,4 +216,134 @@ extern "C" void swdptap_init()
     swd_proc.seq_out_parity = SwdWrite_parity;
 }
 
+/**
+    \fn ln_adiv5_swd_write_no_check
+ */
+extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+{
+    uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
+    zwrite(8, request);
+    uint32_t ack = zread(3);
+    bool parity = lnOddParity(data);
+    zwrite(2, 0x03);
+    zwrite(32, data);
+    zwrite(1, parity);
+    zwrite(8, 0);
+    return ack != SWDP_ACK_OK;
+}
+
+/**
+        \fn ln_adiv5_swd_read_no_check
+
+ */
+extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
+{
+    uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
+    zwrite(8, request);
+    uint32_t ack = zread(3);
+    uint32_t data = zread(32);
+    bool parity = zread(1);
+    zwrite(8, 0);
+    return ack == SWDP_ACK_OK ? data : 0;
+}
+/**
+        \fn ln_adiv5_swd_raw_access
+
+ */
+extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
+                                            const uint32_t value)
+{
+    //
+    if ((addr & ADIV5_APnDP) && dp->fault)
+        return 0;
+
+    const uint8_t request = make_packet_request(rnw, addr);
+    uint8_t ack = SWDP_ACK_WAIT;
+    platform_timeout_s timeout;
+    platform_timeout_set(&timeout, 250U);
+    while (1)
+    {
+
+        zwrite(8, request);
+        uint32_t ack = zread(3);
+        bool expired = platform_timeout_is_expired(&timeout);
+        if (ack == SWDP_ACK_OK)
+        {
+            goto done;
+        }
+        // if we get here, we are retrying
+        // switch back to output
+        zwrite(2, 0x03);
+        switch (ack)
+        {
+        case SWDP_ACK_OK:
+            xAssert(0);
+            break;
+        case SWDP_ACK_NO_RESPONSE:
+            DEBUG_ERROR("SWD access resulted in no response\n");
+            dp->fault = ack;
+            return 0;
+
+        case SWDP_ACK_WAIT:
+            if (expired)
+            {
+                DEBUG_ERROR("SWD access resulted in wait, aborting\n");
+                dp->abort(dp, ADIV5_DP_ABORT_DAPABORT);
+                dp->fault = ack;
+                return 0;
+            }
+            break;
+        case SWDP_ACK_FAULT:
+            if (expired)
+            {
+                DEBUG_ERROR("SWD access resulted in fault\n");
+                dp->fault = ack;
+                return 0;
+            }
+            DEBUG_ERROR("SWD access resulted in fault, retrying\n");
+            /* On fault, abort the request and repeat */
+            /* Yes, this is self-recursive.. no, we can't think of a better option */
+            adiv5_dp_write(dp, ADIV5_DP_ABORT,
+                           ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
+                               ADIV5_DP_ABORT_STKCMPCLR);
+            break;
+        default:
+            DEBUG_ERROR("SWD access has invalid ack %x\n", ack);
+            raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
+            break;
+        }
+    }
+done:
+    // We are out of read sequence, CLK is low
+    if (rnw) // read ****************************************** HERE *************************
+    {
+        uint32_t index = 1;
+        uint32_t response = zread(32);
+        bool parityBit = zread(3) & 1;
+        bool currentParity = lnOddParity(response);
+        zwrite(8, 0);
+        if (currentParity != parityBit)
+        { /* Give up on parity error */
+            dp->fault = 1U;
+            DEBUG_ERROR("SWD access resulted in parity error\n");
+            raise_exception(EXCEPTION_ERROR, "SWD parity error");
+        }
+        return response;
+    }
+    // write
+    bool parity = lnOddParity(value);
+    zwrite(2, 0x03);
+    zwrite(32, value);
+    zwrite(1, parity);
+    zwrite(8, 0);
+    return 0;
+    //--
+}
+
+/**
+ */
+extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
+{
+    zwrite(tick, value);
+}
 // EOF

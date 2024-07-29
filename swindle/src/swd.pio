@@ -23,8 +23,9 @@ begin:
 lp1:        
     out x,1               ; pop one LSB bit    
     mov pins, x           ; out data
-    jmp y-- lp1  side 1   ; and clock out
-    nop          side 0
+    nop          side 1
+    jmp y-- lp1  side 0   ; and clock out
+    
 out1:
     jmp begin    
 ;;_______________________________
