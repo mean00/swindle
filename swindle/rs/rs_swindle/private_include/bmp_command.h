@@ -6,8 +6,8 @@ typedef int bool;
 void bmp_set_wait_state_c(unsigned int ws); // this is used to set the clock on SWD
 unsigned int bmp_get_wait_state_c();        // this is used to set the clock on SWD
 
-bool cmd_swd_scan(const target_s *t, int argc, const char **argv);
-bool cmd_rvswd_scan(const target_s *t, int argc, const char **argv);
+bool cmd_swd_scan(const target_s *t, int argc, const unsigned char **argv);
+bool cmd_rvswd_scan(const target_s *t, int argc, const unsigned char **argv);
 
 bool bmp_attach_c(uint32_t target);
 bool bmp_detach_c(uint32_t target);
@@ -19,7 +19,7 @@ bool bmp_map_get_c(const uint32_t, const uint32_t, uint32_t *start, uint32_t *si
 unsigned int bmp_registers_count_c();
 bool bmp_read_register_c(const unsigned int reg, unsigned int *val);
 bool bmp_read_registers_c(unsigned int *val); // carefull, must be able to store all regs
-const char *bmp_target_description_c();
+const unsigned char *bmp_target_description_c();
 void bmp_target_description_clear_c();
 
 bool bmp_write_reg_c(const unsigned int reg, const unsigned int value);
@@ -70,19 +70,19 @@ int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_sel
 // platform
 void platform_nrst_set_val(bool assert);
 bool platform_nrst_get_val();
-const char *platform_target_voltage(void);
+const unsigned char *platform_target_voltage(void);
 void platform_target_clk_output_enable(bool enable);
 
 //
-void Logger2(int n, const char *fmt);
-const char *list_enabled_boards();
+void Logger2(int n, const unsigned char *fmt);
+const unsigned char *list_enabled_boards();
 //
 void bmp_pin_set(uint8_t pin, uint8_t value);
 uint8_t bmp_pin_get(uint8_t pin);
 void bmp_pin_direction(uint8_t pin, uint8_t output); // output = 1, input =0
 //
 void bmp_test();
-const char *bmp_get_version_string(void);
+const unsigned char *bmp_get_version_string(void);
 //
 bool bmp_mon_c(const unsigned char *str);
 uint32_t free_heap_c();
@@ -99,3 +99,11 @@ int platform_buffer_read(uint8_t *data, int maxsize);
 int platform_buffer_write(const uint8_t *data, int size);
 int platform_buffer_write_buffered(const uint8_t *data, int size);
 void platform_write_flush();
+
+// adiv
+void bmp_clear_dp_fault_c();
+
+bool bmp_adiv5_swd_write_no_check_c(const uint16_t addr, const uint32_t data);
+uint32_t bmp_adiv5_swd_read_no_check_c(const uint16_t addr);
+void bmp_raw_swd_write_c(uint32_t tick, uint32_t value);
+uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t addr, const uint32_t value, uint32_t *fault);

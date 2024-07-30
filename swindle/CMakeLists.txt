@@ -143,6 +143,7 @@ IF (SWINDLE_HOSTED)
             ${HOSTED}/remote/protocol_v4_adiv5.c  
 
             ${BMP_EXTRA}/hosted/remote_rv_protocol.c
+            ${BMP_EXTRA}/hosted/remote_adiv5.c
 
             ${PC}/utils.c
             ${PC}/cli.c       

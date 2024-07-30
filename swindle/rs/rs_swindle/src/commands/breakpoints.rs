@@ -14,7 +14,7 @@ use crate::bmp;
 use alloc::vec;
 use alloc::vec::Vec;
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};
 use crate::{bmplog, bmpwarning};
 

@@ -16,13 +16,14 @@ mod glue;
 mod packet_symbols;
 mod parsing_util;
 mod rn_bmp_cmd_c;
-mod rpc;
+//mod rpc;
+pub mod rpc_common;
+#[cfg(feature = "hosted")]
+pub mod rpc_host;
+#[cfg(not(feature = "hosted"))]
+pub mod rpc_target;
 mod sw_breakpoints;
 mod util;
-
-// This should only be included in host mode
-#[cfg(not(target_os = "none"))]
-mod hosted_rpc;
 
 use crate::decoder::gdb_stream;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
@@ -126,7 +127,8 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             if !s.is_empty() {
                                 //bmplog!("--> ACK\n");
                                 //rngdb_send_data( CHAR_ACK );
-                                rpc::rpc::rpc(s);
+                                #[cfg(not(feature = "hosted"))]
+                                crate::rpc_target::rpc(s);
                                 bmplog!("Rpc done\n");
                             }
                         }

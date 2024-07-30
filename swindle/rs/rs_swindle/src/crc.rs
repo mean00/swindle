@@ -50,24 +50,10 @@ TODO
 // Local
 // In that case we compute the CRC directly on the BMP itself
 //----------
-//#[cfg(target_os = "none")]
 pub fn abstract_crc32(address: u32, len: u32, crc: &mut u32) -> bool {
     let status: bool;
     bmplog!("local CRC\n");
     (status, *crc) = do_local_crc32(address, len); // Native
     status
-}
-//----------
-// Remote
-// in that case we do a RPC call so that the remote BMP does the computation
-// should be much faster
-//----------
-#[cfg(not(target_os = "none"))]
-use crate::hosted_rpc::remote_rpc::remote_crc32;
-
-#[cfg(not(target_os = "none"))]
-pub fn abstract_crc32_not(address: u32, len: u32, crc: &mut u32) -> bool {
-    bmpwarning!("remote CRC\n");
-    remote_crc32(address, len, crc) // remote
 }
 // EOF

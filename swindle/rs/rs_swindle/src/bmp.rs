@@ -1,6 +1,7 @@
 use crate::commands;
 use crate::commands::run::HaltState;
 use crate::rn_bmp_cmd_c;
+use crate::rn_bmp_cmd_c::bool_;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::ffi::CStr;
@@ -28,7 +29,7 @@ pub struct MemoryBlock {
 pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c()).to_str() {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c() as *const i8).to_str() {
             Ok(x) => x,
             Err(_y) => "",
         }
@@ -286,44 +287,6 @@ pub fn rpc_init_swd() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rpc_init_swd_c()) }
 }
 /*
-*/
-pub fn rpc_swd_in(value: &mut u32, nb_bits: u32) -> bool {
-    unsafe {
-        let ptr: *mut u32 = value;
-        ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_in_c(ptr, nb_bits))
-    }
-}
-/*
-*/
-pub fn bmp_rpc_swd_in_par(value: &mut u32, xparity: &mut bool, nb_bits: u32) -> bool {
-    unsafe {
-        let ptr: *mut u32 = value;
-        let mut pari32: i32 = 0;
-        let ptr_bool: *mut i32 = &mut pari32;
-
-        let r = ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_in_par_c(ptr, ptr_bool, nb_bits));
-        *xparity = pari32 != 0;
-        r
-    }
-}
-
-pub fn bmp_rpc_swd_in(value: &mut u32, nb_bits: u32) -> bool {
-    unsafe {
-        let ptr: *mut u32 = value;
-        ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_in_c(ptr, nb_bits))
-    }
-}
-/*
-*/
-pub fn bmp_rpc_swd_out(value: u32, nb_bits: u32) -> bool {
-    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_out_c(value, nb_bits)) }
-}
-/*
-*/
-pub fn bmp_rpc_swd_out_par(value: u32, nb_bits: u32) -> bool {
-    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rpc_swd_out_par_c(value, nb_bits)) }
-}
-/*
 ----------------- platform --------------
  */
 
@@ -338,12 +301,17 @@ pub fn bmp_platform_nrst_get_val() -> bool {
 pub fn bmp_platform_target_clk_output_enable(enable: bool) {
     unsafe { rn_bmp_cmd_c::platform_target_clk_output_enable(enable as i32) }
 }
+pub fn dummyFun() -> *const u8 {
+    let s: &'static str = "aaa";
+    let p: *const u8 = s.as_ptr();
+    p
+}
 /*
  *
  */
 pub fn bmplog(s: &str) {
     unsafe {
-        rn_bmp_cmd_c::Logger2(s.len() as i32, s.as_ptr() as *const i8);
+        rn_bmp_cmd_c::Logger2(s.len() as i32, s.as_ptr() as *const u8);
     }
 }
 /*
@@ -351,6 +319,14 @@ pub fn bmplog(s: &str) {
  */
 pub fn bmp_adiv5_ap_read(device_index: u32, ap_selection: u32, address: u32) -> u32 {
     unsafe { rn_bmp_cmd_c::bmp_adiv5_ap_read_c(device_index, ap_selection, address) }
+}
+/**
+ *
+ */
+pub fn bmp_clear_dp_fault() {
+    unsafe {
+        rn_bmp_cmd_c::bmp_clear_dp_fault_c();
+    }
 }
 /*
  *
@@ -452,7 +428,7 @@ pub fn bmp_supported_boards() -> &'static str {
     unsafe {
         let boards = rn_bmp_cmd_c::list_enabled_boards();
 
-        let output = CStr::from_ptr(boards).to_str();
+        let output = CStr::from_ptr(boards as *const i8).to_str();
         if let Ok(x) = output {
             return x;
         }
@@ -464,7 +440,7 @@ pub fn bmp_supported_boards() -> &'static str {
  */
 pub fn bmp_get_version() -> &'static str {
     unsafe {
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string()).to_str() {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string() as *const i8).to_str() {
             Ok(x) => x,
             _ => "??",
         }
@@ -533,7 +509,21 @@ pub fn bmp_rvswdp_probe(id: &mut u32) -> bool {
     let id_ptr: *mut u32 = id;
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rv_rvswd_probe_c(id_ptr)) }
 }
-
+//
+// ln_adiv wrapper
+//
+pub fn bmp_adiv5_swd_write_no_check(addr: u16, data: u32) -> bool {
+    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_adiv5_swd_write_no_check_c(addr, data)) }
+}
+pub fn bmp_adiv5_swd_read_no_check(addr: u16) -> u32 {
+    unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_read_no_check_c(addr) }
+}
+pub fn bmp_raw_swd_write(tick: u32, value: u32) {
+    unsafe { rn_bmp_cmd_c::bmp_raw_swd_write_c(tick, value) }
+}
+pub fn bmp_adiv5_swd_raw_access(rnw: u8, addr: u16, value: u32, fault: *mut u32) -> u32 {
+    unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_raw_access_c(rnw, addr, value, fault) }
+}
 /*
  */
 // EOF

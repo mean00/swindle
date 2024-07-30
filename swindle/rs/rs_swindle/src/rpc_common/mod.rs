@@ -7,7 +7,10 @@ pub const RPC_GEN_PACKET: u8 = b'G';
 pub const RPC_HL_PACKET: u8 = b'H';
 pub const RPC_ADIV5_PACKET: u8 = b'A';
 pub const RPC_RV_PACKET: u8 = b'B';
+pub const RPC_LNADIV_PACKET: u8 = b'L';
 pub const RPC_SWINDLE_PACKET: u8 = b'Z';
+pub const RPC_SPI_PACKET: u8 = b's';
+/* SPI Packets */
 
 /* Generic protocol elements */
 pub const RPC_START: u8 = b'A';
@@ -48,6 +51,7 @@ pub const RPC_ERROR_EXCEPTION: u8 = 4;
 /* High level protocol elements */
 pub const RPC_HL_VERSION: u8 = 3;
 pub const RPC_HL_CHECK: u8 = b'C';
+pub const RPC_HL_ACCEL: u8 = b'A';
 pub const RPC_DP_READ: u8 = b'd';
 pub const RPC_LOW_ACCESS: u8 = b'L';
 pub const RPC_RAW_ACCESS_V3: u8 = b'R';
@@ -81,4 +85,9 @@ pub const RPC_RV_DM_WRITE: u8 = b'w';
 
 /* swindle packet */
 pub const RPC_SWINDLE_CRC32: u8 = b'C';
+/* LNADIV packet */
+pub const RPC_LNADIV_WRITE: u8 = b'W';
+pub const RPC_LNADIV_READ: u8 = b'R';
+pub const RPC_LNADIV_RAW_WRITE: u8 = b'A';
+pub const RPC_LNADIV_LOWLEVEL: u8 = b'B';
 /* -- */

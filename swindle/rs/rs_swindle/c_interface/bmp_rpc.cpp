@@ -19,13 +19,26 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
 extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
                                             const uint32_t value);
 
-static adiv5_debug_port_s remote_dp = {
+adiv5_debug_port_s remote_dp = {
+    .write_no_check = ln_adiv5_swd_write_no_check,
+    .read_no_check = ln_adiv5_swd_read_no_check,
+    .dp_read = adiv5_swd_read,
+    .error = adiv5_swd_clear_error,
+    .low_access = ln_adiv5_swd_raw_access,
+    .abort = adiv5_swd_abort,
     .ap_read = adiv5_ap_reg_read,
     .ap_write = adiv5_ap_reg_write,
     .mem_read = advi5_mem_read_bytes,
     .mem_write = adiv5_mem_write_bytes,
 };
-
+/**
+ */
+extern "C" void bmp_clear_dp_fault_c()
+{
+    remote_dp.fault = 0;
+}
+/**
+ */
 extern "C" int32_t semihosting_request(target_s *target, uint32_t syscall, uint32_t r1)
 {
     return -1;
@@ -36,42 +49,7 @@ extern "C" int32_t semihosting_request(target_s *target, uint32_t syscall, uint3
 
 extern "C" bool bmp_rpc_init_swd_c()
 {
-    remote_dp.write_no_check = ln_adiv5_swd_write_no_check;
-    remote_dp.read_no_check = ln_adiv5_swd_read_no_check;
-    remote_dp.dp_read = adiv5_swd_read;
-    remote_dp.error = adiv5_swd_clear_error;
-    remote_dp.low_access = ln_adiv5_swd_raw_access;
-    remote_dp.abort = adiv5_swd_abort;
-    //
     swdptap_init();
-    return true;
-}
-/*
- */
-extern "C" bool bmp_rpc_swd_in_c(uint32_t *value, uint32_t nb_bits)
-{
-    *value = swd_proc.seq_in(nb_bits);
-    return true;
-}
-/*
- */
-extern "C" bool bmp_rpc_swd_in_par_c(uint32_t *value, bool *par, uint32_t nb_bits)
-{
-    *par = swd_proc.seq_in_parity(value, nb_bits);
-    return true;
-}
-/*
- */
-extern "C" bool bmp_rpc_swd_out_c(const uint32_t value, uint32_t nb_bits)
-{
-    swd_proc.seq_out(value, nb_bits);
-    return true;
-}
-/*
- */
-extern "C" bool bmp_rpc_swd_out_par_c(const uint32_t value, uint32_t nb_bits)
-{
-    swd_proc.seq_out_parity(value, nb_bits);
     return true;
 }
 /**
@@ -83,6 +61,50 @@ extern "C" bool bmp_rpc_swd_out_par_c(const uint32_t value, uint32_t nb_bits)
     adiv5_access_port_s remote_ap;                                                                                     \
     remote_ap.apsel = ap_selection;                                                                                    \
     remote_ap.dp = &remote_dp;
+
+/**
+        \fn ln_adiv5_swd_read_no_check
+
+ */
+extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
+                                            const uint32_t value);
+extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
+extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
+extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value);
+/**
+ */
+extern "C" uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t addr, const uint32_t value,
+                                               uint32_t *fault)
+{
+    TRY(EXCEPTION_ALL)
+    {
+        uint32_t ret = ln_adiv5_swd_raw_access(&remote_dp, rnw, addr, value);
+        *fault = remote_dp.fault;
+        return ret;
+    }
+    CATCH()
+    {
+    default:
+        *fault = 0xff; // special marker for raise
+        return 0;
+    }
+}
+//--
+extern "C" bool bmp_adiv5_swd_write_no_check_c(const uint16_t addr, const uint32_t data)
+{
+    return ln_adiv5_swd_write_no_check(addr, data);
+}
+//---
+extern "C" uint32_t bmp_adiv5_swd_read_no_check_c(const uint16_t addr)
+{
+    return ln_adiv5_swd_read_no_check(addr);
+}
+//---
+extern "C" void bmp_raw_swd_write_c(uint32_t tick, uint32_t value)
+{
+    ln_raw_swd_write(tick, value);
+}
+//----
 
 extern "C" bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection,
                                          const uint16_t address, int32_t *err, uint32_t *value)

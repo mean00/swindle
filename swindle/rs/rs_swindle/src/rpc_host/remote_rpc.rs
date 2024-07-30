@@ -2,16 +2,19 @@
  * This file is used by the host in bmpa mode
  * It is NOT used by lnBMP as a standalone probe
  */
-use crate::hosted_rpc::remote_encoder::*;
+use crate::rpc_host::remote_encoder::*;
 
 use crate::bmplogger::*;
 use crate::parsing_util::ascii_hex_string_to_u8s;
 use crate::parsing_util::ascii_octet_to_hex;
 use crate::parsing_util::u8s_string_to_u32_le;
-use crate::rpc::rpc_commands::*;
+use crate::rpc_common::*;
+use crate::rpc_host::remote_encoder::*;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+
+crate::gdb_print_init!();
+use crate::{bmplog, bmpwarning, gdb_print};
 
 use crate::rn_bmp_cmd_c::platform_buffer_read;
 
@@ -110,6 +113,73 @@ pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
     }
     *out_crc = u8s_string_to_u32_le(&reply[1..]);
     true
+}
+//-------------------------------------------------------------------------------
+#[no_mangle]
+pub fn remote_adiv5_swd_write_no_check_rs(addr: u16, data: u32) -> bool {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_WRITE]);
+    e.add_u32_le(addr as u32);
+    e.add_u32_le(data);
+    e.end();
+    // now get the reply
+    let reply = remote_get_reply();
+    if !check_reply(reply, 8) {
+        gdb_print!("Incorret reply to adiv_swd_write\n");
+        return false;
+    }
+    true
+}
+#[no_mangle]
+//---------------------
+pub fn remote_raw_swd_write_rs(tick: u32, value: u32) {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_RAW_WRITE]);
+    e.add_u32_le(tick);
+    e.add_u32_le(value);
+    e.end();
+    // now get the reply
+    let reply = remote_get_reply();
+    if !check_reply(reply, 8) {
+        gdb_print!("Incorret reply to adiv_swd_raw_write\n");
+    }
+}
+//---------------------
+#[no_mangle]
+pub fn remote_adiv5_swd_read_no_check_rs(addr: u16) -> u32 {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_READ]);
+    e.add_u32_le(addr as u32);
+    e.end();
+    // now get the reply
+    let reply = remote_get_reply();
+    if !check_reply(reply, 8) {
+        gdb_print!("Incorret reply to adiv_swd_read\n");
+        return 0;
+    }
+    u8s_string_to_u32_le(&reply[1..])
+}
+#[no_mangle]
+pub fn remote_adiv5_swd_raw_access_rs(rnw: u8, addr: u16, value: u32, fault: &mut u32) -> u32 {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_LOWLEVEL]);
+    e.add_u32_le(rnw as u32);
+    e.add_u32_le(addr as u32);
+    e.add_u32_le(value);
+    e.end();
+    // now get the reply
+    let reply = remote_get_reply();
+    if !check_reply(reply, 16) {
+        gdb_print!("Incorret reply to adiv_swd_raw_access\n");
+        *fault = 2;
+        return 0;
+    }
+    *fault = u8s_string_to_u32_le(&reply[9..]);
+    u8s_string_to_u32_le(&reply[1..9])
 }
 
 //

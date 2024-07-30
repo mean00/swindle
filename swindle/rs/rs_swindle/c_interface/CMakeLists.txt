@@ -4,7 +4,12 @@
 #___________________________________________________________
 
 cmake_minimum_required(VERSION 3.13)
-SET(SRC bmp_interface_c.cpp bmp_stubs_c.cpp bmp_rpc.cpp)
+IF(SWINDLE_HOSTED)
+  SET(RPC bmp_rpc_hosted.cpp)
+ELSE()
+  SET(RPC bmp_rpc.cpp)
+ENDIF()
+SET(SRC bmp_interface_c.cpp bmp_stubs_c.cpp ${RPC})
 ADD_LIBRARY(swindle_interface STATIC ${SRC})
 target_link_libraries( swindle_interface lnArduino)
 target_include_directories( swindle_interface PRIVATE ../../../include)

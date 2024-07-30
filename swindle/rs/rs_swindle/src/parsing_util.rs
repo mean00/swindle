@@ -107,6 +107,16 @@ pub fn u8s_string_to_u32(datain: &[u8]) -> u32 {
     val
 }
 
+pub fn u32_to_ascii_le_buffer(value: u32, out: &mut [u8]) {
+    let mut value = value;
+    for i in 0..4 {
+        let ascii = crate::parsing_util::u8_to_ascii((value & 0xff) as u8);
+        value >>= 8;
+        out[0 + i * 2] = ascii[0];
+        out[1 + i * 2] = ascii[1];
+    }
+}
+
 pub fn u8_to_ascii(value: u8) -> [u8; 2] {
     let mut out: [u8; 2] = [0, 0];
     out[0] = _tohex(value >> 4);

@@ -1,5 +1,5 @@
 diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
-index 124195bb..362df9d8 100644
+index 124195bb..5bfdef3b 100644
 --- a/src/target/adiv5_swd.c
 +++ b/src/target/adiv5_swd.c
 @@ -53,7 +53,7 @@ uint8_t make_packet_request(uint8_t rnw, uint16_t addr)
@@ -82,24 +82,32 @@ index 124195bb..362df9d8 100644
  {
  	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
  	swd_proc.seq_out(request, 8U);
-@@ -145,7 +154,10 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
+@@ -145,7 +154,16 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
  	swd_proc.seq_out(0, 8U);
  	return res == SWDP_ACK_OK ? data : 0;
  }
 -
 +//
++#if PC_HOSTED == 0
 +extern bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
 +extern uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
 +extern uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value);
++#else
++extern bool remote_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
++extern uint32_t remote_adiv5_swd_read_no_check(const uint16_t addr);
++extern uint32_t remote_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value);
++#endif
  bool adiv5_swd_scan(const uint32_t targetid)
  {
  	/* Free the device list if any */
-@@ -157,10 +169,10 @@ bool adiv5_swd_scan(const uint32_t targetid)
+@@ -157,16 +175,22 @@ bool adiv5_swd_scan(const uint32_t targetid)
  		return false;
  	}
  
 -	dp->write_no_check = adiv5_swd_write_no_check;
 -	dp->read_no_check = adiv5_swd_read_no_check;
++
++#if PC_HOSTED == 0
 +	dp->write_no_check = ln_adiv5_swd_write_no_check;
 +	dp->read_no_check = ln_adiv5_swd_read_no_check;
  	dp->dp_read = adiv5_swd_read;
@@ -107,8 +115,20 @@ index 124195bb..362df9d8 100644
 +	dp->low_access = ln_adiv5_swd_raw_access;
  	dp->error = adiv5_swd_clear_error;
  	dp->abort = adiv5_swd_abort;
- 
-@@ -375,7 +387,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
+-
+-#if PC_HOSTED == 0
+ 	swdptap_init();
+ #else
++	dp->write_no_check = remote_adiv5_swd_write_no_check;
++	dp->read_no_check = remote_adiv5_swd_read_no_check;
++	dp->dp_read = adiv5_swd_read;
++	dp->low_access = remote_adiv5_swd_raw_access;
++	dp->error = adiv5_swd_clear_error;
++	dp->abort = adiv5_swd_abort;
+ 	if (!bmda_swd_dp_init(dp)) {
+ 		free(dp);
+ 		return false;
+@@ -375,7 +399,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
  	return err;
  }
  

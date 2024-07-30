@@ -24,5 +24,6 @@ APPLY_PATCH_IF_NEEDED3(patched26 ${BMP_PATCH_FOLDER}/blackmagic_riscv_check_watc
 #APPLY_PATCH_IF_NEEDED3(patched30 ${BMP_PATCH_FOLDER}/blackmagic_override_adiv_swd.patch ${LNBMP_TOP_FOLDER}   "override adiv5 swd functions")
 #APPLY_PATCH_IF_NEEDED3(patched31 ${BMP_PATCH_FOLDER}/blackmagic_redirect_adiv5_to_ln.patch ${LNBMP_TOP_FOLDER}   "redirect adiv5_xx_no_check to ln_adiv5xxx_no_check swd functions")
 APPLY_PATCH_IF_NEEDED3(patched32 ${BMP_PATCH_FOLDER}/blackmagic_redirect_adiv5_to_lnv2.patch ${LNBMP_TOP_FOLDER}   "redirect adiv5_xx_no_check to ln_adiv5xxx_no_check swd functions")
+APPLY_PATCH_IF_NEEDED3(patched33 ${BMP_PATCH_FOLDER}/blackmagic_redirect_adiv5_to_lnv2_part2.patch ${LNBMP_TOP_FOLDER}   "redirect adiv5_xx_no_check to ln_adiv5xxx_no_check swd functions")
 
 
