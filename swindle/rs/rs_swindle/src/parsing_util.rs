@@ -82,7 +82,19 @@ pub fn u8s_string_to_u32_le(datain: &[u8]) -> u32 {
     }
     val
 }
+// decimal!
+pub fn ascii_string_decimal_to_u32(s: &str) -> u32 {
+    u8s_string_decimal_to_u32(s.as_bytes())
+}
+pub fn u8s_string_decimal_to_u32(datain: &[u8]) -> u32 {
+    let mut val: u32 = 0;
+    for i in datain {
+        val = val * 10 + _hex(*i) as u32;
+    }
+    val
+}
 
+// Hex string as ascii to u32
 pub fn ascii_string_to_u32(s: &str) -> u32 {
     let datain = s.as_bytes();
     u8s_string_to_u32(datain)

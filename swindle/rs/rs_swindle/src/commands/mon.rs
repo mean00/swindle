@@ -2,7 +2,9 @@ use crate::bmp;
 use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
-use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_to_u32};
+use crate::parsing_util::{
+    ascii_hex_string_to_u8s, ascii_string_decimal_to_u32, ascii_string_to_u32,
+};
 use alloc::vec;
 use alloc::vec::Vec;
 //
@@ -27,7 +29,7 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 14] = [
+const mon_command_tree: [CommandTree; 15] = [
     CommandTree {
         command: "help",
         args: 0,
@@ -83,6 +85,12 @@ const mon_command_tree: [CommandTree; 14] = [
         cb: CallbackType::text(_ws),
     }, //
     CommandTree {
+        command: "fq",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_fq),
+    },
+    CommandTree {
         command: "fos",
         args: 0,
         require_connected: true,
@@ -114,7 +122,7 @@ const mon_command_tree: [CommandTree; 14] = [
     }, //
 ];
 //
-const help_tree : [HelpTree;13]=
+const help_tree : [HelpTree;14]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
@@ -127,6 +135,7 @@ const help_tree : [HelpTree;13]=
     HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
     HelpTree{ command: "os_info",help :"Dump FreeRTOS internal state." },
     HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
+    HelpTree{ command: "fq",help :"(rp2040 only) set SWD frequency."},
     HelpTree{ command: "reboot",help :"Reboot the debugger." },
     HelpTree{ command: "reset",help :"Reset the target." },
 ];
@@ -190,8 +199,8 @@ pub fn _ram(_command: &str, _args: &[&str]) -> bool {
     let (min_heap, heap) = bmp::get_heap_stats();
     gdb_print!(
         "Min Free Heap\t: {} kB \nFree Heap\t: {} kB\n",
-        min_heap>>10,
-        heap>>10
+        min_heap >> 10,
+        heap >> 10
     );
     encoder::reply_ok();
     true
@@ -318,11 +327,28 @@ pub fn _ws(_command: &str, _args: &[&str]) -> bool {
     let len = _command.len();
     if len > 3 {
         // ok we have an input
-        let ws = ascii_string_to_u32(&_command[3..]);
+        let ws = ascii_string_decimal_to_u32(&_command[3..]);
         bmp::bmp_set_wait_state(ws);
     }
     let w: u32 = bmp::bmp_get_wait_state();
     gdb_print!("wait states are now {}\n", w);
+    encoder::reply_ok();
+    true
+}
+/*
+ *
+ *
+ */
+pub fn _fq(_command: &str, _args: &[&str]) -> bool {
+    let len = _command.len();
+    if len > 3 {
+        // ok we have an input
+        let _frequency = ascii_string_decimal_to_u32(&_command[3..]);
+        //bmp::bmp_set_wait_state(ws);
+    }
+    //
+    //let w: u32 = bmp::bmp_get_wait_state();
+    //gdb_print!("wait states are now {}\n", w);
     encoder::reply_ok();
     true
 }
