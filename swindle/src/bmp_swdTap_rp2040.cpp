@@ -72,9 +72,9 @@ static void SwdWrite_parity(uint32_t MS, size_t ticks)
 
 static rpPIO *swdpio;
 rpPIO_SM *xsm;
-uint32_t swd_delay_cnt = 50;
+uint32_t swd_delay_cnt = 4;
 SwdReset pReset(TRESET_PIN);
-#define lnOddParity __builtin_parity
+
 /**
  *  write size bits over PIO
  */
@@ -104,7 +104,7 @@ static uint32_t zread(uint32_t size)
 static uint32_t getFqFromWs()
 {
     uint32_t fq = clock_get_hz(clk_sys);
-    fq = fq / (3 + swd_delay_cnt);
+    fq = fq / (4 + swd_delay_cnt);
     return fq;
 }
 /**
