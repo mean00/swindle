@@ -88,6 +88,7 @@ extern "C" uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t
         *fault = 0xff; // special marker for raise
         return 0;
     }
+    return 0;
 }
 //--
 extern "C" bool bmp_adiv5_swd_write_no_check_c(const uint16_t addr, const uint32_t data)
