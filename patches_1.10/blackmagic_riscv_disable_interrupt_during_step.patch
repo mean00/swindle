@@ -1,17 +1,32 @@
-diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
-index 78d5e52d..b8a425f6 100644
---- a/src/target/riscv_debug.c
-+++ b/src/target/riscv_debug.c
-@@ -831,8 +840,10 @@ static void riscv_halt_resume(target_s *target, const bool step)
- 	uint32_t stepping_config = 0U;
+--- a/src/target/riscv_debug.c	2024-08-03 15:10:43.739494413 +0200
++++ b/src/target/riscv_debug.c	2024-08-03 15:10:43.739494413 +0200
+@@ -111,6 +111,9 @@
+ #define RV_DCSR_CAUSE_MASK     0x000001c0U
+ #define RV_DCSR_STEPIE         0x00000800U
+ #define RV_DCSR_EBREAK_MACHINE 0x00008000U
++#define RV_DCSR_STOP_TIME      (1U << 9)
++#define RV_DCSR_STOP_COUNT     (1U << 10)
++#define RV_DCSR_EBREAK_MACHINE 0x00008000U
+ 
+ #define RV_GPRS_COUNT 32U
+ 
+@@ -142,6 +145,7 @@
+ };
+ 
+ // clang-format on
++
+ typedef struct riscv_csr_descriptor {
+ 	const char *name;
+ 	const uint32_t csr_number; // fits in 16 bits actually (?)
+@@ -916,9 +920,9 @@
  	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
  		return;
--	if (step)
+ 	if (step)
 -		stepping_config |= RV_DCSR_STEP | RV_DCSR_STEPIE;
-+	if (step) {
-+		stepping_config |= RV_DCSR_STEP;
-+		stepping_config &= ~RV_DCSR_STEPIE; // disable interrupt during single step
-+	}
++		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT;
  	else {
- 		stepping_config &= ~(RV_DCSR_STEP | RV_DCSR_STEPIE);
+-		stepping_config &= ~(RV_DCSR_STEP | RV_DCSR_STEPIE);
++		stepping_config &= ~(RV_DCSR_STEP);
  		stepping_config |= RV_DCSR_EBREAK_MACHINE;
+ 	}
+ 	if (!riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))

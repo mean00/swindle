@@ -81,16 +81,6 @@ index 458103f3..65ea8a7b 100644
  bool riscv_config_trigger(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
  	const void *const config, const void *const address)
  {
-@@ -876,8 +918,7 @@ static void riscv_halt_resume(target_s *target, const bool step)
- 	if (step) {
- 		stepping_config |= RV_DCSR_STEP;
- 		stepping_config &= ~RV_DCSR_STEPIE; // disable interrupt during single step
--	}
--	else {
-+	} else {
- 		stepping_config &= ~(RV_DCSR_STEP | RV_DCSR_STEPIE);
- 		stepping_config |= RV_DCSR_EBREAK_MACHINE;
- 	}
 diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
 index e235bead..109928e4 100644
 --- a/src/target/riscv_debug.h
