@@ -19,7 +19,7 @@ extern "C"
 
 #define BMP_VID 0x1d50
 #define BMP_PID 0x6018
-#define LNBMP_PID 0x6030
+#define LNBMP_PID 0x6050
 
 #define WCHLINK_VID 0x1a86
 #define WCHLINK_PID 0x8010
@@ -186,6 +186,10 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
         {
             return -6;
         }
+        uint8_t altc = c;
+        if (altc < ' ')
+            altc = ' ';
+        //        QBMPERROR("**< rx %c <0x%x> \n",altc,c);
         switch (serial_auto)
         {
         case SERIAL_IDLE:
@@ -196,7 +200,7 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
             }
             else
             {
-                QBMPERROR("*************Warning : invalid resp \n");
+                QBMPERROR("*************Warning : invalid resp <0x%x> \n", serial_auto);
             }
             break;
         case SERIAL_DATA: {
@@ -208,6 +212,7 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
                 QBMPLOGN(nb, (const char *)data);
                 QBMPLOG("\n");
                 serial_auto = SERIAL_DONE;
+                //               QBMPERROR("*----*\n");
                 QCALL(decoderReply(nb, data));
                 return nb;
             }
