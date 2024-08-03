@@ -1,0 +1,27 @@
+diff --git a/src/target/adiv5_interface.h b/src/target/adiv5_interface.h
+index e062abe4..db6f792f 100644
+--- a/src/target/adiv5_interface.h
++++ b/src/target/adiv5_interface.h
+@@ -26,7 +26,9 @@
+ 
+ #include "adiv5_internal.h"
+ #include "exception.h"
+-
++// MEANX
++extern void ln_raw_swd_write(uint32_t tick, uint32_t value);
++//
+ #ifndef DEBUG_PROTO_IS_NOOP
+ void decode_access(uint16_t addr, uint8_t rnw, uint8_t apsel, uint32_t value);
+ #endif
+@@ -155,7 +157,10 @@ static inline uint32_t adiv5_dp_recoverable_access(adiv5_debug_port_s *dp, uint8
+ 	if (dp->fault == SWDP_ACK_NO_RESPONSE) {
+ 		uint32_t response;
+ 		/* Wait the response period, then clear the error */
+-		swd_proc.seq_in_parity(&response, 32);
++		// MEANX : This will break jtag...
++		// converting a read to a write should not matter
++		ln_raw_swd_write(32, 0xffffffffUL);
++		//swd_proc.seq_in_parity(&response, 32);
+ 		DEBUG_WARN("Recovering and re-trying access\n");
+ 		dp->error(dp, true);
+ 		response = dp->low_access(dp, rnw, addr, value);
