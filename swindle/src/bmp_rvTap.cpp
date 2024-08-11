@@ -34,6 +34,10 @@ CLK **HIGH**
 IO is sampled when clock goes ___---
 
  */
+/**
+ * This is similar to the non rp2040 except we switch to bit banging dynamically
+ *
+ */
 #include "lnArduino.h"
 #include "lnBMP_pinout.h"
 
@@ -42,72 +46,118 @@ extern "C"
 #include "jep106.h"
 #include "riscv_debug.h"
 }
+#pragma GCC optimize("Ofast")
+#include "bmp_rvTap.h"
+#include "lnArduino.h"
+#include "lnBMP_pinout.h"
+#include "lnBMP_swdio.h"
+#include "lnBMP_tap.h"
+#include "lnbmp_parity.h"
+//--
+extern void bmp_gpio_init();
 
 extern "C" void bmp_set_wait_state_c(uint32_t ws);
 extern "C" uint32_t bmp_get_wait_state_c();
 
-extern void bmp_io_begin_session();
-extern void bmp_gpio_init();
-extern uint32_t swd_delay_cnt;
-
-#include "lnBMP_swdio.h"
-#if PC_HOSTED == 0
-#include "lnBMP_pinout.h"
-#endif
-
-#include "bmp_rvTap.h"
-
-#define pRVDIO pSWDIO
-#define pRVCLK pSWCLK
-#define Rvswd_delay_cnt swd_delay_cnt
-
 #warning this is duplicated from riscv_jtag_dtm
-#define RV_DMI_NOOP 0U
-#define RV_DMI_READ 1U
-#define RV_DMI_WRITE 2U
 #define RV_DMI_SUCCESS 0U
 #define RV_DMI_FAILURE 2U
-#define RV_DMI_TOO_SOON 3U
 
 #define BMP_MIN_WS 1
+static bool rv_dm_reset();
+extern void bmp_gpio_pinmode(bool pioMode);
 
-bool rv_dm_reset();
+bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val);
+bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output);
 
-extern SwdPin pSWDIO;
-extern SwdWaitPin pSWCLK;
-extern SwdReset pReset;
-
-// data is sampled on transition clock low => clock high
-
-#define PUT_BIT(x)                                                                                                     \
-    pRVCLK.clockOff();                                                                                                 \
-    pRVDIO.set(x);                                                                                                     \
-    __asm__("nop");                                                                                                    \
-    __asm__("nop");                                                                                                    \
-    pRVCLK.clockOn();
-
-#define READ_BIT(x)                                                                                                    \
-    pRVCLK.clockOff();                                                                                                 \
-    pRVCLK.clockOn();                                                                                                  \
-    x = pRVDIO.read(); // read bit on rising edge
-// 6
-#define RV_WAIT()                                                                                                      \
-    {                                                                                                                  \
-        __asm__("nop");                                                                                                \
-        __asm__("nop");                                                                                                \
-        __asm__("nop");                                                                                                \
+/**
+ *
+ */
+static void rv_write_nbits(int n, uint32_t value)
+{
+    value <<= (uint32_t)(32 - n);
+    const uint32_t mask = 0x80000000UL;
+    for (int i = 0; i < n; i++)
+    {
+        rSWCLK->clockOff();
+        rSWDIO->set(value & mask);
+        rSWCLK->clockOn();
+        value <<= 1;
     }
-
-static const uint8_t par_table[16] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
+}
+/**
+ * do a falling edge on SWDIO with CLK high (assumed) => start bit
+ */
+static void rv_start_bit()
+{
+    rSWDIO->output();
+    rSWDIO->set(0);
+}
+/**
+ *
+ * do a rising edge on SWDIO with CLK high (assumed) => stop bit
+ */
+static void rv_stop_bit()
+{
+    rSWCLK->clockOff();
+    rSWDIO->output();
+    rSWDIO->set(0);
+    rSWCLK->clockOn();
+    rSWDIO->set(1);
+}
+/**
+ *
+ */
+static uint32_t rv_read_nbits(int n)
+{
+    rSWDIO->input();
+    uint32_t out = 0;
+    for (int i = 0; i < n; i++)
+    {
+        rSWCLK->clockOff();
+        rSWCLK->clockOn();
+        out = (out << 1) + rSWDIO->read(); // read bit on rising edge
+    }
+    return out;
+}
 /**
  * @brief
  *
- * @param x
- * @return int
+ * @return true
+ * @return false
  */
-static inline int parity8(uint8_t x)
+bool rv_dm_reset()
 {
-    return (par_table[x >> 4] ^ par_table[x & 0xf]);
+    // toggle the clock 100 times
+    rSWDIO->output();
+    rSWDIO->set(1);
+    for (int i = 0; i < 5; i++) // 199 bits to 1
+    {
+        rv_write_nbits(20, 0xfffff);
+    }
+    rSWDIO->set(0); // going low high with CLK = high => stop bit
+    rSWDIO->set(1);
+    lnDelayMs(10);
+    return true;
+}
+
+/**
+ * @brief
+ * 100 ws => 6 sec 0x5500 3kB
+ * 20 ws => same
+ * 10 ws => 8 sec
+ * no fs => 12 sec
+ * @return uint32_t
+ */
+static bool rv_dm_start()
+{
+    bmp_gpio_pinmode(false);
+    int ws = bmp_get_wait_state_c();
+    if (ws < BMP_MIN_WS)
+        ws = BMP_MIN_WS;
+    bmp_set_wait_state_c(ws);
+    rv_dm_reset();
+    return true;
 }
 /**
  * @brief
@@ -117,44 +167,13 @@ static inline int parity8(uint8_t x)
  * @return true
  * @return false
  */
-bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
+static bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
 {
-    // start bit
-    pRVDIO.output();
-    pRVDIO.off(); // io going low if CLK is high = start
-    RV_WAIT();
+    rv_start_bit();
     adr = (adr << 1) + wr;
-    int parity = parity8(adr);
-    for (int i = 0; i < 8; i++)
-    {
-        PUT_BIT(adr & 0x80);
-        adr <<= 1;
-    }
-    // send parity twice
-    PUT_BIT(parity);
-    PUT_BIT(parity);
-
-    // dont know if this is from host or target
-    PUT_BIT(0);
-    PUT_BIT(0);
-    PUT_BIT(0);
-    // PUT_BIT(0);
-
-    // last bit, switch to input if need be
-    pRVCLK.clockOff();
-
-    if (!wr)
-    {
-        pRVDIO.set(1);
-        pRVDIO.input();
-        pRVDIO.set(1);
-    }
-    else
-    {
-        pRVDIO.set(0);
-    }
-    pRVCLK.clockOn();
-
+    int parity = lnOddParity(adr);
+    adr = adr << 2 | (parity + parity + parity);
+    rv_write_nbits(10, adr);
     return true;
 }
 /**
@@ -162,32 +181,15 @@ bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
  *
  * @return uint32_t
  */
-bool LN_FAST_CODE rv_end_frame(uint32_t *status)
+static bool LN_FAST_CODE rv_end_frame(uint32_t *status)
 {
     uint32_t out = 0;
     uint8_t bit;
 
     // now get the reply - 4 bits
-    pRVCLK.clockOff();
-    RV_WAIT();
-    pRVDIO.input();
+    out = rv_read_nbits(4);
+    rv_stop_bit();
 
-    READ_BIT(bit);
-    out = (out << 1) + bit;
-    READ_BIT(bit);
-    out = (out << 1) + bit;
-    READ_BIT(bit);
-    out = (out << 1) + bit;
-    READ_BIT(bit);
-    out = (out << 1) + bit;
-
-    pRVCLK.clockOff();
-
-    pRVDIO.output();
-    pRVDIO.set(0); // going high => stop bit
-    pRVCLK.clockOn();
-    pRVDIO.set(1); // going high => stop bit
-    RV_WAIT();
     *status = out;
     if (out != 3 && out != 7)
     {
@@ -204,18 +206,13 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
     uint32_t status = 0;
     rv_start_frame(adr, &status, true);
 
+    rv_write_nbits(4, 0);
     // Now data
-    uint8_t *p = (uint8_t *)&val;
-    int parity2 = parity8(p[0]) ^ parity8(p[1]) ^ parity8(p[2]) ^ parity8(p[3]);
+    int parity2 = lnOddParity(val);
+    rv_write_nbits(32, val);
 
-    for (int i = 0; i < 32; i++)
-    {
-        PUT_BIT(val & 0x80000000UL);
-        val <<= 1;
-    }
     // data parity (twice)
-    PUT_BIT(parity2);
-    PUT_BIT(parity2);
+    rv_write_nbits(2, parity2 + parity2 + parity2);
 
     uint32_t st = 0;
     if (!rv_end_frame(&st))
@@ -237,78 +234,27 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 {
     uint32_t status;
     rv_start_frame(adr, &status, false);
-
-    uint32_t value = 0, bit;
-    for (int i = 0; i < 32; i++)
-    {
-        READ_BIT(bit);
-        value <<= 1;
-        value += bit;
-    }
-    *output = value;
-
-    READ_BIT(bit); // read parity bit
-    READ_BIT(bit); // read parity bit
+    rv_write_nbits(4, 1); // 000 1
+    *output = rv_read_nbits(32);
+    rv_read_nbits(2); // parity
 
     uint32_t st = 0;
     if (!rv_end_frame(&st))
     {
-        Logger("Read failed Adr=0x%x Value=0x%x status=0x%x\n", adr, value, st);
+        Logger("Read failed Adr=0x%x Value=0x%x status=0x%x\n", adr, *output, st);
         return false;
     }
     return true;
 }
-/**
- * @brief
- *
- * @return true
- * @return false
- */
-bool rv_dm_reset()
-{
-    // toggle the clock 100 times
-    pRVDIO.output();
-    pRVDIO.off(); //
-    for (int i = 0; i < 100; i++)
-    {
-        PUT_BIT(1);
-    }
-    RV_WAIT();
-    pRVDIO.set(0); // going low high with CLK = high => stop bit
-    RV_WAIT();
-    pRVDIO.set(1);
-    RV_WAIT();
-    lnDelayMs(10);
-    return true;
-}
-
 #define WR(a, b) rv_dm_write(a, b)
 #define RD(a, b) rv_dm_read(a, &out)
 
 /**
- * @brief
- * 100 ws => 6 sec 0x5500 3kB
- * 20 ws => same
- * 10 ws => 8 sec
- * no fs => 12 sec
- * @return uint32_t
+ *
+ *
  */
-bool rv_dm_start()
+static bool rv_dm_probe(uint32_t *chip_id)
 {
-    int ws = bmp_get_wait_state_c();
-    if (ws < BMP_MIN_WS)
-        ws = BMP_MIN_WS;
-    bmp_set_wait_state_c(ws);
-    bmp_gpio_init();
-    bmp_io_begin_session();
-
-    rv_dm_reset();
-    return true;
-}
-
-bool rv_dm_probe(uint32_t *chip_id)
-{
-    rv_dm_start();
     *chip_id = 0;
 
     uint32_t out = 0;
@@ -344,7 +290,7 @@ bool rv_dm_probe(uint32_t *chip_id)
  */
 static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
-    int retries = 10;
+    int retries = 1;
     while (1)
     {
         if (!retries)
@@ -360,16 +306,6 @@ static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, 
         }
         retries--;
     }
-#if 0    
-    const bool result = rv_dm_read(address, value);
-    if (result)
-    {
-        dmi->fault = RV_DMI_SUCCESS;
-        return true;
-    }
-    dmi->fault = RV_DMI_FAILURE;
-    return false;
-#endif
 }
 /**
  * @brief
@@ -390,38 +326,6 @@ static bool ch32_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address,
     }
     dmi->fault = RV_DMI_FAILURE;
     return false;
-}
-
-/**
- * @brief
- *
- */
-extern "C" void target_list_free(void);
-extern "C" bool rvswd_scan()
-{
-    uint32_t id = 0;
-    target_list_free();
-    if (!rv_dm_probe(&id))
-    {
-        return false;
-    }
-    Logger("WCH : found 0x%x device\n", id);
-    riscv_dmi_s *dmi = new riscv_dmi_s;
-    memset(dmi, 0, sizeof(*dmi));
-    if (!dmi)
-    { /* calloc failed: heap exhaustion */
-        Logger("calloc: failed in %s\n", __func__);
-        return false;
-    }
-    dmi->designer_code = JEP106_MANUFACTURER_WCH;
-    dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
-    dmi->address_width = 8U;
-    dmi->read = ch32_riscv_dmi_read;
-    dmi->write = ch32_riscv_dmi_write;
-
-    riscv_dmi_init(dmi);
-
-    return true;
 }
 extern "C"
 {
@@ -461,6 +365,39 @@ extern "C"
     {
         return rv_dm_reset();
     }
+}
+
+/**
+ * @brief
+ *
+ */
+extern "C" void target_list_free(void);
+extern "C" bool rvswd_scan()
+{
+    uint32_t id = 0;
+    rv_dm_start();
+    target_list_free();
+    if (!rv_dm_probe(&id))
+    {
+        return false;
+    }
+    Logger("WCH : found 0x%x device\n", id);
+    riscv_dmi_s *dmi = new riscv_dmi_s;
+    memset(dmi, 0, sizeof(*dmi));
+    if (!dmi)
+    { /* calloc failed: heap exhaustion */
+        Logger("calloc: failed in %s\n", __func__);
+        return false;
+    }
+    dmi->designer_code = JEP106_MANUFACTURER_WCH;
+    dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
+    dmi->address_width = 8U;
+    dmi->read = ch32_riscv_dmi_read;
+    dmi->write = ch32_riscv_dmi_write;
+
+    riscv_dmi_init(dmi);
+
+    return true;
 }
 
 // EOF

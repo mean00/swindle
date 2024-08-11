@@ -26,6 +26,7 @@ SET(BRIDGE_SRCS
                 ${B}/bmp_serial.cpp
                 ${B}/bmp_rs_gdb.cpp
                 ${B}/bmp_jtagstubs.cpp
+                ${B}/bmp_tap.cpp
                 CACHE INTERNAL ""
                 )
 # #
@@ -53,6 +54,12 @@ IF(USE_RP2040)
 ELSE()
   SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp   )
 ENDIF()
+# O0, 1, 2 works
+# OZ does not work
+# rvTap does not like -Oz
+# Something to fix here
+#MESSAGE(STATUS "Restricting flags for rvTap to -Os")
+#set_property(SOURCE src/bmp_rvTap${EXTRA}.cpp  PROPERTY COMPILE_OPTIONS "-O1")
 #
 # ===========================================================================================
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
@@ -72,9 +79,5 @@ ENDIF()
 
 #---------
 #
-# rvTap does not like -Oz
-# Something to fix here
-MESSAGE(STATUS "Restricting flags for rvTap to -Os")
-set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-Ofast")
 #
 # ===========================================================================================

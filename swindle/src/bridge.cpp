@@ -24,14 +24,14 @@ lnStopWatch stopWatch(1);
 extern "C" int gdb_if_init(void);
 
 void gdb_task(void *parameters);
-extern void bmp_gpio_init();
+extern void bmp_gpio_init_once();
 extern "C"
 {
     /**
      */
     void pins_init()
     {
-        bmp_gpio_init();
+        bmp_gpio_init_once();
     }
 
     /**

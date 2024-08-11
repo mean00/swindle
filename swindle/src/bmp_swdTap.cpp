@@ -36,11 +36,11 @@ extern "C"
 #include "general.h"
 #include "timing.h"
 }
+#include "lnBMP_pinout.h"
+#include "lnBMP_swdio.h"
 extern void gmp_gpio_init_adc();
 
-uint32_t swd_delay_cnt = 4;
-
-#include "lnBMP_swdio.h"
+#include "lnBMP_tap.h"
 #if PC_HOSTED == 0
 #include "lnBMP_pinout.h"
 #endif
@@ -52,66 +52,6 @@ static void SwdWrite(uint32_t MS, size_t ticks);
 static void SwdWrite_parity(uint32_t MS, size_t ticks);
 
 void swdioSetAsOutput(bool output);
-
-SwdPin pSWDIO(TSWDIO_PIN);
-SwdWaitPin pSWCLK(TSWDCK_PIN); // automatically add delay after toggle
-SwdReset pReset(TRESET_PIN);
-
-/**
- * @brief
- *
- */
-extern "C" void bmp_set_wait_state_c(uint32_t ws)
-{
-    swd_delay_cnt = ws;
-}
-/**
- * @brief
- *
- */
-extern "C" uint32_t bmp_get_wait_state_c()
-{
-    return swd_delay_cnt;
-}
-
-/**
-
-*/
-void bmp_gpio_init()
-{
-    pSWDIO.hiZ();
-    pSWDIO.hiZ();
-    pSWCLK.hiZ();
-    pSWCLK.hiZ();
-    pReset.hiZ(); // hi-z by default
-    pReset.off(); // hi-z by default
-
-    gmp_gpio_init_adc();
-}
-/**
- * @brief
- *
- */
-void bmp_io_begin_session()
-{
-    pSWDIO.on();
-    pSWDIO.output();
-    pSWCLK.clockOn();
-    pSWCLK.output();
-    pReset.off(); // hi-z by default
-}
-/**
- * @brief
- *
- */
-void bmp_io_end_session()
-{
-    pSWDIO.hiZ();
-    pSWDIO.hiZ();
-    pSWCLK.hiZ();
-    pSWCLK.hiZ();
-    pReset.off(); // hi-z by default
-}
 /**
  */
 static uint32_t SwdRead(size_t len)
@@ -124,14 +64,14 @@ static uint32_t SwdRead(size_t len)
     swdioSetAsOutput(false);
     for (int i = 0; i < len; i++)
     {
-        pSWCLK.clockOff();
-        bit = pSWDIO.read();
+        rSWCLK->clockOff();
+        bit = rSWDIO->read();
         if (bit)
             ret |= index;
-        pSWCLK.clockOn();
+        rSWCLK->clockOn();
         index <<= 1;
     }
-    pSWCLK.clockOff();
+    rSWCLK->clockOff();
     return ret;
 }
 /**
@@ -142,8 +82,8 @@ static bool SwdRead_parity(uint32_t *ret, size_t len)
     uint32_t res = 0;
     res = SwdRead(len);
     bool currentParity = __builtin_parity(res);
-    bool parityBit = (pSWDIO.read() == 1);
-    pSWCLK.clockOn();
+    bool parityBit = (rSWDIO->read() == 1);
+    rSWCLK->clockOn();
     *ret = res;
     swdioSetAsOutput(true);
     return currentParity == parityBit; // should be equal
@@ -158,12 +98,12 @@ static void SwdWrite(uint32_t MS, size_t ticks)
     swdioSetAsOutput(true);
     for (int i = 0; i < ticks; i++)
     {
-        pSWCLK.clockOff();
-        pSWDIO.set(MS & 1);
-        pSWCLK.clockOn();
+        rSWCLK->clockOff();
+        rSWDIO->set(MS & 1);
+        rSWCLK->clockOn();
         MS >>= 1;
     }
-    pSWCLK.clockOff();
+    rSWCLK->clockOff();
 }
 /**
  */
@@ -172,9 +112,9 @@ static void SwdWrite_parity(uint32_t MS, size_t ticks)
     xAssert(0);
     bool parity = __builtin_parity(MS);
     SwdWrite(MS, ticks);
-    pSWDIO.set(parity);
-    pSWCLK.clockOn();
-    pSWCLK.clockOff();
+    rSWDIO->set(parity);
+    rSWCLK->clockOn();
+    rSWCLK->clockOff();
 }
 
 /**
@@ -191,57 +131,36 @@ void LN_FAST_CODE swdioSetAsOutput(bool output)
     {
     case false: // in
     {
-        pSWDIO.input();
-        pSWCLK.wait();
-        pSWCLK.clockOn();
+        rSWDIO->input();
+        rSWCLK->wait();
+        rSWCLK->clockOn();
         break;
     }
     break;
     case true: // out
     {
-        pSWCLK.clockOff();
-        pSWCLK.clockOn();
-        pSWCLK.clockOff();
-        pSWDIO.output();
+        rSWCLK->clockOff();
+        rSWCLK->clockOn();
+        rSWCLK->clockOff();
+        rSWDIO->output();
         break;
     }
     default:
         break;
     }
 }
-
-/**
- */
-extern "C" void platform_nrst_set_val(bool assert)
-{
-    if (assert) // force reset to low
-    {
-        pReset.on();
-    }
-    else // release reset
-    {
-        pReset.off();
-    }
-}
-/**
- */
-extern "C" bool platform_nrst_get_val(void)
-{
-    return pReset.state();
-}
-
 swd_proc_s swd_proc;
 
 #define LN_READ_BIT(value)                                                                                             \
-    pSWCLK.pulseClock();                                                                                               \
-    uint32_t bit = pSWDIO.read();                                                                                      \
+    rSWCLK->pulseClock();                                                                                              \
+    uint32_t bit = rSWDIO->read();                                                                                     \
     if (bit)                                                                                                           \
         value |= index;                                                                                                \
     index <<= 1;
 
 #define LN_WRITE_BIT(value)                                                                                            \
-    pSWDIO.set(value & 1);                                                                                             \
-    pSWCLK.pulseClock();
+    rSWDIO->set(value & 1);                                                                                            \
+    rSWCLK->pulseClock();
 
 /**
 
@@ -284,10 +203,10 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
     uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     xAssert(oldDrive);
     zwrite(8, request);
-    pSWDIO.input();
+    rSWDIO->input();
     uint32_t ack = zread(3);
     bool parity = lnOddParity(data);
-    pSWDIO.output();
+    rSWDIO->output();
     oldDrive = true;
     zwrite(2, 0x03);
     zwrite(32, data);
@@ -307,13 +226,13 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 
     xAssert(oldDrive);
     zwrite(8, request);
-    pSWDIO.input();
-    pSWCLK.wait();
+    rSWDIO->input();
+    rSWCLK->wait();
     uint32_t ack = zread(3);
     uint32_t data = zread(32);
     bool parity = zread(1);
     oldDrive = true;
-    pSWDIO.output();
+    rSWDIO->output();
     zwrite(8, 0);
     return ack == SWDP_ACK_OK ? data : 0;
 }
@@ -337,7 +256,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         xAssert(oldDrive);
         zwrite(8, request);
         oldDrive = 0;
-        pSWDIO.input();
+        rSWDIO->input();
         uint32_t ack = zread(3);
         bool expired = platform_timeout_is_expired(&timeout);
         if (ack == SWDP_ACK_OK)
@@ -346,7 +265,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         }
         // if we get here, we are retrying
         // switch back to output
-        pSWDIO.output();
+        rSWDIO->output();
         zwrite(2, 0x03);
 
         oldDrive = 1;
@@ -397,7 +316,7 @@ done:
         uint32_t response = zread(32);
         bool parityBit = zread(3) & 1;
         bool currentParity = lnOddParity(response);
-        pSWDIO.output();
+        rSWDIO->output();
         zwrite(8, 0);
         oldDrive = true;
         if (currentParity != parityBit)
@@ -410,7 +329,7 @@ done:
     }
     // write
     xAssert(!oldDrive);
-    pSWDIO.output();
+    rSWDIO->output();
     oldDrive = true;
     bool parity = lnOddParity(value);
     zwrite(2, 0x03);
@@ -425,8 +344,21 @@ done:
  */
 extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
 {
-    pSWDIO.output();
+    rSWDIO->output();
     oldDrive = 1;
     zwrite(tick, value);
 }
+/**
+ *
+ */
+void bmp_extraSetWaitState()
+{
+}
+void bmp_gpio_init_extra()
+{
+}
+void bmp_gpio_pinmode(bool pioMode)
+{
+}
+
 // EOF
