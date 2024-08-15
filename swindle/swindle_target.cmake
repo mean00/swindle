@@ -53,13 +53,13 @@ IF(USE_RP2040)
   ENDIF()
 ELSE()
   SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp   )
+  #set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-Os")
 ENDIF()
 # O0, 1, 2 works
 # OZ does not work
 # rvTap does not like -Oz
 # Something to fix here
 #MESSAGE(STATUS "Restricting flags for rvTap to -Os")
-#set_property(SOURCE src/bmp_rvTap${EXTRA}.cpp  PROPERTY COMPILE_OPTIONS "-O1")
 #
 # ===========================================================================================
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
