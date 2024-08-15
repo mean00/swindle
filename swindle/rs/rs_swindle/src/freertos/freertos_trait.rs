@@ -1,4 +1,4 @@
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
 /*

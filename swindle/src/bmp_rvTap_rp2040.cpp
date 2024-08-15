@@ -34,6 +34,10 @@ CLK **HIGH**
 IO is sampled when clock goes ___---
 
  */
+/**
+ * This is similar to the non rp2040 except we switch to bit banging dynamically
+ *
+ */
 #include "lnArduino.h"
 #include "lnBMP_pinout.h"
 
@@ -42,117 +46,65 @@ extern "C"
 #include "jep106.h"
 #include "riscv_debug.h"
 }
-
-extern "C" void bmp_set_wait_state_c(uint32_t ws);
-extern "C" uint32_t bmp_get_wait_state_c();
-
-extern void bmp_io_begin_session();
-extern void bmp_gpio_init();
-extern uint32_t swd_delay_cnt;
-
-#include "lnBMP_swdio.h"
-#if PC_HOSTED == 0
-#include "lnBMP_pinout.h"
-#endif
-
+#pragma GCC optimize("Ofast")
 #include "bmp_rvTap.h"
+#include "lnArduino.h"
+#include "lnBMP_pinout.h"
+#include "lnBMP_swdio.h"
+#include "lnBMP_tap.h"
+#include "lnbmp_parity.h"
+//--
+extern void bmp_gpio_init();
 
-#define pRVDIO pSWDIO
-#define pRVCLK pSWCLK
-#define Rvswd_delay_cnt swd_delay_cnt
-
-#warning this is duplicated from riscv_jtag_dtm
-#define RV_DMI_NOOP 0U
-#define RV_DMI_READ 1U
-#define RV_DMI_WRITE 2U
-#define RV_DMI_SUCCESS 0U
-#define RV_DMI_FAILURE 2U
-#define RV_DMI_TOO_SOON 3U
-
-#define BMP_MIN_WS 1
-
-bool rv_dm_reset();
-
-// data is sampled on transition clock low => clock high
-
-#define PUT_BIT(x)                                                                                                     \
-    pRVCLK.clockOff();                                                                                                 \
-    pRVDIO.set(x);                                                                                                     \
-    __asm__("nop");                                                                                                    \
-    __asm__("nop");                                                                                                    \
-    pRVCLK.clockOn();
-
-#define READ_BIT(x)                                                                                                    \
-    pRVCLK.clockOff();                                                                                                 \
-    pRVCLK.clockOn();                                                                                                  \
-    x = pRVDIO.read(); // read bit on rising edge
-// 6
-#define RV_WAIT()                                                                                                      \
-    {                                                                                                                  \
-        __asm__("nop");                                                                                                \
-        __asm__("nop");                                                                                                \
-        __asm__("nop");                                                                                                \
+/**
+ *
+ */
+static void rv_write_nbits(int n, uint32_t value)
+{
+    value <<= (uint32_t)(32 - n);
+    const uint32_t mask = 0x80000000UL;
+    for (int i = 0; i < n; i++)
+    {
+        rSWCLK->clockOff();
+        rSWDIO->set(value & mask);
+        rSWCLK->clockOn();
+        value <<= 1;
     }
-
-static const uint8_t par_table[16] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
+}
 /**
- * @brief
+ * do a falling edge on SWDIO with CLK high (assumed) => start bit
+ */
+static void rv_start_bit()
+{
+    rSWDIO->output();
+    rSWDIO->set(0);
+}
+/**
  *
- * @param x
- * @return int
+ * do a rising edge on SWDIO with CLK high (assumed) => stop bit
  */
-static inline int parity8(uint8_t x)
+static void rv_stop_bit()
 {
-    return (par_table[x >> 4] ^ par_table[x & 0xf]);
-}
-extern "C" void bmp_rv_dm_read_c()
-{
-}
-extern "C" void bmp_rv_dm_reset_c()
-{
-}
-extern "C" void bmp_rv_dm_write_c()
-{
+    rSWCLK->clockOff();
+    rSWDIO->output();
+    rSWDIO->set(0);
+    rSWCLK->clockOn();
+    rSWDIO->set(1);
 }
 /**
- * @brief
  *
- * @param adr
- * @param status
- * @return true
- * @return false
  */
-bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
+static uint32_t rv_read_nbits(int n)
 {
-    return false;
-}
-/**
- * @brief read 4 status bit then send a stop bit
- *
- * @return uint32_t
- */
-bool LN_FAST_CODE rv_end_frame(uint32_t *status)
-{
-    return false;
-}
-
-/**
- */
-bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
-{
-    return false;
-}
-/**
- * @brief
- *
- * @param adr
- * @param output
- * @return true
- * @return false
- */
-bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
-{
-    return false;
+    rSWDIO->input();
+    uint32_t out = 0;
+    for (int i = 0; i < n; i++)
+    {
+        rSWCLK->clockOff();
+        rSWCLK->clockOn();
+        out = (out << 1) + rSWDIO->read(); // read bit on rising edge
+    }
+    return out;
 }
 /**
  * @brief
@@ -162,32 +114,17 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
  */
 bool rv_dm_reset()
 {
+    // toggle the clock 100 times
+    rSWDIO->output();
+    rSWDIO->set(1);
+    for (int i = 0; i < 5; i++) // 199 bits to 1
+    {
+        rv_write_nbits(20, 0xfffff);
+    }
+    rSWDIO->set(0); // going low high with CLK = high => stop bit
+    rSWDIO->set(1);
+    lnDelayMs(10);
     return true;
 }
-
-#define WR(a, b) rv_dm_write(a, b)
-#define RD(a, b) rv_dm_read(a, &out)
-
-/**
- * @brief
- * 100 ws => 6 sec 0x5500 3kB
- * 20 ws => same
- * 10 ws => 8 sec
- * no fs => 12 sec
- * @return uint32_t
- */
-bool rv_dm_start()
-{
-    return true;
-}
-
-bool rv_dm_probe(uint32_t *chip_id)
-{
-    return false;
-}
-extern "C" bool rvswd_scan()
-{
-    return false;
-}
-
+#include "bmp_rvTap_common.h"
 // EOF

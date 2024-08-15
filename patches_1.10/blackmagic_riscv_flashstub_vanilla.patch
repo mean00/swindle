@@ -39,7 +39,7 @@ index 00000000..36a1d0b9
 +
 +#endif
 diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index c15ce02c..2b111976 100644
+index 9d389395..1ee868a2 100644
 --- a/src/target/riscv32.c
 +++ b/src/target/riscv32.c
 @@ -30,7 +30,6 @@
@@ -50,9 +50,9 @@ index c15ce02c..2b111976 100644
  #include "general.h"
  #include "target.h"
  #include "target_internal.h"
-@@ -670,3 +669,80 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
+@@ -677,3 +676,80 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
  	const uint32_t address = 0;
- 	return riscv_config_trigger(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, &config, &address) ? 0 : -1;
+ 	return riscv_config_trigger32(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, config, address) ? 0 : -1;
  }
 +
 +/*
@@ -132,7 +132,7 @@ index c15ce02c..2b111976 100644
 +	return ret;
 +}
 diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
-index bdbc4f89..e235bead 100644
+index 359ee589..964fbe3f 100644
 --- a/src/target/riscv_debug.h
 +++ b/src/target/riscv_debug.h
 @@ -221,6 +221,14 @@ typedef struct riscv_hart {
@@ -147,12 +147,12 @@ index bdbc4f89..e235bead 100644
 +#define RISCV_REG_PC 32
 +#define RISCV_REG_SP 2
 +
+ /* JTAG DTM function declarations */
+ #ifdef ENABLE_RISCV
  void riscv_jtag_dtm_handler(uint8_t dev_index);
- void riscv_dmi_init(riscv_dmi_s *dmi);
- riscv_hart_s *riscv_hart_struct(target_s *target);
-@@ -241,4 +249,15 @@ uint32_t riscv32_pack_data(const void *src, uint8_t access_width);
- void riscv32_mem_read(target_s *target, void *dest, target_addr_t src, size_t len);
- void riscv32_mem_write(target_s *target, target_addr_t dest, const void *src, size_t len);
+@@ -257,4 +265,15 @@ uint32_t riscv32_pack_data(const void *src, uint8_t access_width);
+ void riscv32_mem_read(target_s *target, void *dest, target_addr64_t src, size_t len);
+ void riscv32_mem_write(target_s *target, target_addr64_t dest, const void *src, size_t len);
  
 +/*
 + *   Execute code on the target with the signature void stub_function(a,b,c,d)

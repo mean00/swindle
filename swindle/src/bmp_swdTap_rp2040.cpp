@@ -38,7 +38,7 @@ extern "C"
 }
 
 #include "lnBMP_pinout.h"
-#include "lnBMP_swdio.h"
+#include "lnBMP_tap.h"
 #include "ln_rp_pio.h"
 // clang-format on
 #include "lnRP2040_pio.h"
@@ -50,6 +50,8 @@ extern "C"
 }
 #include "lnbmp_parity.h"
 extern void gmp_gpio_init_adc();
+static rpPIO *swdpio;
+rpPIO_SM *xsm;
 
 static uint32_t SwdRead(size_t ticks)
 {
@@ -69,11 +71,6 @@ static void SwdWrite_parity(uint32_t MS, size_t ticks)
 {
     xAssert(0);
 }
-
-static rpPIO *swdpio;
-rpPIO_SM *xsm;
-uint32_t swd_delay_cnt = 4;
-SwdReset pReset(TRESET_PIN);
 
 /**
  *  write size bits over PIO
@@ -98,7 +95,6 @@ static uint32_t zread(uint32_t size)
     xsm->read(1, &value);
     return value >> (32 - size);
 }
-
 /**
  */
 static uint32_t getFqFromWs()
@@ -115,37 +111,47 @@ void rp2040_swd_pio_change_clock(uint32_t fq)
     xsm->setSpeed(fq);
     xsm->execute();
 }
-
 /**
- * @brief
  *
  */
-extern "C" void bmp_set_wait_state_c(uint32_t ws)
+void bmp_extraSetWaitState()
 {
-    swd_delay_cnt = ws;
     rp2040_swd_pio_change_clock(getFqFromWs());
 }
+
 /**
- * @brief
+ *
  *
  */
-extern "C" uint32_t bmp_get_wait_state_c()
+void bmp_gpio_pinmode(bool pioMode)
 {
-    return swd_delay_cnt;
+    lnPin pin_swd = _mapping[TSWDIO_PIN];
+    lnPin pin_clk = _mapping[TSWDCK_PIN];
+    if (pioMode) // SWD, so PIO mode
+    {
+        Logger("Switching to PIO mode\n");
+        lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE, true);
+        lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
+    }
+    else
+    {
+        Logger("Switching to bitbanging mode\n");
+        lnDigitalWrite(pin_swd, 1);
+        lnDigitalWrite(pin_clk, 1);
+        lnPinMode(pin_swd, lnOUTPUT);
+        lnPinMode(pin_clk, lnOUTPUT);
+    }
 }
 
 /**
 
 */
-void bmp_gpio_init()
+void bmp_gpio_init_extra()
 {
     lnPin pin_swd = _mapping[TSWDIO_PIN];
     lnPin pin_clk = _mapping[TSWDCK_PIN];
     swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
     xsm = swdpio->getSm(0);
-
-    lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE, true);
-    lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
 
     rpPIO_pinConfig pinConfig;
     pinConfig.sets.pinNb = 1;
@@ -163,53 +169,14 @@ void bmp_gpio_init()
     xsm->configure(pinConfig);
     xsm->configureSideSet(pin_clk, 1, 2, true);
     xsm->execute();
-
-    pReset.off(); // hi-z by default
-
-    gmp_gpio_init_adc();
 }
-/**
- * @brief
- *
- */
-void bmp_io_begin_session()
-{
-    pReset.off(); // hi-z by default
-}
-/**
- * @brief
- *
- */
-void bmp_io_end_session()
-{
-    pReset.off(); // hi-z by default
-}
-/**
- */
-extern "C" void platform_nrst_set_val(bool assert)
-{
-    if (assert) // force reset to low
-    {
-        pReset.on();
-    }
-    else // release reset
-    {
-        pReset.off();
-    }
-}
-/**
- */
-extern "C" bool platform_nrst_get_val(void)
-{
-    return pReset.state();
-}
-
 swd_proc_s swd_proc;
 /**
 
 */
 extern "C" void swdptap_init()
 {
+    bmp_gpio_pinmode(true);
     swd_proc.seq_in = SwdRead;
     swd_proc.seq_in_parity = SwdRead_parity;
     swd_proc.seq_out = SwdWrite;
