@@ -43,6 +43,14 @@ fn get_temp_buffer() -> &'static mut [u8] {
 }
 //
 //
+impl Default for rpc_reply_encoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+//
+//
 impl rpc_reply_encoder {
     //
     pub fn new() -> Self {
