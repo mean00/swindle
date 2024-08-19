@@ -296,4 +296,22 @@ extern "C" bool bmp_rv_dm_reset_c()
 extern "C" void swdptap_init(void)
 {
 }
+/**
+ *
+ */
+extern "C" bool remote_v4_riscv_jtag_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
+{
+    xAssert(0);
+    return false;
+}
+/**
+ *
+ *
+ */
+extern "C" bool remote_v4_riscv_jtag_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+{
+    xAssert(0);
+    return false;
+}
+
 // -- eof --

@@ -5,7 +5,7 @@ extern uint32_t swd_delay_cnt;
 
 #define swait()                                                                                                        \
     {                                                                                                                  \
-        for (int lop = swd_delay_cnt; --lop > 0;)                                                                      \
+        for (int lop = swd_delay_cnt; lop > 0; lop--)                                                                  \
             __asm__("nop");                                                                                            \
     }
 // clang-format off

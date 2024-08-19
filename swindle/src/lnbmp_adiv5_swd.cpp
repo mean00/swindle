@@ -14,10 +14,8 @@ extern "C"
 #include "lnGPIO.h"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
+#include "lnBMP_tap.h"
 // clang-format on
-extern SwdPin pSWDIO;
-extern SwdWaitPin pSWCLK; // automatically add delay after toggle
-extern SwdReset pReset;
 
 extern "C" uint32_t old_adiv5_swd_read_no_check(const uint16_t addr);
 extern "C" bool old_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
@@ -67,17 +65,17 @@ extern "C"
          * for robustness, we use 60 HIGH cycles and 4 idle cycles
          */
         swdioSetAsOutput(true);
-        pSWDIO.set(1);
+        rSWDIO->set(1);
         for (int i = 0; i < 32 + 28; i++)
         {
-            pSWCLK.pulseClock();
+            rSWCLK->pulseClock();
         }
         if (idle_cycles)
         {
-            pSWDIO.set(0);
+            rSWDIO->set(0);
             for (int i = 0; i < 4; i++)
             {
-                pSWCLK.pulseClock();
+                rSWCLK->pulseClock();
             }
         }
     }
@@ -92,11 +90,11 @@ extern "C"
     {
         uint8_t request = xmake_packet_request(access, addr);
         swdioSetAsOutput(true);
-        pSWCLK.clockOff();
+        rSWCLK->clockOff();
         for (int i = 0; i < 8; i++)
         {
-            pSWDIO.set(request & 1);
-            pSWCLK.pulseClock();
+            rSWDIO->set(request & 1);
+            rSWCLK->pulseClock();
             request >>= 1;
         }
         //--
@@ -104,13 +102,13 @@ extern "C"
         uint32_t ret = 0;
         int bit;
         swdioSetAsOutput(false);
-        pSWCLK.clockOff();
+        rSWCLK->clockOff();
         for (int i = 0; i < 3; i++)
         {
-            bit = pSWDIO.read();
+            bit = rSWDIO->read();
             if (bit)
                 ret |= index;
-            pSWCLK.pulseClock();
+            rSWCLK->pulseClock();
             index <<= 1;
         }
         return ret;
@@ -136,23 +134,23 @@ extern "C"
 
         uint32_t cpy = data;
         swdioSetAsOutput(true);
-        pSWCLK.clockOff();
+        rSWCLK->clockOff();
         for (int i = 0; i < 32; i++)
         {
-            pSWDIO.set(cpy & 1);
-            pSWCLK.pulseClock();
+            rSWDIO->set(cpy & 1);
+            rSWCLK->pulseClock();
             cpy >>= 1;
         }
         // par
-        pSWDIO.set(parity);
-        pSWCLK.pulseClock();
+        rSWDIO->set(parity);
+        rSWCLK->pulseClock();
         //--
-        pSWCLK.clockOff();
-        pSWDIO.off();
+        rSWCLK->clockOff();
+        rSWDIO->off();
 
         for (int i = 0; i < 8; i++)
         {
-            pSWCLK.pulseClock();
+            rSWCLK->pulseClock();
         }
         return res != SWDP_ACK_OK;
     }
@@ -175,23 +173,23 @@ extern "C"
         int index = 1;
         int bit;
         ret = 0;
-        pSWCLK.clockOff();
+        rSWCLK->clockOff();
         for (int i = 0; i < 32; i++)
         {
-            bit = pSWDIO.read();
+            bit = rSWDIO->read();
             if (bit)
                 ret |= index;
-            pSWCLK.pulseClock();
+            rSWCLK->pulseClock();
             index <<= 1;
         }
 
         //
         swdioSetAsOutput(true);
-        pSWCLK.clockOff();
-        pSWDIO.off();
+        rSWCLK->clockOff();
+        rSWDIO->off();
         for (int i = 0; i < 8; i++)
         {
-            pSWCLK.pulseClock();
+            rSWCLK->pulseClock();
         }
         return ret;
     }

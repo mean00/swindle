@@ -1,5 +1,7 @@
---- a/src/target/riscv_debug.c	2024-08-03 15:10:43.739494413 +0200
-+++ b/src/target/riscv_debug.c	2024-08-03 15:10:43.739494413 +0200
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index bb5999f9..3807a997 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
 @@ -111,6 +111,9 @@
  #define RV_DCSR_CAUSE_MASK     0x000001c0U
  #define RV_DCSR_STEPIE         0x00000800U
@@ -10,15 +12,7 @@
  
  #define RV_GPRS_COUNT 32U
  
-@@ -142,6 +145,7 @@
- };
- 
- // clang-format on
-+
- typedef struct riscv_csr_descriptor {
- 	const char *name;
- 	const uint32_t csr_number; // fits in 16 bits actually (?)
-@@ -916,9 +920,9 @@
+@@ -914,9 +917,9 @@ static void riscv_halt_resume(target_s *target, const bool step)
  	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
  		return;
  	if (step)
