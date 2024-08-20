@@ -1,0 +1,47 @@
+diff --git a/src/target/flashstub/rp2.c b/src/target/flashstub/rp2.c
+new file mode 100644
+index 00000000..3ba69665
+--- /dev/null
++++ b/src/target/flashstub/rp2.c
+@@ -0,0 +1,33 @@
++/*
++ * This file is part of the Black Magic Debug project.
++ *
++ * Copyright (C) 2023-2024 1BitSquared <info@1bitsquared.com>
++ * Written by Maciej 'vesim' Kuliński <vesim809@pm.me>
++ * Modified by Rachel Mant <git@dragonmux.network>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++#include <stdint.h>
++#include <stddef.h>
++
++// adr src count
++void __attribute__((naked, used, section(".entry"))) rp_flash_write_stub(
++	const uint32_t dest, const uint8_t *src, uint32_t lengh, void *fun)
++{
++	/*  set a stack a jump to rom */
++	__asm__("ldr r4, =#0x20041000\n"
++			"mov sp, r4\n"
++			"blx r3\n"
++			"bkpt #1\n");
++}
+diff --git a/src/target/flashstub/rp2.stub b/src/target/flashstub/rp2.stub
+new file mode 100644
+index 00000000..b73492ef
+--- /dev/null
++++ b/src/target/flashstub/rp2.stub
+@@ -0,0 +1 @@
++0x4C01, 0x46A5, 0x4798, 0xBE01, 0x1000, 0x2004, 
+\ No newline at end of file

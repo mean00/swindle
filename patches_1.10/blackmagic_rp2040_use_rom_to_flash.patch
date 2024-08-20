@@ -1,0 +1,67 @@
+diff --git a/src/target/rp.c b/src/target/rp.c
+index c4b07228..74f97a58 100644
+--- a/src/target/rp.c
++++ b/src/target/rp.c
+@@ -110,15 +110,15 @@
+ #define RP_SSI_CTRL0_TMOD_EEPROM               (3U << 8U)
+ #define RP_SSI_CTRL0_DATA_BIT_MASK             0x001f0000U
+ #define RP_SSI_CTRL0_DATA_BIT_SHIFT            16U
+-#define RP_SSI_CTRL0_DATA_BITS(x)              (((x)-1U) << RP_SSI_CTRL0_DATA_BIT_SHIFT)
++#define RP_SSI_CTRL0_DATA_BITS(x)              (((x) - 1U) << RP_SSI_CTRL0_DATA_BIT_SHIFT)
+ #define RP_SSI_CTRL0_MASK                      (RP_SSI_CTRL0_FRF_MASK | RP_SSI_CTRL0_TMOD_MASK | RP_SSI_CTRL0_DATA_BIT_MASK)
+ #define RP_SSI_ENABLE_SSI                      (1U << 0U)
+ #define RP_SSI_XIP_SPI_CTRL0_FORMAT_STD_SPI    (0U << 0U)
+ #define RP_SSI_XIP_SPI_CTRL0_FORMAT_SPLIT      (1U << 0U)
+ #define RP_SSI_XIP_SPI_CTRL0_FORMAT_FRF        (2U << 0U)
+-#define RP_SSI_XIP_SPI_CTRL0_ADDRESS_LENGTH(x) (((x)*2U) << 2U)
++#define RP_SSI_XIP_SPI_CTRL0_ADDRESS_LENGTH(x) (((x) * 2U) << 2U)
+ #define RP_SSI_XIP_SPI_CTRL0_INSTR_LENGTH_8b   (2U << 8U)
+-#define RP_SSI_XIP_SPI_CTRL0_WAIT_CYCLES(x)    (((x)*8U) << 11U)
++#define RP_SSI_XIP_SPI_CTRL0_WAIT_CYCLES(x)    (((x) * 8U) << 11U)
+ #define RP_SSI_XIP_SPI_CTRL0_XIP_CMD_SHIFT     24U
+ #define RP_SSI_XIP_SPI_CTRL0_XIP_CMD(x)        ((x) << RP_SSI_XIP_SPI_CTRL0_XIP_CMD_SHIFT)
+ #define RP_SSI_XIP_SPI_CTRL0_TRANS_1C1A        (0U << 0U)
+@@ -178,11 +178,15 @@ const command_s rp_cmd_list[] = {
+ 	{"reset_usb_boot", rp_cmd_reset_usb_boot, "Reboot the device into BOOTSEL mode"},
+ 	{NULL, NULL, NULL},
+ };
+-
++#if 0
+ static const uint16_t rp_flash_write_stub[] = {
+ #include "flashstub/rp.stub"
+ };
+-
++#else
++static const uint16_t rp_flash_write_stub2[] = {
++#include "flashstub/rp2.stub"
++};
++#endif
+ static bool rp_read_rom_func_table(target_s *target);
+ static bool rp_attach(target_s *target);
+ static void rp_spi_config(target_s *target);
+@@ -328,7 +332,8 @@ static bool rp_flash_prepare(target_s *const target)
+ 	/* Configure the SPI controller for our use */
+ 	rp_spi_config(target);
+ 	/* Preload the SPI Flash write stub */
+-	return target_mem32_write(target, RP_SRAM_BASE, rp_flash_write_stub, sizeof(rp_flash_write_stub)) == 0;
++	// MEANX return target_mem32_write(target, RP_SRAM_BASE, rp_flash_write_stub, sizeof(rp_flash_write_stub)) == 0;
++	return target_mem32_write(target, RP_SRAM_BASE, rp_flash_write_stub2, sizeof(rp_flash_write_stub2)) == 0;
+ }
+ 
+ static bool rp_flash_resume(target_s *const target)
+@@ -351,8 +356,13 @@ static bool rp_flash_write(
+ 	/* Load the next block of data and run the stub */
+ 	if (target_mem32_write(target, RP_STUB_BUFFER_BASE, src, length))
+ 		return false;
+-	return cortexm_run_stub(
+-		target, RP_SRAM_BASE, dest - flash->start, RP_STUB_BUFFER_BASE, length, spi_flash->page_size);
++	//DEBUG_ERROR("Adr=%x size=%d page_size=%d flash_start=0x%x\n", dest, length, spi_flash->page_size, flash->start);
++	//return cortexm_run_stub(
++	//target, RP_SRAM_BASE, dest - flash->start, RP_STUB_BUFFER_BASE, length, spi_flash->page_size);
++	// MEANX
++	return cortexm_run_stub(target, RP_SRAM_BASE,
++
++		dest - flash->start, RP_STUB_BUFFER_BASE, length, 0x23b5);
+ }
+ 
+ static void rp_spi_chip_select(target_s *const target, const uint32_t state)
