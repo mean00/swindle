@@ -3,13 +3,18 @@
  *   whatever freertos compilation options are.
  *
  */
+use alloc::vec::Vec;
 use core::ptr::addr_of_mut;
-use hashbrown::HashMap;
 crate::setup_log!(false);
 use crate::{bmplog, bmpwarning, gdb_print};
 crate::gdb_print_init!();
+
+pub struct tcb_to_tid {
+    tcb: u32,
+    tid: u32,
+}
 pub struct hashed_tcb {
-    hash: HashMap<u32, u32>,
+    list: Vec<tcb_to_tid>,
     index: u32,
 }
 /*
@@ -21,7 +26,7 @@ impl hashed_tcb {
      */
     pub fn new() -> Self {
         hashed_tcb {
-            hash: HashMap::new(),
+            list: Vec::new(),
             index: 1,
         }
     }
@@ -29,22 +34,26 @@ impl hashed_tcb {
      *
      */
     pub fn clear(&mut self) {
-        self.hash.drain();
+        self.list.clear();
         self.index = 1;
     }
     /*
      *
      */
     pub fn get(&mut self, tcb: u32) -> u32 {
-        let id: u32 = match self.hash.get(&tcb) {
-            Some(x) => *x,
-            None => {
-                self.hash.insert(tcb, self.index);
-                self.index += 1;
-                self.index - 1
+        for i in &self.list {
+            if i.tcb == tcb {
+                return i.tid;
             }
+        }
+        // not found create a new one
+        let new_entry: tcb_to_tid = tcb_to_tid {
+            tcb: tcb,
+            tid: self.index,
         };
-        id
+        self.list.push(new_entry);
+        self.index += 1;
+        self.index - 1 // the last entry
     }
 }
 
@@ -72,11 +81,12 @@ pub fn dump_hash_info() {
     let mut regs: [u32; 16] = [0; 16];
     let info = get_hashtcb();
     gdb_print!("Hash index = {}\n", info.index);
-    for i in info.hash.keys() {
-        let val: u32 = *(info.hash.get(i).unwrap());
-        gdb_print!("------------ID: {:x}-----------\n", val);
-        gdb_print!("TCB: {:x} ", *i);
-        crate::bmp::bmp_read_mem32(*i, &mut regs[0..1]);
+    for i in &info.list {
+        let val: u32 = i.tcb;
+        let id: u32 = i.tid;
+        gdb_print!("------------ID: {:x}-----------\n", id);
+        gdb_print!("TCB: {:x} ", val);
+        crate::bmp::bmp_read_mem32(val, &mut regs[0..1]);
         let stack: u32 = regs[0];
         gdb_print!("SP: {:x} \n", stack);
         // Read the regs

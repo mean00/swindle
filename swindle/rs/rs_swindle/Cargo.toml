@@ -11,7 +11,6 @@ native = ["rnarduino"]
 hosted = []
 
 [dependencies]
-hashbrown = "0.14"
 cty = "0.2.2"
 rnarduino = { path = "../../../lnArduino/rust/rnArduino", features = ["cdc"] , optional = true}
 ufmt = "*"
