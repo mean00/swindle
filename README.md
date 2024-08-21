@@ -1,19 +1,16 @@
 
-SWINDLE 
+SWINDLE - ARM/Riscv Debug Module
 =====
 
-A derivative of the black magic probe with rust in it
+Swindle is a hardware debugger connecting over Arm-SWD or WCH RvSWD.
+It can debug a lot of ARM chip and the CH32V3xx chips from WCH.
 
-Works on GD32F3x, CH32v2x and RP2040.
-Able to debug ARM through SWD, and CH32V3xx chips (RISCV) through RVSWD
+Internally, it is a derivative of the incredible [black magic probe](ttps://black-magic.org/index.html) with some modifications.
 
-Overview
-=====
+Swindle runs on GD32F303CCT6 , CH32V303RCT6 and RP2040 (> 1MB flash)
+Other models will work, you must have enough flash & ram (256 kB flash / 48 or 64 kb RAM)
 
-swindle is a custom port of the amazing Black Magic Probe.
-
-https://github.com/blackmagic-debug/blackmagic
-
+Perfect to have a cheap debugger based on a RP2040 (normal or zero) 
 
 Demo : A tiny rp2040-zero debugging a big-issh CH32V307 eval board :
 
@@ -23,22 +20,20 @@ Demo : A tiny rp2040-zero debugging a big-issh CH32V307 eval board :
 
 Why ?
 =====
-Because it is not tied to Arm (same code fine for CH32V3x/RISCV)
-Because it's fun to play with rust.
-Because using the RP2040 zero makes a very small & cheap debugger
+- Because it is not tied to Arm (same code fine for CH32V3x/RISCV).
+- Because it's fun to play with rust.
+- Because using the RP2040 zero makes a very small & cheap debugger.
+- Because i wanted native support for CH32 chips and FreeRTOS.
+- Because it is built using CMake (at the time the BMP was using plain Makefiles).
 
-Additionnaly, the structure of the gdb rust parser is simpler than the one
-from blackmagic and easier to modify to add support for things.
-
-Since under the hood FreeRTOS is used, swindle is easy to extend by creating separate standalone threads
 
 
 Quick FAQ
 ==================
 
 * Is it better than vanilla Black Magic Probe ? : No. It supports less targets and is less robust.
-* Can i run it on xyz board ? : No, only RP2040, STM32F103, GD32F103, GD32F303 and CH32V3x (maybe CH32V2X)
-* Can i debug all the boards : No, only some are enabled (ARM SWD + CH32V RVSWD), but you can easily change that.
+* Can i run it on xyz board ? : No, only RP2040,  GD32F303 and CH32V3x (maybe CH32V2X)
+* Can i debug all the boards : No, only some are enabled (ARM SWD + CH32V RVSWD). This is mostly a size issue.
 * How do i update it ? : Through DFU for all boards except the RP2040
 * Is Jtag supported ? : No, only SWD/RVSWD. You can reactivate it if you really need it.
 
