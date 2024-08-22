@@ -19,7 +19,10 @@ extern "C"
 
 #define BMP_VID 0x1d50
 #define BMP_PID 0x6018
+// RP2040
 #define LNBMP_PID 0x6050
+// CH/GD
+// #define LNBMP_PID 0x6030
 
 #define WCHLINK_VID 0x1a86
 #define WCHLINK_PID 0x8010
@@ -34,7 +37,7 @@ extern "C"
     }
 
 //-- disable debug
-#if 1
+#if 0
 #undef QBMPLOG
 #undef QBMPLOGN
 #undef QBMPLOGH

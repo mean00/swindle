@@ -113,6 +113,12 @@ extern "C" {
     pub fn bmp_get_wait_state_c() -> cty::c_uint;
 }
 extern "C" {
+    pub fn bmp_set_frequency_c(fs: cty::c_uint);
+}
+extern "C" {
+    pub fn bmp_get_frequency_c() -> cty::c_uint;
+}
+extern "C" {
     pub fn cmd_swd_scan(
         t: *const target_s,
         argc: cty::c_int,
@@ -134,6 +140,9 @@ extern "C" {
 }
 extern "C" {
     pub fn bmp_attached_c() -> bool_;
+}
+extern "C" {
+    pub fn bmp_is_riscv_c() -> bool_;
 }
 extern "C" {
     pub fn bmp_map_count_c(kind: cty::c_uint) -> cty::c_int;
@@ -191,6 +200,9 @@ extern "C" {
 }
 extern "C" {
     pub fn bmp_reset_target_c() -> bool_;
+}
+extern "C" {
+    pub fn rv_dm_start_c();
 }
 extern "C" {
     pub fn bmp_add_breakpoint_c(

@@ -5,6 +5,9 @@ typedef int bool;
 
 void bmp_set_wait_state_c(unsigned int ws); // this is used to set the clock on SWD
 unsigned int bmp_get_wait_state_c();        // this is used to set the clock on SWD
+//
+void bmp_set_frequency_c(unsigned int fs); // this is used to set the clock on SWD
+unsigned int bmp_get_frequency_c();        // this is used to set the clock on SWD
 
 bool cmd_swd_scan(const target_s *t, int argc, const unsigned char **argv);
 bool cmd_rvswd_scan(const target_s *t, int argc, const unsigned char **argv);
@@ -12,6 +15,7 @@ bool cmd_rvswd_scan(const target_s *t, int argc, const unsigned char **argv);
 bool bmp_attach_c(uint32_t target);
 bool bmp_detach_c(uint32_t target);
 bool bmp_attached_c();
+bool bmp_is_riscv_c();
 
 int bmp_map_count_c(const uint32_t kind);
 bool bmp_map_get_c(const uint32_t, const uint32_t, uint32_t *start, uint32_t *size, uint32_t *blockSize);
@@ -35,6 +39,7 @@ bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t 
 bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *crc);
 
 bool bmp_reset_target_c();
+void rv_dm_start_c();
 bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
 bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
 uint32_t riscv_list_csr(uint32_t start, uint32_t max_size, uint32_t *csr);

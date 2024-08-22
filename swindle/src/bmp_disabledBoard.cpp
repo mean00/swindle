@@ -27,7 +27,7 @@ extern "C"
      * @return true
      * @return false
      */
-    bool gd32vf1_probe(target_s *const target)
+    bool __xx__gd32vf1_probe(target_s *const target)
     {
         return false;
     }

@@ -41,6 +41,18 @@ extern "C"
         .printf = gdb_target_printf,
         .semihosting_buffer_ptr = NULL,
     };
+    bool bmp_is_riscv_c()
+    {
+        if (!cur_target)
+            return false;
+#warning INCORRECT HACK only RV32 supported
+        const char *name = cur_target->core;
+        if (!name)
+            return false;
+        if ((name[0] == 'r') && (name[1] == 'v'))
+            return true;
+        return false;
+    }
 
     /*
 

@@ -12,6 +12,14 @@
 #include <time.h>
 #include <unistd.h>
 
+#define KNRM "\x1B[0m"
+#define KRED "\x1B[31m"
+#define KGRN "\x1B[32m"
+#define KBLU "\x1B[34m"
+#define KMAG "\x1B[35m"
+#define KCYN "\x1B[36m"
+#define KWHT "\x1B[37m"
+
 void decoderDMReg(int reg, uint32_t value);
 #if 0
 #undef QBMPLOG
@@ -136,19 +144,21 @@ static int last_cmd = 0;
  */
 void decoderReply(int size, const uint8_t *data)
 {
-    if (size < 9)
-        return;
-    uint32_t reg = readLE(data + 1, 4);
     if (!last_cmd)
     {
         QBMPLOG("?? not a reply ??");
+        QBMPLOG("\n");
+        last_cmd = 0;
+        return;
+    }
+    if (data[0] == 'K')
+    {
+        QBMPLOG("  %s>OK%s\n", KGRN, KNRM);
     }
     else
     {
-        decoderDMReg(last_cmd, reg);
+        QBMPLOG("  %s>FAIL!%s\n", KRED, KNRM);
     }
-    QBMPLOG("\n");
-    last_cmd = 0;
 }
 
 const char *regname(int reg)
@@ -165,9 +175,13 @@ const char *regname(int reg)
     {
         return "FPU";
     }
-    return "???";
+    return "?-?";
 }
-
+/**
+ */
+void decodeReply(int cmd, uint32_t value)
+{
+}
 /**
  * @brief
  *
@@ -220,13 +234,13 @@ void decoderDMReg(int reg, uint32_t value)
         }
         break;
         default:
-            QBMPLOG("???");
+            QBMPLOG("?-?");
             break;
         }
     }
     break;
     default:
-        QBMPLOG("???");
+        QBMPLOG("?-?");
         break;
     }
 }
@@ -234,15 +248,247 @@ void decoderDMReg(int reg, uint32_t value)
  *
  *
  */
+void decodeHL(int size, const uint8_t *data)
+{
+    last_cmd = 'H';
+    switch (data[0])
+    {
+    case 'C':
+        QBMPLOG("HL-Check Version\n");
+        break;
+    case 'A':
+        QBMPLOG("HL-Accel \n");
+        break;
+    default:
+        QBMPLOG("HL-?-? <%c< \n", data[0]);
+        break;
+    }
+}
+
+/**
+ */
+void decodeSWD(int size, const uint8_t *data)
+{
+    switch (data[0])
+    {
+    case 'S':
+        QBMPLOG("SWD-RESET \n");
+        break;
+    default:
+        QBMPLOG("SWD-?- ? \n");
+        break;
+    }
+}
+/**
+ */
+void decodeRV(int size, const uint8_t *data)
+{
+    last_cmd = 'G';
+    switch (data[0])
+    {
+    case 'S':
+        QBMPLOG("RV-RESET \n");
+        break;
+    case 'r':
+        QBMPLOG("RV-DM READ \n");
+        break;
+    case 'w':
+        QBMPLOG("RV-DM WRITE \n");
+        break;
+    default:
+        QBMPLOG("RV-?- ? \n");
+        break;
+    }
+}
+/**
+ */
+void decodeGeneric(int size, const uint8_t *data)
+{
+    last_cmd = 'G';
+    switch (data[0])
+    {
+    case 'f':
+        QBMPLOG("Gen-FREQ GET \n");
+        break;
+    case 'F':
+        QBMPLOG("Gen-FREQ SET \n");
+        break;
+    case 'Z':
+        QBMPLOG("Gen-NRST SET \n");
+        break;
+    case 'z':
+        QBMPLOG("Gen-NRST Clear \n");
+        break;
+    case 'A':
+        QBMPLOG("Gen-Start RPC \n");
+        break;
+    case 'P':
+        QBMPLOG("Gen-Power SET \n");
+        break;
+    case 'p':
+        QBMPLOG("Gen-Power GET \n");
+        break;
+    case 'V':
+        QBMPLOG("Gen-Voltage \n");
+        break;
+    case 'E':
+        QBMPLOG("Gen-OutputEnable \n");
+        break;
+    default:
+        QBMPLOG("Gen-?-? <%c< \n", data[0]);
+        break;
+    }
+}
+int _c(const uint8_t a)
+{
+    if (a >= 'A' && a <= 'F')
+        return 10 + a - 'A';
+    if (a >= 'a' && a <= 'f')
+        return 10 + a - 'a';
+    if (a >= '0' && a <= '9')
+        return a - '0';
+    return 0;
+}
+int _hex(const uint8_t *a)
+{
+    return _c((a[0]) << 4) + _c(a[1]);
+}
+/**
+ */
+void decodeMon(int size, const uint8_t *data)
+{
+    size >>= 1;
+    for (int i = 0; size; i++)
+    {
+        QBMPLOG("%c", _hex(data));
+        data += 2;
+    }
+    QBMPLOG("\n");
+}
+/**
+ */
+void decodeLNADIV5(int size, const uint8_t *data)
+{
+    switch (data[0])
+    {
+    case 'W':
+        QBMPLOG("LnAdiv5- Write\n");
+        break;
+    case 'R':
+        QBMPLOG("LnAdiv5- Read\n");
+        break;
+    case 'A':
+        QBMPLOG("LnAdiv5- RAW\n");
+        break;
+    case 'B':
+        QBMPLOG("LnAdiv5- LowLevel\n");
+        break;
+    default:
+        QBMPLOG("LnAdiv5-???? \n");
+        break;
+    }
+}
+void decodeADIV5(int size, const uint8_t *data)
+{
+    switch (data[0])
+    {
+    case 'd':
+        QBMPLOG("Adiv5-DP READ \n");
+        break;
+    case 'D':
+        QBMPLOG("Adiv5-DP WRITE \n");
+        break;
+    case 'a':
+        QBMPLOG("Adiv5-AP READ \n");
+        break;
+    case 'A':
+        QBMPLOG("Adiv5-AP WRITE \n");
+        break;
+    case 'R':
+        QBMPLOG("Adiv5-RAW ACCESS \n");
+        break;
+
+    default:
+        QBMPLOG("Adiv5-???? \n");
+        break;
+    }
+}
+
+/**
+ *
+ *
+ */
+static bool first_frame = true;
 void decoderRequest(int size, const uint8_t *data)
 {
     if (size < 3)
         return;
-    if (data[0] == '!')
+    switch (data[0])
     {
-        QBMPLOG("RPC CALL:");
-        switch (data[1])
+    case '!':
+        break;
+    case '$':
+        decodeMon(size - 2, data + 2);
+        break;
+    default:
+        if (!first_frame)
         {
+            QBMPLOG("?-?-invalid frame <%s>\n", data);
+            return;
+        }
+        first_frame = false;
+        last_cmd = 1;
+        break;
+    }
+    QBMPLOG("RPC CALL:");
+    switch (data[1])
+    {
+    case 'O':
+        decodeMon(size - 2, data);
+        return;
+        break;
+    case 'J':
+        QBMPLOG("Jtag-unsupported");
+        return;
+        break;
+    case 'S':
+        decodeSWD(size - 2, data + 2);
+        return;
+        break;
+    case 'B':
+        decodeRV(size - 2, data + 2);
+        return;
+        break;
+    case 'G':
+        decodeGeneric(size - 2, data + 2);
+        return;
+        break;
+    case 'H':
+        decodeHL(size - 2, data + 2);
+        return;
+        break;
+    case 'A':
+        decodeADIV5(size - 2, data + 2);
+        return;
+        break;
+    case 'L':
+        decodeLNADIV5(size - 2, data + 2);
+        return;
+        break;
+    case 'Z':
+        QBMPLOG("SWINDLE-unsupported");
+        return;
+        break;
+    case 's':
+        QBMPLOG("SPI-unsupported");
+        return;
+        break;
+    default:
+        QBMPLOG("?-?-unsupported");
+        return;
+        break;
+    }
+#if 0
         case 'm':
             QBMPLOG("Mem read ");
             break;
@@ -281,6 +527,7 @@ void decoderRequest(int size, const uint8_t *data)
             break;
         }
     }
+#endif
 }
 #if 0
 extern "C" int bmda_usb_transfer(usb_link_s *link, const void *tx_buffer, size_t tx_len, void *rx_buffer, size_t rx_len,

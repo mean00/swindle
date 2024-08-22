@@ -18,5 +18,6 @@ APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/blackmagic_riscv_disable_in
 APPLY_PATCH_IF_NEEDED3(patched26 ${BMP_PATCH_FOLDER}/blackmagic_riscv_check_watchpoint.patch ${LNBMP_TOP_FOLDER}   "explictely fail when we cant put watchpoints")
 APPLY_PATCH_IF_NEEDED3(patched32 ${BMP_PATCH_FOLDER}/blackmagic_redirect_adiv5_to_lnv2.patch ${LNBMP_TOP_FOLDER}   "redirect adiv5_xx_no_check to ln_adiv5xxx_no_check swd functions")
 APPLY_PATCH_IF_NEEDED3(patched33 ${BMP_PATCH_FOLDER}/blackmagic_redirect_adiv5_to_lnv2_part2.patch ${LNBMP_TOP_FOLDER}   "redirect adiv5_xx_no_check to ln_adiv5xxx_no_check swd functions")
+APPLY_PATCH_IF_NEEDED3(patched34 ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_warning2.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
 
 

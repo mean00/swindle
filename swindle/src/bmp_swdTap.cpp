@@ -36,6 +36,7 @@ extern "C"
 #include "general.h"
 #include "timing.h"
 }
+#include "bmp_pinmode.h"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
 extern void gmp_gpio_init_adc();
@@ -193,6 +194,12 @@ static uint32_t zread(uint32_t nbTicks)
         LN_READ_BIT(val);
     }
     return val;
+}
+/**
+ *
+ */
+void disableFq()
+{
 }
 
 /**
@@ -357,7 +364,7 @@ void bmp_extraSetWaitState()
 void bmp_gpio_init_extra()
 {
 }
-void bmp_gpio_pinmode(bool pioMode)
+void bmp_gpio_pinmode(bmp_pin_mode pioMode)
 {
 }
 

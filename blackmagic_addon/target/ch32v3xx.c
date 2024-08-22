@@ -248,6 +248,7 @@ bool ch32v3xx_probe(target_s *target)
         target->driver = "CH32V307";
         break;
     default:
+        DEBUG_WARN("Unknown CH32V family 0x%x\n", family);
         return false;
         break;
     }
@@ -295,6 +296,7 @@ bool ch32v3xx_probe(target_s *target)
         }
     }
     DEBUG_WARN("CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
+    target_mem_map_free(target);
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
     ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size);
     target_add_commands(target, ch32v3x_cmd_list, target->driver);
