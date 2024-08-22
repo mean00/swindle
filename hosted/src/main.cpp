@@ -69,16 +69,24 @@ void exit_from_bmp()
 }
 
 extern "C" void rngdbstub_poll();
+
+BmpTcpServer *server = NULL;
+void trampoline()
+{
+    rngdbstub_poll();
+    // printf("Pending : %d\n",server->hasPendingConnections());
+}
+
 int main(int argc, char **argv)
 {
     qInfo() << "Qt BMP started";
     QCoreApplication a(argc, argv);
     qInstallMessageHandler(customHandler);
     platform_init(argc, argv);
-    BmpTcpServer *server = new BmpTcpServer;
+    server = new BmpTcpServer;
 
     QTimer mytimer;
-    QObject::connect(&mytimer, &QTimer::timeout, rngdbstub_poll);
+    QObject::connect(&mytimer, &QTimer::timeout, trampoline);
     mytimer.start(100);
 
     QCoreApplication::exec();

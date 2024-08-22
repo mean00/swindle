@@ -230,6 +230,20 @@ pub fn bmp_set_wait_state(ws: u32) {
 pub fn bmp_get_wait_state() -> u32 {
     unsafe { rn_bmp_cmd_c::bmp_get_wait_state_c() }
 }
+/**
+ *
+ */
+pub fn bmp_set_frequency(fq: u32) {
+    unsafe {
+        rn_bmp_cmd_c::bmp_set_frequency_c(fq);
+    }
+}
+/*
+ *
+ */
+pub fn bmp_get_frequency() -> u32 {
+    unsafe { rn_bmp_cmd_c::bmp_get_frequency_c() }
+}
 
 /*
 
@@ -477,7 +491,19 @@ pub fn get_heap_stats() -> (u32, u32) {
     }
  }
 */
+/**
+ * 
+ */
+pub fn rv_dm_start()  {
+    unsafe {
+        rn_bmp_cmd_c::rv_dm_start_c();
+    }
+}
 
+
+/**
+ * 
+ */
 pub fn bmp_rv_reset() -> bool {
     unsafe {
         let status: bool = ret_to_bool(rn_bmp_cmd_c::bmp_rv_dm_reset_c());
@@ -523,6 +549,9 @@ pub fn bmp_raw_swd_write(tick: u32, value: u32) {
 }
 pub fn bmp_adiv5_swd_raw_access(rnw: u8, addr: u16, value: u32, fault: *mut u32) -> u32 {
     unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_raw_access_c(rnw, addr, value, fault) }
+}
+pub fn bmp_is_riscv() -> bool {
+    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_is_riscv_c()) }
 }
 /*
  */

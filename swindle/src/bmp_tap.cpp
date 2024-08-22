@@ -3,13 +3,14 @@
 #include "lnBMP_swdio.h"
 // clang-format on
 uint32_t swd_delay_cnt = 4;
+uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
 SwdPin *rSWDIO;
 SwdWaitPin *rSWCLK;
 SwdReset pReset(TRESET_PIN);
-extern void bmp_extraSetWaitState();
 #define INIT_ADC gmp_gpio_init_adc
 void INIT_ADC();
 extern void bmp_gpio_init_extra();
+extern void disableFq();
 /**
 
 */
@@ -52,24 +53,6 @@ void bmp_io_end_session()
     pReset.off(); // hi-z by default
 }
 /**
- * @brief
- *
- */
-extern "C" void bmp_set_wait_state_c(uint32_t ws)
-{
-    swd_delay_cnt = ws;
-    bmp_extraSetWaitState();
-}
-/**
- * @brief
- *
- */
-extern "C" uint32_t bmp_get_wait_state_c()
-{
-    return swd_delay_cnt;
-}
-
-/**
  */
 extern "C" void platform_nrst_set_val(bool assert)
 {
@@ -88,5 +71,11 @@ extern "C" bool platform_nrst_get_val(void)
 {
     return pReset.state();
 }
-
+/**
+ *
+ */
+extern "C" uint32_t bmp_get_frequency_c()
+{
+    return swd_frequency;
+}
 //

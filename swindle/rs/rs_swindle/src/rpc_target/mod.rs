@@ -6,12 +6,12 @@ use crate::bmp;
 use crate::encoder::*;
 pub mod rpc_parser;
 pub mod rpc_reply;
+use crate::bmp::{bmp_get_frequency, bmp_set_frequency};
+use crate::bmplogger::*;
+use crate::crc::do_local_crc32;
 use crate::rpc_common::*;
 use crate::rpc_target::rpc_reply::*;
 use rpc_parser::rpc_parameter_parser;
-
-use crate::bmplogger::*;
-use crate::crc::do_local_crc32;
 //------------------------------
 crate::setup_log!(false);
 crate::gdb_print_init!();
@@ -339,8 +339,8 @@ fn rpc_jtag_packet(_parser: &mut rpc_parameter_parser) -> bool {
 fn rpc_rv_packet(parser: &mut rpc_parameter_parser) -> bool {
     match parser.next_cmd() {
         RPC_RV_RESET => {
-            let success = bmp::bmp_rv_reset();
-            rpc_reply_bool_32le(success, 0);
+            bmp::rv_dm_start();
+            rpc_reply_bool_32le(true, 0);
             return true;
         }
         RPC_RV_DM_READ => {
@@ -518,7 +518,18 @@ fn rpc_swindle_packet(parser: &mut rpc_parameter_parser) -> bool {
             rpc_reply_bool_32le(status, crc);
             return true;
         }
-        _ => (),
+        RPC_SWINDLE_GET_FQ => {
+            let fq: u32 = bmp_get_frequency();
+            rpc_reply_bool_32le(true, fq);
+            return true;
+        }
+        RPC_SWINDLE_SET_FQ => {
+            let fq: u32 = parser.next_u32();
+            bmp_set_frequency(fq);
+            rpc_reply_ok(0);
+            return true;
+        }
+        _ => bmpwarning!("Unknown swindle packet\n"),
     }
     false
 }

@@ -85,6 +85,8 @@ pub const RPC_RV_DM_WRITE: u8 = b'w';
 
 /* swindle packet */
 pub const RPC_SWINDLE_CRC32: u8 = b'C';
+pub const RPC_SWINDLE_GET_FQ: u8 = b'G';
+pub const RPC_SWINDLE_SET_FQ: u8 = b'S';
 /* LNADIV packet */
 pub const RPC_LNADIV_WRITE: u8 = b'W';
 pub const RPC_LNADIV_READ: u8 = b'R';

@@ -104,7 +104,7 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     // put new opcode
     let mut new_opcode: [u8; 4] = breakpoint.old_opcode;
     let offset: usize = (address & 2) as usize;
-    if true {
+    if !crate::bmp::bmp_is_riscv() {
         new_opcode[offset + 0] = ARM_BREAKPOINT_OPCODE[0];
         new_opcode[offset + 1] = ARM_BREAKPOINT_OPCODE[1];
     } else {
