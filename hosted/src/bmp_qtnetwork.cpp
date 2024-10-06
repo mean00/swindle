@@ -165,20 +165,35 @@ void BMPTcp::write(uint32_t sz, const uint8_t *ptr)
     }
 }
 //
+static int x(uint8_t c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return 10 + c - 'a';
+    if (c >= 'A' && c <= 'F')
+        return 10 + c - 'A';
+    return '.';
+}
 //
 void BMPTcp::flush()
 {
     if (!tcp_index)
         return;
     QBMPLOG("tcp write :\n");
-#if 0    
-    for (int i = 0; i < tcp_index; i++)
-    {
-        uint8_t c = tcp_buffer[i];
-    }
-#endif
     QBMPLOGN((int)tcp_index, (const char *)tcp_buffer);
-    QBMPLOG("\n--\n");
+    QBMPLOG("\n[");
+    if (tcp_index > 2 && tcp_buffer[0] == '$' && tcp_buffer[1] == 'O')
+    {
+        for (int i = 2; i < tcp_index; i += 2)
+        {
+            int l = tcp_buffer[i];
+            int r = tcp_buffer[i + 1];
+            int val = (x(l) << 4) + x(r);
+            QBMPLOG("%c", val);
+        }
+        QBMPLOG("]\n");
+    }
     if (tcp_index != _socket->write(tcp_buffer, tcp_index))
     {
         printf("** incomplete send **\n");

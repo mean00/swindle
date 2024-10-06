@@ -3,7 +3,7 @@ SET(T ${BMP}/src/target CACHE INTERNAL "")
 SET(P ${BMP}/src/platforms CACHE INTERNAL "")
 SET(myB ${CMAKE_CURRENT_SOURCE_DIR}/ CACHE INTERNAL "")
 SET(B ${myB}/src CACHE INTERNAL "")
-
+ADD_DEFINITIONS("-DENABLE_RISCV")
 #----------------------------
 # Supported boards
 #----------------------------
@@ -22,7 +22,6 @@ SET(BM_SRC      ${S}/command.c
                 ${S}/hex_utils.c
                 ${S}/timing.c
                 ${S}/maths_utils.c
-
                 #${S}/remote.c
                 #${S}/gdb_main.c
                 #${S}/gdb_packet.c
@@ -32,10 +31,13 @@ SET(BM_SRC      ${S}/command.c
                 )
 #------
 SET(BM_TARGET
+                ${T}/adi.c
                 ${T}/adiv5.c
                 ${T}/adiv5_swd.c
+                ${T}/adiv6.c
                 ${T}/cortex.c
                 ${T}/cortexm.c
+                ${T}/riscv_adi_dtm.c
                 ${T}/riscv_debug.c
                 ${T}/riscv32.c
                 ${T}/target_flash.c

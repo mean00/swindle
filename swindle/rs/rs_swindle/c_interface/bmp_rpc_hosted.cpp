@@ -28,7 +28,7 @@ adiv5_debug_port_s remote_dp = {
     .abort = adiv5_swd_abort,
     .ap_read = adiv5_ap_reg_read,
     .ap_write = adiv5_ap_reg_write,
-    .mem_read = advi5_mem_read_bytes,
+    .mem_read = adiv5_mem_read_bytes,
     .mem_write = adiv5_mem_write_bytes,
 };
 

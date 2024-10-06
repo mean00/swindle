@@ -11,14 +11,6 @@ IF(USE_RP2040)
 ELSE()
   SET(EXTRA _ln)
 ENDIF()
-SET(BMP_EXTRA  ${B}/../../blackmagic_addon/)
-SET(BOARDS      ${enabled_sources}
-                ${BMP_EXTRA}/target/ch32v3xx.c
-                ${B}/bmp_disabledBoard.cpp
-                ${T}/lpc_common.c
-                CACHE INTERNAL ""
-        )
-#
 SET(BRIDGE_SRCS
                 ${B}/bridge.cpp
                 ${B}/bmp_gpio.cpp
@@ -47,12 +39,13 @@ ADD_DEFINITIONS("-DBMD_IS_STDC=1")
 IF(USE_RP2040)
   IF(TRUE)
     RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/swd.pio ${CMAKE_BINARY_DIR}/bmp_pio_swd.h)
-    SET( EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${B}/bmp_rvTap${EXTRA}.cpp   ${B}/bmp_swdTap${EXTRA}.cpp   )
+    RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/rvswd.pio ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h)
+    SET( EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h ${B}/bmp_rvTap${EXTRA}.cpp   ${B}/bmp_swdTap${EXTRA}.cpp ${B}/bmp_tap_rp2040.cpp  )
   ELSE()
-    SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp   )
+    SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp  ${B}/bmp_tap_gpio.cpp )
   ENDIF()
 ELSE()
-  SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp   )
+  SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp  ${B}/bmp_tap_gpio.cpp )
   #set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-Os")
 ENDIF()
 # O0, 1, 2 works

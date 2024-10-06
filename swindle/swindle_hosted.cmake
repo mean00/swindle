@@ -3,13 +3,6 @@
 # Supported boards
 #----------------------------
 
-SET(BMP_EXTRA  ${B}/../../blackmagic_addon/)
-SET(BOARDS      ${enabled_sources}
-                ${BMP_EXTRA}/target/ch32v3xx.c
-                ${B}/bmp_disabledBoard.cpp
-                ${T}/lpc_common.c
-                CACHE INTERNAL ""
-        )
 SET(HOSTED ${BMP}/src/platforms/hosted CACHE INTERNAL "")
 SET(PC ${BMP}/src/platforms/hosted CACHE INTERNAL "")
 SET(LN_EXT "arm_gd32fx" CACHE INTERNAL "")

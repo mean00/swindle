@@ -47,6 +47,7 @@ extern "C"
 #include "riscv_debug.h"
 }
 #pragma GCC optimize("Ofast")
+#include "bmp_pinmode.h"
 #include "bmp_rvTap.h"
 #include "lnArduino.h"
 #include "lnBMP_pinout.h"
@@ -64,7 +65,6 @@ extern "C" uint32_t bmp_get_wait_state_c();
 #define RV_DMI_FAILURE 2U
 
 #define BMP_MIN_WS 1
-extern void bmp_gpio_pinmode(bool pioMode);
 
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val);
 bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output);
@@ -76,9 +76,9 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output);
  * no fs => 12 sec
  * @return uint32_t
  */
-static bool rv_dm_start()
+bool rv_dm_start()
 {
-    bmp_gpio_pinmode(false);
+    bmp_gpio_pinmode(BMP_PINMODE_RVSWD);
     int ws = bmp_get_wait_state_c();
     if (ws < BMP_MIN_WS)
         ws = BMP_MIN_WS;
@@ -86,6 +86,13 @@ static bool rv_dm_start()
     rv_dm_reset();
     return true;
 }
+/**
+ */
+extern "C" void rv_dm_start_c()
+{
+    rv_dm_start();
+}
+
 /**
  * @brief
  *
@@ -182,6 +189,7 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
  */
 static bool rv_dm_probe(uint32_t *chip_id)
 {
+#define DELAY() lnDelayMs(1)
     *chip_id = 0;
 
     uint32_t out = 0;
@@ -189,20 +197,20 @@ static bool rv_dm_probe(uint32_t *chip_id)
     // init sequence, reverse eng from capture
     //----------------------------------------------
     WR(0x10, 0x80000001UL); // write DM CTROL =1
-    lnDelayMs(10);
+    DELAY();
     WR(0x10, 0x80000001UL); // write DM CTRL = 0x800000001
-    lnDelayMs(10);
+    DELAY();
     RD(0x11, 0x00030382UL); // read DM_STATUS
-    lnDelayMs(10);
+    DELAY();
     RD(0x7f, 0x30700518UL); // read 0x7f
     *chip_id = out;         // 0x203xxxx 0x303xxxx 0x305...
-    lnDelayMs(10);
+    DELAY();
     WR(0x05, 0x1ffff704UL);
-    lnDelayMs(10);
+    DELAY();
     WR(0x17, 0x02200000UL);
-    lnDelayMs(10);
+    DELAY();
     RD(0x04, 0x30700518UL);
-    lnDelayMs(10);
+    DELAY();
     RD(0x05, 0x1ffff704UL);
     return (*chip_id) != 0xffffffffUL;
 }

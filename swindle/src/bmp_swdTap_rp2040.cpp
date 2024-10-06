@@ -41,17 +41,20 @@ extern "C"
 #include "lnBMP_tap.h"
 #include "ln_rp_pio.h"
 // clang-format on
+#include "bmp_pinmode.h"
 #include "lnRP2040_pio.h"
 extern "C"
 {
 #include "hardware/structs/clocks.h"
     uint32_t clock_get_hz(enum clock_index clk_index);
+#include "bmp_pio_rvswd.h"
 #include "bmp_pio_swd.h"
+#include "platform_support.h"
 }
 #include "lnbmp_parity.h"
 extern void gmp_gpio_init_adc();
-static rpPIO *swdpio;
-rpPIO_SM *xsm;
+extern rpPIO *swdpio;
+extern rpPIO_SM *xsm;
 
 static uint32_t SwdRead(size_t ticks)
 {
@@ -95,88 +98,13 @@ static uint32_t zread(uint32_t size)
     xsm->read(1, &value);
     return value >> (32 - size);
 }
-/**
- */
-static uint32_t getFqFromWs()
-{
-    uint32_t fq = clock_get_hz(clk_sys);
-    fq = fq / (4 + swd_delay_cnt);
-    return fq;
-}
-/**
- */
-void rp2040_swd_pio_change_clock(uint32_t fq)
-{
-    xsm->stop();
-    xsm->setSpeed(fq);
-    xsm->execute();
-}
-/**
- *
- */
-void bmp_extraSetWaitState()
-{
-    rp2040_swd_pio_change_clock(getFqFromWs());
-}
-
-/**
- *
- *
- */
-void bmp_gpio_pinmode(bool pioMode)
-{
-    lnPin pin_swd = _mapping[TSWDIO_PIN];
-    lnPin pin_clk = _mapping[TSWDCK_PIN];
-    if (pioMode) // SWD, so PIO mode
-    {
-        Logger("Switching to PIO mode\n");
-        lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE, true);
-        lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
-    }
-    else
-    {
-        Logger("Switching to bitbanging mode\n");
-        lnDigitalWrite(pin_swd, 1);
-        lnDigitalWrite(pin_clk, 1);
-        lnPinMode(pin_swd, lnOUTPUT);
-        lnPinMode(pin_clk, lnOUTPUT);
-    }
-}
-
-/**
-
-*/
-void bmp_gpio_init_extra()
-{
-    lnPin pin_swd = _mapping[TSWDIO_PIN];
-    lnPin pin_clk = _mapping[TSWDCK_PIN];
-    swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
-    xsm = swdpio->getSm(0);
-
-    rpPIO_pinConfig pinConfig;
-    pinConfig.sets.pinNb = 1;
-    pinConfig.sets.startPin = pin_swd;
-    pinConfig.outputs.pinNb = 1;
-    pinConfig.outputs.startPin = pin_swd;
-    pinConfig.inputs.pinNb = 1;
-    pinConfig.inputs.startPin = pin_swd;
-
-    xsm->setSpeed(getFqFromWs());
-    xsm->setBitOrder(true, false);
-    xsm->setPinDir(pin_swd, true);
-    xsm->setPinDir(pin_clk, true);
-    xsm->uploadCode(sizeof(swd_program_instructions) / 2, swd_program_instructions, swd_wrap_target, swd_wrap);
-    xsm->configure(pinConfig);
-    xsm->configureSideSet(pin_clk, 1, 2, true);
-    xsm->execute();
-}
 swd_proc_s swd_proc;
 /**
 
 */
 extern "C" void swdptap_init()
 {
-    bmp_gpio_pinmode(true);
+    bmp_gpio_pinmode(BMP_PINMODE_SWD);
     swd_proc.seq_in = SwdRead;
     swd_proc.seq_in_parity = SwdRead_parity;
     swd_proc.seq_out = SwdWrite;

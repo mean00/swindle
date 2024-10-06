@@ -26,6 +26,8 @@ extern "C"
     extern void deadEnd(int err);
 #define PLATFORM_HAS_DEBUG 1
 #define ENABLE_DEBUG 1
+#define ENABLE_RISCV 1
+
 #undef PLATFORM_PRINTF
 #define PLATFORM_PRINTF Logger
 #include "printf.h"

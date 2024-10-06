@@ -1,19 +1,27 @@
-diff --git a/src/target/adiv5.c b/src/target/adiv5.c
-index 137162f8..9c131ba9 100644
---- a/src/target/adiv5.c
-+++ b/src/target/adiv5.c
-@@ -687,10 +687,10 @@ static void adiv5_component_probe(
- 				DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
- 				cortexa_probe(ap, addr);
+diff --git a/src/target/adi.c b/src/target/adi.c
+index 43a032ee..cfe861d7 100644
+--- a/src/target/adi.c
++++ b/src/target/adi.c
+@@ -687,14 +687,14 @@ void adi_ap_component_probe(
+ 				DEBUG_INFO("%s-> cortexm_probe\n", indent + 1);
+ 				cortexm_probe(ap);
  				break;
+-			case aa_cortexa:
+-				DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
+-				cortexa_probe(ap, base_address);
+-				break;
 -			case aa_cortexr:
 -				DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
--				cortexr_probe(ap, addr);
+-				cortexr_probe(ap, base_address);
 -				break;
-+			//case aa_cortexr:
-+				//DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
-+				//cortexr_probe(ap, addr);
-+				//break;
++			// meanx case aa_cortexa:
++				// meanx DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
++				// meanx cortexa_probe(ap, base_address);
++				// meanx break;
++			// meanx case aa_cortexr:
++				// meanx DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
++				// meanx cortexr_probe(ap, base_address);
++				// meanx break;
  			default:
  				break;
  			}

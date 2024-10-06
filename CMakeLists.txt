@@ -10,6 +10,7 @@ MESSAGE(STATUS "======================")
 OPTION(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 OPTION(USE_GD32F3        "Target GD32F303 chip with 256 flash" OFF)
 OPTION(USE_CH32V3x       "Target USE_CH32V3x chip with 256 flash" OFF)
+OPTION(USE_RP_ZERO       "Change RGB LED to map RP2040 board" OFF)
 
 #
 SET(BMP_VERSION_BRANCH 1.10)
@@ -24,7 +25,7 @@ IF(NOT USE_NO_DEFAULT)
 ENDIF()
 
 IF(USE_CH32V3x)
-    SET(USE_CH32v3x_USB_OTG True CACHE INTERNAL "")
+  SET(USE_CH32v3x_USB_OTG True CACHE INTERNAL "")
 ENDIF()
 #___________________________________________________
 SET(LN_ENABLE_USBD  TRUE  CACHE INTERNAL "")
@@ -71,14 +72,29 @@ INCLUDE(${AF_FOLDER}/setup.cmake)
 USE_LIBRARY(tinyUsb)
 
 INCLUDE(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
+#__________________________________________________________________
+#
+#
+#
+MACRO(TUNE_NAME OPTN NAME)
+  IF(${OPTN})
+    STRING(APPEND TGT_NAME "_${NAME}")
+  ENDIF()
+ENDMACRO()
+#
+
 
 SET(BMP ${CMAKE_SOURCE_DIR}/blackmagic)
 
 IF(USE_RP2040)
-        RP_PIO_GENERATE( ${CMAKE_SOURCE_DIR}/src/ws.pio ${CMAKE_BINARY_DIR}/ws.h)
-        SET(SOURCES src/swindle_rp2040.cpp ${CMAKE_BINARY_DIR}/ws.h)
+  RP_PIO_GENERATE( ${CMAKE_SOURCE_DIR}/src/ws.pio ${CMAKE_BINARY_DIR}/ws.h)
+  IF(USE_RP_ZERO)
+    TUNE_NAME(USE_RP_ZERO zero)
+    SET(ZERO_FLAGS _zero)
+  ENDIF()
+  SET(SOURCES src/swindle_rp2040${ZERO_FLAGS}.cpp ${CMAKE_BINARY_DIR}/ws.h)
 ELSE()
-        SET(SOURCES src/swindle.cpp)
+  SET(SOURCES src/swindle.cpp)
 ENDIF()
 
 GENERATE_GD32_FIRMWARE(swindle ${SOURCES})
@@ -90,16 +106,6 @@ TARGET_LINK_LIBRARIES(swindle lnarduino_c_bindings)
 TARGET_LINK_LIBRARIES(swindle libswindle)
 TARGET_LINK_LIBRARIES(swindle swindle_interface)
 TARGET_LINK_LIBRARIES(swindle rsbmp)
-
-#
-#
-#
-MACRO(TUNE_NAME OPTN NAME)
-  IF(${OPTN})
-    STRING(APPEND TGT_NAME "_${NAME}")
-  ENDIF()
-ENDMACRO()
-#
 
 #
 TUNE_NAME(USE_CH32V3x CH32V3x)
