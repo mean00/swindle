@@ -1,0 +1,682 @@
+diff --git a/src/command.c b/src/command.c
+index d1d110f8..f3a57fb7 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -51,12 +51,13 @@
+ #include "usb.h"
+ #endif
+ 
++/*static  */ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
+ static bool cmd_version(target_s *t, int argc, const char **argv);
+ static bool cmd_help(target_s *t, int argc, const char **argv);
+ 
+-static bool cmd_jtag_scan(target_s *target, int argc, const char **argv);
+-static bool cmd_swd_scan(target_s *target, int argc, const char **argv);
+-static bool cmd_auto_scan(target_s *t, int argc, const char **argv);
++/* static */  bool cmd_jtag_scan(target_s *target, int argc, const char **argv);
++/* static  */ bool cmd_swd_scan(target_s *target, int argc, const char **argv);
++/* static  */ bool cmd_auto_scan(target_s *t, int argc, const char **argv);
+ static bool cmd_frequency(target_s *t, int argc, const char **argv);
+ static bool cmd_targets(target_s *t, int argc, const char **argv);
+ static bool cmd_morse(target_s *t, int argc, const char **argv);
+@@ -91,6 +92,7 @@ const command_s cmd_list[] = {
+ 	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
+ 	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
+ 	{"swdp_scan", cmd_swd_scan, "Deprecated: use swd_scan instead"},
++	{"rvswdp_scan", cmd_rvswd_scan, "Scan RVSWD (WCH Risc-V) for devices"},
+ 	{"auto_scan", cmd_auto_scan, "Automatically scan all chain types for devices"},
+ 	{"frequency", cmd_frequency, "set minimum high and low times: [FREQ]"},
+ 	{"targets", cmd_targets, "Display list of available targets"},
+@@ -227,7 +229,7 @@ bool cmd_help(target_s *t, int argc, const char **argv)
+ 	return true;
+ }
+ 
+-static bool cmd_jtag_scan(target_s *target, int argc, const char **argv)
++/* static */ bool cmd_jtag_scan(target_s *target, int argc, const char **argv)
+ {
+ 	(void)target;
+ 	(void)argc;
+@@ -756,3 +758,50 @@ static bool cmd_heapinfo(target_s *t, int argc, const char **argv)
+ 		gdb_outf("%s\n", "Set semihosting heapinfo: HEAP_BASE HEAP_LIMIT STACK_BASE STACK_LIMIT");
+ 	return true;
+ }
++
++
++ 
++ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv)
++ {
++ 	(void)target;
++ 	(void)argc;
++ 	(void)argv;
++ 
++ 	if (platform_target_voltage())
++ 		gdb_outf("Target voltage: %s\n", platform_target_voltage());
++ 
++ 	if (connect_assert_nrst)
++ 		platform_nrst_set_val(true); /* will be deasserted after attach */
++ 
++ 	bool scan_result = false;
++ 	volatile exception_s e;
++ 	TRY(EXCEPTION_ALL) {
++ #if PC_HOSTED == 1
++ 		scan_result = bmda_rvswd_scan();
++ #else
++ 		scan_result = rvswd_scan();
++ #endif
++ 	}
++ 	CATCH () {
++ 	case EXCEPTION_TIMEOUT:
++ 		gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
++ 		break;
++ 	case EXCEPTION_ERROR:
++ 		gdb_outf("Exception: %s\n", e.msg);
++ 		break;
++ 	}
++ 
++ 	if (!scan_result) {
++ 		platform_target_clk_output_enable(false);
++ 		platform_nrst_set_val(false);
++ 		gdb_out("RVSWD scan failed!\n");
++ 		return false;
++ 	}
++ 
++ 	cmd_targets(NULL, 0, NULL);
++ 	platform_target_clk_output_enable(false);
++ 	morse(NULL, false);
++ 	return true;
++ }
++ 
++
+diff --git a/src/gdb_main.c b/src/gdb_main.c
+index 05a7cca9..841d6eb3 100644
+--- a/src/gdb_main.c
++++ b/src/gdb_main.c
+@@ -457,6 +457,8 @@ static void exec_q_supported(const char *packet, const size_t length)
+ 		GDB_PACKET_BUFFER_SIZE);
+ }
+ 
++extern  char *ztarget_mem_map(const target_s *t);
++
+ static void exec_q_memory_map(const char *packet, const size_t length)
+ {
+ 	(void)length;
+@@ -469,9 +471,16 @@ static void exec_q_memory_map(const char *packet, const size_t length)
+ 		gdb_putpacketz("E01");
+ 		return;
+ 	}
++#if 0 // dont abuse the stack
+ 	char buf[1024];
+ 	target_mem_map(target, buf, sizeof(buf)); /* Fixme: Check size!*/
+ 	handle_q_string_reply(buf, packet);
++#else
++    char *out=ztarget_mem_map(cur_target);
++    handle_q_string_reply(out,packet);
++    free(out);
++	
++#endif
+ }
+ 
+ static void exec_q_feature_read(const char *packet, const size_t length)
+diff --git a/src/include/gdb_if.h b/src/include/gdb_if.h
+index 332683c2..e594178c 100644
+--- a/src/include/gdb_if.h
++++ b/src/include/gdb_if.h
+@@ -21,10 +21,10 @@
+ #ifndef INCLUDE_GDB_IF_H
+ #define INCLUDE_GDB_IF_H
+ 
+-#if PC_HOSTED == 0 && !defined(NO_LIBOPENCM3)
+-#include <libopencm3/usb/usbd.h>
+-void gdb_usb_out_cb(usbd_device *dev, uint8_t ep);
+-#endif
++//#if PC_HOSTED == 0 && !defined(NO_LIBOPENCM3)
++//#include <libopencm3/usb/usbd.h>
++//void gdb_usb_out_cb(usbd_device *dev, uint8_t ep);
++//#endif
+ 
+ int gdb_if_init(void);
+ char gdb_if_getchar(void);
+diff --git a/src/include/gdb_packet.h b/src/include/gdb_packet.h
+index a35666a5..a0125876 100644
+--- a/src/include/gdb_packet.h
++++ b/src/include/gdb_packet.h
+@@ -35,9 +35,9 @@
+ #define GDB_PACKET_ESCAPE_XOR         (0x20U)
+ 
+ #if defined(__MINGW32__) || defined(__MINGW64__) || defined(__CYGWIN__)
+-#define GDB_FORMAT_ATTR __attribute__((format(__MINGW_PRINTF_FORMAT, 1, 2)))
++#define GDB_FORMAT_ATTR 
+ #elif defined(__GNUC__) || defined(__clang__)
+-#define GDB_FORMAT_ATTR __attribute__((format(printf, 1, 2)))
++#define GDB_FORMAT_ATTR 
+ #else
+ #define GDB_FORMAT_ATTR
+ #endif
+diff --git a/src/include/stdio_newlib.h b/src/include/stdio_newlib.h
+index 99d9fac7..291bb8ce 100644
+--- a/src/include/stdio_newlib.h
++++ b/src/include/stdio_newlib.h
+@@ -38,9 +38,9 @@
+ #endif
+ #define vasprintf vasiprintf
+ 
+-#ifdef snprintf
+-#undef snprintf
+-#endif
+-#define snprintf sniprintf
++// MEANX #ifdef snprintf
++// MEANX #undef snprintf
++// MEANX #endif
++// MEANX #define snprintf sniprintf
+ 
+ #endif /* STDIO_NEWLIB_H */
+diff --git a/src/include/target.h b/src/include/target.h
+index c8851790..50d9c6a0 100644
+--- a/src/include/target.h
++++ b/src/include/target.h
+@@ -45,6 +45,9 @@ typedef struct target_controller target_controller_s;
+ #if PC_HOSTED == 1
+ bool bmda_swd_scan(uint32_t targetid);
+ bool bmda_jtag_scan(void);
++bool bmda_rvswd_scan(void);
++#else 
++bool rvswd_scan(void);  
+ #endif
+ bool adiv5_swd_scan(uint32_t targetid);
+ bool jtag_scan(void);
+diff --git a/src/remote.c b/src/remote.c
+index 3c0ed16f..afc34ea9 100644
+--- a/src/remote.c
++++ b/src/remote.c
+@@ -303,7 +303,7 @@ static void remote_packet_process_general(char *packet, const size_t packet_len)
+ 		break;
+ 	case REMOTE_START:
+ #if ENABLE_DEBUG == 1 && defined(PLATFORM_HAS_DEBUG)
+-		debug_bmp = true;
++//		debug_bmp = true;
+ #endif
+ #ifndef PLATFORM_IDENT_DYNAMIC
+ 		remote_respond_string(REMOTE_RESP_OK, BOARD_IDENT);
+diff --git a/src/target/adi.c b/src/target/adi.c
+index 43a032ee..cfe861d7 100644
+--- a/src/target/adi.c
++++ b/src/target/adi.c
+@@ -687,14 +687,14 @@ void adi_ap_component_probe(
+ 				DEBUG_INFO("%s-> cortexm_probe\n", indent + 1);
+ 				cortexm_probe(ap);
+ 				break;
+-			case aa_cortexa:
+-				DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
+-				cortexa_probe(ap, base_address);
+-				break;
+-			case aa_cortexr:
+-				DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
+-				cortexr_probe(ap, base_address);
+-				break;
++			// meanx case aa_cortexa:
++				// meanx DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
++				// meanx cortexa_probe(ap, base_address);
++				// meanx break;
++			// meanx case aa_cortexr:
++				// meanx DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
++				// meanx cortexr_probe(ap, base_address);
++				// meanx break;
+ 			default:
+ 				break;
+ 			}
+diff --git a/src/target/adiv5_interface.h b/src/target/adiv5_interface.h
+index e062abe4..db6f792f 100644
+--- a/src/target/adiv5_interface.h
++++ b/src/target/adiv5_interface.h
+@@ -26,7 +26,9 @@
+ 
+ #include "adiv5_internal.h"
+ #include "exception.h"
+-
++// MEANX
++extern void ln_raw_swd_write(uint32_t tick, uint32_t value);
++//
+ #ifndef DEBUG_PROTO_IS_NOOP
+ void decode_access(uint16_t addr, uint8_t rnw, uint8_t apsel, uint32_t value);
+ #endif
+@@ -155,7 +157,10 @@ static inline uint32_t adiv5_dp_recoverable_access(adiv5_debug_port_s *dp, uint8
+ 	if (dp->fault == SWDP_ACK_NO_RESPONSE) {
+ 		uint32_t response;
+ 		/* Wait the response period, then clear the error */
+-		swd_proc.seq_in_parity(&response, 32);
++		// MEANX : This will break jtag...
++		// converting a read to a write should not matter
++		ln_raw_swd_write(32, 0xffffffffUL);
++		//swd_proc.seq_in_parity(&response, 32);
+ 		DEBUG_WARN("Recovering and re-trying access\n");
+ 		dp->error(dp, true);
+ 		response = dp->low_access(dp, rnw, addr, value);
+diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
+index fc6979c8..970b18a6 100644
+--- a/src/target/adiv5_swd.c
++++ b/src/target/adiv5_swd.c
+@@ -54,7 +54,7 @@ uint8_t make_packet_request(const uint8_t rnw, const uint16_t addr)
+ }
+ 
+ /* Provide bare DP access functions without timeout and exception */
+-
++extern void ln_raw_swd_write(uint32_t tick, uint32_t value);
+ static void swd_line_reset_sequence(const bool idle_cycles)
+ {
+ 	/*
+@@ -63,8 +63,11 @@ static void swd_line_reset_sequence(const bool idle_cycles)
+ 	 *
+ 	 * for robustness, we use 60 HIGH cycles and 4 idle cycles
+ 	 */
+-	swd_proc.seq_out(0xffffffffU, 32U);                     /* 32 cycles HIGH */
+-	swd_proc.seq_out(0x0fffffffU, idle_cycles ? 32U : 28U); /* 28 cycles HIGH + 4 idle cycles if idle is requested */
++	//swd_proc.seq_out(0xffffffffU, 32U);                     /* 32 cycles HIGH */
++	//swd_proc.seq_out(0x0fffffffU, idle_cycles ? 32U : 28U); /* 28 cycles HIGH + 4 idle cycles if idle is requested */
++	ln_raw_swd_write(32, 0xffffffffU);
++	ln_raw_swd_write(idle_cycles ? 32U : 28U, 0x0fffffffU);
++
+ }
+ 
+ /* Switch out of dormant state into SWD */
+@@ -80,10 +83,14 @@ static void dormant_to_swd_sequence(void)
+ 	/* Send at least 8 SWCLKTCK cycles with SWDIOTMS HIGH */
+ 	swd_line_reset_sequence(false);
+ 	/* Send the 128-bit Selection Alert sequence on SWDIOTMS */
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_0, 32U);
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_1, 32U);
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_2, 32U);
+-	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_3, 32U);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_0);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_1);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_2);
++	ln_raw_swd_write(32,ADIV5_SELECTION_ALERT_SEQUENCE_3);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_0, 32U);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_1, 32U);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_2, 32U);
++	//swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_3, 32U);
+ 	/*
+ 	 * We combine the last two sequences in a single seq_out as an optimization
+ 	 *
+@@ -93,7 +100,8 @@ static void dormant_to_swd_sequence(void)
+ 	 * The bits are shifted out to the right, so we shift the second sequence left by the size of the first sequence
+ 	 * The first sequence is 4 bits and the second 8 bits, totaling 12 bits in the combined sequence
+ 	 */
+-	swd_proc.seq_out(ADIV5_ACTIVATION_CODE_ARM_SWD_DP << 4U, 12U);
++	//swd_proc.seq_out(ADIV5_ACTIVATION_CODE_ARM_SWD_DP << 4U, 12U);
++	ln_raw_swd_write(12,ADIV5_ACTIVATION_CODE_ARM_SWD_DP << 4U);
+ 
+ 	/*
+ 	 * The target is in the protocol error state after selecting SWD
+@@ -117,7 +125,8 @@ static void jtag_to_swd_sequence(void)
+ 	swd_line_reset_sequence(false);
+ 
+ 	/* Send the 16-bit JTAG-to-SWD select sequence on SWDIO/TMS */
+-	swd_proc.seq_out(ADIV5_JTAG_TO_SWD_SELECT_SEQUENCE, 16U);
++	//swd_proc.seq_out(ADIV5_JTAG_TO_SWD_SELECT_SEQUENCE, 16U);
++	ln_raw_swd_write(16,ADIV5_JTAG_TO_SWD_SELECT_SEQUENCE);
+ 
+ 	/*
+ 	 * This ensures that if a SWD/JTAG DP was already in SWD operation before sending the select sequence,
+@@ -126,7 +135,7 @@ static void jtag_to_swd_sequence(void)
+ 	swd_line_reset_sequence(true);
+ }
+ 
+-bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
++bool xadiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+ {
+ 	const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
+ 	swd_proc.seq_out(request, 8U);
+@@ -136,7 +145,7 @@ bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+ 	return res != SWDP_ACK_OK;
+ }
+ 
+-uint32_t adiv5_swd_read_no_check(const uint16_t addr)
++uint32_t xadiv5_swd_read_no_check(const uint16_t addr)
+ {
+ 	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
+ 	swd_proc.seq_out(request, 8U);
+@@ -146,7 +155,16 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
+ 	swd_proc.seq_out(0, 8U);
+ 	return res == SWDP_ACK_OK ? data : 0;
+ }
+-
++//
++#if PC_HOSTED == 0
++extern bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
++extern uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
++extern uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value);
++#else
++extern bool remote_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
++extern uint32_t remote_adiv5_swd_read_no_check(const uint16_t addr);
++extern uint32_t remote_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value);
++#endif
+ bool adiv5_swd_scan(const uint32_t targetid)
+ {
+ 	/* Free the device list if any */
+@@ -158,16 +176,22 @@ bool adiv5_swd_scan(const uint32_t targetid)
+ 		return false;
+ 	}
+ 
+-	dp->write_no_check = adiv5_swd_write_no_check;
+-	dp->read_no_check = adiv5_swd_read_no_check;
++
++#if PC_HOSTED == 0
++	dp->write_no_check = ln_adiv5_swd_write_no_check;
++	dp->read_no_check = ln_adiv5_swd_read_no_check;
+ 	dp->dp_read = adiv5_swd_read;
+-	dp->low_access = adiv5_swd_raw_access;
++	dp->low_access = ln_adiv5_swd_raw_access;
+ 	dp->error = adiv5_swd_clear_error;
+ 	dp->abort = adiv5_swd_abort;
+-
+-#if PC_HOSTED == 0
+ 	swdptap_init();
+ #else
++	dp->write_no_check = remote_adiv5_swd_write_no_check;
++	dp->read_no_check = remote_adiv5_swd_read_no_check;
++	dp->dp_read = adiv5_swd_read;
++	dp->low_access = remote_adiv5_swd_raw_access;
++	dp->error = adiv5_swd_clear_error;
++	dp->abort = adiv5_swd_abort;
+ 	if (!bmda_swd_dp_init(dp)) {
+ 		free(dp);
+ 		return false;
+@@ -376,7 +400,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
+ 	return err;
+ }
+ 
+-uint32_t adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value)
++uint32_t xadiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value)
+ {
+ 	if ((addr & ADIV5_APnDP) && dp->fault)
+ 		return 0;
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 85b91e0c..aafaa846 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -30,7 +30,6 @@
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+-
+ #include "general.h"
+ #include "target.h"
+ #include "target_internal.h"
+@@ -55,6 +54,7 @@ typedef struct riscv32_regs {
+ #define RV32_MATCH_READ 0x00000001U
+ /* Match when the processor tries to write the location */
+ #define RV32_MATCH_WRITE 0x00000002U
++
+ /* Define that the match should occur in all/any mode */
+ #define RV32_MATCH_ANY_MODE 0x00000058U
+ /* Set the match action to raise a breakpoint exception */
+@@ -101,6 +101,11 @@ bool riscv32_probe(target_s *const target)
+ 		break;
+ 	default:
+ 		break;
++	case JEP106_MANUFACTURER_WCH:
++		PROBE(ch32v3xx_probe);
++		/*PROBE(ch32v003x_probe);
++		PROBE(ch32vx_probe);*/
++		break;
+ 	}
+ 
+ #if PC_HOSTED == 0
+@@ -669,7 +674,7 @@ static int riscv32_breakwatch_set(target_s *const target, breakwatch_s *const br
+ 	}
+ 	/* Grab the address to set the breakwatch on and configure the hardware */
+ 	const uint32_t address = breakwatch->addr;
+-	const bool result = riscv_config_trigger(hart, trigger, mode, &config, &address);
++	const bool result = riscv_config_trigger32(hart, trigger, mode, config, address);
+ 	/* If configuration succeeds, store the trigger index in the breakwatch structure */
+ 	if (result)
+ 		breakwatch->reserved[0] = trigger;
+@@ -682,5 +687,82 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	const uint32_t config = RV32_MATCH_ADDR_DATA_TRIGGER;
+ 	const uint32_t address = 0;
+-	return riscv_config_trigger(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, &config, &address) ? 0 : -1;
++	return riscv_config_trigger32(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, config, address) ? 0 : -1;
++}
++
++/*
++ *   Small helper function to translate target to hart and simplify parameters
++ *   We assume it is 32 bits
++ */
++static inline bool riscv32_target_csr_write(target_s *target, const uint16_t reg, uint32_t val)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	return riscv_csr_write(hart, reg, &val);
++}
++
++/*
++ *   Small helper function to translate target to hart and simplify parameters
++ *   We assume it is 32 bits
++ */
++static inline bool riscv32_target_csr_read(target_s *target, const uint16_t reg, uint32_t *val)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	return riscv_csr_read(hart, reg, val);
++}
++
++/*
++ *   Execute code on the target with the signature void function(a,b,c,d)
++ *       - codexec is the address the code to tun is located at
++ *       - param1/2/3/4 will end up as the 4 parameters of the stub function
++ *
++ *   The flashstub must not use the stack at all.
++ *   It returns true on success, false on error
++ *   There is a built-in timeout of 10 seconds
++ */
++bool riscv32_run_stub(
++	target_s *target, uint32_t loadaddr, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4)
++{
++	bool ret = false;
++	uint32_t pc = 0;
++	uint32_t mie = 0;
++	uint32_t zero = 0;
++	// save PC & MIE
++	target->reg_read(target, RISCV_REG_PC, &pc, 4);
++	riscv32_target_csr_read(target, RV_CSR_MIE, &mie);
++	riscv32_target_csr_write(target, RV_CSR_MIE, zero); // disable interrupt
++	target->reg_write(target, RISCV_REG_A0, &param1, 4);
++	target->reg_write(target, RISCV_REG_A1, &param2, 4);
++	target->reg_write(target, RISCV_REG_A2, &param3, 4);
++	target->reg_write(target, RISCV_REG_A3, &param4, 4);
++	target->reg_write(target, RISCV_REG_PC, &loadaddr, 4);
++
++	target->halt_resume(target, false); // go!
++	platform_timeout_s timeout;
++	platform_timeout_set(&timeout, 10000);
++	target_halt_reason_e reason = TARGET_HALT_RUNNING;
++	while (reason == TARGET_HALT_RUNNING) {
++		if (platform_timeout_is_expired(&timeout)) {
++			reason = TARGET_HALT_ERROR;
++			break;
++		}
++		reason = target->halt_poll(target, NULL);
++	}
++	switch (reason) {
++	case TARGET_HALT_REQUEST:
++		ret = true;
++		break;
++	case TARGET_HALT_ERROR: // room left here for more detailed handling
++	default:
++		break;
++	}
++	target->halt_request(target);
++	if (ret) {
++		uint32_t a0;
++		target->reg_read(target, RISCV_REG_A0, &a0, 4);
++		ret = (a0 == 0);
++	}
++	// restore PC & MIE
++	riscv32_target_csr_write(target, RV_CSR_MIE, mie); // put back MIE
++	target->reg_write(target, RISCV_REG_PC, &pc, 4);
++	return ret;
+ }
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 3b54d88c..9c6ea59d 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -132,6 +132,9 @@
+ #define RV_DCSR_CAUSE_MASK     0x000001c0U
+ #define RV_DCSR_STEPIE         0x00000800U
+ #define RV_DCSR_EBREAK_MACHINE 0x00008000U
++#define RV_DCSR_STOP_TIME      (1U << 9)
++#define RV_DCSR_STOP_COUNT     (1U << 10)
++#define RV_DCSR_EBREAK_MACHINE 0x00008000U
+ 
+ #define RV_GPRS_COUNT 32U
+ 
+@@ -930,6 +933,48 @@ riscv_match_size_e riscv_breakwatch_match_size(const size_t size)
+ 	return 0U;
+ }
+ 
++/* All possible match modes */
++#define RV32_MATCH_MASK 0x00000007U
++
++/**
++ * @brief 
++ * 
++ * @param hart 
++ * @param trigger 
++ * @param mode 
++ * @param config 
++ * @param address 
++ * @return true 
++ * @return false 
++ */
++bool riscv_config_trigger32(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
++	const uint32_t config, const uint32_t address)
++{
++	/*
++	 * Select the trigger and write the new configuration to it provided by config.
++	 * tdata1 (RV_TRIG_DATA_1) becomes mcontrol (match control) for this -
++	 * see §5.2.9 pg53 of the RISC-V debug spec v0.13.2 for more details.
++	 */
++	bool result = riscv_csr_write(hart, RV_TRIG_SELECT | RV_CSR_FORCE_32_BIT, &trigger) &&
++		riscv_csr_write(hart, RV_TRIG_DATA_1, &config) && riscv_csr_write(hart, RV_TRIG_DATA_2, &address);
++	if (result) {
++		/* If that succeeds, verify the mode was taken into account */
++		uint32_t read_back;
++		result = riscv_csr_read(hart, RV_TRIG_DATA_1, &read_back) &&
++			((read_back & RV32_MATCH_MASK) == (config & RV32_MATCH_MASK));
++		if (!result) {
++			read_back = 0;
++			riscv_csr_write(hart, RV_TRIG_DATA_1, &read_back);
++		}
++	}
++	if (result) {
++		/* If that succeeds, update the slot with the new mode it's in */
++		hart->trigger_uses[trigger] &= ~RV_TRIGGER_MODE_MASK;
++		hart->trigger_uses[trigger] |= mode;
++	}
++	return result;
++}
++
+ bool riscv_config_trigger(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
+ 	const void *const config, const void *const address)
+ {
+@@ -1011,9 +1056,9 @@ static void riscv_halt_resume(target_s *target, const bool step)
+ 	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
+ 		return;
+ 	if (step)
+-		stepping_config |= RV_DCSR_STEP | RV_DCSR_STEPIE;
++		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT;
+ 	else {
+-		stepping_config &= ~(RV_DCSR_STEP | RV_DCSR_STEPIE);
++		stepping_config &= ~(RV_DCSR_STEP);
+ 		stepping_config |= RV_DCSR_EBREAK_MACHINE;
+ 	}
+ 	if (!riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+index e83591ad..e301fe31 100644
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -233,6 +233,14 @@ typedef struct riscv_hart {
+ #define RV_FPU_GDB_OFFSET     33
+ #define RV_FPU_GDB_CSR_OFFSET 66
+ 
++// General purpose registers
++#define RISCV_REG_A0 10
++#define RISCV_REG_A1 11
++#define RISCV_REG_A2 12
++#define RISCV_REG_A3 13
++#define RISCV_REG_PC 32
++#define RISCV_REG_SP 2
++
+ /* JTAG DTM function declarations */
+ #ifdef ENABLE_RISCV
+ void riscv_jtag_dtm_handler(uint8_t dev_index);
+@@ -257,6 +265,8 @@ bool riscv_csr_write(riscv_hart_s *hart, uint16_t reg, const void *data);
+ riscv_match_size_e riscv_breakwatch_match_size(size_t size);
+ bool riscv_config_trigger(
+ 	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, const void *config, const void *address);
++bool riscv_config_trigger32(
++	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, uint32_t config, uint32_t address);
+ 
+ bool riscv_attach(target_s *target);
+ void riscv_detach(target_s *target);
+@@ -268,4 +278,15 @@ uint32_t riscv32_pack_data(const void *src, uint8_t access_width);
+ void riscv32_mem_read(target_s *target, void *dest, target_addr64_t src, size_t len);
+ void riscv32_mem_write(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ 
++/*
++ *   Execute code on the target with the signature void stub_function(a,b,c,d)
++ *       - codexec is the address the code to run is located at
++ *       - param1/2/3/4 will end up as the 4 parameters of the stub function
++ *       
++ *   The flashstub must not use the stack at all.
++ *   The flashstub must return 0 on success, not 0 on error
++ *   There is a built-in timeout of 10 seconds
++ */
++bool riscv32_run_stub(target_s *target, uint32_t loadaddr, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3);
++
+ #endif /*TARGET_RISCV_DEBUG_H*/
+diff --git a/src/target/target.c b/src/target/target.c
+index 0f579171..1e7b5a2c 100644
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -43,6 +43,9 @@ target_s *target_list = NULL;
+ 
+ #define FLASH_WRITE_BUFFER_CEILING 1024U
+ 
++#define snprintf snprintf_
++int snprintf_(char *buffer, size_t count, const char *format, ...);
++
+ static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
+ static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
+ static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
+@@ -604,6 +607,6 @@ void tc_printf(target_s *target, const char *fmt, ...)
+ 	va_list ap;
+ 	va_start(ap, fmt);
+ 	target->tc->printf(target->tc, fmt, ap);
+-	fflush(stdout);
++	// MEANX fflush(stdout);
+ 	va_end(ap);
+ }
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+index 313a4fdb..7a9ab5c5 100644
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -211,7 +211,7 @@ bool target_check_error(target_s *target);
+ #if defined(__MINGW32__) || defined(__MINGW64__) || defined(__CYGWIN__)
+ #define TC_FORMAT_ATTR __attribute__((format(__MINGW_PRINTF_FORMAT, 2, 3)))
+ #elif defined(__GNUC__) || defined(__clang__)
+-#define TC_FORMAT_ATTR __attribute__((format(printf, 2, 3)))
++#define TC_FORMAT_ATTR // MEANX __attribute__((format(printf, 2, 3)))
+ #else
+ #define TC_FORMAT_ATTR
+ #endif
+diff --git a/src/target/target_probe.h b/src/target/target_probe.h
+index 19d58024..6a998ba7 100644
+--- a/src/target/target_probe.h
++++ b/src/target/target_probe.h
+@@ -103,5 +103,6 @@ bool stm32wb0_probe(target_s *target);
+ bool zynq7_probe(target_s *target);
+ 
+ void lpc55_dp_prepare(adiv5_debug_port_s *dp);
++bool ch32v3xx_probe(target_s *target);
+ 
+ #endif /* TARGET_TARGET_PROBE_H */
