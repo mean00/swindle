@@ -1,0 +1,130 @@
+(kicad_sch
+	(version 20231120)
+	(generator "eeschema")
+	(generator_version "8.0")
+	(uuid "fbe443d6-6d74-4abc-9dee-16e0160553bc")
+	(paper "A4")
+	(title_block
+		(title "GD32 5pin Level Shifter")
+	)
+	(lib_symbols)
+	(sheet
+		(at 46.99 78.74)
+		(size 29.21 27.94)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "3e3374ff-17d6-414d-9a63-96aa322d3dc0")
+		(property "Sheetname" "PowerSupply"
+			(at 46.99 78.0284 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "powersupply.kicad_sch"
+			(at 46.99 107.2646 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "gd32f303_revG"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 46.99 116.84)
+		(size 29.21 27.94)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5")
+		(property "Sheetname" "MCU"
+			(at 46.99 116.1284 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "mcu.kicad_sch"
+			(at 46.99 145.3646 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "gd32f303_revG"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 46.99 41.91)
+		(size 30.48 27.94)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "d69ade2a-4297-4849-b967-fee3fb9a9870")
+		(property "Sheetname" "output"
+			(at 46.99 41.1984 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "output.kicad_sch"
+			(at 46.99 70.4346 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "gd32f303_revG"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+)

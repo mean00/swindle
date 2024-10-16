@@ -1,4 +1,5 @@
 *.bkp
+*.lck
 build_default.cmake
 osted/src/bmp_qtserial.cpp
 swindle/rs/rs_swindle/target/

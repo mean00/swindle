@@ -1,0 +1,4 @@
+*.kicad_sch-bak
+plots
+*autosave*
+
