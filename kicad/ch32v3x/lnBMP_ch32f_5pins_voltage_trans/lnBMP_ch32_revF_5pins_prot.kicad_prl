@@ -74,7 +74,7 @@
     "ssh_key": ""
   },
   "meta": {
-    "filename": "lnBMP_ch32_revF_5pins.kicad_prl",
+    "filename": "lnBMP_ch32_revF_5pins_prot.kicad_prl",
     "version": 3
   },
   "project": {
