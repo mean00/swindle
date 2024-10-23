@@ -4131,7 +4131,7 @@
 		(descr "VSSOP, 8 Pin (https://www.jedec.org/standards-documents/docs/mo-187-f), generated with kicad-footprint-generator ipc_gullwing_generator.py")
 		(tags "VSSOP SO JEDEC-MO-187-CA TI-DCU0008A")
 		(property "Reference" "U5"
-			(at -3.905025 -0.544975 360)
+			(at -3.905025 -0.544975 0)
 			(layer "F.SilkS")
 			(uuid "1a1aae0c-b4fd-4ce5-ae2e-8c25a37fadcd")
 			(effects
@@ -4142,7 +4142,7 @@
 			)
 		)
 		(property "Value" "VTREF<->3V"
-			(at 0 1.95 360)
+			(at 0 1.95 0)
 			(layer "F.Fab")
 			(uuid "2aa73db5-abfa-451a-b493-bb6c05342ca1")
 			(effects
@@ -4153,7 +4153,7 @@
 			)
 		)
 		(property "Footprint" "Package_SO:VSSOP-8_2.3x2mm_P0.5mm"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "df92041a-a516-4c95-9ea1-fcd82c095746")
@@ -4165,7 +4165,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/sn74lvc2t45.pdf"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "8aded695-25b3-4dfe-b579-cd67af43baa0")
@@ -4177,7 +4177,7 @@
 			)
 		)
 		(property "Description" "Dual-Bit Dual-Supply Bus Transceiver With Configurable Voltage Translation and 3-State Outputs, VSSOP-8"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "d81b473e-2562-4479-a4e1-a807293b414a")
@@ -4336,7 +4336,7 @@
 			(uuid "1aa7e928-1e42-4864-99bd-1d68829c39a7")
 		)
 		(fp_text user "${REFERENCE}"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "F.Fab")
 			(uuid "511366da-d966-416d-9cae-f9a0cfabfa10")
 			(effects
