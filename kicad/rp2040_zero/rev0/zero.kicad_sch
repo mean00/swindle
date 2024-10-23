@@ -3368,7 +3368,7 @@
 			)
 		)
 	)
-	(global_label "SWIO_DIR"
+	(global_label "SWIO_DIR_3V"
 		(shape output)
 		(at 55.88 63.5 270)
 		(fields_autoplaced yes)
@@ -3380,7 +3380,7 @@
 		)
 		(uuid "c7508e77-502d-4b02-93b9-4929bf44c739")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 55.88 75.1938 90)
+			(at 55.88 78.4595 90)
 			(effects
 				(font
 					(size 1.27 1.27)
