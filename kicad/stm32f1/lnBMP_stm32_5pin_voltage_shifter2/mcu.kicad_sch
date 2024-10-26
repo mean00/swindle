@@ -2321,6 +2321,12 @@
 		(uuid "39281795-4973-4c38-afac-db51a0e1767e")
 	)
 	(junction
+		(at 168.91 92.71)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "43a3dabd-80eb-4569-8425-cc060a38c790")
+	)
+	(junction
 		(at 118.11 128.27)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2331,6 +2337,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "54897f56-a474-435b-8f3c-b9fa749c1f02")
+	)
+	(junction
+		(at 189.23 97.79)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "ad9b4a09-6ce7-4fd8-9d47-7dd955ecd459")
 	)
 	(junction
 		(at 87.63 46.99)
@@ -2542,6 +2554,16 @@
 	)
 	(wire
 		(pts
+			(xy 180.34 90.17) (xy 180.34 85.09)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3c4f7d86-b097-4fe9-83b0-ff084cadc1dd")
+	)
+	(wire
+		(pts
 			(xy 119.38 77.47) (xy 121.92 77.47)
 		)
 		(stroke
@@ -2589,6 +2611,16 @@
 			(type default)
 		)
 		(uuid "535e0637-780c-43ed-8450-da751d2c51d0")
+	)
+	(wire
+		(pts
+			(xy 189.23 105.41) (xy 191.77 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "56110ebb-9466-4935-978b-e73d26b2303d")
 	)
 	(wire
 		(pts
@@ -2692,6 +2724,26 @@
 	)
 	(wire
 		(pts
+			(xy 168.91 92.71) (xy 168.91 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "75900832-1b45-486b-9337-897df2f5a1ff")
+	)
+	(wire
+		(pts
+			(xy 189.23 97.79) (xy 189.23 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "78a475b3-3b0d-4101-a5da-32506a3e1dda")
+	)
+	(wire
+		(pts
 			(xy 96.52 88.9) (xy 104.14 88.9)
 		)
 		(stroke
@@ -2709,6 +2761,16 @@
 			(type default)
 		)
 		(uuid "7921a0bc-adae-4c4a-9dd4-6ab10bf1aa21")
+	)
+	(wire
+		(pts
+			(xy 168.91 90.17) (xy 180.34 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "79893650-9094-4d4f-8034-c5125294a524")
 	)
 	(wire
 		(pts
@@ -2739,6 +2801,16 @@
 			(type default)
 		)
 		(uuid "82739972-7078-4588-af63-ce0b5a52b571")
+	)
+	(wire
+		(pts
+			(xy 189.23 97.79) (xy 167.64 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "841e6077-6068-424d-92bf-ae97e2c338d9")
 	)
 	(wire
 		(pts
@@ -2802,7 +2874,7 @@
 	)
 	(wire
 		(pts
-			(xy 190.5 97.79) (xy 167.64 97.79)
+			(xy 190.5 97.79) (xy 189.23 97.79)
 		)
 		(stroke
 			(width 0)
@@ -3126,6 +3198,28 @@
 			)
 		)
 	)
+	(global_label "DP"
+		(shape input)
+		(at 191.77 105.41 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "35642de3-ae98-45ab-8dcf-ba34893e81ce")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 197.2952 105.41 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "UART_TX"
 		(shape output)
 		(at 160.02 87.63 0)
@@ -3205,6 +3299,28 @@
 		(uuid "8875e772-2507-4053-83ee-0e92271f01f7")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 185.5955 92.6306 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "DN"
+		(shape input)
+		(at 180.34 85.09 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "8c19d267-0e92-4121-b43a-907b7b25ccbe")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 185.9257 85.09 0)
 			(effects
 				(font
 					(size 1.27 1.27)
