@@ -3520,7 +3520,7 @@
 			(uuid "184c5123-14c4-4892-89a7-8f49b301f8d2")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR020")
 					(unit 1)
@@ -3588,7 +3588,7 @@
 			(uuid "ac738be6-7f2c-4c8a-b904-dd3304cfbb0c")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "D1")
 					(unit 1)
@@ -3654,7 +3654,7 @@
 			(uuid "bb261e04-4e7c-401d-b8cc-8023f2b821e2")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR021")
 					(unit 1)
@@ -3729,7 +3729,7 @@
 			(uuid "2f80e98a-5a43-42ae-b37b-4d3d15284922")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "Y2")
 					(unit 1)
@@ -3795,7 +3795,7 @@
 			(uuid "af3c834e-aa14-4fb1-a4ec-32e5e7911f6d")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR019")
 					(unit 1)
@@ -3861,7 +3861,7 @@
 			(uuid "25916288-7b39-48c9-9b4e-3adf0a087db8")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR023")
 					(unit 1)
@@ -3927,7 +3927,7 @@
 			(uuid "1c3e3e14-02e9-4529-b27c-da46594a308f")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR017")
 					(unit 1)
@@ -3994,7 +3994,7 @@
 			(uuid "52675f0e-7202-4a1c-b00c-e77ed8949d32")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "R7")
 					(unit 1)
@@ -4060,7 +4060,7 @@
 			(uuid "c309c9c4-671d-47a0-8642-f7b4085d3793")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR018")
 					(unit 1)
@@ -4125,7 +4125,7 @@
 			(uuid "a813b448-18ef-4658-be58-df81ad581830")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR029")
 					(unit 1)
@@ -4194,7 +4194,7 @@
 			(uuid "2c2b6d34-8dd4-4a82-8e4d-57a3ca713168")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "C3")
 					(unit 1)
@@ -4264,7 +4264,7 @@
 			(uuid "72fd37fb-ebab-4a3f-bb26-6d1b59548e96")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "R1")
 					(unit 1)
@@ -4331,7 +4331,7 @@
 			(uuid "2f273d97-6eb2-40cd-b34e-18af25bbaad4")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "C7")
 					(unit 1)
@@ -4399,7 +4399,7 @@
 			(uuid "1d7f904d-4926-4d02-b0fc-4e614de4e63d")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "R2")
 					(unit 1)
@@ -4465,7 +4465,7 @@
 			(uuid "3334da69-94df-431d-bd45-89c72cf6bd51")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR028")
 					(unit 1)
@@ -4531,7 +4531,7 @@
 			(uuid "6941a2ec-c0ce-4ac9-937c-e69426e4a6fc")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR015")
 					(unit 1)
@@ -4598,7 +4598,7 @@
 			(uuid "720844c6-a8bb-4956-a10b-86dc5725d6ad")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "R6")
 					(unit 1)
@@ -4664,7 +4664,7 @@
 			(uuid "68dfa4c3-c6c0-4782-ba93-04b3d07d441a")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR030")
 					(unit 1)
@@ -4730,7 +4730,7 @@
 			(uuid "48723332-e32c-41b1-b5d9-e10ec93b0773")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR01")
 					(unit 1)
@@ -4796,7 +4796,7 @@
 			(uuid "6fbb9887-cfc3-4999-a16a-694244ffe300")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR02")
 					(unit 1)
@@ -4866,7 +4866,7 @@
 			(uuid "7f069b42-0253-4068-a5c2-95624a12085e")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "R3")
 					(unit 1)
@@ -4933,7 +4933,7 @@
 			(uuid "69a46aef-bf6c-4f39-b0a4-7d4207e534b8")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "R4")
 					(unit 1)
@@ -5000,7 +5000,7 @@
 			(uuid "94bd3e9d-9528-40c5-b3f7-bd62108e3fe0")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "C8")
 					(unit 1)
@@ -5070,7 +5070,7 @@
 			(uuid "73042f3f-1457-404f-aab1-285bc5009bb0")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "RST1")
 					(unit 1)
@@ -5136,7 +5136,7 @@
 			(uuid "f0a9d2cb-936e-4b7a-a239-03a1134091b9")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "#PWR016")
 					(unit 1)
@@ -5344,7 +5344,7 @@
 			(uuid "5c610212-b4ff-4d9b-a691-1c951bf084d8")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "U1")
 					(unit 1)
@@ -5411,7 +5411,7 @@
 			(uuid "e7890e64-5397-4724-89f0-cb4b9dbfe45c")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "J5")
 					(unit 1)
@@ -5478,7 +5478,7 @@
 			(uuid "e96b536c-b087-4f50-bc70-37ca839acb56")
 		)
 		(instances
-			(project "lnBMP_stm32_voltage2"
+			(project "gd32f303_revG"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5"
 					(reference "R5")
 					(unit 1)

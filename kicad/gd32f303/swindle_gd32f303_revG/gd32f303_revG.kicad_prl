@@ -74,7 +74,7 @@
     "ssh_key": ""
   },
   "meta": {
-    "filename": "lnBMP_stm32_voltage2.kicad_prl",
+    "filename": "gd32f303_revG.kicad_prl",
     "version": 3
   },
   "project": {
