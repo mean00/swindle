@@ -3953,7 +3953,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_USB:USB_C_Receptacle_Palconn_UTC16-G"
+		(property "Footprint" "Library:USB_C_Receptacle_Palconn_UTC16-G_no_hole"
 			(at 85.09 73.66 0)
 			(effects
 				(font

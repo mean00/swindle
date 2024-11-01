@@ -2297,7 +2297,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_XH_B5B-XH-AM_1x05_P2.50mm_Vertical"
+		(property "Footprint" "Connector_JST:JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical"
 			(at 89.408 188.214 0)
 			(effects
 				(font
@@ -3081,7 +3081,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_XH_B5B-XH-AM_1x05_P2.50mm_Vertical"
+		(property "Footprint" "Connector_JST:JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical"
 			(at 44.704 162.814 0)
 			(effects
 				(font
