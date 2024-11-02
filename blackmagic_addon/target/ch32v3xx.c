@@ -214,14 +214,53 @@ static void ch32v3x_add_flash(target_s *target, uint32_t addr, size_t length, si
     flash->erased = 0xff;
     target_add_flash(target, flash);
 }
-
+#define MET_MEMORY(f, r)                                                                                               \
+    {                                                                                                                  \
+        *flash = f;                                                                                                    \
+        *ram = r;                                                                                                      \
+    }
+/**
+ *
+ */
+static void decode_memory_layout(uint32_t layout, uint32_t *flash, uint32_t *ram)
+{
+    switch (layout)
+    {
+    case 0:
+    case 1:
+        MET_MEMORY(192, 128);
+        break;
+    case 2:
+    case 3:
+        MET_MEMORY(224, 96);
+        break;
+    case 4:
+    case 5:
+        MET_MEMORY(256, 64);
+        break;
+    case 6:
+        // that one does not exist with older chip only when
+        //  the penultimate sixth digit of the lot number is not zero.
+        // SET_MEMORY(128, 192); assume older chip
+        // break;
+        DEBUG_WARN("WARNING NEWER MEMORY LAYOUT, ASSUMING 228k flash 32k ram \n");
+    case 7:
+        MET_MEMORY(228, 32);
+        break;
+    default:
+        DEBUG_WARN("\t???\n");
+        *flash = 128; // ?
+        *ram = 32;
+        break;
+    }
+}
 /*
     Identify ch32vxx
 */
 bool ch32v3xx_probe(target_s *target)
 {
-    int flash_size = 0;
-    int ram_size = 0;
+    uint32_t flash_size = 0;
+    uint32_t ram_size = 0;
     size_t erase_size = 256;
     size_t write_size = 256;
 
@@ -258,26 +297,23 @@ bool ch32v3xx_probe(target_s *target)
 
     if (detect_size)
     {
-        uint32_t obr = READ_FLASH_REG(target, OBR); // offset 01xc 32.4.6
-        obr = (obr >> 8) & 3;                       // SRAM_CODE_MODE
+        // this is the user option byte
+        // there are 2 variants of that, depending on the chip Identity.
+        // for now we use the "old" one
+        uint32_t user_ram_size, user_flash_size;
+        uint32_t user = target_mem32_read32(target, 0x1ffff800);
+        DEBUG_WARN("CH32V User option byte 0x%x, up=0x%x\n", user, user >> 16);
+        uint32_t layout = (user >> (16 + 5)) & 0x7;
+        DEBUG_WARN("CH32V User memory layout 0x%x\n User byte ", layout);
+        decode_memory_layout(layout, &user_flash_size, &user_ram_size);
+        DEBUG_WARN("CH32V User memory  %d k flash, %d k ram\n", user_flash_size, user_ram_size);
 
-#define MEMORY_CONFIG(x, flash, ram)                                                                                   \
-    case x: {                                                                                                          \
-        flash_size = flash;                                                                                            \
-        ram_size = ram;                                                                                                \
-    };                                                                                                                 \
-    break;
-        switch (obr) // See 32.4.6
-        {
-            MEMORY_CONFIG(0, 192, 128)
-            MEMORY_CONFIG(1, 224, 96)
-            MEMORY_CONFIG(2, 256, 64)
-            MEMORY_CONFIG(3, 288, 32)
-        default:
-            flash_size = 128; // ?
-            ram_size = 32;
-            break;
-        }
+        uint32_t obr = READ_FLASH_REG(target, OBR); // offset 01xc 32.4.6
+        DEBUG_WARN("CH32V OBR Register 0x%x\n", obr);
+        obr = (obr >> 7) & 7; // SRAM_CODE_MODE, the doc is incorrect i think, it says >>8
+        DEBUG_WARN("CH32V OBR Memory Layout 0x%x\n", obr);
+        decode_memory_layout(layout, &flash_size, &ram_size);
+        DEBUG_WARN("CH32V OBR %d k flash, %d k ram\n", flash_size, ram_size);
     }
     else // only deal with 203 for the moment
     {
@@ -295,7 +331,7 @@ bool ch32v3xx_probe(target_s *target)
             break;
         }
     }
-    DEBUG_WARN("CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
+    DEBUG_WARN("Finally, using CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
     target_mem_map_free(target);
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
     ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size);
