@@ -21,7 +21,7 @@
 #define KWHT "\x1B[37m"
 
 void decoderDMReg(int reg, uint32_t value);
-#if 0
+#if 1
 #undef QBMPLOG
 #undef QBMPLOGN
 #define QBMPLOG(...)                                                                                                   \
