@@ -37,7 +37,7 @@ extern "C"
     }
 
 //-- disable debug
-#if 0
+#if 1
 #undef QBMPLOG
 #undef QBMPLOGN
 #undef QBMPLOGH
@@ -267,14 +267,14 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
 /**
  */
 
-extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
+extern "C" bool find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
 {
 #if 0
     const int result = libusb_init(&info->libusb_ctx);
     if (result != LIBUSB_SUCCESS)
     {
         printf("Failed to initialise libusb (%d): %s\n", result, libusb_error_name(result));
-        return -1;
+        return false;
     }
 #endif
     const auto serialPortInfos = QSerialPortInfo::availablePorts();
@@ -295,7 +295,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
                     // this is ugly, dont check anything just copy hoping it fits
                     strcpy(info->manufacturer, portInfo.systemLocation().toLatin1().constData());
                     printf("Found LNBMP\n");
-                    return 0;
+                    return true;
                 }
             }
             break;
@@ -326,7 +326,7 @@ extern "C" int find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
     }
     QBMPERROR("-- Cannot find valid debugger --\n");
     xAssert(0);
-    return 0;
+    return true;
 }
 /**
  */
