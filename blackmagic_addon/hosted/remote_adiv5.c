@@ -49,14 +49,14 @@ uint32_t remote_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, 
     case 0xff: // raise
         raise_exception(EXCEPTION_ERROR, "Low level remote exception");
         break;
-    case SWDP_ACK_OK:
+    case SWD_ACK_OK:
         xAssert(0); // should not happen, ok is zero!
         break;
-    case SWDP_ACK_WAIT:
+    case SWD_ACK_WAIT:
         dp->abort(dp, ADIV5_DP_ABORT_DAPABORT);
         dp->fault = fault;
         break;
-    case SWDP_ACK_NO_RESPONSE: // 0x07U
+    case SWD_ACK_NO_RESPONSE: // 0x07U
     default:
         dp->fault = fault;
         break;

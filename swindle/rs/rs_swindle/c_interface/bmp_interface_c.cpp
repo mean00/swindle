@@ -17,6 +17,8 @@ bool rv_dm_probe(uint32_t *chip_id); // C++
 // C
 extern "C"
 {
+    extern "C" bool ch32v3xx_write_user_byte(target_s *target, uint8_t user);
+    extern "C" uint8_t ch32v3xx_read_user_byte(target_s *target);
     extern "C" size_t xPortGetFreeHeapSize(void);
     extern "C" size_t xPortGetMinimumEverFreeHeapSize(void);
     extern "C" int command_process(target_s *const t, const char *cmd_buffer);
@@ -245,7 +247,7 @@ extern "C"
     extern "C" void free(void *__ptr)
 
         ;
-
+    //
     void bmp_target_description_clear_c(const unsigned char *data)
     {
         if (copy)
@@ -254,7 +256,21 @@ extern "C"
             copy = NULL;
         }
     }
-
+    //
+    extern "C" bool bmp_ch32v3xx_write_user_option_byte_c(uint8_t memory_conf)
+    {
+        if (!bmp_attached_c())
+            return 0;
+        return ch32v3xx_write_user_byte(cur_target, memory_conf);
+    }
+    //
+    extern "C" uint8_t bmp_ch32v3xx_read_user_option_byte_c()
+    {
+        if (!bmp_attached_c())
+            return 0;
+        return ch32v3xx_read_user_byte(cur_target);
+    }
+    //
     bool bmp_write_reg_c(const unsigned int reg, const unsigned int val)
     {
         if (!bmp_attached_c())
@@ -271,6 +287,7 @@ extern "C"
             return true;
         return false;
     }
+    //
     bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length)
     {
         if (!bmp_attached_c())
@@ -279,9 +296,7 @@ extern "C"
             return true;
         return false;
     }
-
-    static uint8_t tmp[1024];
-
+    //
     bool bmp_mem_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
     {
         if (!bmp_attached_c())
@@ -290,7 +305,7 @@ extern "C"
             return false;
         return true;
     }
-
+    //
     bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
     {
         if (!bmp_attached_c())
@@ -322,7 +337,7 @@ extern "C"
     {
         if (!bmp_attached_c())
             return false;
-        if (!target_mem32_read(cur_target, data, addr, length))
+        if (target_mem32_read(cur_target, data, addr, length))
             return false;
         return true;
     }

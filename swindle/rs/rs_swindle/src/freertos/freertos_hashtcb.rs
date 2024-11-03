@@ -48,7 +48,7 @@ impl hashed_tcb {
         }
         // not found create a new one
         let new_entry: tcb_to_tid = tcb_to_tid {
-            tcb: tcb,
+            tcb,
             tid: self.index,
         };
         self.list.push(new_entry);

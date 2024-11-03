@@ -1,16 +1,16 @@
 diff --git a/src/command.c b/src/command.c
-index 243ea2b7..5c5f5309 100644
+index 52a60c6c..2a497098 100644
 --- a/src/command.c
 +++ b/src/command.c
-@@ -50,6 +50,7 @@
- #include "traceswo.h"
+@@ -51,6 +51,7 @@
+ #include "usb.h"
  #endif
  
 +/*static  */ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
- static bool cmd_version(target_s *t, int argc, const char **argv);
- static bool cmd_help(target_s *t, int argc, const char **argv);
+ static bool cmd_version(target_s *target, int argc, const char **argv);
+ static bool cmd_help(target_s *target, int argc, const char **argv);
  
-@@ -90,6 +91,7 @@ const command_s cmd_list[] = {
+@@ -94,6 +95,7 @@ const command_s cmd_list[] = {
  	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
  	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
  	{"swdp_scan", cmd_swd_scan, "Deprecated: use swd_scan instead"},
@@ -18,7 +18,7 @@ index 243ea2b7..5c5f5309 100644
  	{"auto_scan", cmd_auto_scan, "Automatically scan all chain types for devices"},
  	{"frequency", cmd_frequency, "set minimum high and low times: [FREQ]"},
  	{"targets", cmd_targets, "Display list of available targets"},
-@@ -693,3 +695,50 @@ static bool cmd_heapinfo(target_s *t, int argc, const char **argv)
+@@ -778,3 +780,50 @@ static bool cmd_heapinfo(target_s *target, int argc, const char **argv)
  		gdb_outf("%s\n", "Set semihosting heapinfo: HEAP_BASE HEAP_LIMIT STACK_BASE STACK_LIMIT");
  	return true;
  }
@@ -70,11 +70,11 @@ index 243ea2b7..5c5f5309 100644
 + 
 +
 diff --git a/src/include/target.h b/src/include/target.h
-index 1761080..934581d 100644
+index 1d12469c..b66fb802 100644
 --- a/src/include/target.h
 +++ b/src/include/target.h
-@@ -43,6 +43,9 @@ typedef struct target_controller target_controller_s;
- #if PC_HOSTED == 1
+@@ -45,6 +45,9 @@ typedef struct target_controller target_controller_s;
+ #if CONFIG_BMDA == 1
  bool bmda_swd_scan(uint32_t targetid);
  bool bmda_jtag_scan(void);
 +bool bmda_rvswd_scan(void);
@@ -84,12 +84,12 @@ index 1761080..934581d 100644
  bool adiv5_swd_scan(uint32_t targetid);
  bool jtag_scan(void);
 diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index 365126c..9135ad1 100644
+index 57e9472c..467b3796 100644
 --- a/src/target/riscv32.c
 +++ b/src/target/riscv32.c
-@@ -96,6 +96,11 @@ bool riscv32_probe(target_s *const target)
- 	case JEP106_MANUFACTURER_RV_GIGADEVICE:
- 		PROBE(gd32vf1_probe);
+@@ -101,6 +101,11 @@ bool riscv32_probe(target_s *const target)
+ 		break;
+ 	default:
  		break;
 +	case JEP106_MANUFACTURER_WCH:
 +		PROBE(ch32v3xx_probe);
@@ -98,12 +98,12 @@ index 365126c..9135ad1 100644
 +		break;
  	}
  
- #if PC_HOSTED == 0
+ #if CONFIG_BMDA == 0
 diff --git a/src/target/target_probe.h b/src/target/target_probe.h
-index 3e4efe5..523a521 100644
+index 19d58024..6a998ba7 100644
 --- a/src/target/target_probe.h
 +++ b/src/target/target_probe.h
-@@ -96,5 +96,6 @@ bool imxrt_probe(target_s *target);
+@@ -103,5 +103,6 @@ bool stm32wb0_probe(target_s *target);
  bool zynq7_probe(target_s *target);
  
  void lpc55_dp_prepare(adiv5_debug_port_s *dp);

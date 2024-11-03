@@ -1,8 +1,8 @@
 diff --git a/src/target/adi.c b/src/target/adi.c
-index 43a032ee..cfe861d7 100644
+index e8c27d50..b894be58 100644
 --- a/src/target/adi.c
 +++ b/src/target/adi.c
-@@ -687,14 +687,14 @@ void adi_ap_component_probe(
+@@ -841,14 +841,14 @@ void adi_ap_component_probe(
  				DEBUG_INFO("%s-> cortexm_probe\n", indent + 1);
  				cortexm_probe(ap);
  				break;

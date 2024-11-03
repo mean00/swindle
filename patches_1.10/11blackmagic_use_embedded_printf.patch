@@ -1,5 +1,5 @@
 diff --git a/src/target/target.c b/src/target/target.c
-index d75bf320..6613e373 100644
+index 0fa3f69f..4b84cbe4 100644
 --- a/src/target/target.c
 +++ b/src/target/target.c
 @@ -43,6 +43,9 @@ target_s *target_list = NULL;
@@ -12,7 +12,7 @@ index d75bf320..6613e373 100644
  static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
  static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
  static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
-@@ -596,6 +599,6 @@ void tc_printf(target_s *target, const char *fmt, ...)
+@@ -603,6 +606,6 @@ void tc_printf(target_s *target, const char *fmt, ...)
  	va_list ap;
  	va_start(ap, fmt);
  	target->tc->printf(target->tc, fmt, ap);

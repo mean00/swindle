@@ -62,10 +62,10 @@ fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> 
  */
 pub fn freertos_switch_task_action_arm(new_stack: u32) -> u32 {
     unsafe {
-        return match &mut FreeRTOS_switcher_internal.switcher {
+        match &mut FreeRTOS_switcher_internal.switcher {
             Some(e) => freertos_switch(e.as_mut(), new_stack),
             None => panic!("inconsistent"),
-        };
+        }
     }
 }
 

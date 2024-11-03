@@ -3,7 +3,7 @@ use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 use crate::parsing_util::{
-    ascii_hex_string_to_u8s, ascii_string_decimal_to_u32, ascii_string_to_u32,
+    ascii_hex_string_to_u8s, ascii_hex_to_u32, ascii_string_decimal_to_u32, ascii_string_to_u32,
 };
 use alloc::vec;
 use alloc::vec::Vec;
@@ -29,30 +29,12 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 16] = [
+const mon_command_tree: [CommandTree; 18] = [
     CommandTree {
-        command: "help",
+        command: "bmp",
         args: 0,
         require_connected: false,
-        cb: CallbackType::text(_mon_help),
-    }, //
-    CommandTree {
-        command: "swdp_scan",
-        args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_swdp_scan),
-    }, //
-    CommandTree {
-        command: "rvswdp_scan",
-        args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_rvswdp_scan),
-    }, //
-    CommandTree {
-        command: "voltage",
-        args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_voltage),
+        cb: CallbackType::text(_bmp_mon),
     }, //
     CommandTree {
         command: "boards",
@@ -61,28 +43,16 @@ const mon_command_tree: [CommandTree; 16] = [
         cb: CallbackType::text(_boards),
     }, //
     CommandTree {
-        command: "version",
+        command: "ch32v3_obr",
         args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_get_version),
+        require_connected: true,
+        cb: CallbackType::text(_ch32v3_obr),
     }, //
     CommandTree {
-        command: "bmp",
+        command: "ch32v3_option_byte",
         args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_bmp_mon),
-    }, //
-    CommandTree {
-        command: "ram",
-        args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_ram),
-    }, //
-    CommandTree {
-        command: "ws",
-        args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_ws),
+        require_connected: true,
+        cb: CallbackType::text(_ch32v3_option_byte),
     }, //
     CommandTree {
         command: "frequency",
@@ -103,16 +73,28 @@ const mon_command_tree: [CommandTree; 16] = [
         cb: CallbackType::text(_fos),
     }, //
     CommandTree {
+        command: "freertos",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_fos),
+    }, //
+    CommandTree {
+        command: "help",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_mon_help),
+    }, //
+    CommandTree {
         command: "os_info",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos_info),
     }, //
     CommandTree {
-        command: "freertos",
+        command: "ram",
         args: 0,
-        require_connected: true,
-        cb: CallbackType::text(_fos),
+        require_connected: false,
+        cb: CallbackType::text(_ram),
     }, //
     CommandTree {
         command: "reboot",
@@ -126,13 +108,45 @@ const mon_command_tree: [CommandTree; 16] = [
         require_connected: false,
         cb: CallbackType::text(_target_reset),
     }, //
+    CommandTree {
+        command: "rvswdp_scan",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_rvswdp_scan),
+    }, //
+    CommandTree {
+        command: "swdp_scan",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_swdp_scan),
+    }, //
+    CommandTree {
+        command: "version",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_get_version),
+    }, //
+    CommandTree {
+        command: "voltage",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_voltage),
+    }, //
+    CommandTree {
+        command: "ws",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_ws),
+    }, //
 ];
 //
-const help_tree : [HelpTree;14]=
+const help_tree : [HelpTree;16]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
     HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
+    HelpTree{ command: "ch32v3_obr",help :"Read/write the read protection status."},
+    HelpTree{ command: "ch32v3_option_byte",help :"Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f."},
     HelpTree{ command: "fq or frequency",help :"set/get SWD frequency."},
     HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
     HelpTree{ command: "os_info",help :"Dump FreeRTOS internal state." },
@@ -218,12 +232,27 @@ pub fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
     true
 }
-
+const MAX_SPACE: usize = 40;
+const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
 pub fn _mon_help(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("Help, use mon [cmd] [params] :\n");
+    // align
+    let mut mxsize: usize = 0;
     for i in help_tree {
-        gdb_print!("mon {} \t: {}\n", &(i.command), &(i.help));
+        if i.command.len() > mxsize {
+            mxsize = i.command.len();
+        }
+    }
+    if mxsize > MAX_SPACE {
+        panic!("padding too big");
+    }
+
+    for i in help_tree {
+        let cmd = i.command;
+        let len = cmd.len();
+        let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
+        gdb_print!("mon {}{} : {}\n", &cmd, &pad, &(i.help));
     }
     encoder::reply_ok();
     true
@@ -325,6 +354,102 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
+/*
+ *
+ */
+const CH32V3XX_USER_OPTION_ADDR: u32 = 0x1ffff800;
+const CH32V3XX_FLASH_OBR_ADR: u32 = 0x4002201C;
+const CH32V3XX_OBR_ERROR: u32 = (1 << 0);
+const CH32V3XX_OBR_RDP_VALID: u32 = (1 << 1);
+//
+//
+pub fn _ch32v3_obr(command: &str, _args: &[&str]) -> bool {
+    let detail: Vec<&str> = command.split(' ').collect();
+    let mut value: [u32; 1] = [0];
+    if detail.len() <= 1 {
+        if !bmp::bmp_read_mem32(CH32V3XX_FLASH_OBR_ADR, &mut value) {
+            gdb_print!("Error reading OBR register\n");
+            return false;
+        }
+        gdb_print!("OBR : {:x}\n", value[0]);
+        if (value[0] & CH32V3XX_OBR_ERROR) != 0 {
+            gdb_print!("OBR invalid configuration , inverted option does not match not inverted\n");
+        } else {
+            gdb_print!("OBR configuration is valid\n");
+        }
+
+        if (value[0] & CH32V3XX_OBR_RDP_VALID) != 0 {
+            gdb_print!("OBR Read protection is valid \n");
+        } else {
+            gdb_print!("OBR Read protection is not valid \n");
+        }
+        encoder::reply_ok();
+        return true;
+    }
+    // it is a write, get the value
+    //let value = detail[1];
+    //let value_u8: u8 = if value.starts_with("0x") || value.starts_with("0X") {
+    //(ascii_hex_to_u32(&value[2..]) & 0xff) as u8
+    //} else {
+    //(ascii_string_decimal_to_u32(value) & 0xff) as u8
+    //};
+    //if (value_u8 & 0x7) != 0x7 {
+    //gdb_print!("The provided value does not seem valid \n");
+    //return false;
+    //}
+    //bmp::bmp_ch32v3xx_write_user_option_byte(value_u8);
+    encoder::reply_ok();
+    true
+}
+
+pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
+    let detail: Vec<&str> = command.split(' ').collect();
+    let mut value: [u32; 1] = [0];
+    if detail.len() <= 1 {
+        // now read option
+        if !bmp::bmp_read_mem32(CH32V3XX_USER_OPTION_ADDR, &mut value) {
+            gdb_print!("Error reading user option\n");
+            return false;
+        }
+        let mut option = (value[0] >> 16) & 0xff;
+        gdb_print!("option byte 0x{:x}\n", option);
+        if (option & 0x7) != 0x7 {
+            gdb_print!("invalid memory configuration\n");
+            return false;
+        }
+        option >>= 5;
+        let flash: usize;
+        let ram: usize;
+        match option {
+            0 | 1 => (flash, ram) = (192, 128),
+            2 | 3 => (flash, ram) = (224, 96),
+            4 | 5 => (flash, ram) = (256, 64),
+            6 => (flash, ram) = (128, 192),
+            7 => (flash, ram) = (288, 32),
+            _ => {
+                (flash, ram) = (224, 96);
+                gdb_print!("invalid memory configuration\n");
+            }
+        }
+        gdb_print!("Flash {} kB, Ram {} kB\n", flash, ram);
+        encoder::reply_ok();
+        return true;
+    }
+    // it is a write, get the value
+    let value = detail[1];
+    let value_u8: u8 = if value.starts_with("0x") || value.starts_with("0X") {
+        (ascii_hex_to_u32(&value[2..]) & 0xff) as u8
+    } else {
+        (ascii_string_decimal_to_u32(value) & 0xff) as u8
+    };
+    if (value_u8 & 0x7) != 0x7 {
+        gdb_print!("The provided value does not seem valid \n");
+        return false;
+    }
+    bmp::bmp_ch32v3xx_write_user_option_byte(value_u8);
+    encoder::reply_ok();
+    true
+}
 
 /*
  *
@@ -364,11 +489,11 @@ pub fn _fq(command: &str, _args: &[&str]) -> bool {
     let mut mul: u32 = 1;
     if fq_str.ends_with('k') || fq_str.ends_with('K') {
         mul = 1000;
-        sz = sz - 1;
+        sz -= 1;
     }
     let mut frequency = ascii_string_decimal_to_u32(&fq_str[..sz]);
     if frequency != 0 {
-        frequency = frequency * mul;
+        frequency *= mul;
         bmp::bmp_set_frequency(frequency);
     } else {
         gdb_print!("incorrect frequency parameter\n");

@@ -62,7 +62,7 @@ pub fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
     }
     true
 }
-/**
+/*
  * get a human readable attributes  "qThreadExtraInfo,id"
  */
 pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
@@ -88,7 +88,7 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
 
     true
 }
-/**
+/*
  *  switch thread
  */
 pub fn _Hg(command: &str, _args: &[&str]) -> bool {
@@ -104,7 +104,7 @@ pub fn _Hg(command: &str, _args: &[&str]) -> bool {
     }
     true
 }
-/**
+/*
  *  is thread alive ?
  */
 pub fn _T(command: &str, _args: &[&str]) -> bool {
@@ -122,7 +122,7 @@ pub fn _T(command: &str, _args: &[&str]) -> bool {
     }
     true
 }
-/**
+/*
  * get a human readable attributes  "qThreadExtraInfo,id"
  */
 pub fn _qP(_command: &str, _args: &[&str]) -> bool {
@@ -144,7 +144,7 @@ pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
-/**
+/*
  * ‘qC’ Return the current thread ID.
  */
 
