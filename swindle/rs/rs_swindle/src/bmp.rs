@@ -492,17 +492,16 @@ pub fn get_heap_stats() -> (u32, u32) {
  }
 */
 /**
- * 
+ *
  */
-pub fn rv_dm_start()  {
+pub fn rv_dm_start() {
     unsafe {
         rn_bmp_cmd_c::rv_dm_start_c();
     }
 }
 
-
 /**
- * 
+ *
  */
 pub fn bmp_rv_reset() -> bool {
     unsafe {
@@ -553,6 +552,19 @@ pub fn bmp_adiv5_swd_raw_access(rnw: u8, addr: u16, value: u32, fault: *mut u32)
 pub fn bmp_is_riscv() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_is_riscv_c()) }
 }
+//
+pub fn bmp_ch32v3xx_write_user_option_byte(memory_conf: u8) -> bool {
+    unsafe {
+        ret_to_bool(rn_bmp_cmd_c::bmp_ch32v3xx_write_user_option_byte_c(
+            memory_conf,
+        ))
+    }
+}
+//
+pub fn bmp_ch32v3xx_read_user_option_byte() -> u8 {
+    unsafe { rn_bmp_cmd_c::bmp_ch32v3xx_read_user_option_byte_c() }
+}
+
 /*
  */
 // EOF

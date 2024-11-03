@@ -41,6 +41,8 @@
 #include "flashstub/ch32v3x_write.stub"
 #include "riscv_debug.h"
 // tmp
+#include "gdb_packet.h"
+//
 #define debug DEBUG_ERROR
 
 #define RAM_ADDRESS 0x20000000
@@ -68,10 +70,12 @@ typedef struct
     uint32_t MODEKEYR; // 24
 } ch32_flash_s;
 
+#define CH32V3XX_OPTION_ADDRESS 0x1ffff800
 #define CH32V3XX_FLASH_CONTROLLER_ADDRESS 0x40022000
 #define CH32V3XX_UID1 0x1ffff7e8      // Low bits of UUID
 #define CH32V3XX_FMC_CTL_PG (1 << 0)  // program command
 #define CH32V3XX_FMC_CTL_PER (1 << 1) // page erase command
+#define CH32V3XX_FMC_CTL_CH32_OBPG (1 << 4)
 #define CH32V3XX_FMC_CTL_START (1 << 6)
 #define CH32V3XX_FMC_CTL_LK (1 << 7)
 #define CH32V3XX_FMC_CTL_CH32_FASTUNLOCK (1 << 15)
@@ -314,6 +318,7 @@ bool ch32v3xx_probe(target_s *target)
         DEBUG_WARN("CH32V OBR Memory Layout 0x%x\n", obr);
         decode_memory_layout(layout, &flash_size, &ram_size);
         DEBUG_WARN("CH32V OBR %d k flash, %d k ram\n", flash_size, ram_size);
+        gdb_outf("\tDetected %x chip with %d k flash, %d k ram\n", family, flash_size, ram_size);
     }
     else // only deal with 203 for the moment
     {
@@ -338,5 +343,50 @@ bool ch32v3xx_probe(target_s *target)
     target_add_commands(target, ch32v3x_cmd_list, target->driver);
     return true;
 }
+/**
+ * \briegf unlock option bytes
+ */
+static bool ch32v3xx_unlock_option_bytes(target_s *target)
+{
+    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY1);
+    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY2);
+    // now unlock OB
+    WRITE_FLASH_REG(target, OBKEYR, CH32V3XX_KEY1);
+    WRITE_FLASH_REG(target, OBKEYR, CH32V3XX_KEY2);
 
-// eof
+    return true;
+}
+/**
+ *
+ *
+ */
+bool ch32v3xx_write_user_byte(target_s *target, uint8_t user)
+{
+    ch32v3xx_unlock_option_bytes(target);
+
+    uint32_t ctl = READ_FLASH_REG(target, CTLR);
+    WRITE_FLASH_REG(target, CTLR, ctl | CH32V3XX_FMC_CTL_CH32_OBPG);
+    // 16 bits write only!
+    // hw will put the correct inverted value
+    uint16_t user16 = (uint16_t)user | ((uint16_t)user << 8);
+    target_mem32_write(target, CH32V3XX_OPTION_ADDRESS + 2, &user16, 2);
+    while (1)
+    {
+        uint32_t stat = READ_FLASH_REG(target, STATR);
+        if (!(stat & CH32V3XX_FMC_STAT_BUSY))
+            break;
+    }
+    // and done
+    WRITE_FLASH_REG(target, CTLR, ctl);
+    return true;
+}
+/**
+ *
+ */
+uint8_t ch32v3xx_read_user_byte(target_s *target) // eof
+{
+    uint32_t user32 = target_mem32_read32(target, CH32V3XX_OPTION_ADDRESS);
+    user32 >>= 16; // start at offset 2
+    user32 &= 0xff;
+    return (uint8_t)user32;
+}

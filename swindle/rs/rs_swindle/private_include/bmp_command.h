@@ -3,6 +3,9 @@
 typedef void target_s;
 typedef int bool;
 
+bool bmp_ch32v3xx_write_user_option_byte_c(uint8_t memory_conf);
+uint8_t bmp_ch32v3xx_read_user_option_byte_c();
+
 void bmp_set_wait_state_c(unsigned int ws); // this is used to set the clock on SWD
 unsigned int bmp_get_wait_state_c();        // this is used to set the clock on SWD
 //
