@@ -230,7 +230,7 @@ pub fn bmp_set_wait_state(ws: u32) {
 pub fn bmp_get_wait_state() -> u32 {
     unsafe { rn_bmp_cmd_c::bmp_get_wait_state_c() }
 }
-/**
+/*
  *
  */
 pub fn bmp_set_frequency(fq: u32) {
@@ -491,7 +491,7 @@ pub fn get_heap_stats() -> (u32, u32) {
     }
  }
 */
-/**
+/*
  *
  */
 pub fn rv_dm_start() {
@@ -500,7 +500,7 @@ pub fn rv_dm_start() {
     }
 }
 
-/**
+/*
  *
  */
 pub fn bmp_rv_reset() -> bool {

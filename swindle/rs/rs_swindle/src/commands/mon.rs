@@ -139,7 +139,7 @@ const help_tree : [HelpTree;15]=
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
     HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
-    HelpTree{ command: "ch32v3_option_byte",help :"Read/write the user option byte on ch32v3 chip. That changes the flash/ram split"},
+    HelpTree{ command: "ch32v3_option_byte",help :"Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0xbf, 192/128 -> 0x1f."},
     HelpTree{ command: "fq or frequency",help :"set/get SWD frequency."},
     HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
     HelpTree{ command: "os_info",help :"Dump FreeRTOS internal state." },
@@ -225,12 +225,27 @@ pub fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
     true
 }
-
+const MAX_SPACE: usize = 40;
+const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
 pub fn _mon_help(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("Help, use mon [cmd] [params] :\n");
+    // align
+    let mut mxsize: usize = 0;
     for i in help_tree {
-        gdb_print!("mon {} \t: {}\n", &(i.command), &(i.help));
+        if i.command.len() > mxsize {
+            mxsize = i.command.len();
+        }
+    }
+    if mxsize > MAX_SPACE {
+        panic!("padding too big");
+    }
+
+    for i in help_tree {
+        let cmd = i.command;
+        let len = cmd.len();
+        let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
+        gdb_print!("mon {}{} : {}\n", &cmd, &pad, &(i.help));
     }
     encoder::reply_ok();
     true
@@ -332,7 +347,7 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
-/**
+/*
  *
  */
 pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
@@ -344,7 +359,7 @@ pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
             gdb_print!("invalid memory configuration\n");
             return false;
         }
-        option = option >> 5;
+        option >>= 5;
         let flash: usize;
         let ram: usize;
         match option {
@@ -364,12 +379,11 @@ pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
     }
     // it is a write, get the value
     let value = detail[1];
-    let value_u8: u8;
-    if value.starts_with("0x") || value.starts_with("0X") {
-        value_u8 = (ascii_hex_to_u32(&value[2..]) & 0xff) as u8;
+    let value_u8: u8 = if value.starts_with("0x") || value.starts_with("0X") {
+        (ascii_hex_to_u32(&value[2..]) & 0xff) as u8
     } else {
-        value_u8 = (ascii_string_decimal_to_u32(value) & 0xff) as u8;
-    }
+        (ascii_string_decimal_to_u32(value) & 0xff) as u8
+    };
     if (value_u8 & 0x7) != 0x7 {
         gdb_print!("The provided value does not seem valid \n");
         return false;
@@ -417,11 +431,11 @@ pub fn _fq(command: &str, _args: &[&str]) -> bool {
     let mut mul: u32 = 1;
     if fq_str.ends_with('k') || fq_str.ends_with('K') {
         mul = 1000;
-        sz = sz - 1;
+        sz -= 1;
     }
     let mut frequency = ascii_string_decimal_to_u32(&fq_str[..sz]);
     if frequency != 0 {
-        frequency = frequency * mul;
+        frequency *= mul;
         bmp::bmp_set_frequency(frequency);
     } else {
         gdb_print!("incorrect frequency parameter\n");
