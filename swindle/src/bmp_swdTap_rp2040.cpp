@@ -124,7 +124,7 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
     zwrite(32, data);
     zwrite(1, parity);
     zwrite(8, 0);
-    return ack != SWDP_ACK_OK;
+    return ack != SWD_ACK_OK;
 }
 
 /**
@@ -139,7 +139,7 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
     uint32_t data = zread(32);
     bool parity = zread(1);
     zwrite(8, 0);
-    return ack == SWDP_ACK_OK ? data : 0;
+    return ack == SWD_ACK_OK ? data : 0;
 }
 /**
         \fn ln_adiv5_swd_raw_access
@@ -153,7 +153,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         return 0;
 
     const uint8_t request = make_packet_request(rnw, addr);
-    uint8_t ack = SWDP_ACK_WAIT;
+    uint8_t ack = SWD_ACK_WAIT;
     platform_timeout_s timeout;
     platform_timeout_set(&timeout, 250U);
     while (1)
@@ -162,7 +162,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         zwrite(8, request);
         uint32_t ack = zread(3);
         bool expired = platform_timeout_is_expired(&timeout);
-        if (ack == SWDP_ACK_OK)
+        if (ack == SWD_ACK_OK)
         {
             goto done;
         }
@@ -171,15 +171,15 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         zwrite(2, 0x03);
         switch (ack)
         {
-        case SWDP_ACK_OK:
+        case SWD_ACK_OK:
             xAssert(0);
             break;
-        case SWDP_ACK_NO_RESPONSE:
+        case SWD_ACK_NO_RESPONSE:
             DEBUG_ERROR("SWD access resulted in no response\n");
             dp->fault = ack;
             return 0;
 
-        case SWDP_ACK_WAIT:
+        case SWD_ACK_WAIT:
             if (expired)
             {
                 DEBUG_ERROR("SWD access resulted in wait, aborting\n");
@@ -188,7 +188,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
                 return 0;
             }
             break;
-        case SWDP_ACK_FAULT:
+        case SWD_ACK_FAULT:
             if (expired)
             {
                 DEBUG_ERROR("SWD access resulted in fault\n");

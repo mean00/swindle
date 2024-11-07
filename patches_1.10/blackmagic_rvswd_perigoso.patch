@@ -3,13 +3,13 @@ index 243ea2b7..5c5f5309 100644
 --- a/src/command.c
 +++ b/src/command.c
 @@ -50,6 +50,7 @@
- #include "traceswo.h"
+ #include "usb.h"
  #endif
  
 +/*static  */ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
- static bool cmd_version(target_s *t, int argc, const char **argv);
- static bool cmd_help(target_s *t, int argc, const char **argv);
- 
+ static bool cmd_version(target_s *target, int argc, const char **argv);
+ static bool cmd_help(target_s *target, int argc, const char **argv);
+  
 @@ -90,6 +91,7 @@ const command_s cmd_list[] = {
  	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
  	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
