@@ -1,9 +1,9 @@
 diff --git a/src/gdb_main.c b/src/gdb_main.c
-index 6554273a..5b746448 100644
+index 9cca19e0..c192d474 100644
 --- a/src/gdb_main.c
 +++ b/src/gdb_main.c
-@@ -421,6 +421,8 @@ static void exec_q_supported(const char *packet, const size_t length)
- 	gdb_putpacket_f("PacketSize=%X;qXfer:memory-map:read+;qXfer:features:read+", GDB_MAX_PACKET_SIZE);
+@@ -459,6 +459,8 @@ static void exec_q_supported(const char *packet, const size_t length)
+ 		GDB_PACKET_BUFFER_SIZE);
  }
  
 +extern  char *ztarget_mem_map(const target_s *t);
@@ -11,7 +11,7 @@ index 6554273a..5b746448 100644
  static void exec_q_memory_map(const char *packet, const size_t length)
  {
  	(void)length;
-@@ -433,9 +435,16 @@ static void exec_q_memory_map(const char *packet, const size_t length)
+@@ -471,9 +473,16 @@ static void exec_q_memory_map(const char *packet, const size_t length)
  		gdb_putpacketz("E01");
  		return;
  	}

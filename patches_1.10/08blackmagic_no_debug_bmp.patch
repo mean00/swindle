@@ -1,0 +1,13 @@
+diff --git a/src/remote.c b/src/remote.c
+index 911d01d6..0578f657 100644
+--- a/src/remote.c
++++ b/src/remote.c
+@@ -303,7 +303,7 @@ static void remote_packet_process_general(char *packet, const size_t packet_len)
+ 		break;
+ 	case REMOTE_START:
+ #if ENABLE_DEBUG == 1 && defined(PLATFORM_HAS_DEBUG)
+-		debug_bmp = true;
++//		debug_bmp = true;
+ #endif
+ #ifndef PLATFORM_IDENT_DYNAMIC
+ 		remote_respond_string(REMOTE_RESP_OK, BOARD_IDENT);

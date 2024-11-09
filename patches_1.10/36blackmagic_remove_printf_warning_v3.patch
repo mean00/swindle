@@ -1,0 +1,29 @@
+diff --git a/src/include/gdb_packet.h b/src/include/gdb_packet.h
+index a35666a5..a0125876 100644
+--- a/src/include/gdb_packet.h
++++ b/src/include/gdb_packet.h
+@@ -35,9 +35,9 @@
+ #define GDB_PACKET_ESCAPE_XOR         (0x20U)
+ 
+ #if defined(__MINGW32__) || defined(__MINGW64__) || defined(__CYGWIN__)
+-#define GDB_FORMAT_ATTR __attribute__((format(__MINGW_PRINTF_FORMAT, 1, 2)))
++#define GDB_FORMAT_ATTR 
+ #elif defined(__GNUC__) || defined(__clang__)
+-#define GDB_FORMAT_ATTR __attribute__((format(printf, 1, 2)))
++#define GDB_FORMAT_ATTR 
+ #else
+ #define GDB_FORMAT_ATTR
+ #endif
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+index ab7b11e5..c642caa8 100644
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -212,7 +212,7 @@ bool target_check_error(target_s *target);
+ #if defined(__MINGW32__) || defined(__MINGW64__) || defined(__CYGWIN__)
+ #define TC_FORMAT_ATTR __attribute__((format(__MINGW_PRINTF_FORMAT, 2, 3)))
+ #elif defined(__GNUC__) || defined(__clang__)
+-#define TC_FORMAT_ATTR __attribute__((format(printf, 2, 3)))
++#define TC_FORMAT_ATTR //MEANX__attribute__((format(printf, 2, 3)))
+ #else
+ #define TC_FORMAT_ATTR
+ #endif
