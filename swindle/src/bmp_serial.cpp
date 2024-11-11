@@ -307,8 +307,8 @@ class BMPSerial : public lnTask
 void serialInit()
 {
 #ifdef USE_RP2040
-    lnPinMode(GPIO4, lnUART);
-    lnPinMode(GPIO5, lnUART);
+    lnPinMode(LN_UART_RX, lnUART);
+    lnPinMode(LN_UART_TX, lnUART);
 #endif
     // bridge CDC ACMxxx to Serial port yy
     BMPSerial *serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE);

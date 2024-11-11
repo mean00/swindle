@@ -6,10 +6,10 @@ const lnPin _mapping[8] = {
     GPIO24, // 2 TDO_PIN
     GPIO24, // 3 TCK_PIN
     GPIO24, // 4 TRACESWO_PIN
-    GPIO12, // 5 SWDIO_PIN
-    GPIO13, // 6 SWCLK_PIN
+    GPIO13, // 5 SWDIO_PIN
+    GPIO12, // 6 SWCLK_PIN
 
-    GPIO11, // 7 RST
+    GPIO10, // 7 RST
 };
 
 #define PIN_ADC_NRESET_DIV_BY_TWO GPIO26 // this pins is connected to NRST/2
@@ -18,7 +18,7 @@ const lnPin _mapping[8] = {
 #define LN_USB_INSTANCE 1
 #define LN_SERIAL_INSTANCE 1
 
-#define LN_UART_RX GPIO5
+#define LN_UART_RX GPIO9
 #define LN_UART_TX GPIO4
 
 #define EXTRA_SETUP()                                                                                                  \

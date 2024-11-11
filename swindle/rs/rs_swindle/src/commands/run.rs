@@ -2,13 +2,16 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bmp;
+use crate::commands::mon::get_enable_reset;
 use crate::encoder::encoder;
 use numtoa::NumToA;
 
 static mut running: bool = false;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+crate::gdb_print_init!();
+
+use crate::{bmplog, bmpwarning, gdb_print};
 
 pub enum HaltState {
     Running,
@@ -93,7 +96,12 @@ pub fn _R(_command: &str, _args: &[&str]) -> bool {
     true
 }
 pub fn _k(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_bool(crate::bmp::bmp_reset_target());
+    if get_enable_reset() != 0 {
+        encoder::reply_bool(crate::bmp::bmp_reset_target());
+    } else {
+        gdb_print!("reset disabled by mon enablereset\n");
+        encoder::reply_ok();
+    }
     true
 }
 //vCont[;action[:thread-id]]…’

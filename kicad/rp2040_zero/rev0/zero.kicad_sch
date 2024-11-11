@@ -2346,6 +2346,26 @@
 	)
 	(wire
 		(pts
+			(xy 60.96 59.69) (xy 60.96 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1cb33b53-9ce3-49a1-a47d-d47a286c842c")
+	)
+	(wire
+		(pts
+			(xy 31.75 35.56) (xy 40.64 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "29cf1e04-8050-4b9c-b986-1f4d9c2a1829")
+	)
+	(wire
+		(pts
 			(xy 41.91 119.38) (xy 44.45 119.38)
 		)
 		(stroke
@@ -2393,6 +2413,16 @@
 			(type default)
 		)
 		(uuid "39d38749-bf07-444a-a505-e0b5e4978af1")
+	)
+	(wire
+		(pts
+			(xy 30.48 29.21) (xy 26.67 29.21)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3beeeb5e-fc3a-4337-8e69-15d7fe675977")
 	)
 	(wire
 		(pts
@@ -2456,7 +2486,7 @@
 	)
 	(wire
 		(pts
-			(xy 36.83 35.56) (xy 40.64 35.56)
+			(xy 20.32 34.29) (xy 31.75 34.29)
 		)
 		(stroke
 			(width 0)
@@ -2536,6 +2566,16 @@
 	)
 	(wire
 		(pts
+			(xy 39.37 38.1) (xy 40.64 38.1)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6e02b65d-2b78-4fc1-9929-36b481d8b8c5")
+	)
+	(wire
+		(pts
 			(xy 41.91 121.92) (xy 44.45 121.92)
 		)
 		(stroke
@@ -2553,6 +2593,16 @@
 			(type default)
 		)
 		(uuid "705f2558-208a-4c74-b4fe-2ee8010b9b64")
+	)
+	(wire
+		(pts
+			(xy 30.48 33.02) (xy 30.48 29.21)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "710f2bbe-a76a-43b7-b8d6-0b267613cca4")
 	)
 	(wire
 		(pts
@@ -2756,6 +2806,16 @@
 	)
 	(wire
 		(pts
+			(xy 31.75 34.29) (xy 31.75 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cccf385b-0086-402e-8022-e605daf97e85")
+	)
+	(wire
+		(pts
 			(xy 142.24 102.87) (xy 147.32 102.87)
 		)
 		(stroke
@@ -2803,16 +2863,6 @@
 			(type default)
 		)
 		(uuid "e3b47ae1-3507-4bce-b3b2-39bab26be335")
-	)
-	(wire
-		(pts
-			(xy 36.83 40.64) (xy 40.64 40.64)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "e46fbaa4-c53a-4eef-be50-91d42eec2563")
 	)
 	(wire
 		(pts
@@ -3336,7 +3386,7 @@
 	)
 	(global_label "OUT_UART_RX_3V"
 		(shape input)
-		(at 36.83 40.64 180)
+		(at 60.96 63.5 270)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -3346,7 +3396,7 @@
 		)
 		(uuid "bfc8fccd-1213-4800-ab19-13af2a93ab9c")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 17.8791 40.64 0)
+			(at 60.96 82.4509 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3820,7 +3870,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:VSSOP-8_2.3x2mm_P0.5mm"
+		(property "Footprint" "Package_SO:TSSOP-8_3x3mm_P0.65mm"
 			(at 114.3 97.79 0)
 			(effects
 				(font
@@ -3973,7 +4023,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Voltshif"
+		(property "Footprint" "Package_SO:TSSOP-8_3x3mm_P0.65mm"
 			(at 118.364 23.622 0)
 			(effects
 				(font
@@ -4812,7 +4862,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:VSSOP-8_2.3x2mm_P0.5mm"
+		(property "Footprint" "Package_SO:TSSOP-8_3x3mm_P0.65mm"
 			(at 113.03 137.16 0)
 			(effects
 				(font
@@ -4939,7 +4989,7 @@
 	)
 	(symbol
 		(lib_id "power:+3.3V")
-		(at 36.83 35.56 180)
+		(at 20.32 34.29 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -4947,7 +4997,7 @@
 		(dnp no)
 		(uuid "6922a1bd-f991-42bc-9fb0-dc1b1dcf9f31")
 		(property "Reference" "#PWR01"
-			(at 36.83 31.75 0)
+			(at 20.32 30.48 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4956,7 +5006,7 @@
 			)
 		)
 		(property "Value" "+3.3V"
-			(at 31.75 37.338 0)
+			(at 15.24 36.068 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4964,7 +5014,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 36.83 35.56 0)
+			(at 20.32 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4973,7 +5023,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 36.83 35.56 0)
+			(at 20.32 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4982,7 +5032,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 36.83 35.56 0)
+			(at 20.32 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5762,7 +5812,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 30.48 33.02 0)
+		(at 26.67 29.21 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -5770,7 +5820,7 @@
 		(dnp no)
 		(uuid "d3663d77-dfe0-432a-a902-c6791256b29d")
 		(property "Reference" "#PWR02"
-			(at 30.48 39.37 0)
+			(at 26.67 35.56 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5779,7 +5829,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 30.734 30.48 0)
+			(at 26.924 26.67 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5787,7 +5837,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 30.48 33.02 0)
+			(at 26.67 29.21 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5796,7 +5846,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 30.48 33.02 0)
+			(at 26.67 29.21 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5805,7 +5855,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 30.48 33.02 0)
+			(at 26.67 29.21 0)
 			(effects
 				(font
 					(size 1.27 1.27)
