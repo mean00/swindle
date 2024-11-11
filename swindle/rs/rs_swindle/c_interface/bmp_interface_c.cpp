@@ -337,7 +337,7 @@ extern "C"
     {
         if (!bmp_attached_c())
             return false;
-        if (!target_mem32_read(cur_target, data, addr, length))
+        if (target_mem32_read(cur_target, data, addr, length))
             return false;
         return true;
     }
