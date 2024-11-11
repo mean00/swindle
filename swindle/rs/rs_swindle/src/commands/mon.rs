@@ -29,7 +29,7 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 17] = [
+const mon_command_tree: [CommandTree; 18] = [
     CommandTree {
         command: "bmp",
         args: 0,
@@ -41,6 +41,12 @@ const mon_command_tree: [CommandTree; 17] = [
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_boards),
+    }, //
+    CommandTree {
+        command: "ch32v3_obr",
+        args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_ch32v3_obr),
     }, //
     CommandTree {
         command: "ch32v3_option_byte",
@@ -134,12 +140,13 @@ const mon_command_tree: [CommandTree; 17] = [
     }, //
 ];
 //
-const help_tree : [HelpTree;15]=
+const help_tree : [HelpTree;16]=
 [
     HelpTree{ command: "help",help :"Display help." },
     HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
     HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
-    HelpTree{ command: "ch32v3_option_byte",help :"Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0xbf, 192/128 -> 0x1f."},
+    HelpTree{ command: "ch32v3_obr",help :"Read/write the read protection status."},
+    HelpTree{ command: "ch32v3_option_byte",help :"Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f."},
     HelpTree{ command: "fq or frequency",help :"set/get SWD frequency."},
     HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
     HelpTree{ command: "os_info",help :"Dump FreeRTOS internal state." },
@@ -350,10 +357,61 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
+const CH32V3XX_USER_OPTION_ADDR: u32 = 0x1ffff800;
+const CH32V3XX_FLASH_OBR_ADR: u32 = 0x4002201C;
+const CH32V3XX_OBR_ERROR: u32 = (1 << 0);
+const CH32V3XX_OBR_RDP_VALID: u32 = (1 << 1);
+//
+//
+pub fn _ch32v3_obr(command: &str, _args: &[&str]) -> bool {
+    let detail: Vec<&str> = command.split(' ').collect();
+    let mut value: [u32; 1] = [0];
+    if detail.len() <= 1 {
+        if !bmp::bmp_read_mem32(CH32V3XX_FLASH_OBR_ADR, &mut value) {
+            gdb_print!("Error reading OBR register\n");
+            return false;
+        }
+        gdb_print!("OBR : {:x}\n", value[0]);
+        if (value[0] & CH32V3XX_OBR_ERROR) != 0 {
+            gdb_print!("OBR invalid configuration , inverted option does not match not inverted\n");
+        } else {
+            gdb_print!("OBR configuration is valid\n");
+        }
+
+        if (value[0] & CH32V3XX_OBR_RDP_VALID) != 0 {
+            gdb_print!("OBR Read protection is valid \n");
+        } else {
+            gdb_print!("OBR Read protection is not valid \n");
+        }
+        encoder::reply_ok();
+        return true;
+    }
+    // it is a write, get the value
+    //let value = detail[1];
+    //let value_u8: u8 = if value.starts_with("0x") || value.starts_with("0X") {
+    //(ascii_hex_to_u32(&value[2..]) & 0xff) as u8
+    //} else {
+    //(ascii_string_decimal_to_u32(value) & 0xff) as u8
+    //};
+    //if (value_u8 & 0x7) != 0x7 {
+    //gdb_print!("The provided value does not seem valid \n");
+    //return false;
+    //}
+    //bmp::bmp_ch32v3xx_write_user_option_byte(value_u8);
+    encoder::reply_ok();
+    true
+}
+
 pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
     let detail: Vec<&str> = command.split(' ').collect();
+    let mut value: [u32; 1] = [0];
     if detail.len() <= 1 {
-        let mut option = bmp::bmp_ch32v3xx_read_user_option_byte();
+        // now read option
+        if !bmp::bmp_read_mem32(CH32V3XX_USER_OPTION_ADDR, &mut value) {
+            gdb_print!("Error reading user option\n");
+            return false;
+        }
+        let mut option = (value[0] >> 16) & 0xff;
         gdb_print!("option byte 0x{:x}\n", option);
         if (option & 0x7) != 0x7 {
             gdb_print!("invalid memory configuration\n");
