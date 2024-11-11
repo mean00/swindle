@@ -7681,7 +7681,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Con5"
+		(property "Footprint" "Connector_JST:JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical"
 			(at 147.828 112.268 0)
 			(effects
 				(font
@@ -8035,7 +8035,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:VSSOP-8_2.3x2mm_P0.5mm"
+		(property "Footprint" "Package_SO:TSSOP-8_3x3mm_P0.65mm"
 			(at 175.26 46.99 0)
 			(effects
 				(font
@@ -8258,7 +8258,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Voltshif"
+		(property "Footprint" "Package_SO:TSSOP-8_3x3mm_P0.65mm"
 			(at 118.364 23.622 0)
 			(effects
 				(font
@@ -9368,7 +9368,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:VSSOP-8_2.3x2mm_P0.5mm"
+		(property "Footprint" "Package_SO:TSSOP-8_3x3mm_P0.65mm"
 			(at 172.72 82.55 0)
 			(effects
 				(font
@@ -10679,7 +10679,7 @@
 				)
 			)
 		)
-		(property "Footprint" "con5"
+		(property "Footprint" "Connector_JST:JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical"
 			(at 143.51 161.29 90)
 			(effects
 				(font
@@ -11819,7 +11819,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Crystal:Crystal_SMD_TXC_7M-4Pin_3.2x2.5mm"
+		(property "Footprint" "footprints:Crystal_SMD_TXC_7M-4Pin_3.2x2.5mm_45deg"
 			(at 29.718 74.168 90)
 			(effects
 				(font
