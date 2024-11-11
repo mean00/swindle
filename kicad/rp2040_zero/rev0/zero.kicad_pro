@@ -58,13 +58,7 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [
-        "silk_edge_clearance|150023025|74014975|744f32e9-386e-40c1-93c9-4e31a9a6c6d2|36cfbc4b-f42d-439b-8181-1e7d6efc5ed3",
-        "silk_edge_clearance|150023025|90033832|69d668aa-a0cf-490b-977e-3671c3eb25eb|15250b45-fb0e-4504-ae75-92cbff4c031d",
-        "starved_thermal|113305025|81994975|00552fe6-2a4a-4b39-bc7f-3fcc1391ca00|ba508a64-fe5c-4ec8-8efe-05d959db38bb|B.Cu",
-        "starved_thermal|123360050|77769975|925997f7-d5c0-4443-8d94-02b2f4db7ffe|1878d16b-4691-4e07-8bac-5a0562ad0573|F.Cu",
-        "unconnected_items|127925025|86714975|34fa31b4-d534-415c-bb31-d6ed7a346630|4ee5830c-1d6e-4317-b1e8-5f018f0cbb29"
-      ],
+      "drc_exclusions": [],
       "meta": {
         "version": 2
       },
