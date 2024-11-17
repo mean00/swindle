@@ -29,7 +29,13 @@ struct HelpTree {
 }
 
 //
-const mon_command_tree: [CommandTree; 18] = [
+const mon_command_tree: [CommandTree; 19] = [
+    CommandTree {
+        command: "enablereset",
+        args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_enable_reset),
+    }, //
     CommandTree {
         command: "bmp",
         args: 0,
@@ -466,6 +472,23 @@ pub fn _ws(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
+fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
+    let trimmed = in_str.trim();
+    // ok we have an input
+    let mut sz: usize = trimmed.len();
+    if sz == 0 {
+        gdb_print!("incorrect parameter, expecting xxx or xxxK\n");
+        return (false, 0);
+    }
+    let mut mul: u32 = 1;
+    if trimmed.ends_with('k') || trimmed.ends_with('K') {
+        mul = 1000;
+        sz -= 1;
+    }
+    let mut out = ascii_string_decimal_to_u32(&trimmed[..sz]);
+    out *= mul;
+    (true, out)
+}
 /*
  *
  *
@@ -479,27 +502,49 @@ pub fn _fq(command: &str, _args: &[&str]) -> bool {
         encoder::reply_ok();
         return true;
     }
-    let fq_str = params[1].trim();
-    // ok we have an input
-    let mut sz: usize = fq_str.len();
-    if sz == 0 {
-        gdb_print!("incorrect parameter, expecting xxx or xxxK\n");
+    let mut ret: bool;
+    let mut fq: u32;
+    (ret, fq) = convert_param_to_integer(params[1]);
+    if ret == false {
         return false;
     }
-    let mut mul: u32 = 1;
-    if fq_str.ends_with('k') || fq_str.ends_with('K') {
-        mul = 1000;
-        sz -= 1;
-    }
-    let mut frequency = ascii_string_decimal_to_u32(&fq_str[..sz]);
-    if frequency != 0 {
-        frequency *= mul;
-        bmp::bmp_set_frequency(frequency);
+    if fq != 0 {
+        bmp::bmp_set_frequency(fq);
     } else {
         gdb_print!("incorrect frequency parameter\n");
     }
     let w: u32 = bmp::bmp_get_frequency();
     gdb_print!("frequency is now {} \n", w);
+    encoder::reply_ok();
+    true
+}
+#[no_mangle]
+static mut autoreset: u32 = 1;
+pub fn set_enable_reset(nw: u32) {
+    unsafe {
+        autoreset = nw;
+    }
+}
+pub fn get_enable_reset() -> u32 {
+    unsafe { autoreset }
+}
+pub fn _enable_reset(command: &str, _args: &[&str]) -> bool {
+    let params: Vec<&str> = command.split(' ').collect();
+    if params.len() <= 1 {
+        gdb_print!("current enable_reset is {} \n", get_enable_reset());
+        encoder::reply_ok();
+        return true;
+    }
+    let mut ret: bool;
+    let mut fq: u32;
+    (ret, fq) = convert_param_to_integer(params[1]);
+    if ret == false {
+        return false;
+    }
+    unsafe {
+        set_enable_reset(fq);
+        gdb_print!("enablereset is now {} \n", get_enable_reset());
+    }
     encoder::reply_ok();
     true
 }
