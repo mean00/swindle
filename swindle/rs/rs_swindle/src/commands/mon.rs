@@ -365,8 +365,8 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
  */
 const CH32V3XX_USER_OPTION_ADDR: u32 = 0x1ffff800;
 const CH32V3XX_FLASH_OBR_ADR: u32 = 0x4002201C;
-const CH32V3XX_OBR_ERROR: u32 = (1 << 0);
-const CH32V3XX_OBR_RDP_VALID: u32 = (1 << 1);
+const CH32V3XX_OBR_ERROR: u32 = 1 << 0;
+const CH32V3XX_OBR_RDP_VALID: u32 = 1 << 1;
 //
 //
 pub fn _ch32v3_obr(command: &str, _args: &[&str]) -> bool {
@@ -502,10 +502,10 @@ pub fn _fq(command: &str, _args: &[&str]) -> bool {
         encoder::reply_ok();
         return true;
     }
-    let mut ret: bool;
-    let mut fq: u32;
+    let ret: bool;
+    let fq: u32;
     (ret, fq) = convert_param_to_integer(params[1]);
-    if ret == false {
+    if !ret {
         return false;
     }
     if fq != 0 {
@@ -535,16 +535,14 @@ pub fn _enable_reset(command: &str, _args: &[&str]) -> bool {
         encoder::reply_ok();
         return true;
     }
-    let mut ret: bool;
-    let mut fq: u32;
+    let ret: bool;
+    let fq: u32;
     (ret, fq) = convert_param_to_integer(params[1]);
-    if ret == false {
+    if !ret {
         return false;
     }
-    unsafe {
-        set_enable_reset(fq);
-        gdb_print!("enablereset is now {} \n", get_enable_reset());
-    }
+    set_enable_reset(fq);
+    gdb_print!("enablereset is now {} \n", get_enable_reset());
     encoder::reply_ok();
     true
 }
