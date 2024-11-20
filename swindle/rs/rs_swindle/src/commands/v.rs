@@ -10,6 +10,7 @@ use crate::freertos::os_attach;
 use crate::freertos::os_detach;
 
 crate::setup_log!(false);
+use crate::parsing_util::ascii_string_decimal_to_u32;
 use crate::{bmplog, bmpwarning};
 
 const v_command_tree: [CommandTree; 3] = [
@@ -57,8 +58,18 @@ fn _vMustReply(_command: &str, _args: &[&str]) -> bool {
 //
 //
 //
-fn _vAttach(_command: &str, _args: &[&str]) -> bool {
-    if bmp_attach(1) {
+fn _vAttach(command: &str, _args: &[&str]) -> bool {
+    // The string is normally vAttach;XXX
+    // the prefix is 7 bytes
+    let mut target = 0;
+    let right_side = &command[7..];
+    if (right_side.len() > 1) {
+        target = ascii_string_decimal_to_u32(&right_side[1..]);
+    }
+    if (target == 0) {
+        target = 1;
+    }
+    if bmp_attach(target) {
         /*
          * We don't actually support threads, but GDB 11 and 12 can't work without
          * us saying we attached to thread 1.. see the following for the low-down of this:
