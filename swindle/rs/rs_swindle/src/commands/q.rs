@@ -34,78 +34,91 @@ const q_command_tree: [CommandTree; 13] = [
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qSymbol),
+        splitter: ":",
     }, // read symbol
     CommandTree {
         command: "qSupported",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qSupported),
+        splitter: ":",
     }, // supported features
     CommandTree {
         command: "qXfer",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qXfer),
+        splitter: ":",
     }, // read memory map
     CommandTree {
         command: "qTStatus",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qTStatus),
+        splitter: ":",
     }, // trace status
     CommandTree {
         command: "qRcmd",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qRcmd),
+        splitter: ":",
     }, // execute command
     CommandTree {
         command: "qAttached",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qAttached),
+        splitter: ":",
     }, // remote thread
     CommandTree {
         command: "qfThreadInfo",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qfThreadInfo),
+        splitter: ":",
     }, // thread info begin
     CommandTree {
         command: "qsThreadInfo",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qsThreadInfo),
+        splitter: ":",
     }, // List threads
     CommandTree {
         command: "qThreadExtraInfo",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qThreadExtraInfo),
+        splitter: ":",
     }, // List threads
     CommandTree {
         command: "qP",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qP),
+        splitter: ":",
     }, // List threads
     CommandTree {
         command: "qCRC",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qCRC),
+        splitter: ":",
     }, // set code/data/.. offset
     CommandTree {
         command: "qC",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qC),
+        splitter: ":",
     }, // Current thread Id
     CommandTree {
         command: "qOffsets",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qOffsets),
+        splitter: ":",
     }, // set code/data/.. offset
 ];
 

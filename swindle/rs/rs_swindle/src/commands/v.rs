@@ -19,18 +19,21 @@ const v_command_tree: [CommandTree; 3] = [
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_vMustReply),
+        splitter: ":",
     }, // test
     CommandTree {
         command: "vAttach",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_vAttach),
+        splitter: ":",
     }, // test
     CommandTree {
         command: "vRun",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(vRun),
+        splitter: ":",
     }, // test
 ];
 //

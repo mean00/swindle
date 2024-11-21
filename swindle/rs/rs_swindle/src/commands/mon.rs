@@ -35,114 +35,133 @@ const mon_command_tree: [CommandTree; 19] = [
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_enable_reset),
+        splitter: ":",
     }, //
     CommandTree {
         command: "bmp",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_bmp_mon),
+        splitter: ":",
     }, //
     CommandTree {
         command: "boards",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_boards),
+        splitter: ":",
     }, //
     CommandTree {
         command: "ch32v3_obr",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_obr),
+        splitter: ":",
     }, //
     CommandTree {
         command: "ch32v3_option_byte",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_option_byte),
+        splitter: ":",
     }, //
     CommandTree {
         command: "frequency",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_fq),
+        splitter: ":",
     },
     CommandTree {
         command: "fq",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_fq),
+        splitter: ":",
     },
     CommandTree {
         command: "fos",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos),
+        splitter: ":",
     }, //
     CommandTree {
         command: "freertos",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos),
+        splitter: ":",
     }, //
     CommandTree {
         command: "help",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_mon_help),
+        splitter: ":",
     }, //
     CommandTree {
         command: "os_info",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos_info),
+        splitter: ":",
     }, //
     CommandTree {
         command: "ram",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_ram),
+        splitter: ":",
     }, //
     CommandTree {
         command: "reboot",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_reboot),
+        splitter: ":",
     }, //
     CommandTree {
         command: "reset",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_target_reset),
+        splitter: ":",
     }, //
     CommandTree {
         command: "rvswdp_scan",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_rvswdp_scan),
+        splitter: ":",
     }, //
     CommandTree {
         command: "swdp_scan",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_swdp_scan),
+        splitter: ":",
     }, //
     CommandTree {
         command: "version",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_get_version),
+        splitter: ":",
     }, //
     CommandTree {
         command: "voltage",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_voltage),
+        splitter: ":",
     }, //
     CommandTree {
         command: "ws",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_ws),
+        splitter: ":",
     }, //
 ];
 //

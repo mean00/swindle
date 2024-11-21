@@ -16,18 +16,21 @@ const vflash_command_tree: [CommandTree; 3] = [
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_vFlashErase),
+        splitter: ":",
     }, // flash erase
     CommandTree {
         command: "vFlashWrite",
         args: 0,
         require_connected: true,
         cb: CallbackType::raw(_vFlashWrite),
+        splitter: ":",
     }, // flash write
     CommandTree {
         command: "vFlashDone",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_vFlashDone),
+        splitter: ":",
     }, // flash erase
 ];
 

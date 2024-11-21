@@ -41,6 +41,7 @@ pub struct CommandTree {
     args: usize,
     require_connected: bool,
     cb: CallbackType, // string + strings
+    splitter: &'static str,
 }
 
 const main_command_tree: [CommandTree; 22] = [
@@ -49,132 +50,154 @@ const main_command_tree: [CommandTree; 22] = [
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_extendedMode),
+        splitter: ":",
     }, // enable extended mode
     CommandTree {
         command: "T",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(q_thread::_T),
+        splitter: ":",
     }, // enable extended mode
     CommandTree {
         command: "Hg",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(q_thread::_Hg),
+        splitter: ":",
     }, // select thread
     CommandTree {
         command: "Hc",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_Hc),
+        splitter: ":",
     }, //
     CommandTree {
         command: "vCont",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_vCont),
+        splitter: ":",
     },
     CommandTree {
         command: "vFlash",
         args: 0,
         require_connected: true,
         cb: CallbackType::raw(_flashv),
+        splitter: ":",
     }, // test
     CommandTree {
         command: "v",
         args: 0,
         require_connected: false,
         cb: CallbackType::raw(_v),
+        splitter: ":",
     }, // test
     CommandTree {
         command: "q",
         args: 0,
         require_connected: false,
         cb: CallbackType::raw(_q),
+        splitter: ":",
     }, // see q commands in commands/q.rs
     CommandTree {
         command: "g",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_g),
+        splitter: ":",
     }, // read registers
     CommandTree {
         command: "?",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_mark),
+        splitter: ":",
     }, // reason for halt
     CommandTree {
         command: "X",
         args: 0,
         require_connected: true,
         cb: CallbackType::raw(_X),
+        splitter: ":",
     }, // write binary
     CommandTree {
         command: "m",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_m),
+        splitter: ":",
     }, // read memory
     CommandTree {
         command: "p",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_p),
+        splitter: ":",
     }, // read register
     CommandTree {
         command: "P",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_P),
+        splitter: ":",
     }, // write register
     CommandTree {
         command: "z",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_z),
+        splitter: ":",
     }, // read memory
     CommandTree {
         command: "Z",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_Z),
+        splitter: ":",
     },
     CommandTree {
         command: "R",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_R),
+        splitter: ":",
     },
     CommandTree {
         command: "r",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_R),
+        splitter: ":",
     },
     CommandTree {
         command: "s",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_s),
+        splitter: ":",
     },
     CommandTree {
         command: "k",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_k),
+        splitter: ":",
     },
     CommandTree {
         command: "c",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_c),
+        splitter: ":",
     },
     CommandTree {
         command: "D",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_D),
+        splitter: ":",
     },
 ];
 
@@ -197,12 +220,12 @@ pub fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
                 // Is it a regular callback or binary callback
                 return match c.cb {
                     CallbackType::text(y) => {
-                        // split args by ":"
+                        // split args by splitter
                         let as_string: &str = match core::str::from_utf8(args) {
                             Ok(x) => x,
                             Err(_x) => empty,
                         };
-                        let conf: Vec<&str> = as_string.split(':').collect();
+                        let conf: Vec<&str> = as_string.split(c.splitter).collect();
                         (y)(command, &conf)
                     }
                     CallbackType::raw(x) => (x)(command, args),
