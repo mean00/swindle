@@ -136,30 +136,17 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             // ok we have a full string...
                             bmplog!("Gdb call\n");
                             let s = x.get_result();
-                            let command: &[u8];
-                            let args: &[u8];
-                            match crate::parsing_util::split_command(s) {
-                                None => {
-                                    bmplog!("Cannot convert string");
-                                    command = empty;
-                                    args = empty;
-                                }
-                                Some((x, y)) => {
-                                    command = x;
-                                    args = y;
-                                }
-                            }
-                            if command.is_empty() {
+                            if s.len() == 0 {
                                 bmplog!("Cannot read string");
                             } else {
                                 bmplog!("--> ACK\n");
                                 rngdb_send_data_u8(&[CHAR_ACK]);
                                 rngdb_output_flush();
-                                let as_string = core::str::from_utf8_unchecked(command);
+                                let as_string = core::str::from_utf8_unchecked(s);
                                 bmplog!("Exec..:");
                                 bmplog!(as_string);
                                 bmplog!("\n");
-                                commands::exec(as_string, args);
+                                commands::exec(as_string);
                                 bmplog!("Exec done\n");
                             }
                         }

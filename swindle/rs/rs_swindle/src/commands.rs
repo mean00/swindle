@@ -237,7 +237,8 @@ pub fn exec_one(tree: &[CommandTree], command: &str, args: &[u8]) -> bool {
     false
 }
 
-pub fn exec(command: &str, args: &[u8]) {
+pub fn exec(command: &str) {
+    let args: &[u8] = &[];
     if !exec_one(&main_command_tree, command, args) {
         {
             encoder::simple_send(""); // unsupported
