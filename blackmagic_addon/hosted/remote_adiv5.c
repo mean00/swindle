@@ -23,6 +23,14 @@ extern uint32_t remote_adiv5_swd_read_no_check_rs(const uint16_t addr);
 extern uint32_t remote_adiv5_swd_raw_access_rs(const uint8_t rnw, const uint16_t addr, const uint32_t value,
                                                uint32_t *fault);
 
+#if 1
+#define LOGG(...)                                                                                                      \
+    {                                                                                                                  \
+    }
+#else
+#define LOGG printf
+#endif
+
 void __attribute__((noreturn)) do_assert(const char *a);
 #define xAssert(x) do_assert("")
 
@@ -39,11 +47,11 @@ uint32_t remote_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, 
 {
     uint32_t fault = 0;
     uint32_t reply = remote_adiv5_swd_raw_access_rs(rnw, addr, value, &fault);
-    printf("** FAULT : %d\n", fault);
+    LOGG("** FAULT : %d\n", fault);
     switch (fault)
     {
     case 0: // it means ok, else we have either reply to ack or 0xff
-        printf("  *** VALUE=0x%x\n", reply);
+        LOGG("  *** VALUE=0x%x\n", reply);
         return reply;
         break;
     case 0xff: // raise

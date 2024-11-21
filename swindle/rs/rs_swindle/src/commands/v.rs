@@ -16,21 +16,27 @@ use crate::{bmplog, bmpwarning};
 const v_command_tree: [CommandTree; 3] = [
     CommandTree {
         command: "vMustReply",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_vMustReply),
+        start_separator: "",
+        next_separator: "",
     }, // test
     CommandTree {
         command: "vAttach",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_vAttach),
+        start_separator: ";",
+        next_separator: "",
     }, // test
     CommandTree {
         command: "vRun",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(vRun),
+        start_separator: "",
+        next_separator: "",
     }, // test
 ];
 //
@@ -58,15 +64,13 @@ fn _vMustReply(_command: &str, _args: &[&str]) -> bool {
 //
 //
 //
-fn _vAttach(command: &str, _args: &[&str]) -> bool {
+fn _vAttach(_command: &str, args: &[&str]) -> bool {
     // The string is normally vAttach;XXX
-    // the prefix is 7 bytes
-    let mut target = 0;
-    let right_side = &command[7..];
-    if (right_side.len() > 1) {
-        target = ascii_string_decimal_to_u32(&right_side[1..]);
+    if args.len() != 1 {
+        return false;
     }
-    if (target == 0) {
+    let mut target = ascii_string_decimal_to_u32(args[0]);
+    if target == 0 {
         target = 1;
     }
     if bmp_attach(target) {

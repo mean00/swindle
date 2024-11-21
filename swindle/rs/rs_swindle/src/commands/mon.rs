@@ -3,7 +3,7 @@ use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 use crate::parsing_util::{
-    ascii_hex_string_to_u8s, ascii_hex_to_u32, ascii_string_decimal_to_u32, ascii_string_to_u32,
+    ascii_hex_string_to_u8s, ascii_hex_to_u32, ascii_string_decimal_to_u32, ascii_string_hex_to_u32,
 };
 use alloc::vec;
 use alloc::vec::Vec;
@@ -32,117 +32,155 @@ struct HelpTree {
 const mon_command_tree: [CommandTree; 19] = [
     CommandTree {
         command: "enablereset",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_enable_reset),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "bmp",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_bmp_mon),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "boards",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_boards),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "ch32v3_obr",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_obr),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "ch32v3_option_byte",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_option_byte),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "frequency",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_fq),
+        start_separator: " ",
+        next_separator: " ",
     },
     CommandTree {
         command: "fq",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_fq),
+        start_separator: " ",
+        next_separator: " ",
     },
     CommandTree {
         command: "fos",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "freertos",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "help",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_mon_help),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "os_info",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos_info),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "ram",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_ram),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "reboot",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_reboot),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "reset",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_target_reset),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "rvswdp_scan",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_rvswdp_scan),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "swdp_scan",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_swdp_scan),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "version",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_get_version),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "voltage",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_voltage),
+        start_separator: "",
+        next_separator: "",
     }, //
     CommandTree {
         command: "ws",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_ws),
+        start_separator: " ",
+        next_separator: " ",
     }, //
 ];
 //
@@ -168,7 +206,7 @@ const help_tree : [HelpTree;16]=
 /*
  *
  */
-pub fn _target_reset(_command: &str, _args: &[&str]) -> bool {
+fn _target_reset(_command: &str, _args: &[&str]) -> bool {
     bmp::bmp_platform_nrst_set_val(true);
     // in hosted mode, assume the transport stream will introduce enough delay
     #[cfg(not(feature = "hosted"))]
@@ -181,7 +219,7 @@ pub fn _target_reset(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
-pub fn _reboot(_command: &str, _args: &[&str]) -> bool {
+fn _reboot(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_e01();
     systemReset();
     true
@@ -189,7 +227,7 @@ pub fn _reboot(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
-pub fn _fos_info(_command: &str, _args: &[&str]) -> bool {
+fn _fos_info(_command: &str, _args: &[&str]) -> bool {
     crate::freertos::os_info();
     encoder::reply_ok();
     true
@@ -198,30 +236,25 @@ pub fn _fos_info(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
-pub fn _fos(command: &str, _args: &[&str]) -> bool {
-    let mut flavor: &str = "";
-    if command.len() > 4 {
-        flavor = &command[4..];
-    }
-
-    if enable_freertos(flavor) {
-        if crate::freertos::freertos_symbols::freertos_symbol_valid() {
-            gdb_print!("FreeRTOS support enabled\n");
-        } else {
-            gdb_print!("FreeRTOS support *NOT *enabled\n");
-        }
-        encoder::reply_ok();
-        true
-    } else {
+fn _fos(_command: &str, args: &[&str]) -> bool {
+    if args.is_empty() {
         gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|RV32|NONE|AUTO]\n");
-        encoder::reply_e01();
-        true
+    } else {
+        if enable_freertos(args[0]) {
+            if crate::freertos::freertos_symbols::freertos_symbol_valid() {
+                gdb_print!("FreeRTOS support enabled\n");
+            } else {
+                gdb_print!("FreeRTOS support *NOT *enabled\n");
+            }
+        }
     }
+    encoder::reply_ok();
+    true
 }
 /*
  *
  */
-pub fn _ram(_command: &str, _args: &[&str]) -> bool {
+fn _ram(_command: &str, _args: &[&str]) -> bool {
     let (min_heap, heap) = bmp::get_heap_stats();
     gdb_print!(
         "Min Free Heap\t: {} kB \nFree Heap\t: {} kB\n",
@@ -232,7 +265,7 @@ pub fn _ram(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
-pub fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
+fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
     // the input is bmp actual_bmp_mon_command
     // we have to remove the bmp
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
@@ -241,7 +274,7 @@ pub fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
 const MAX_SPACE: usize = 40;
 const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
-pub fn _mon_help(_command: &str, _args: &[&str]) -> bool {
+fn _mon_help(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("Help, use mon [cmd] [params] :\n");
     // align
     let mut mxsize: usize = 0;
@@ -369,10 +402,9 @@ const CH32V3XX_OBR_ERROR: u32 = 1 << 0;
 const CH32V3XX_OBR_RDP_VALID: u32 = 1 << 1;
 //
 //
-pub fn _ch32v3_obr(command: &str, _args: &[&str]) -> bool {
-    let detail: Vec<&str> = command.split(' ').collect();
+pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
     let mut value: [u32; 1] = [0];
-    if detail.len() <= 1 {
+    if args.is_empty() {
         if !bmp::bmp_read_mem32(CH32V3XX_FLASH_OBR_ADR, &mut value) {
             gdb_print!("Error reading OBR register\n");
             return false;
@@ -408,10 +440,9 @@ pub fn _ch32v3_obr(command: &str, _args: &[&str]) -> bool {
     true
 }
 
-pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
-    let detail: Vec<&str> = command.split(' ').collect();
+pub fn _ch32v3_option_byte(_command: &str, args: &[&str]) -> bool {
     let mut value: [u32; 1] = [0];
-    if detail.len() <= 1 {
+    if args.is_empty() {
         // now read option
         if !bmp::bmp_read_mem32(CH32V3XX_USER_OPTION_ADDR, &mut value) {
             gdb_print!("Error reading user option\n");
@@ -442,7 +473,7 @@ pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
         return true;
     }
     // it is a write, get the value
-    let value = detail[1];
+    let value = args[0];
     let value_u8: u8 = if value.starts_with("0x") || value.starts_with("0X") {
         (ascii_hex_to_u32(&value[2..]) & 0xff) as u8
     } else {
@@ -460,11 +491,11 @@ pub fn _ch32v3_option_byte(command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
-pub fn _ws(_command: &str, _args: &[&str]) -> bool {
-    let len = _command.len();
-    if len > 3 {
+pub fn _ws(_command: &str, args: &[&str]) -> bool {
+    let len = args.len();
+    if len > 0 {
         // ok we have an input
-        let ws = ascii_string_decimal_to_u32(&_command[3..]);
+        let ws = ascii_string_decimal_to_u32(args[0]);
         bmp::bmp_set_wait_state(ws);
     }
     let w: u32 = bmp::bmp_get_wait_state();
@@ -494,9 +525,8 @@ fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
  *
  */
 #[no_mangle]
-pub fn _fq(command: &str, _args: &[&str]) -> bool {
-    let params: Vec<&str> = command.split(' ').collect();
-    if params.len() <= 1 {
+pub fn _fq(_command: &str, args: &[&str]) -> bool {
+    if args.is_empty() {
         let f: u32 = bmp::bmp_get_frequency();
         gdb_print!("current frequency is {} \n", f);
         encoder::reply_ok();
@@ -504,7 +534,7 @@ pub fn _fq(command: &str, _args: &[&str]) -> bool {
     }
     let ret: bool;
     let fq: u32;
-    (ret, fq) = convert_param_to_integer(params[1]);
+    (ret, fq) = convert_param_to_integer(args[0]);
     if !ret {
         return false;
     }
@@ -528,16 +558,15 @@ pub fn set_enable_reset(nw: u32) {
 pub fn get_enable_reset() -> u32 {
     unsafe { autoreset }
 }
-pub fn _enable_reset(command: &str, _args: &[&str]) -> bool {
-    let params: Vec<&str> = command.split(' ').collect();
-    if params.len() <= 1 {
+pub fn _enable_reset(_command: &str, args: &[&str]) -> bool {
+    if args.is_empty() {
         gdb_print!("current enable_reset is {} \n", get_enable_reset());
         encoder::reply_ok();
         return true;
     }
     let ret: bool;
     let fq: u32;
-    (ret, fq) = convert_param_to_integer(params[1]);
+    (ret, fq) = convert_param_to_integer(args[0]);
     if !ret {
         return false;
     }

@@ -35,11 +35,13 @@ use numtoa::NumToA;
 crate::setup_log!(false);
 //use crate::{bmplog,bmpwarning};
 
-//
-
-#[no_mangle]
-
 static mut autoauto: Option<gdb_stream<INPUT_BUFFER_SIZE>> = None;
+/*
+ *
+ */
+fn get_autoauto() -> &'static mut Option<gdb_stream<INPUT_BUFFER_SIZE>> {
+    unsafe { &mut autoauto }
+}
 
 #[no_mangle]
 extern "C" fn rngdbstub_init() {
@@ -94,88 +96,76 @@ fn rngdb_send_data_u8(data: &[u8]) {
  */
 #[no_mangle]
 extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
+    let mut data_as_slice: &[u8];
     unsafe {
-        let mut data_as_slice: &[u8] = core::slice::from_raw_parts(d, l);
-        let empty1: [u8; 0] = [0; 0];
-        let empty: &[u8] = &empty1;
-
-        // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
-        // i'm not sure what happens escaping-wise if we let the parser handle it
-        if crate::commands::run::target_is_running() {
-            if data_as_slice.len() == 1 {
-                match data_as_slice[0] {
-                    3 => crate::commands::run::target_halt(),
-                    _ => bmplog!("Warning : garbage received"),
-                }
-            }
-            return;
-        }
-        // the target is stopped
-        // we can parse the incoming commands
-        match autoauto {
-            Some(ref mut x) => {
-                while !data_as_slice.is_empty() {
-                    let consumed: usize;
-                    let state: RESULT_AUTOMATON;
-                    bmplog!("Parsing..\n");
-                    (consumed, state) = x.parse(data_as_slice);
-                    bmplog!("Parsed..\n");
-                    match state {
-                        RESULT_AUTOMATON::RpcReady => {
-                            bmplog!("Rpc....\n");
-                            let s = x.get_result(); // s is a RPC command block
-                            if !s.is_empty() {
-                                //bmplog!("--> ACK\n");
-                                //rngdb_send_data( CHAR_ACK );
-                                #[cfg(not(feature = "hosted"))]
-                                crate::rpc_target::rpc(s);
-                                bmplog!("Rpc done\n");
-                            }
-                        }
-                        RESULT_AUTOMATON::Ready => {
-                            // ok we have a full string...
-                            bmplog!("Gdb call\n");
-                            let s = x.get_result();
-                            let command: &[u8];
-                            let args: &[u8];
-                            match crate::parsing_util::split_command(s) {
-                                None => {
-                                    bmplog!("Cannot convert string");
-                                    command = empty;
-                                    args = empty;
-                                }
-                                Some((x, y)) => {
-                                    command = x;
-                                    args = y;
-                                }
-                            }
-                            if command.is_empty() {
-                                bmplog!("Cannot read string");
-                            } else {
-                                bmplog!("--> ACK\n");
-                                rngdb_send_data_u8(&[CHAR_ACK]);
-                                rngdb_output_flush();
-                                let as_string = core::str::from_utf8_unchecked(command);
-                                bmplog!("Exec..:");
-                                bmplog!(as_string);
-                                bmplog!("\n");
-                                commands::exec(as_string, args);
-                                bmplog!("Exec done\n");
-                            }
-                        }
-                        RESULT_AUTOMATON::Error => {
-                            rngdb_send_data_u8(&[CHAR_NACK]);
-                            rngdb_output_flush();
-                        }
-                        RESULT_AUTOMATON::Continue => (),
-                        RESULT_AUTOMATON::Reset => (),
-                    }
-                    data_as_slice = &data_as_slice[consumed..];
-                }
-            }
-            None => panic!("noauto"),
-        };
+        data_as_slice = core::slice::from_raw_parts(d, l);
     }
+    // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
+    // i'm not sure what happens escaping-wise if we let the parser handle it
+    if crate::commands::run::target_is_running() {
+        if data_as_slice.len() == 1 {
+            match data_as_slice[0] {
+                3 => crate::commands::run::target_halt(),
+                _ => bmplog!("Warning : garbage received"),
+            }
+        }
+        return;
+    }
+    // the target is stopped
+    // we can parse the incoming commands
+    match get_autoauto() {
+        Some(ref mut x) => {
+            while !data_as_slice.is_empty() {
+                let consumed: usize;
+                let state: RESULT_AUTOMATON;
+                bmplog!("Parsing..\n");
+                (consumed, state) = x.parse(data_as_slice);
+                bmplog!("Parsed..\n");
+                match state {
+                    RESULT_AUTOMATON::RpcReady => {
+                        bmplog!("Rpc....\n");
+                        let s = x.get_result(); // s is a RPC command block
+                        if !s.is_empty() {
+                            //bmplog!("--> ACK\n");
+                            //rngdb_send_data( CHAR_ACK );
+                            #[cfg(not(feature = "hosted"))]
+                            crate::rpc_target::rpc(s);
+                            bmplog!("Rpc done\n");
+                        }
+                    }
+                    RESULT_AUTOMATON::Ready => {
+                        // ok we have a full string...
+                        bmplog!("Gdb call\n");
+                        let s = x.get_result();
+                        if s.is_empty() {
+                            bmplog!("Cannot read string");
+                        } else {
+                            bmplog!("--> ACK\n");
+                            rngdb_send_data_u8(&[CHAR_ACK]);
+                            rngdb_output_flush();
+                            let as_string: &str;
+                            unsafe {
+                                as_string = core::str::from_utf8_unchecked(s);
+                            }
+                            bmplog!("Exec..:");
+                            bmplog!(as_string);
+                            bmplog!("\n");
+                            commands::exec(as_string);
+                            bmplog!("Exec done\n");
+                        }
+                    }
+                    RESULT_AUTOMATON::Error => {
+                        rngdb_send_data_u8(&[CHAR_NACK]);
+                        rngdb_output_flush();
+                    }
+                    RESULT_AUTOMATON::Continue => (),
+                    RESULT_AUTOMATON::Reset => (),
+                }
+                data_as_slice = &data_as_slice[consumed..];
+            }
+        }
+        None => panic!("noauto"),
+    };
 }
 
 // EOF

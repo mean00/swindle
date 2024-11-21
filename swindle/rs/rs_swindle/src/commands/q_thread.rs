@@ -70,7 +70,7 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
     if args.len() != 2 {
         encoder::reply_e01();
     }
-    let thread_id = parsing_util::ascii_string_to_u32(args[1]);
+    let thread_id = parsing_util::ascii_string_hex_to_u32(args[1]);
 
     let info = get_tcb_info_from_id(thread_id);
     if let Some(x) = info {
@@ -91,8 +91,8 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
 /*
  *  switch thread
  */
-pub fn _Hg(command: &str, _args: &[&str]) -> bool {
-    let thread_id: u32 = parsing_util::ascii_string_to_u32(&command[2..]);
+pub fn _Hg(_command: &str, args: &[&str]) -> bool {
+    let thread_id: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
     if !freertos_symbol_valid() {
         encoder::reply_ok();
         return true;
@@ -107,8 +107,8 @@ pub fn _Hg(command: &str, _args: &[&str]) -> bool {
 /*
  *  is thread alive ?
  */
-pub fn _T(command: &str, _args: &[&str]) -> bool {
-    let thread_id: u32 = parsing_util::ascii_string_to_u32(&command[1..]);
+pub fn _T(_command: &str, args: &[&str]) -> bool {
+    let thread_id: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
 
     let ok = match freertos_symbol_valid() {
         true => freertos_is_thread_present(thread_id),

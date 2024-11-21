@@ -74,7 +74,7 @@ pub fn _tohex(v: u8) -> u8 {
     b'0' + v
 }
 //---
-pub fn ascii_string_to_u32_le(s: &str) -> u32 {
+pub fn ascii_string_hex_to_u32_le(s: &str) -> u32 {
     let datain = s.as_bytes();
     u8s_string_to_u32_le(datain)
 }
@@ -105,7 +105,7 @@ pub fn u8s_string_decimal_to_u32(datain: &[u8]) -> u32 {
 }
 
 // Hex string as ascii to u32
-pub fn ascii_string_to_u32(s: &str) -> u32 {
+pub fn ascii_string_hex_to_u32(s: &str) -> u32 {
     let datain = s.as_bytes();
     u8s_string_to_u32(datain)
 }
@@ -144,8 +144,8 @@ pub fn take_adress_length(xin: &str) -> Option<(u32, u32)> {
         bmplog!("take_adress_length : wrong param");
         return None;
     }
-    let address = crate::parsing_util::ascii_string_to_u32(args[0]);
-    let len = crate::parsing_util::ascii_string_to_u32(args[1]);
+    let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
+    let len = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
     Some((address, len))
 }
 

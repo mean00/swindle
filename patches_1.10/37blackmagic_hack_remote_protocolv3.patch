@@ -1,0 +1,18 @@
+diff --git a/src/platforms/hosted/remote/protocol_v3.c b/src/platforms/hosted/remote/protocol_v3.c
+index a81c3cc4..7dcc4f20 100644
+--- a/src/platforms/hosted/remote/protocol_v3.c
++++ b/src/platforms/hosted/remote/protocol_v3.c
+@@ -55,11 +55,13 @@ void remote_v3_init(void)
+ 
+ bool remote_v3_adiv5_init(adiv5_debug_port_s *const dp)
+ {
++	/*
+ 	dp->low_access = remote_v3_adiv5_raw_access;
+ 	dp->dp_read = remote_v3_adiv5_dp_read;
+ 	dp->ap_read = remote_v3_adiv5_ap_read;
+ 	dp->ap_write = remote_v3_adiv5_ap_write;
+ 	dp->mem_read = remote_v3_adiv5_mem_read_bytes;
+ 	dp->mem_write = remote_v3_adiv5_mem_write_bytes;
++  */
+ 	return true;
+ }
