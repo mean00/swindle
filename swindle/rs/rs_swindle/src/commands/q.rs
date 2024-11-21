@@ -34,78 +34,104 @@ const q_command_tree: [CommandTree; 13] = [
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qSymbol),
+        start_separator: "",
+        next_separator: "",
     }, // read symbol
     CommandTree {
-        command: "qSupported",
+        command: "qSupported", // : qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qSupported),
+        start_separator: ":",
+        next_separator: ";",
     }, // supported features
     CommandTree {
-        command: "qXfer",
+        command: "qXfer", // qXfer:features:read:target.xml:d9c,83b
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qXfer),
+        start_separator: ":",
+        next_separator: ":",
     }, // read memory map
     CommandTree {
         command: "qTStatus",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qTStatus),
+        start_separator: "",
+        next_separator: "",
     }, // trace status
     CommandTree {
         command: "qRcmd",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qRcmd),
+        start_separator: "",
+        next_separator: "",
     }, // execute command
     CommandTree {
         command: "qAttached",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qAttached),
+        start_separator: "",
+        next_separator: "",
     }, // remote thread
     CommandTree {
         command: "qfThreadInfo",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qfThreadInfo),
+        start_separator: "",
+        next_separator: "",
     }, // thread info begin
     CommandTree {
         command: "qsThreadInfo",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qsThreadInfo),
+        start_separator: "",
+        next_separator: "",
     }, // List threads
     CommandTree {
         command: "qThreadExtraInfo",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qThreadExtraInfo),
+        start_separator: "",
+        next_separator: "",
     }, // List threads
     CommandTree {
         command: "qP",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qP),
+        start_separator: "",
+        next_separator: "",
     }, // List threads
     CommandTree {
-        command: "qCRC",
+        command: "qCRC", //  qCRC:0,61b4
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_qCRC),
+        start_separator: ":",
+        next_separator: ",",
     }, // set code/data/.. offset
     CommandTree {
         command: "qC",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qC),
+        start_separator: "",
+        next_separator: "",
     }, // Current thread Id
     CommandTree {
         command: "qOffsets",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_qOffsets),
+        start_separator: "",
+        next_separator: "",
     }, // set code/data/.. offset
 ];
 
@@ -117,7 +143,7 @@ pub fn _q(command: &str, args: &[u8]) -> bool {
     exec_one(&q_command_tree, command, args)
 }
 //
-//
+//  qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev
 //
 fn _qSupported(_command: &str, _args: &[&str]) -> bool {
     let mut buffer: [u8; 20] = [0; 20]; // should be big enough!
@@ -145,7 +171,8 @@ fn hex8(digit: u32, buffer: &mut [u8], e: &mut encoder) {
     e.add(pfix);
 }
 //
-//
+// qXfer:features:read:target.xml:d9c,83b
+
 fn _qXfer(_command: &str, args: &[&str]) -> bool {
     if args.len() < 3 {
         encoder::reply_e01();
@@ -173,8 +200,8 @@ fn validate_q_query(args: &[&str], header1: &str, header2: &str) -> Option<(usiz
         return None;
     }
     //
-    let start_address: usize = crate::parsing_util::ascii_string_to_u32(conf[0]) as usize;
-    let length: usize = crate::parsing_util::ascii_string_to_u32(conf[1]) as usize;
+    let start_address: usize = crate::parsing_util::ascii_string_hex_to_u32(conf[0]) as usize;
+    let length: usize = crate::parsing_util::ascii_string_hex_to_u32(conf[1]) as usize;
     Some((start_address, length))
 }
 //
@@ -293,26 +320,16 @@ fn _qOffsets(_command: &str, _args: &[&str]) -> bool {
 }
 /**
  * compute crc32 over bit of memory
+ *  qCRC:0,61b4
  */
 fn _qCRC(_command: &str, args: &[&str]) -> bool {
-    if args.is_empty() {
+    if args.len() != 2 {
         encoder::reply_e01();
         return true;
     }
 
-    let address: u32;
-    let length: u32;
-
-    match crate::parsing_util::take_adress_length(args[0]) {
-        Some((x, y)) => {
-            address = x;
-            length = y;
-        }
-        None => {
-            encoder::reply_e01();
-            return true;
-        }
-    }
+    let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
+    let length = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
 
     let mut crc: u32 = 0;
     let status = abstract_crc32(address, length, &mut crc); // remote

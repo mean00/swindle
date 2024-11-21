@@ -19,18 +19,24 @@ const v_command_tree: [CommandTree; 3] = [
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_vMustReply),
+        start_separator: "",
+        next_separator: "",
     }, // test
     CommandTree {
         command: "vAttach",
         args: 0,
         require_connected: false,
         cb: CallbackType::text(_vAttach),
+        start_separator: "",
+        next_separator: "",
     }, // test
     CommandTree {
         command: "vRun",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(vRun),
+        start_separator: "",
+        next_separator: "",
     }, // test
 ];
 //
@@ -63,10 +69,10 @@ fn _vAttach(command: &str, _args: &[&str]) -> bool {
     // the prefix is 7 bytes
     let mut target = 0;
     let right_side = &command[7..];
-    if (right_side.len() > 1) {
+    if right_side.len() > 1 {
         target = ascii_string_decimal_to_u32(&right_side[1..]);
     }
-    if (target == 0) {
+    if target == 0 {
         target = 1;
     }
     if bmp_attach(target) {
