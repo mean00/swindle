@@ -254,7 +254,7 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                         if as_string.len() > prefix_size && c.next_separator.len() != 0 {
                             let conf: Vec<&str> =
                                 as_string[prefix_size..].split(c.next_separator).collect();
-                            bmplog!("unpacked command : {} \n", command);
+                            bmplog!("unpacked command : <{}> \n", command);
                             for i in 0..conf.len() {
                                 bmplog!("\t<{}>\n", (conf[i]));
                             }
