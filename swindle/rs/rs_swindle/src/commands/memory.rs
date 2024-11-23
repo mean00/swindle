@@ -47,24 +47,43 @@ pub fn _m(_command: &str, args: &[&str]) -> bool {
 }
 /**
  *  \fn write memory
- *  X addr,length:XX(binary)
+ *  Xaddr,length:XX(binary)
  */
-pub fn _X(command: &str, args: &[u8]) -> bool {
-    match crate::parsing_util::take_adress_length(&command[1..]) {
-        None => encoder::reply_e01(),
-        Some((addr, len)) => {
-            bmplog!("adr: 0x{:x} en:{}\n", addr, len);
-            let mut actual_len: usize = len as usize;
-            if args.len() > actual_len {
-                actual_len = args.len();
-            }
-            if bmp_mem_write(addr, &args[0..actual_len]) {
-                encoder::reply_ok();
-            } else {
-                encoder::reply_e01();
-            }
-        }
-    };
+pub fn lookupChar(searched: &str, incoming: &str, initial: usize) -> (bool, usize) {
+    match &incoming[initial..].find(searched) {
+        Some(x) => return (true, x + initial),
+        None => return (false, 0),
+    }
+}
+
+pub fn _X(command: &str, _args: &[u8]) -> bool {
+    let mut ret: bool;
+    let coma: usize;
+    let semicolumn: usize;
+    (ret, coma) = lookupChar(",", command, 1);
+    if !ret {
+        return false;
+    }
+    (ret, semicolumn) = lookupChar(":", command, coma);
+    if !ret {
+        return false;
+    }
+    let address = crate::parsing_util::ascii_string_to_u32(&command[1..coma]);
+    let mut length =
+        crate::parsing_util::ascii_string_to_u32(&command[coma + 1..semicolumn]) as usize;
+
+    let data = &command[semicolumn + 1..];
+
+    bmplog!("Adress : 0x{:x} Len: {}\n", address, length);
+    if length > data.len() {
+        length = data.len()
+    }
+    bmplog!("Adress : 0x{:x} Len: {}\n", address, length);
+    if bmp_mem_write(address, data.as_bytes()) {
+        encoder::reply_ok();
+    } else {
+        encoder::reply_e01();
+    }
     true
 }
 

@@ -136,7 +136,7 @@ const main_command_tree: [CommandTree; 22] = [
         require_connected: true,
         cb: CallbackType::raw(_X), // addr,length:XX…’  X2000000;4:4
         start_separator: "",
-        next_separator: ";",
+        next_separator: "",
     }, // write binary
     CommandTree {
         command: "m",
