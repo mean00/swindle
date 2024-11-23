@@ -96,8 +96,6 @@ fn rngdb_send_data_u8(data: &[u8]) {
 extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     unsafe {
         let mut data_as_slice: &[u8] = core::slice::from_raw_parts(d, l);
-        let empty1: [u8; 0] = [0; 0];
-        let empty: &[u8] = &empty1;
 
         // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
         // i'm not sure what happens escaping-wise if we let the parser handle it

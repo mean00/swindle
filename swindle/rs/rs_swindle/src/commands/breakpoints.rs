@@ -1,7 +1,6 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use super::{exec_one, CommandTree};
 use crate::encoder::encoder;
 
 use crate::bmp::{bmp_attach, bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
@@ -56,20 +55,22 @@ impl Breakpoints {
         }
     }
 }
-
-fn common_z(command: &str) -> bool {
-    let args: Vec<&str> = command.split(',').collect();
-    if args.len() != 3 {
+// : Z1,776,2
+// if set is true, set breakpoint
+// if false remove
+// [HW/SW/WATCH],address,kind
+fn common_z(set: bool, args: &[&str]) -> bool {
+    if args.len() < 2 {
         encoder::reply_e01();
         return true;
     }
     // zZ addr kind
-    let prefix = args[0];
-    let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_to_u32(&prefix[1..2]));
-    let address: u32 = ascii_string_to_u32(args[1]);
+    let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_to_u32(args[0]));
+    let address: u32 = ascii_string_to_u32(args[2]);
+    // ignore "kind"
     let len: u32 = 4;
 
-    if args[0].starts_with('z')
+    if !set
     // remove
     {
         if breakpoint_watchpoint == Breakpoints::Execute_SW {
@@ -83,30 +84,25 @@ fn common_z(command: &str) -> bool {
         ));
         return true;
     }
-    if args[0].starts_with('Z')
     // add
-    {
-        if breakpoint_watchpoint == Breakpoints::Execute_SW {
-            encoder::reply_bool(add_sw_breakpoint(address, len));
-            return true;
-        }
-        encoder::reply_bool(crate::bmp::bmp_add_breakpoint(
-            Breakpoints::to_bmp(&breakpoint_watchpoint),
-            address,
-            len,
-        ));
+    if breakpoint_watchpoint == Breakpoints::Execute_SW {
+        encoder::reply_bool(add_sw_breakpoint(address, len));
         return true;
     }
-    encoder::reply_e01();
+    encoder::reply_bool(crate::bmp::bmp_add_breakpoint(
+        Breakpoints::to_bmp(&breakpoint_watchpoint),
+        address,
+        len,
+    ));
     true
 }
 
-pub fn _z(command: &str, _args: &[&str]) -> bool {
-    common_z(command)
+pub fn _z(_command: &str, args: &[&str]) -> bool {
+    common_z(false, args)
 }
 
-pub fn _Z(command: &str, _args: &[&str]) -> bool {
-    common_z(command)
+pub fn _Z(_command: &str, args: &[&str]) -> bool {
+    common_z(true, args)
 }
 
 // EOF

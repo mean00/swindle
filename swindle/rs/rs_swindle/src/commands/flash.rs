@@ -12,25 +12,28 @@ use crate::{bmplog, bmpwarning};
 
 const vflash_command_tree: [CommandTree; 3] = [
     CommandTree {
-        command: "vFlashErase",
+        command: "vFlashErase", // vFlashErase:00000000,00006200
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_vFlashErase),
-        splitter: ":",
+        start_separator: ":",
+        next_separator: ",",
     }, // flash erase
     CommandTree {
         command: "vFlashWrite",
         args: 0,
         require_connected: true,
         cb: CallbackType::raw(_vFlashWrite),
-        splitter: ":",
+        start_separator: "",
+        next_separator: "",
     }, // flash write
     CommandTree {
         command: "vFlashDone",
         args: 0,
         require_connected: true,
         cb: CallbackType::text(_vFlashDone),
-        splitter: ":",
+        start_separator: "",
+        next_separator: "",
     }, // flash erase
 ];
 
@@ -51,27 +54,26 @@ fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
         encoder::reply_ok();
         return true;
     }
+    if args.len() != 2 {
+        bmplog!("flash erase : wrong args\n");
+        encoder::reply_e01();
+        return true;
+    }
+    let address = crate::parsing_util::ascii_string_to_u32(args[0]);
+    let length = crate::parsing_util::ascii_string_to_u32(args[1]);
 
-    let xin = &args[0];
-    bmplog!("Input : {}\n", xin);
-    match crate::parsing_util::take_adress_length(xin) {
-        None => encoder::reply_e01(),
-        Some((adr, len)) => {
-            bmplog!("Erase : Adr 0x{:x} len {}\n", adr, len);
-            encoder::reply_bool(bmp_flash_erase(adr, len));
-        }
-    };
+    encoder::reply_bool(bmp_flash_erase(address, length));
     true
 }
 //
 //vFlashWrite:08000000,data
-fn _vFlashWrite(_command: &str, args: &[u8]) -> bool {
+fn _vFlashWrite(command: &str, _args: &[u8]) -> bool {
     if DISABLE_FLASH {
         encoder::reply_ok();
         return true;
     }
 
-    let block: &[u8] = args;
+    let block: &[u8] = &(command[12..]).as_bytes();
     let len = block.len();
 
     if len < 9 {
