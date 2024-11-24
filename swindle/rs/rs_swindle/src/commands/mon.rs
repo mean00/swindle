@@ -237,7 +237,7 @@ fn _fos_info(_command: &str, _args: &[&str]) -> bool {
  *
  */
 fn _fos(_command: &str, args: &[&str]) -> bool {
-    if args.len() == 0 {
+    if args.is_empty() {
         gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|RV32|NONE|AUTO]\n");
     } else {
         if enable_freertos(args[0]) {
@@ -404,7 +404,7 @@ const CH32V3XX_OBR_RDP_VALID: u32 = 1 << 1;
 //
 pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
     let mut value: [u32; 1] = [0];
-    if args.len() == 0 {
+    if args.is_empty() {
         if !bmp::bmp_read_mem32(CH32V3XX_FLASH_OBR_ADR, &mut value) {
             gdb_print!("Error reading OBR register\n");
             return false;
@@ -495,7 +495,7 @@ pub fn _ws(_command: &str, args: &[&str]) -> bool {
     let len = args.len();
     if len > 0 {
         // ok we have an input
-        let ws = ascii_string_decimal_to_u32(&args[0]);
+        let ws = ascii_string_decimal_to_u32(args[0]);
         bmp::bmp_set_wait_state(ws);
     }
     let w: u32 = bmp::bmp_get_wait_state();
@@ -526,7 +526,7 @@ fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
  */
 #[no_mangle]
 pub fn _fq(_command: &str, args: &[&str]) -> bool {
-    if args.len() == 0 {
+    if args.is_empty() {
         let f: u32 = bmp::bmp_get_frequency();
         gdb_print!("current frequency is {} \n", f);
         encoder::reply_ok();
@@ -559,7 +559,7 @@ pub fn get_enable_reset() -> u32 {
     unsafe { autoreset }
 }
 pub fn _enable_reset(_command: &str, args: &[&str]) -> bool {
-    if args.len() == 0 {
+    if args.is_empty() {
         gdb_print!("current enable_reset is {} \n", get_enable_reset());
         encoder::reply_ok();
         return true;

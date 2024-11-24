@@ -73,7 +73,7 @@ fn _vFlashWrite(command: &str, _args: &[u8]) -> bool {
         return true;
     }
 
-    let block: &[u8] = &(command[12..]).as_bytes();
+    let block: &[u8] = (command[12..]).as_bytes();
     let len = block.len();
 
     if len < 9 {

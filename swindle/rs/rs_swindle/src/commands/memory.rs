@@ -51,8 +51,8 @@ pub fn _m(_command: &str, args: &[&str]) -> bool {
  */
 pub fn lookupChar(searched: &str, incoming: &str, initial: usize) -> (bool, usize) {
     match &incoming[initial..].find(searched) {
-        Some(x) => return (true, x + initial),
-        None => return (false, 0),
+        Some(x) => (true, x + initial),
+        None => (false, 0),
     }
 }
 /*

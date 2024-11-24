@@ -35,10 +35,6 @@ use numtoa::NumToA;
 crate::setup_log!(false);
 //use crate::{bmplog,bmpwarning};
 
-//
-
-#[no_mangle]
-
 static mut autoauto: Option<gdb_stream<INPUT_BUFFER_SIZE>> = None;
 /*
  *
@@ -141,7 +137,7 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                         // ok we have a full string...
                         bmplog!("Gdb call\n");
                         let s = x.get_result();
-                        if s.len() == 0 {
+                        if s.is_empty() {
                             bmplog!("Cannot read string");
                         } else {
                             bmplog!("--> ACK\n");

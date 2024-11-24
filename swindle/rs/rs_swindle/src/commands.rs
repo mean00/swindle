@@ -251,12 +251,12 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                         let as_string = command;
                         // do we have a start separator ?
                         let prefix_size = c.command.len() + c.start_separator.len();
-                        if as_string.len() > prefix_size && c.next_separator.len() != 0 {
+                        if as_string.len() > prefix_size && !c.next_separator.is_empty() {
                             let conf: Vec<&str> =
                                 as_string[prefix_size..].split(c.next_separator).collect();
                             bmplog!("unpacked command : <{}> \n", command);
-                            for i in 0..conf.len() {
-                                bmplog!("\t<{}>\n", (conf[i]));
+                            for i in &conf {
+                                bmplog!("\t<{}>\n", i);
                             }
                             bmplog!("\n");
                             (y)(command, &conf)
@@ -269,8 +269,8 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                     }
                     CallbackType::raw(x) => {
                         let prefix_size = c.command.len() + c.start_separator.len();
-                        if command.len() > prefix_size && c.next_separator.len() != 0 {
-                            return (x)(command, &command[prefix_size..].as_bytes());
+                        if command.len() > prefix_size && !c.next_separator.is_empty() {
+                            return (x)(command, command[prefix_size..].as_bytes());
                         } else {
                             // no extra data
                             return (x)(command, &[]);
