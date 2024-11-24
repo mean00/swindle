@@ -2,7 +2,7 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
 use crate::encoder::encoder;
-use crate::parsing_util::ascii_string_to_u32;
+use crate::parsing_util::ascii_string_hex_to_u32;
 
 use crate::bmp::{bmp_attach, bmp_flash_erase, bmp_mem_write};
 
@@ -20,8 +20,8 @@ pub fn _m(_command: &str, args: &[&str]) -> bool {
         encoder::reply_e01();
         return true;
     }
-    let mut current_address: u32 = ascii_string_to_u32(args[0]);
-    let mut left: usize = ascii_string_to_u32(args[1]) as usize;
+    let mut current_address: u32 = ascii_string_hex_to_u32(args[0]);
+    let mut left: usize = ascii_string_hex_to_u32(args[1]) as usize;
     let mut tmp: [u8; 16] = [0; 16];
     let mut char_buffer: [u8; 32] = [0; 32];
 
@@ -68,9 +68,9 @@ pub fn _X(command: &str, _args: &[u8]) -> bool {
     if !ret {
         return false;
     }
-    let address = crate::parsing_util::ascii_string_to_u32(&command[1..coma]);
+    let address = crate::parsing_util::ascii_string_hex_to_u32(&command[1..coma]);
     let mut length =
-        crate::parsing_util::ascii_string_to_u32(&command[coma + 1..semicolumn]) as usize;
+        crate::parsing_util::ascii_string_hex_to_u32(&command[coma + 1..semicolumn]) as usize;
 
     let data = &command[semicolumn + 1..];
 

@@ -200,8 +200,8 @@ fn validate_q_query(args: &[&str], header1: &str, header2: &str) -> Option<(usiz
         return None;
     }
     //
-    let start_address: usize = crate::parsing_util::ascii_string_to_u32(conf[0]) as usize;
-    let length: usize = crate::parsing_util::ascii_string_to_u32(conf[1]) as usize;
+    let start_address: usize = crate::parsing_util::ascii_string_hex_to_u32(conf[0]) as usize;
+    let length: usize = crate::parsing_util::ascii_string_hex_to_u32(conf[1]) as usize;
     Some((start_address, length))
 }
 //
@@ -328,8 +328,8 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
         return true;
     }
 
-    let address = crate::parsing_util::ascii_string_to_u32(args[0]);
-    let length = crate::parsing_util::ascii_string_to_u32(args[1]);
+    let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
+    let length = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
 
     let mut crc: u32 = 0;
     let status = abstract_crc32(address, length, &mut crc); // remote

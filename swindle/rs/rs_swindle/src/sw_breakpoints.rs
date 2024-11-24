@@ -7,7 +7,7 @@
 //
 #![allow(static_mut_refs)]
 
-use crate::parsing_util::ascii_string_to_u32;
+use crate::parsing_util::ascii_string_hex_to_u32;
 use core::ptr::addr_of_mut;
 
 use crate::bmp;

@@ -59,8 +59,8 @@ fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
         encoder::reply_e01();
         return true;
     }
-    let address = crate::parsing_util::ascii_string_to_u32(args[0]);
-    let length = crate::parsing_util::ascii_string_to_u32(args[1]);
+    let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
+    let length = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
 
     encoder::reply_bool(bmp_flash_erase(address, length));
     true

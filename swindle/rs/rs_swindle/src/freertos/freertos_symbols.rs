@@ -95,7 +95,7 @@ pub fn q_freertos_symbols(args: &[&str]) -> bool {
                 return true;
             } else {
                 // next
-                let address: u32 = parsing_util::ascii_string_to_u32(args[0]);
+                let address: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
                 bmplog!(
                     "Found symbol {} : 0x{:x}\n",
                     FreeRTOSSymbolName[all_symbols.index],

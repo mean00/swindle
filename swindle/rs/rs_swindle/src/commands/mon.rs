@@ -3,7 +3,7 @@ use crate::commands::{exec_one, CallbackType, CommandTree};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 use crate::parsing_util::{
-    ascii_hex_string_to_u8s, ascii_hex_to_u32, ascii_string_decimal_to_u32, ascii_string_to_u32,
+    ascii_hex_string_to_u8s, ascii_hex_to_u32, ascii_string_decimal_to_u32, ascii_string_hex_to_u32,
 };
 use alloc::vec;
 use alloc::vec::Vec;

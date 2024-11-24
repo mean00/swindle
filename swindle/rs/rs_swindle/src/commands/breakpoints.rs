@@ -6,7 +6,7 @@ use crate::encoder::encoder;
 use crate::bmp::{bmp_attach, bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
 use crate::commands::CallbackType;
 
-use crate::parsing_util::ascii_string_to_u32;
+use crate::parsing_util::ascii_string_hex_to_u32;
 
 use crate::bmp;
 
@@ -65,8 +65,8 @@ fn common_z(set: bool, args: &[&str]) -> bool {
         return true;
     }
     // zZ addr kind
-    let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_to_u32(args[0]));
-    let address: u32 = ascii_string_to_u32(args[2]);
+    let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_hex_to_u32(args[0]));
+    let address: u32 = ascii_string_hex_to_u32(args[2]);
     // ignore "kind"
     let len: u32 = 4;
 

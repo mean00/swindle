@@ -10,7 +10,7 @@ use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
 
-use crate::parsing_util::{ascii_string_to_u32, ascii_string_to_u32_le};
+use crate::parsing_util::{ascii_string_hex_to_u32, ascii_string_hex_to_u32_le};
 
 use crate::bmp;
 
@@ -23,15 +23,15 @@ pub fn _P(_command: &str, args: &[&str]) -> bool {
     if args.len() < 2 {
         return false;
     }
-    let reg: u32 = crate::parsing_util::ascii_string_to_u32(args[0]);
-    let val: u32 = crate::parsing_util::ascii_string_to_u32(args[1]);
+    let reg: u32 = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
+    let val: u32 = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
     encoder::reply_bool(bmp::bmp_write_register(reg, val));
     true
 }
 // read 1 register
 //
 pub fn _p(command: &str, _args: &[&str]) -> bool {
-    let reg: u32 = crate::parsing_util::ascii_string_to_u32(&command[1..]);
+    let reg: u32 = crate::parsing_util::ascii_string_hex_to_u32(&command[1..]);
     match bmp::bmp_read_register(reg) {
         Some(x) => encoder::simple_send_u32_le(x),
         _ => encoder::reply_e01(),
