@@ -402,7 +402,7 @@ const CH32V3XX_OBR_ERROR: u32 = 1 << 0;
 const CH32V3XX_OBR_RDP_VALID: u32 = 1 << 1;
 //
 //
-pub fn _ch32v3_obr(command: &str, args: &[&str]) -> bool {
+pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
     let mut value: [u32; 1] = [0];
     if args.len() == 0 {
         if !bmp::bmp_read_mem32(CH32V3XX_FLASH_OBR_ADR, &mut value) {
