@@ -13,7 +13,7 @@ use crate::bmp;
 use alloc::vec;
 use alloc::vec::Vec;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};
 use crate::{bmplog, bmpwarning};
 
@@ -66,43 +66,53 @@ fn common_z(set: bool, args: &[&str]) -> bool {
     }
     // zZ addr kind
     let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_hex_to_u32(args[0]));
-    let address: u32 = ascii_string_hex_to_u32(args[2]);
+    let address: u32 = ascii_string_hex_to_u32(args[1]);
     // ignore "kind"
     let len: u32 = 4;
 
-    if !set
-    // remove
+    if set
+    // add
     {
+        //--
+        //--
         if breakpoint_watchpoint == Breakpoints::Execute_SW {
-            encoder::reply_bool(remove_sw_breakpoint(address, len));
+            encoder::reply_bool(add_sw_breakpoint(address, len));
             return true;
         }
-        encoder::reply_bool(crate::bmp::bmp_remove_breakpoint(
+        bmplog!("adding breakpoint at 0x{:x}\n", address);
+        encoder::reply_bool(crate::bmp::bmp_add_breakpoint(
             Breakpoints::to_bmp(&breakpoint_watchpoint),
             address,
             len,
         ));
+        //--
         return true;
     }
-    // add
+    // remove
     if breakpoint_watchpoint == Breakpoints::Execute_SW {
-        encoder::reply_bool(add_sw_breakpoint(address, len));
+        encoder::reply_bool(remove_sw_breakpoint(address, len));
         return true;
     }
-    encoder::reply_bool(crate::bmp::bmp_add_breakpoint(
+    bmplog!("removing breakpoint at 0x{:x}\n", address);
+    encoder::reply_bool(crate::bmp::bmp_remove_breakpoint(
         Breakpoints::to_bmp(&breakpoint_watchpoint),
         address,
         len,
     ));
     true
 }
-
+/*
+ *
+ */
 pub fn _z(_command: &str, args: &[&str]) -> bool {
+    bmplog!("remove bkp\n");
     common_z(false, args)
 }
-
+/*
+ *
+ */
 pub fn _Z(_command: &str, args: &[&str]) -> bool {
+    bmplog!("insert bkp\n");
     common_z(true, args)
 }
-
 // EOF

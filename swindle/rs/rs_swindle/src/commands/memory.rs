@@ -55,11 +55,15 @@ pub fn lookupChar(searched: &str, incoming: &str, initial: usize) -> (bool, usiz
         None => return (false, 0),
     }
 }
-
+/*
+ *
+ *
+ */
 pub fn _X(command: &str, _args: &[u8]) -> bool {
     let mut ret: bool;
     let coma: usize;
     let semicolumn: usize;
+
     (ret, coma) = lookupChar(",", command, 1);
     if !ret {
         return false;
@@ -72,14 +76,22 @@ pub fn _X(command: &str, _args: &[u8]) -> bool {
     let mut length =
         crate::parsing_util::ascii_string_hex_to_u32(&command[coma + 1..semicolumn]) as usize;
 
-    let data = &command[semicolumn + 1..];
+    let as_byte = command.as_bytes();
+    let data = &as_byte[(semicolumn + 1)..];
+    bmplog!("buffer size :  {} bytes\n", data.len());
 
     bmplog!("Adress : 0x{:x} Len: {}\n", address, length);
     if length > data.len() {
         length = data.len()
     }
     bmplog!("Adress : 0x{:x} Len: {}\n", address, length);
-    if bmp_mem_write(address, data.as_bytes()) {
+    ret = false;
+    if length == 0 {
+        encoder::reply_ok();
+        return true;
+    }
+
+    if bmp_mem_write(address, data) {
         encoder::reply_ok();
     } else {
         encoder::reply_e01();
