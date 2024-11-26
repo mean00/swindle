@@ -16,10 +16,6 @@ pub fn _m(_command: &str, args: &[&str]) -> bool {
         encoder::reply_e01();
         return true;
     }
-    if args.len() < 2 {
-        encoder::reply_e01();
-        return true;
-    }
     let mut current_address: u32 = ascii_string_hex_to_u32(args[0]);
     let mut left: usize = ascii_string_hex_to_u32(args[1]) as usize;
     let mut tmp: [u8; 16] = [0; 16];
@@ -85,7 +81,6 @@ pub fn _X(command: &str, _args: &[u8]) -> bool {
         length = data.len()
     }
     bmplog!("Adress : 0x{:x} Len: {}\n", address, length);
-    ret = false;
     if length == 0 {
         encoder::reply_ok();
         return true;

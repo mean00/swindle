@@ -60,10 +60,6 @@ impl Breakpoints {
 // if false remove
 // [HW/SW/WATCH],address,kind
 fn common_z(set: bool, args: &[&str]) -> bool {
-    if args.len() < 2 {
-        encoder::reply_e01();
-        return true;
-    }
     // zZ addr kind
     let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_hex_to_u32(args[0]));
     let address: u32 = ascii_string_hex_to_u32(args[1]);

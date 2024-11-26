@@ -13,7 +13,7 @@ use crate::{bmplog, bmpwarning};
 const vflash_command_tree: [CommandTree; 3] = [
     CommandTree {
         command: "vFlashErase", // vFlashErase:00000000,00006200
-        args: 0,
+        min_args: 2,
         require_connected: true,
         cb: CallbackType::text(_vFlashErase),
         start_separator: ":",
@@ -21,7 +21,7 @@ const vflash_command_tree: [CommandTree; 3] = [
     }, // flash erase
     CommandTree {
         command: "vFlashWrite",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::raw(_vFlashWrite),
         start_separator: "",
@@ -29,7 +29,7 @@ const vflash_command_tree: [CommandTree; 3] = [
     }, // flash write
     CommandTree {
         command: "vFlashDone",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_vFlashDone),
         start_separator: "",
@@ -52,11 +52,6 @@ pub fn _flashv(command: &str, args: &[u8]) -> bool {
 fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
     if DISABLE_FLASH {
         encoder::reply_ok();
-        return true;
-    }
-    if args.len() != 2 {
-        bmplog!("flash erase : wrong args\n");
-        encoder::reply_e01();
         return true;
     }
     let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);

@@ -32,7 +32,7 @@ struct HelpTree {
 const mon_command_tree: [CommandTree; 19] = [
     CommandTree {
         command: "enablereset",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_enable_reset),
         start_separator: " ",
@@ -40,7 +40,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "bmp",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_bmp_mon),
         start_separator: "",
@@ -48,7 +48,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "boards",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_boards),
         start_separator: "",
@@ -56,7 +56,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "ch32v3_obr",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_obr),
         start_separator: " ",
@@ -64,7 +64,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "ch32v3_option_byte",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_option_byte),
         start_separator: " ",
@@ -72,7 +72,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "frequency",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_fq),
         start_separator: " ",
@@ -80,7 +80,7 @@ const mon_command_tree: [CommandTree; 19] = [
     },
     CommandTree {
         command: "fq",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_fq),
         start_separator: " ",
@@ -88,7 +88,7 @@ const mon_command_tree: [CommandTree; 19] = [
     },
     CommandTree {
         command: "fos",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos),
         start_separator: " ",
@@ -96,7 +96,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "freertos",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos),
         start_separator: " ",
@@ -104,7 +104,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "help",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_mon_help),
         start_separator: " ",
@@ -112,7 +112,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "os_info",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos_info),
         start_separator: " ",
@@ -120,7 +120,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "ram",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_ram),
         start_separator: "",
@@ -128,7 +128,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "reboot",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_reboot),
         start_separator: "",
@@ -136,7 +136,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "reset",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_target_reset),
         start_separator: "",
@@ -144,7 +144,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "rvswdp_scan",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_rvswdp_scan),
         start_separator: "",
@@ -152,7 +152,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "swdp_scan",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_swdp_scan),
         start_separator: "",
@@ -160,7 +160,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "version",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_get_version),
         start_separator: "",
@@ -168,7 +168,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "voltage",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_voltage),
         start_separator: "",
@@ -176,7 +176,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
     CommandTree {
         command: "ws",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_ws),
         start_separator: " ",
@@ -442,7 +442,7 @@ pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
 
 pub fn _ch32v3_option_byte(_command: &str, args: &[&str]) -> bool {
     let mut value: [u32; 1] = [0];
-    if args.len() == 0 {
+    if args.is_empty() {
         // now read option
         if !bmp::bmp_read_mem32(CH32V3XX_USER_OPTION_ADDR, &mut value) {
             gdb_print!("Error reading user option\n");

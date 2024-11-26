@@ -31,7 +31,7 @@ use crate::{bmplog, bmpwarning};
 const q_command_tree: [CommandTree; 13] = [
     CommandTree {
         command: "qSymbol",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qSymbol),
         start_separator: "",
@@ -39,7 +39,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // read symbol
     CommandTree {
         command: "qSupported", // : qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qSupported),
         start_separator: ":",
@@ -47,7 +47,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // supported features
     CommandTree {
         command: "qXfer", // qXfer:features:read:target.xml:d9c,83b
-        args: 0,
+        min_args: 3,
         require_connected: false,
         cb: CallbackType::text(_qXfer),
         start_separator: ":",
@@ -55,7 +55,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // read memory map
     CommandTree {
         command: "qTStatus",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qTStatus),
         start_separator: "",
@@ -63,7 +63,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // trace status
     CommandTree {
         command: "qRcmd",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qRcmd),
         start_separator: "",
@@ -71,7 +71,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // execute command
     CommandTree {
         command: "qAttached",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qAttached),
         start_separator: "",
@@ -79,7 +79,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // remote thread
     CommandTree {
         command: "qfThreadInfo",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qfThreadInfo),
         start_separator: "",
@@ -87,7 +87,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // thread info begin
     CommandTree {
         command: "qsThreadInfo",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qsThreadInfo),
         start_separator: "",
@@ -95,7 +95,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // List threads
     CommandTree {
         command: "qThreadExtraInfo",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qThreadExtraInfo),
         start_separator: "",
@@ -103,7 +103,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // List threads
     CommandTree {
         command: "qP",
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qP),
         start_separator: "",
@@ -111,7 +111,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // List threads
     CommandTree {
         command: "qCRC", //  qCRC:0,61b4
-        args: 0,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qCRC),
         start_separator: ":",
@@ -119,7 +119,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // set code/data/.. offset
     CommandTree {
         command: "qC",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qC),
         start_separator: "",
@@ -127,7 +127,7 @@ const q_command_tree: [CommandTree; 13] = [
     }, // Current thread Id
     CommandTree {
         command: "qOffsets",
-        args: 0,
+        min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qOffsets),
         start_separator: "",
@@ -174,28 +174,17 @@ fn hex8(digit: u32, buffer: &mut [u8], e: &mut encoder) {
 // qXfer:features:read:target.xml:d9c,83b
 
 fn _qXfer(_command: &str, args: &[&str]) -> bool {
-    if args.len() < 3 {
-        encoder::reply_e01();
-        return true;
-    }
-
-    match args[0] {
-        "memory-map" => _qXfer_memory_map(&args[1..]),
-        "features" => _qXfer_features_regs(&args[1..]),
+    match (args[0], args[1], args[2]) {
+        ("memory-map", "read", "") => _qXfer_memory_map(args[3]),
+        ("features", "read", "target.xml") => _qXfer_features_regs(args[3]),
         _ => false,
     }
 }
 
 //
 //
-fn validate_q_query(args: &[&str], header1: &str, header2: &str) -> Option<(usize, usize)> {
-    if args.len() != 3 {
-        return None;
-    }
-    if args[0] != header1 || args[1] != header2 {
-        return None;
-    }
-    let conf: Vec<&str> = args[2].split(',').collect();
+fn validate_q_query(arg: &str) -> Option<(usize, usize)> {
+    let conf: Vec<&str> = arg.split(',').collect();
     if conf.len() != 2 {
         return None;
     }
@@ -207,10 +196,10 @@ fn validate_q_query(args: &[&str], header1: &str, header2: &str) -> Option<(usiz
 //
 //  read target.xml [offset,size]
 //
-fn _qXfer_features_regs(args: &[&str]) -> bool {
+fn _qXfer_features_regs(arg: &str) -> bool {
     let start_address: usize;
     let length: usize;
-    match validate_q_query(args, "read", "target.xml") {
+    match validate_q_query(arg) {
         None => {
             encoder::reply_e01();
             return true;
@@ -250,10 +239,10 @@ fn _qXfer_features_regs(args: &[&str]) -> bool {
 //
 //  memory-map:read::0,50d
 //
-fn _qXfer_memory_map(args: &[&str]) -> bool {
+fn _qXfer_memory_map(arg: &str) -> bool {
     let start_address: usize;
     let _length: usize;
-    match validate_q_query(args, "read", "") {
+    match validate_q_query(arg) {
         None => return false,
         Some((a, b)) => {
             start_address = a;
