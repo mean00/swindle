@@ -133,6 +133,9 @@ pub type uint_fast64_t = cty::c_ulonglong;
 pub type target_s = cty::c_void;
 pub type bool_ = cty::c_int;
 extern "C" {
+    pub fn bmp_get_driver_name_c() -> *const cty::c_uchar;
+}
+extern "C" {
     pub fn bmp_ch32v3xx_write_user_option_byte_c(memory_conf: u8) -> bool_;
 }
 extern "C" {

@@ -26,6 +26,16 @@ extern "C"
     target_s *cur_target;
     bool shutdown_bmda;
 
+    /*
+     *
+     */
+    const char *bmp_get_driver_name_c()
+    {
+        if (!cur_target)
+            return "";
+        return cur_target->driver;
+    }
+
     void gdb_target_destroy_callback(target_controller_s *tc, target_s *t)
     {
         if (t == cur_target)

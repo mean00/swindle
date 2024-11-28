@@ -2,6 +2,7 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
 use super::{exec_one, CommandTree};
+use crate::bmp;
 use crate::bmp::{bmp_attach, bmp_cpuid};
 use crate::commands::CallbackType;
 use crate::commands::_vCont;
@@ -83,11 +84,13 @@ fn _vAttach(_command: &str, args: &[&str]) -> bool {
          * https://sourceware.org/pipermail/gdb-patches/2022-April/188058.html
          * https://sourceware.org/pipermail/gdb-patches/2022-July/190869.html
          */
+        crate::commands::mon::add_target_commands(bmp::bmp_get_target_name());
         encoder::simple_send("T05thread:1;");
         return true;
     }
     os_detach();
     crate::sw_breakpoints::clear_sw_breakpoint();
+    crate::commands::mon::clear_custom_target_command();
     encoder::reply_e01();
     true
 }

@@ -8,6 +8,7 @@ pub mod breakpoints;
 mod flash;
 mod memory;
 mod mon;
+mod mon_ch32vxx;
 pub mod q;
 pub mod q_thread;
 mod registers;
@@ -35,7 +36,8 @@ pub enum CallbackType {
     text(Callback_text),
     raw(Callback_raw),
 }
-
+//
+//#[derive(Sized)]
 pub struct CommandTree {
     command: &'static str,
     min_args: usize,
@@ -334,5 +336,4 @@ fn _mark(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("W00");
     true
 }
-
 // EOF

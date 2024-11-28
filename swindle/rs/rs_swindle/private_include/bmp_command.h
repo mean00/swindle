@@ -3,6 +3,7 @@
 typedef void target_s;
 typedef int bool;
 
+const unsigned char *bmp_get_driver_name_c();
 bool bmp_ch32v3xx_write_user_option_byte_c(uint8_t memory_conf);
 uint8_t bmp_ch32v3xx_read_user_option_byte_c();
 

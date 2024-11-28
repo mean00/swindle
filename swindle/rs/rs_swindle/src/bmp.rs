@@ -150,7 +150,20 @@ pub fn bmp_flash_write(addr: u32, data: &[u8]) -> bool {
         ))
     }
 }
-
+/*
+ * Careful it is stongly linked to the name within bmp
+ */
+pub fn bmp_get_target_name() -> &'static str {
+    unsafe {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_driver_name_c() as *const i8).to_str() {
+            Ok(x) => x,
+            _ => "",
+        }
+    }
+}
+/*
+ *
+ */
 pub fn bmp_mem_write(address: u32, data: &[u8]) -> bool {
     unsafe {
         let ptr: *const u8 = data.as_ptr();
