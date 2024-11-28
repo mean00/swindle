@@ -1,5 +1,5 @@
 use crate::bmp;
-use crate::commands::{exec_one, CallbackType, CommandTree};
+use crate::commands::{exec_one, CallbackType, CommandTree, HelpTree};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 use crate::parsing_util::{
@@ -14,6 +14,7 @@ crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning, gdb_print};
 //
 static mut targetCommandTree: Option<&[CommandTree]> = None;
+static mut targetHelpTree: Option<&[HelpTree]> = None;
 //
 extern "C" {
     pub fn _Z17lnSoftSystemResetv();
@@ -25,10 +26,6 @@ fn systemReset() {
     unsafe {
         _Z17lnSoftSystemResetv();
     }
-}
-struct HelpTree {
-    command: &'static str,
-    help: &'static str,
 }
 
 //
@@ -261,11 +258,9 @@ fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
 const MAX_SPACE: usize = 40;
 const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
-fn _mon_help(_command: &str, _args: &[&str]) -> bool {
-    gdb_print!("Help, use mon [cmd] [params] :\n");
-    // align
+fn print_help_tree(helptree: &[HelpTree]) {
     let mut mxsize: usize = 0;
-    for i in help_tree {
+    for i in helptree {
         if i.command.len() > mxsize {
             mxsize = i.command.len();
         }
@@ -273,13 +268,27 @@ fn _mon_help(_command: &str, _args: &[&str]) -> bool {
     if mxsize > MAX_SPACE {
         panic!("padding too big");
     }
-
-    for i in help_tree {
+    for i in helptree {
         let cmd = i.command;
         let len = cmd.len();
         let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
         gdb_print!("mon {}{} : {}\n", &cmd, &pad, &(i.help));
     }
+}
+//
+fn _mon_help(_command: &str, _args: &[&str]) -> bool {
+    gdb_print!("Help, use mon [cmd] [params] :\n");
+    gdb_print!("-----------------------------\n");
+    print_help_tree(&help_tree);
+    match get_custom_target_help() {
+        None => (),
+        Some(x) => {
+            gdb_print!("Board specific commands :\n");
+            gdb_print!("------------------------\n");
+            print_help_tree(x);
+        }
+    }
+
     encoder::reply_ok();
     true
 }
@@ -486,7 +495,10 @@ pub fn _enable_reset(_command: &str, args: &[&str]) -> bool {
  */
 pub fn add_target_commands(target_name: &str) {
     if target_name.starts_with("CH32V2") || target_name.starts_with("CH32V3") {
-        set_custom_target_command(&crate::commands::mon_ch32vxx::ch32vxx_command_tree);
+        set_custom_target_command(
+            &crate::commands::mon_ch32vxx::ch32vxx_command_tree,
+            &crate::commands::mon_ch32vxx::ch32vxx_help_tree,
+        );
     } else {
         clear_custom_target_command();
     }
@@ -499,15 +511,20 @@ pub fn add_target_commands(target_name: &str) {
 pub fn clear_custom_target_command() {
     unsafe {
         targetCommandTree = None;
+        targetHelpTree = None;
     }
 }
 /*
  *
  *
  */
-pub fn set_custom_target_command(commandTree: &'static [CommandTree]) {
+pub fn set_custom_target_command(
+    commandTree: &'static [CommandTree],
+    helpTree: &'static [HelpTree],
+) {
     unsafe {
         targetCommandTree = Some(commandTree);
+        targetHelpTree = Some(helpTree);
     }
 }
 /*
@@ -516,5 +533,12 @@ pub fn set_custom_target_command(commandTree: &'static [CommandTree]) {
  */
 pub fn get_custom_target_command() -> Option<&'static [CommandTree]> {
     unsafe { targetCommandTree }
+}
+/*
+ *
+ *
+ */
+pub fn get_custom_target_help() -> Option<&'static [HelpTree]> {
+    unsafe { targetHelpTree }
 }
 //-- EOF --

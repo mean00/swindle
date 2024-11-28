@@ -1,5 +1,5 @@
 use crate::bmp;
-use crate::commands::{exec_one, CallbackType, CommandTree};
+use crate::commands::{exec_one, mon, CallbackType, CommandTree, HelpTree};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 use crate::parsing_util::{
@@ -30,6 +30,12 @@ pub const ch32vxx_command_tree: [CommandTree; 2] = [
         start_separator: " ",
         next_separator: " ",
     }, //
+];
+//
+pub const ch32vxx_help_tree : [HelpTree;2]=
+[
+    HelpTree{ command: "ch32v3_obr",help :"Read/write the read protection status."},
+    HelpTree{ command: "ch32v3_option_byte",help :"Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f."},
 ];
 
 /*

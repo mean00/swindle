@@ -50,7 +50,12 @@ pub struct CommandTree {
     // for example vCont:A,B,C it is ','
     next_separator: &'static str,
 }
-
+//
+pub struct HelpTree {
+    command: &'static str,
+    help: &'static str,
+}
+//
 const main_command_tree: [CommandTree; 22] = [
     CommandTree {
         command: "!",
