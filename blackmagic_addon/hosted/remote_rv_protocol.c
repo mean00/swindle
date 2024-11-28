@@ -130,7 +130,7 @@ bool bmda_rv_dm_probe(uint32_t *chip_id)
     WR(0x17, 0x02200000UL);
     RD(0x04, 0x30700518UL);
     RD(0x05, 0x1ffff704UL);
-    return (*chip_id) != 0xffffffffUL;
+    return ((*chip_id) & 0x7fff) != 0x7fff;
 }
 
 /**
