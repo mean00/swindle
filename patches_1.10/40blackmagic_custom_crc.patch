@@ -1,0 +1,12 @@
+--- src/target/target_internal.h.org	2024-11-28 19:20:23.230974789 +0100
++++ src/target/target_internal.h	2024-11-28 19:20:25.625992692 +0100
+@@ -144,6 +144,9 @@
+ 	bool (*enter_flash_mode)(target_s *target);
+ 	bool (*exit_flash_mode)(target_s *target);
+ 
++	/* CRC32 function */
++	bool (*crc32)(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32);
++
+ 	/* Target-defined options */
+ 	uint32_t target_options;
+ 

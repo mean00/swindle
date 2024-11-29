@@ -17,5 +17,7 @@ APPLY_PATCH_IF_NEEDED3(patched36 ${BMP_PATCH_FOLDER}/36blackmagic_remove_printf_
 #APPLY_PATCH_IF_NEEDED3(patched34 ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_warning2.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
 #APPLY_PATCH_IF_NEEDED3(patched35 ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_warning.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
 APPLY_PATCH_IF_NEEDED3(patched37 ${BMP_PATCH_FOLDER}/37blackmagic_hack_remote_protocolv3.patch      ${LNBMP_TOP_FOLDER}   "dirty hack to bring back remote protocol v3, probably not the right way")
+APPLY_PATCH_IF_NEEDED3(patched37 ${BMP_PATCH_FOLDER}/40blackmagic_custom_crc.patch ${LNBMP_TOP_FOLDER}   "compute CRC via a stub.")
+
 
 

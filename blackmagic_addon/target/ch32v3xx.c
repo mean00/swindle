@@ -39,6 +39,7 @@
 #include "exception.h"
 #include "flashstub/ch32v3x_erase.stub"
 #include "flashstub/ch32v3x_write.stub"
+#include "flashstub/ch32v3x_crc32.stub"
 #include "riscv_debug.h"
 // tmp
 #include "gdb_packet.h"
@@ -109,6 +110,7 @@ static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t a
 static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
 static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash);
 static bool ch32v3x_flash_done_flashstub(target_flash_s *flash);
+static bool ch32v3xx_crc32(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32);
 
 /*
  */
@@ -298,6 +300,7 @@ bool ch32v3xx_probe(target_s *target)
     DEBUG_WARN("CH32V family %s\n", target->driver);
 
     target->part_id = chipid;
+    // target->crc32 = ch32v3xx_crc32;
 
     if (detect_size)
     {
@@ -389,4 +392,34 @@ uint8_t ch32v3xx_read_user_byte(target_s *target) // eof
     user32 >>= 16; // start at offset 2
     user32 &= 0xff;
     return (uint8_t)user32;
+}
+/*
+ *
+ */
+uint8_t crc32_ch32[] = {0};
+#define LN_CH32VXX_CRC_STUB_ADDR RAM_ADDRESS
+#define LN_CH32VXX_CRC_STUB_LEN 0x100
+bool ch32v3xx_crc32(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32)
+{
+    bool ret = false;
+    uint8_t *temp_buffer = malloc(LN_CH32VXX_CRC_STUB_LEN);
+    if (!temp_buffer)
+        return false;
+
+    // Step1 : copy the ram to a temp buffer
+    target_mem32_read(target, temp_buffer, LN_CH32VXX_CRC_STUB_ADDR, LN_CH32VXX_CRC_STUB_LEN);
+    // step2 : Upload the stub
+    target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, crc32_ch32, LN_CH32VXX_CRC_STUB_LEN);
+    // step3 : run the stub
+    if (riscv32_run_stub(target, LN_CH32VXX_CRC_STUB_ADDR, start_adress, size, 0, 0))
+    {
+        uint32_t crc = 0;
+        target->reg_read(target, RISCV_REG_A1, &crc, 4);
+        ret = true;
+    }
+    // step4 : replace the ram
+    target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, temp_buffer, LN_CH32VXX_CRC_STUB_LEN);
+done_and_done:
+    free(temp_buffer);
+    return ret;
 }
