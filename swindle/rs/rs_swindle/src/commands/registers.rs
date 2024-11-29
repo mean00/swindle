@@ -21,7 +21,7 @@ use crate::{bmplog, bmpwarning};
 //
 pub fn _P(_command: &str, args: &[&str]) -> bool {
     let reg: u32 = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
-    let val: u32 = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
+    let val: u32 = crate::parsing_util::ascii_string_hex_to_u32_le(args[1]);
     encoder::reply_bool(bmp::bmp_write_register(reg, val));
     true
 }
