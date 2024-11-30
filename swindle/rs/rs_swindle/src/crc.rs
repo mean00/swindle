@@ -1,7 +1,7 @@
 /*
  *
  */
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::util::xmin;
 use crate::{bmplog, bmpwarning};
 
@@ -51,9 +51,14 @@ TODO
 // In that case we compute the CRC directly on the BMP itself
 //----------
 pub fn abstract_crc32(address: u32, len: u32, crc: &mut u32) -> bool {
-    let status: bool;
-    bmplog!("local CRC\n");
-    (status, *crc) = do_local_crc32(address, len); // Native
+    let mut status: bool;
+    // can we use an optimized version ?
+    (status, *crc) = crate::bmp::bmp_custom_crc32(address, len);
+    bmplog!(" CRC custom 0x{:x}\n", *crc);
+    if !status {
+        (status, *crc) = do_local_crc32(address, len);
+        bmplog!(" CRC sw 0x{:x}\n", *crc);
+    }
     status
 }
 // EOF

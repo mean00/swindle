@@ -115,6 +115,12 @@ extern "C"
         va_end(ap);
     }
 
+    bool bmp_custom_crc32_c(uint32_t adr, uint32_t size_in_bytes, uint32_t *crc)
+    {
+        if (!cur_target->crc32)
+            return false;
+        return cur_target->crc32(cur_target, adr, size_in_bytes, crc);
+    }
     int bmp_map_count_c(int kind)
     {
         if (!bmp_attached_c())

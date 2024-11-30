@@ -577,6 +577,18 @@ pub fn bmp_ch32v3xx_write_user_option_byte(memory_conf: u8) -> bool {
 pub fn bmp_ch32v3xx_read_user_option_byte() -> u8 {
     unsafe { rn_bmp_cmd_c::bmp_ch32v3xx_read_user_option_byte_c() }
 }
+//
+pub fn bmp_custom_crc32(address: u32, size_in_bytes: u32) -> (bool, u32) {
+    let mut crc: u32 = 0;
+    unsafe {
+        let r = ret_to_bool(rn_bmp_cmd_c::bmp_custom_crc32_c(
+            address,
+            size_in_bytes,
+            &mut crc,
+        ));
+        (r, crc)
+    }
+}
 
 /*
  */

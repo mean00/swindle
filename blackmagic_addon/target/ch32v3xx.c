@@ -54,6 +54,8 @@
 #define STUB_STACK_LOCATION (RAM_ADDRESS + 2 * 1024)
 #define STUB_STACKEND_LOCATION (RAM_ADDRESS + 4 * 1024 - 16)
 #define STUB_DATA_LOCATION (RAM_ADDRESS + 6 * 1024)
+#define LN_CH32VXX_CRC_STUB_ADDR RAM_ADDRESS
+#define LN_CH32VXX_CRC_STUB_LEN ch32v3x_crc32_bin_len
 
 // #define VERIFY 1
 
@@ -300,7 +302,7 @@ bool ch32v3xx_probe(target_s *target)
     DEBUG_WARN("CH32V family %s\n", target->driver);
 
     target->part_id = chipid;
-    // target->crc32 = ch32v3xx_crc32;
+    target->crc32 = ch32v3xx_crc32;
 
     if (detect_size)
     {
@@ -396,25 +398,31 @@ uint8_t ch32v3xx_read_user_byte(target_s *target) // eof
 /*
  *
  */
-uint8_t crc32_ch32[] = {0};
-#define LN_CH32VXX_CRC_STUB_ADDR RAM_ADDRESS
-#define LN_CH32VXX_CRC_STUB_LEN 0x100
-bool ch32v3xx_crc32(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32)
+bool ch32v3xx_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32)
 {
     bool ret = false;
-    uint8_t *temp_buffer = malloc(LN_CH32VXX_CRC_STUB_LEN);
+    uint8_t *temp_buffer = malloc(LN_CH32VXX_CRC_STUB_LEN); // around 100 bytes
     if (!temp_buffer)
         return false;
-
+    // is the area we are CRCing collides with the stub ?
+    if ((start_address >= LN_CH32VXX_CRC_STUB_ADDR) &&
+        (start_address < LN_CH32VXX_CRC_STUB_LEN + LN_CH32VXX_CRC_STUB_ADDR))
+        return false;
+    if ((start_address <= LN_CH32VXX_CRC_STUB_ADDR) && (start_address + size) > LN_CH32VXX_CRC_STUB_ADDR)
+        return false;
+    // not aligned
+    if (start_address & 3)
+        return false;
+    if (size & 3) // TODO FIXME we can deal with that
+        return false;
     // Step1 : copy the ram to a temp buffer
     target_mem32_read(target, temp_buffer, LN_CH32VXX_CRC_STUB_ADDR, LN_CH32VXX_CRC_STUB_LEN);
     // step2 : Upload the stub
-    target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, crc32_ch32, LN_CH32VXX_CRC_STUB_LEN);
+    target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, ch32v3x_crc32_bin, LN_CH32VXX_CRC_STUB_LEN);
     // step3 : run the stub
-    if (riscv32_run_stub(target, LN_CH32VXX_CRC_STUB_ADDR, start_adress, size, 0, 0))
-    {
-        uint32_t crc = 0;
-        target->reg_read(target, RISCV_REG_A1, &crc, 4);
+    if (riscv32_run_stub(target, LN_CH32VXX_CRC_STUB_ADDR, start_address, size >> 2, 0, 0))
+    {        
+        target->reg_read(target, RISCV_REG_A2, crc32, 4);
         ret = true;
     }
     // step4 : replace the ram
