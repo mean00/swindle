@@ -1,0 +1,72 @@
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+index e5d6b312..71a66055 100644
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -1061,6 +1061,25 @@ static uint32_t cortexm_dwt_func(target_s *target, target_breakwatch_e type)
+ 	}
+ }
+ 
++static uint32_t cortexm_dwt_func_v8m(target_s *target, target_breakwatch_e type, size_t len)
++{
++	uint32_t x = CORTEXM_DWT_FUNC_ACTION_DEBUG_EVENT_V8M;
++	switch (type) {
++	case TARGET_WATCH_WRITE:
++		x |= CORTEXM_DWT_FUNC_MATCH_WRITE_V8M;
++		break;
++	case TARGET_WATCH_READ:
++		x |= CORTEXM_DWT_FUNC_MATCH_READ_V8M;
++		break;
++	case TARGET_WATCH_ACCESS:
++		x |= CORTEXM_DWT_FUNC_MATCH_ACCESS_V8M;
++	default:
++		return -1;
++	}
++	x |= CORTEXM_DWT_FUNC_LEN_VALUE(len);
++	return x;
++}
++
+ static int cortexm_breakwatch_set(target_s *target, breakwatch_s *breakwatch)
+ {
+ 	cortexm_priv_s *priv = target->priv;
+@@ -1102,11 +1121,15 @@ static int cortexm_breakwatch_set(target_s *target, breakwatch_s *breakwatch)
+ 			return -1;
+ 
+ 		priv->base.watchpoints_mask |= 1U << i;
+-
+-		target_mem32_write32(target, CORTEXM_DWT_COMP(i), val);
+-		target_mem32_write32(target, CORTEXM_DWT_MASK(i), cortexm_dwt_mask(breakwatch->size));
+-		target_mem32_write32(target, CORTEXM_DWT_FUNC(i), cortexm_dwt_func(target, breakwatch->type));
+-
++		if ((target->target_options & CORTEXM_TOPT_FLAVOUR_V8M)) {
++			target_mem32_write32(target, CORTEXM_DWT_COMP(i), val);
++			target_mem32_write32(
++				target, CORTEXM_DWT_FUNC(i), cortexm_dwt_func_v8m(target, breakwatch->type, breakwatch->size));
++		} else {
++			target_mem32_write32(target, CORTEXM_DWT_COMP(i), val);
++			target_mem32_write32(target, CORTEXM_DWT_MASK(i), cortexm_dwt_mask(breakwatch->size));
++			target_mem32_write32(target, CORTEXM_DWT_FUNC(i), cortexm_dwt_func(target, breakwatch->type));
++		}
+ 		breakwatch->reserved[0] = i;
+ 		return 0;
+ 	default:
+diff --git a/src/target/cortexm.h b/src/target/cortexm.h
+index 7ee80e9f..b00cfe65 100644
+--- a/src/target/cortexm.h
++++ b/src/target/cortexm.h
+@@ -164,7 +164,15 @@ extern unsigned cortexm_wait_timeout;
+ #define CORTEXM_DWT_FUNC_FUNC_READ      (5U << 0U)
+ #define CORTEXM_DWT_FUNC_FUNC_WRITE     (6U << 0U)
+ #define CORTEXM_DWT_FUNC_FUNC_ACCESS    (7U << 0U)
+-
++/* Variant for V8M */
++#define CORTEXM_DWT_FUNC_MATCH_READ_V8M         (6U << 0U)
++#define CORTEXM_DWT_FUNC_MATCH_WRITE_V8M        (5U << 0U)
++#define CORTEXM_DWT_FUNC_MATCH_ACCESS_V8M       (4U << 0U)
++#define CORTEXM_DWT_FUNC_ACTION_TRIGGER_V8M     (0U << 4U)
++#define CORTEXM_DWT_FUNC_ACTION_DEBUG_EVENT_V8M (1U << 4U)
++#define CORTEXM_DWT_FUNC_LEN_VALUE(len)         (((len) >> 1) << 10U)
++
++/* */
+ #define CORTEXM_XPSR_THUMB          (1U << 24U)
+ #define CORTEXM_XPSR_EXCEPTION_MASK 0x0000001fU
+ 

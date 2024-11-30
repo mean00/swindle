@@ -1,5 +1,6 @@
---- src/target/target_internal.h.org	2024-11-28 19:20:23.230974789 +0100
-+++ src/target/target_internal.h	2024-11-28 19:20:25.625992692 +0100
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+--- a/src/target/target_internal.h  2024-11-28 19:20:23.230974789 +0100
++++ b/src/target/target_internal.h	2024-11-28 19:20:25.625992692 +0100
 @@ -144,6 +144,9 @@
  	bool (*enter_flash_mode)(target_s *target);
  	bool (*exit_flash_mode)(target_s *target);
