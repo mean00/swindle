@@ -1,7 +1,7 @@
 /*
  *
  */
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::util::xmin;
 use crate::{bmplog, bmpwarning};
 
