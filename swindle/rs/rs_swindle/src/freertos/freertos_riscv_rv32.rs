@@ -5,15 +5,15 @@
  Mapping between x1...x31 and usage name (s0, ...)    can be found here
     https://en.wikichip.org/wiki/risc-v/registers
 */
-use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
+use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
 
 crate::setup_log!(false);
 /*
  *
  */
+use crate::bmpwarning;
 use crate::freertos::freertos_trait::freertos_switch_handler;
-use crate::{bmplog, bmpwarning};
 
 const RV32_GPRS_REGISTER: usize = 28;
 const RV32_TOP_REGISTER: usize = 2;

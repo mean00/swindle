@@ -4,11 +4,11 @@
 use super::{exec_one, CommandTree};
 use crate::encoder::encoder;
 
-use crate::bmp::{bmp_attach, bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
+use crate::bmp::{bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
 use crate::commands::CallbackType;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 
 const vflash_command_tree: [CommandTree; 3] = [
     CommandTree {

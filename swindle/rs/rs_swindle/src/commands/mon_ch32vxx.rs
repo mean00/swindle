@@ -1,18 +1,13 @@
 use crate::bmp;
-use crate::commands::{exec_one, mon, CallbackType, CommandTree, HelpTree};
+use crate::commands::{CallbackType, CommandTree, HelpTree};
 use crate::encoder::encoder;
-use crate::freertos::enable_freertos;
-use crate::parsing_util::{
-    ascii_hex_string_to_u8s, ascii_hex_to_u32, ascii_string_decimal_to_u32, ascii_string_hex_to_u32,
-};
-use alloc::vec;
-use alloc::vec::Vec;
+use crate::parsing_util::{ascii_hex_to_u32, ascii_string_decimal_to_u32};
 //
 //
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning, gdb_print};
-///
+use crate::gdb_print;
+//
 pub const ch32vxx_command_tree: [CommandTree; 2] = [
     CommandTree {
         command: "ch32v3_obr",

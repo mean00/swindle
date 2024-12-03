@@ -2,8 +2,8 @@
  *
  */
 crate::setup_log!(false);
+use crate::bmplog;
 use crate::util::xmin;
-use crate::{bmplog, bmpwarning};
 
 // qCRC:addr hex,length hex’
 // return Ccrc32 hex

@@ -3,16 +3,13 @@
 
 use super::{exec_one, CommandTree};
 use crate::bmp;
-use crate::bmp::{bmp_attach, bmp_cpuid};
+use crate::bmp::bmp_attach;
 use crate::commands::CallbackType;
-use crate::commands::_vCont;
 use crate::encoder::encoder;
-use crate::freertos::os_attach;
 use crate::freertos::os_detach;
 
 crate::setup_log!(false);
 use crate::parsing_util::ascii_string_decimal_to_u32;
-use crate::{bmplog, bmpwarning};
 
 const v_command_tree: [CommandTree; 3] = [
     CommandTree {

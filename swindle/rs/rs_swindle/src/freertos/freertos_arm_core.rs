@@ -1,11 +1,9 @@
-use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
+use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
 /*
  *  Basic functions for cortex M Core
  *
  */
-use crate::freertos::freertos_trait::freertos_switch_handler;
-
 const CORTEXM_GPR_REG_COUNT: usize = 17; // r00..r15+xpr = 17 reg
                                          /*
                                           *

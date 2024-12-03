@@ -1,20 +1,12 @@
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
-use crate::encoder::encoder;
-use crate::parsing_util;
 use alloc::vec::Vec;
 
-use crate::freertos::freertos_hashtcb::{get_hashtcb, hashed_tcb};
+use crate::freertos::freertos_hashtcb::get_hashtcb;
 use crate::freertos::freertos_list::freertos_crawl_list;
 use crate::freertos::freertos_symbols::{get_current_tcb_address, get_symbols};
-use crate::freertos::freertos_trait::{
-    freertos_switch_handler, freertos_task_info, freertos_task_state,
-};
+use crate::freertos::freertos_trait::freertos_task_state;
 
-use crate::freertos::{freertos_switch_task_action, os_can_switch};
-
-use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
-use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
-use crate::freertos::freertos_arm_m33::freertos_switch_handler_m33;
+use crate::freertos::{freertos_switch_task_action, freertos_task_info, os_can_switch};
 
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};

@@ -4,24 +4,17 @@
 
 */
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning, gdb_print};
 
 crate::gdb_print_init!();
-use core::ops::DerefMut;
 
-use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
-use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
 use crate::freertos::freertos_arm_m33::freertos_switch_handler_m33;
 use crate::freertos::freertos_riscv_rv32::freertos_switch_handler_rv32;
 use crate::freertos::freertos_symbols::get_symbols;
-use crate::freertos::freertos_trait::{
-    freertos_switch_handler, freertos_task_info, freertos_task_state,
-};
+use crate::freertos::freertos_trait::freertos_switch_handler;
 use crate::freertos::LN_MCU_CORE;
 use alloc::boxed::Box;
-use core::ptr::null;
 
 const ARM_PARTNO_MASK: u32 = 0xfff0;
 

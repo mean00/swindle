@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::ptr::addr_of_mut;
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning, gdb_print};
+use crate::gdb_print;
 crate::gdb_print_init!();
 
 pub struct tcb_to_tid {
@@ -91,14 +91,17 @@ pub fn dump_hash_info() {
         gdb_print!("SP: {:x} \n", stack);
         // Read the regs
         crate::bmp::bmp_read_mem32(stack, &mut regs);
+        #[allow(clippy::needless_range_loop)]
         for r in 0..4 {
             gdb_print!(" R{} = 0x{:x}", r, regs[r + 8]);
         }
         gdb_print!("\n");
+        #[allow(clippy::needless_range_loop)]
         for r in 4..8 {
             gdb_print!("    R{} = 0x{:x}", r, regs[r]);
         }
         gdb_print!("\n");
+        #[allow(clippy::needless_range_loop)]
         for r in 8..12 {
             gdb_print!("    R{} = 0x{:x}", r, regs[r]);
         }

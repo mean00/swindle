@@ -1,16 +1,12 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use alloc::vec;
 use alloc::vec::Vec;
 
 use super::{exec_one, CommandTree};
 use crate::encoder::encoder;
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
-use super::mon::_swdp_scan;
-use crate::bmp::bmp_attached;
-use crate::bmp::bmp_crc32;
 use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
 use crate::bmp::MemoryBlock;
@@ -20,13 +16,11 @@ use crate::commands::q_thread::{
 };
 use crate::commands::CallbackType;
 use crate::crc::abstract_crc32;
-use crate::parsing_util;
-use crate::util::xmin;
 
 use numtoa::NumToA;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 
 const q_command_tree: [CommandTree; 13] = [
     CommandTree {

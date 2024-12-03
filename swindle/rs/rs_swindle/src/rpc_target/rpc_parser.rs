@@ -1,9 +1,7 @@
-use crate::bmplogger::*;
-use crate::parsing_util::ascii_hex_string_to_u8s;
+//use crate::bmplogger::*;
 use crate::parsing_util::ascii_octet_to_hex;
 use crate::util::xmin;
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
 /*
  */
 pub struct rpc_parameter_parser<'a> {

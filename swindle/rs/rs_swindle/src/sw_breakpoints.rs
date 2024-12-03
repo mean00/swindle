@@ -7,16 +7,12 @@
 //
 #![allow(static_mut_refs)]
 
-use crate::parsing_util::ascii_string_hex_to_u32;
-use core::ptr::addr_of_mut;
+//use core::ptr::addr_of_mut;
 
-use crate::bmp;
-
-use alloc::vec;
 use alloc::vec::Vec;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 
 const ARM_BREAKPOINT_OPCODE: [u8; 2] = [0x00u8, 0xbeu8];
 const RISCV_BREAKPOINT_OPCODE: [u8; 2] = [0x02u8, 0x90u8];
@@ -105,10 +101,10 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     let mut new_opcode: [u8; 4] = breakpoint.old_opcode;
     let offset: usize = (address & 2) as usize;
     if !crate::bmp::bmp_is_riscv() {
-        new_opcode[offset + 0] = ARM_BREAKPOINT_OPCODE[0];
+        new_opcode[offset] = ARM_BREAKPOINT_OPCODE[0];
         new_opcode[offset + 1] = ARM_BREAKPOINT_OPCODE[1];
     } else {
-        new_opcode[offset + 0] = RISCV_BREAKPOINT_OPCODE[0];
+        new_opcode[offset] = RISCV_BREAKPOINT_OPCODE[0];
         new_opcode[offset + 1] = RISCV_BREAKPOINT_OPCODE[1];
     }
     if !crate::bmp::bmp_mem_write(aligned_address, &new_opcode) {

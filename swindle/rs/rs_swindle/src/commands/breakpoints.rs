@@ -3,19 +3,11 @@
 
 use crate::encoder::encoder;
 
-use crate::bmp::{bmp_attach, bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
-use crate::commands::CallbackType;
-
 use crate::parsing_util::ascii_string_hex_to_u32;
 
-use crate::bmp;
-
-use alloc::vec;
-use alloc::vec::Vec;
-
 crate::setup_log!(false);
+use crate::bmplog;
 use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};
-use crate::{bmplog, bmpwarning};
 
 /*
 Same value as bmp internal

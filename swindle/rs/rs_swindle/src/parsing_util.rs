@@ -1,10 +1,7 @@
-use alloc::alloc::alloc;
-use alloc::alloc::Layout;
 use alloc::vec::Vec;
-use cty::size_t;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 //
 //
 //
@@ -23,9 +20,8 @@ pub fn ascii_hex_string_to_u8s<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&
 pub fn ascii_hex_to_u32(sin: &str) -> u32 {
     let datain = sin.as_bytes();
     let mut out: u32 = 0;
-    let s = datain.len();
-    for i in 0..s {
-        out = (out << 4) + (ascii_octet_to_hex(0, datain[i]) as u32);
+    for &i in datain {
+        out = (out << 4) + ascii_octet_to_hex(0, i) as u32;
     }
     out
 }
@@ -122,7 +118,7 @@ pub fn u32_to_ascii_le_buffer(value: u32, out: &mut [u8]) {
     for i in 0..4 {
         let ascii = crate::parsing_util::u8_to_ascii((value & 0xff) as u8);
         value >>= 8;
-        out[0 + i * 2] = ascii[0];
+        out[i * 2] = ascii[0];
         out[1 + i * 2] = ascii[1];
     }
 }

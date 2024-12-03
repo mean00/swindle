@@ -30,7 +30,7 @@ enum PARSER_AUTOMATON {
     RpcDone,
     Reset,
     RpcBody,
-    PARSER_AUTOMATON_RPC2_HEAD1, // alternat RPC starting by a '+'
+    Rpc2Head1, // alternat RPC starting by a '+'
     Error,
 }
 /*
@@ -126,7 +126,7 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
                                                 _                       => PARSER_AUTOMATON::Idle,
                                             }
                 }
-                PARSER_AUTOMATON::PARSER_AUTOMATON_RPC2_HEAD1 => {
+                PARSER_AUTOMATON::Rpc2Head1 => {
                     bmplog!("RPC_H1\n");
                     match c {
                         RPC_END => PARSER_AUTOMATON::Idle, /* Skip + EOM so we get a vanilla RPC string */

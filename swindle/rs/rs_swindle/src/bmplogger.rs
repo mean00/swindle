@@ -1,5 +1,4 @@
 use core::convert::Infallible;
-use cty::c_char;
 #[allow(unused_imports)]
 #[cfg(feature = "native")]
 use rnarduino as rn;
@@ -41,6 +40,7 @@ macro_rules! bmpwarning
 #[macro_export]
 macro_rules! setup_log {
     ($x:expr) => {
+        #[allow(unused)]
         use rnarduino::{lnLogger, lnLogger_init};
         lnLogger_init!();
         static log_enabled: bool = $x;
@@ -125,7 +125,9 @@ macro_rules! gdb_print {
 macro_rules! gdb_print_init {
     () => {
         #[cfg(feature = "hosted")]
+        #[allow(unused)]
         use ufmt::uwrite;
+        #[allow(unused)]
         use $crate::bmplogger::G;
     };
 }

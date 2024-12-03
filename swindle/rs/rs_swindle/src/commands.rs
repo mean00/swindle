@@ -30,7 +30,7 @@ type Callback_text = fn(command: &str, args: &[&str]) -> bool;
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning, gdb_print};
+use crate::{bmplog, gdb_print};
 
 pub enum CallbackType {
     text(Callback_text),

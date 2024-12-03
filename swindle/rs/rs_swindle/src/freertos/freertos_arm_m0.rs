@@ -1,5 +1,3 @@
-use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
-use crate::bmp::{bmp_read_registers, bmp_write_register};
 /*
  *
  */

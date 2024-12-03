@@ -1,13 +1,9 @@
-use crate::commands;
 use crate::commands::run::HaltState;
 use crate::rn_bmp_cmd_c;
-use crate::rn_bmp_cmd_c::bool_;
-use alloc::vec;
 use alloc::vec::Vec;
 use core::ffi::CStr;
 use core::ptr::null;
 use core::ptr::null_mut;
-use cty::c_char;
 
 pub enum mapping {
     Flash = 0,
@@ -29,6 +25,7 @@ pub struct MemoryBlock {
 pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
+        #![allow(clippy::manual_unwrap_or_default)]
         match CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c() as *const i8).to_str() {
             Ok(x) => x,
             Err(_y) => "",
@@ -155,6 +152,7 @@ pub fn bmp_flash_write(addr: u32, data: &[u8]) -> bool {
  */
 pub fn bmp_get_target_name() -> &'static str {
     unsafe {
+        #![allow(clippy::manual_unwrap_or_default)]
         match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_driver_name_c() as *const i8).to_str() {
             Ok(x) => x,
             _ => "",
@@ -338,7 +336,7 @@ pub fn dummyFun() -> *const u8 {
  */
 pub fn bmplog(s: &str) {
     unsafe {
-        rn_bmp_cmd_c::Logger2(s.len() as i32, s.as_ptr() as *const u8);
+        rn_bmp_cmd_c::Logger2(s.len() as i32, s.as_ptr());
     }
 }
 /*

@@ -1,8 +1,6 @@
 /*
 *  This is normally ~ the same thing as cortex m0
 */
-use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
-use crate::bmp::{bmp_read_registers, bmp_write_register};
 use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_trait::freertos_switch_handler;
 

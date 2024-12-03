@@ -4,10 +4,10 @@
 use crate::encoder::encoder;
 use crate::parsing_util::ascii_string_hex_to_u32;
 
-use crate::bmp::{bmp_attach, bmp_flash_erase, bmp_mem_write};
+use crate::bmp::bmp_mem_write;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 
 // memory read m80070f6,4 // m2000000,4
 

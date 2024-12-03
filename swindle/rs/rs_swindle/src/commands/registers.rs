@@ -1,21 +1,8 @@
-use alloc::vec;
-use alloc::vec::Vec;
-
 use crate::encoder::encoder;
-use crate::packet_symbols::INPUT_BUFFER_SIZE;
-
-use super::mon::_swdp_scan;
-use crate::bmp::bmp_attached;
-use crate::bmp::bmp_get_mapping;
-use crate::bmp::mapping::{Flash, Ram};
-use crate::bmp::MemoryBlock;
-
-use crate::parsing_util::{ascii_string_hex_to_u32, ascii_string_hex_to_u32_le};
 
 use crate::bmp;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
 // Write reg
 // Pf=123
 //

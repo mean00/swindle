@@ -2,10 +2,7 @@ use crate::bmp;
 use crate::commands::{exec_one, CallbackType, CommandTree, HelpTree};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
-use crate::parsing_util::{
-    ascii_hex_string_to_u8s, ascii_hex_to_u32, ascii_string_decimal_to_u32, ascii_string_hex_to_u32,
-};
-use alloc::vec;
+use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_decimal_to_u32};
 use alloc::vec::Vec;
 //
 //
@@ -223,13 +220,11 @@ fn _fos_info(_command: &str, _args: &[&str]) -> bool {
 fn _fos(_command: &str, args: &[&str]) -> bool {
     if args.is_empty() {
         gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|RV32|NONE|AUTO]\n");
-    } else {
-        if enable_freertos(args[0]) {
-            if crate::freertos::freertos_symbols::freertos_symbol_valid() {
-                gdb_print!("FreeRTOS support enabled\n");
-            } else {
-                gdb_print!("FreeRTOS support *NOT *enabled\n");
-            }
+    } else if enable_freertos(args[0]) {
+        if crate::freertos::freertos_symbols::freertos_symbol_valid() {
+            gdb_print!("FreeRTOS support enabled\n");
+        } else {
+            gdb_print!("FreeRTOS support *NOT *enabled\n");
         }
     }
     encoder::reply_ok();
@@ -353,7 +348,7 @@ pub fn _qRcmd(command: &str, _args: &[&str]) -> bool {
         Some(x) => {
             for i in x {
                 if as_string.starts_with(i.command) {
-                    return exec_one(&x, as_string, args);
+                    return exec_one(x, as_string, args);
                 }
             }
         }

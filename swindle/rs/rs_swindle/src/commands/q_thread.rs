@@ -1,38 +1,17 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use alloc::vec;
 use alloc::vec::Vec;
 
-use super::{exec_one, CommandTree};
-use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 use crate::encoder::encoder;
-use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
-use super::mon::_swdp_scan;
-use crate::bmp::bmp_attached;
-use crate::bmp::bmp_crc32;
-use crate::bmp::bmp_get_mapping;
-use crate::bmp::mapping::{Flash, Ram};
-use crate::bmp::MemoryBlock;
-use crate::commands::mon::_qRcmd;
-use crate::commands::CallbackType;
 use crate::parsing_util;
-use crate::util::xmin;
-use numtoa::NumToA;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
 
-use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_symbols::freertos_symbol_valid;
-use crate::freertos::freertos_tcb::{
-    freertos_collect_information, get_current_thread_id, get_tcb_info_from_id,
-};
-use crate::freertos::freertos_tcb::{
-    freertos_is_thread_present, freertos_switch_task, get_pxCurrentTCB, set_pxCurrentTCB,
-};
-use crate::freertos::freertos_trait::{freertos_switch_handler, freertos_task_info};
+use crate::freertos::freertos_tcb::{freertos_is_thread_present, freertos_switch_task};
+use crate::freertos::freertos_tcb::{get_current_thread_id, get_tcb_info_from_id};
 //
 // ‘m thread-id’
 // A single thread ID

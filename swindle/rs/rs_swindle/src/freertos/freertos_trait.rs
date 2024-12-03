@@ -1,5 +1,5 @@
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 
 /*
  *

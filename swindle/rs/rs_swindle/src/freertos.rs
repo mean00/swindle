@@ -1,6 +1,5 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 
-use alloc::vec::Vec;
 pub mod freertos_arm;
 pub mod freertos_arm_core;
 pub mod freertos_arm_m0;
@@ -13,18 +12,17 @@ pub mod freertos_symbols;
 pub mod freertos_tcb;
 pub mod freertos_trait;
 use crate::bmp::bmp_cpuid;
-use crate::bmp::{bmp_read_mem, bmp_read_mem32};
+//use crate::bmp::{bmp_read_mem, bmp_read_mem32};
 use freertos_arm::{
     freertos_attach_arm, freertos_can_switch_arm, freertos_detach_arm,
     freertos_switch_task_action_arm,
 };
-use freertos_arm_core::freertos_cortexm_core;
+//use freertos_arm_core::freertos_cortexm_core;
 use freertos_symbols::get_symbols;
 use freertos_trait::freertos_task_info;
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning, gdb_print};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum LN_MCU_CORE {

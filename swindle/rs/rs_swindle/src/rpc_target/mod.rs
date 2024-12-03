@@ -7,7 +7,6 @@ use crate::encoder::*;
 pub mod rpc_parser;
 pub mod rpc_reply;
 use crate::bmp::{bmp_get_frequency, bmp_set_frequency};
-use crate::bmplogger::*;
 use crate::crc::do_local_crc32;
 use crate::rpc_common::*;
 use crate::rpc_target::rpc_reply::*;
@@ -15,7 +14,7 @@ use rpc_parser::rpc_parameter_parser;
 //------------------------------
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning, gdb_print};
+use crate::{bmplog, bmpwarning};
 //-------------------------------
 /*
  *

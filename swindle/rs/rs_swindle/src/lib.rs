@@ -1,10 +1,10 @@
 #![no_std]
+#![allow(static_mut_refs)]
 #![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 #![allow(dead_code)]
-#![allow(unused_imports)]
-
+//#![allow(unused_imports)]
 mod bmp;
 mod bmplogger;
 mod commands;
@@ -28,9 +28,7 @@ mod util;
 use crate::decoder::gdb_stream;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 extern crate alloc;
-use alloc::vec::Vec;
 use decoder::RESULT_AUTOMATON;
-use numtoa::NumToA;
 
 crate::setup_log!(false);
 //use crate::{bmplog,bmpwarning};
@@ -42,25 +40,20 @@ static mut autoauto: Option<gdb_stream<INPUT_BUFFER_SIZE>> = None;
 fn get_autoauto() -> &'static mut Option<gdb_stream<INPUT_BUFFER_SIZE>> {
     unsafe { &mut autoauto }
 }
-
+fn clear_autoauto() {
+    unsafe {
+        autoauto = None;
+    }
+}
 #[no_mangle]
 extern "C" fn rngdbstub_init() {
     unsafe {
-        if autoauto.is_some() {
-            //panic!("notnull");
-            autoauto = None;
-        }
         autoauto = Some(gdb_stream::<INPUT_BUFFER_SIZE>::new());
     }
 }
 #[no_mangle]
 extern "C" fn rngdbstub_shutdown() {
-    unsafe {
-        if autoauto.is_none() {
-            //            panic!("notsome");
-        }
-        autoauto = None;
-    }
+    clear_autoauto();
 }
 /*
  *
