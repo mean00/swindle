@@ -8,7 +8,7 @@ APPLY_PATCH_IF_NEEDED3(patched12 ${BMP_PATCH_FOLDER}/12blackmagic_disable_cortex
 APPLY_PATCH_IF_NEEDED3(patched14 ${BMP_PATCH_FOLDER}/14blackmagic_disable_snprintf_define.patch    ${LNBMP_TOP_FOLDER}   "disable snprintf define")
 APPLY_PATCH_IF_NEEDED3(patched13 ${BMP_PATCH_FOLDER}/13blackmagic_rvswd_perigoso.patch             ${LNBMP_TOP_FOLDER}   "add rvswd support (based on perigoso work)")
 APPLY_PATCH_IF_NEEDED3(patched21 ${BMP_PATCH_FOLDER}/21blackmagic_riscv_flashstub_vanilla.patch    ${LNBMP_TOP_FOLDER}   "declare flashstub function")
-APPLY_PATCH_IF_NEEDED3(patched26 ${BMP_PATCH_FOLDER}/26blackmagic_riscv_check_watchpoint.patch ${LNBMP_TOP_FOLDER}   "explictely fail when we cant put watchpoints")
+APPLY_PATCH_IF_NEEDED3(patched26 ${BMP_PATCH_FOLDER}/26blackmagic_riscv_check_watchpoint.patch ${LNBMP_TOP_FOLDER}   "explicitely fail when we cant put watchpoints")
 APPLY_PATCH_IF_NEEDED3(patched33 ${BMP_PATCH_FOLDER}/33blackmagic_redirect_adiv5_to_ln_v3.patch ${LNBMP_TOP_FOLDER}   "redirect adiv5_xx_no_check to ln_adiv5xxx_no_check swd functions")
 APPLY_PATCH_IF_NEEDED3(patched36 ${BMP_PATCH_FOLDER}/36blackmagic_remove_printf_warning_v3.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
 APPLY_PATCH_IF_NEEDED3(patched37 ${BMP_PATCH_FOLDER}/37blackmagic_hack_remote_protocolv3.patch      ${LNBMP_TOP_FOLDER}   "dirty hack to bring back remote protocol v3, probably not the right way")
