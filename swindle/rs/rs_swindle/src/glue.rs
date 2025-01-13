@@ -2,7 +2,7 @@ use crate::encoder::encoder;
 use core::ffi::CStr;
 // Send data to the host...
 #[no_mangle]
-pub extern "C" fn gdb_out(fmt: *const i8) {
+pub extern "C" fn gdb_out(fmt: *const u8) {
     let mut e = encoder::new();
     e.begin();
     e.add("O");
