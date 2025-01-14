@@ -9,7 +9,7 @@ extern "C"
 #include "general.h"
 #include "target.h"
 
-    void gdb_if_putchar(char c, int flush)
+    void gdb_if_putchar(char c, bool flush)
     {
         xAssert(0);
     }
