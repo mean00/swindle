@@ -1,13 +1,13 @@
 #pragma once
-
+#include "lnBMP_swdio.h"
 /**
  */
 class SwdPin
 {
   public:
-    SwdPin(lnBMPPins no) : _fast(_mapping[no & 7])
+    SwdPin(lnBMPPins no) : _fast(_mapping[no])
     {
-        _me = _mapping[no & 7];
+        _me = _mapping[no];
         _output = false;
         _wait = true;
         on();
@@ -22,11 +22,11 @@ class SwdPin
     {
         _fast.off();
     }
-    void input()
+    LN_ALWAYS_INLINE void input()
     {
         lnPinMode(_me, lnINPUT_FLOATING);
     }
-    void output()
+    LN_ALWAYS_INLINE void output()
     {
         lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED); // 10 Mhz
     }
@@ -54,3 +54,26 @@ class SwdPin
     bool _wait;
     lnFastIO _fast;
 };
+/**
+ *
+ *
+ */
+class SwdDirectionPin : public SwdPin
+{
+  public:
+    SwdDirectionPin(lnBMPPins no) : SwdPin(no)
+    {
+    }
+
+    void dir_input()
+    {
+        lnPinMode(_me, lnINPUT_FLOATING);
+        tapInput();
+    }
+    void dir_output()
+    {
+        lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED); // 10 Mhz
+        tapOutput();
+    }
+};
+/**/

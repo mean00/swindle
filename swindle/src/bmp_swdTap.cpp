@@ -132,7 +132,7 @@ void LN_FAST_CODE swdioSetAsOutput(bool output)
     {
     case false: // in
     {
-        rSWDIO->input();
+        rSWDIO->dir_input();
         rSWCLK->wait();
         rSWCLK->clockOn();
         break;
@@ -143,7 +143,7 @@ void LN_FAST_CODE swdioSetAsOutput(bool output)
         rSWCLK->clockOff();
         rSWCLK->clockOn();
         rSWCLK->clockOff();
-        rSWDIO->output();
+        rSWDIO->dir_output();
         break;
     }
     default:
@@ -210,10 +210,10 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
     uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     xAssert(oldDrive);
     zwrite(8, request);
-    rSWDIO->input();
+    rSWDIO->dir_input();
     uint32_t ack = zread(3);
     bool parity = lnOddParity(data);
-    rSWDIO->output();
+    rSWDIO->dir_output();
     oldDrive = true;
     zwrite(2, 0x03);
     zwrite(32, data);
@@ -233,13 +233,13 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 
     xAssert(oldDrive);
     zwrite(8, request);
-    rSWDIO->input();
+    rSWDIO->dir_input();
     rSWCLK->wait();
     uint32_t ack = zread(3);
     uint32_t data = zread(32);
     bool parity = zread(1);
     oldDrive = true;
-    rSWDIO->output();
+    rSWDIO->dir_output();
     zwrite(8, 0);
     return ack == SWD_ACK_OK ? data : 0;
 }
@@ -263,7 +263,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         xAssert(oldDrive);
         zwrite(8, request);
         oldDrive = 0;
-        rSWDIO->input();
+        rSWDIO->dir_input();
         uint32_t ack = zread(3);
         bool expired = platform_timeout_is_expired(&timeout);
         if (ack == SWD_ACK_OK)
@@ -272,7 +272,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         }
         // if we get here, we are retrying
         // switch back to output
-        rSWDIO->output();
+        rSWDIO->dir_output();
         zwrite(2, 0x03);
 
         oldDrive = 1;
@@ -323,7 +323,7 @@ done:
         uint32_t response = zread(32);
         bool parityBit = zread(3) & 1;
         bool currentParity = lnOddParity(response);
-        rSWDIO->output();
+        rSWDIO->dir_output();
         zwrite(8, 0);
         oldDrive = true;
         if (currentParity != parityBit)
@@ -336,7 +336,7 @@ done:
     }
     // write
     xAssert(!oldDrive);
-    rSWDIO->output();
+    rSWDIO->dir_output();
     oldDrive = true;
     bool parity = lnOddParity(value);
     zwrite(2, 0x03);
@@ -351,7 +351,7 @@ done:
  */
 extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
 {
-    rSWDIO->output();
+    rSWDIO->dir_output();
     oldDrive = 1;
     zwrite(tick, value);
 }

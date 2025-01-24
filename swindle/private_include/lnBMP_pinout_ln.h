@@ -1,7 +1,7 @@
 #pragma once
 
 // mapping of BMP gpio to the GPIO we use
-const lnPin _mapping[8] = {
+const lnPin _mapping[9] = {
     PA0, // 0 TMS_PIN
     PA0, // 1 TDI_PIN
     PA0, // 2 TDO_PIN
@@ -12,6 +12,7 @@ const lnPin _mapping[8] = {
     PB9, // 6 SWCLK_PIN
 
     PB6, // 7 RST
+    PC3, // 8 direction
 };
 
 #define PIN_ADC_NRESET_DIV_BY_TWO PA3 // this pins is connected to NRST/2

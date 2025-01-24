@@ -76,7 +76,7 @@ static void rv_write_nbits(int n, uint32_t value)
  */
 static void rv_start_bit()
 {
-    rSWDIO->output();
+    rSWDIO->dir_output();
     rSWDIO->set(0);
 }
 /**
@@ -86,7 +86,7 @@ static void rv_start_bit()
 static void rv_stop_bit()
 {
     rSWCLK->clockOff();
-    rSWDIO->output();
+    rSWDIO->dir_output();
     rSWDIO->set(0);
     rSWCLK->clockOn();
     rSWDIO->set(1);
@@ -96,7 +96,7 @@ static void rv_stop_bit()
  */
 static uint32_t rv_read_nbits(int n)
 {
-    rSWDIO->input();
+    rSWDIO->dir_input();
     uint32_t out = 0;
     for (int i = 0; i < n; i++)
     {
@@ -115,7 +115,7 @@ static uint32_t rv_read_nbits(int n)
 bool rv_dm_reset()
 {
     // toggle the clock 100 times
-    rSWDIO->output();
+    rSWDIO->dir_output();
     rSWDIO->set(1);
     for (int i = 0; i < 5; i++) // 199 bits to 1
     {

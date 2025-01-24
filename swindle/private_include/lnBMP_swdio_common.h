@@ -11,7 +11,7 @@ class SwdReset
   public:
     SwdReset(lnBMPPins no)
     {
-        _me = _mapping[no & 7];
+        _me = _mapping[no];
         _state = false;
         // 1: Hi Z
         // 0: GND

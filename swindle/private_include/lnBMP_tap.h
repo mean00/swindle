@@ -3,6 +3,7 @@
 #include "lnBMP_swdio.h"
 
 extern uint32_t swd_delay_cnt;
-extern SwdPin *rSWDIO;
+extern SwdPin *rDirection;
 extern SwdWaitPin *rSWCLK;
+extern SwdDirectionPin *rSWDIO;
 extern SwdReset pReset;
