@@ -395,7 +395,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/6c0183f3-0259-40aa-b690-58bb728f5524")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -608,7 +608,7 @@
 		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/11222a07-8b60-4ad3-9e27-11c8b8c590da")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr through_hole)
 		(fp_line
 			(start -1.11 -0.76)
@@ -1032,7 +1032,7 @@
 		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/9ea8790d-2ce7-41a6-b502-4bc5c7891421")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr through_hole)
 		(fp_line
 			(start -1.11 -0.76)
@@ -1449,7 +1449,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/c9e215f6-7d50-4fb7-961d-1e6c48f6750e")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -1664,7 +1664,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/3bf99785-1b23-4143-ae31-0311fe7bab69")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -2303,7 +2303,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/850ae47a-941b-465f-9513-8ac385a4a3aa")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -2518,7 +2518,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/1f29626b-032b-4c3a-81e4-7db7583d1261")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -2734,7 +2734,7 @@
 		(property ki_fp_filters "SW?DIP?x1*")
 		(path "/157e8597-0dfe-461a-be75-d90ba0ece56b")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 3.06 1.85)
@@ -3047,7 +3047,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/55470a0d-e185-4344-9d3c-2b1145cd5c36")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -3522,7 +3522,7 @@
 		(property ki_fp_filters "LED* LED_SMD:* LED_THT:*")
 		(path "/5761db88-b5e8-407a-bca3-1421a71e1bef")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 1 -0.96)
@@ -3759,7 +3759,7 @@
 		(property ki_fp_filters "SOT?223* TO?263* TO?252* TO?220*")
 		(path "/528deb37-9582-40e9-bb55-e6d64f2d7e75")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -1.85 3.41)
@@ -4017,7 +4017,7 @@
 		(property ki_fp_filters "VSSOP*2.3x2mm*P0.5mm*")
 		(path "/12e49da2-7d62-49a3-967f-1a1759b20ce0")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(clearance 0.2)
 		(attr smd)
 		(fp_line
@@ -4347,7 +4347,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/d95a0061-dc92-4890-b293-081e0643cef1")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -4560,7 +4560,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/f935a86b-b27a-4e58-af74-92e505568568")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -4775,7 +4775,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/95aa6824-2380-44c0-8122-0686c4ede3de")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -5300,7 +5300,7 @@
 		(property ki_fp_filters "LED* LED_SMD:* LED_THT:*")
 		(path "/413e0bca-3a84-4717-805f-3c7b19839ead")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -1.685 -0.96)
@@ -6169,7 +6169,7 @@
 		(property ki_fp_filters "CP_*")
 		(path "/53062742-c0bf-4199-93d2-08c396a159f2")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.711252 -0.91)
@@ -6753,7 +6753,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/032cccb0-2aff-4042-b319-f76b78665e11")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -7483,7 +7483,7 @@
 		(property ki_fp_filters "VSSOP*2.3x2mm*P0.5mm*")
 		(path "/52d490b9-2a98-45b1-a6db-c50b501d0d9d")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(clearance 0.2)
 		(attr smd)
 		(fp_line
@@ -8043,7 +8043,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/eae3de3c-526d-42f5-a670-af563fa046f2")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -8258,7 +8258,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/681914d8-9e88-478d-be33-555282944aae")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -8473,7 +8473,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/03eeaae9-e975-48a3-9b39-82fb23663e19")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -8982,7 +8982,7 @@
 		(property ki_fp_filters "Crystal*")
 		(path "/d68d93a9-ebe8-40be-9e87-32d2655a53ef")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.247487 2.58094)
@@ -9223,7 +9223,7 @@
 		(property ki_fp_filters "USB*C*Receptacle*")
 		(path "/c19cd3a6-11a8-490c-88e9-c117b4eb5226")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 4.47 -0.67)
@@ -10006,7 +10006,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/36b3696d-5e24-4d3b-90ff-c360305437f9")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -10219,7 +10219,7 @@
 		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/0146f904-ad7d-42fd-b9f4-1579cee03991")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr through_hole)
 		(fp_line
 			(start -2.56 3.51)
@@ -10708,7 +10708,7 @@
 		(property ki_fp_filters "SOT-23-5_RIT SOT-23-5_RIT-M SOT-23-5_RIT-L")
 		(path "/1d9c05d6-6a8e-440e-8f93-adb400549a1a")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 2.2 1.8)
@@ -11386,7 +11386,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/e0e60351-1378-4ccb-b9bf-a3a4cc500bc2")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 0.5225)
@@ -11601,7 +11601,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/ec1e9184-2829-4a0c-b23d-b678c7ab127f")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -11816,7 +11816,7 @@
 		(property ki_fp_filters "LQFP*10x10mm*P0.5mm*")
 		(path "/6eac1c40-1660-4020-b76d-adbffc46460b")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -5.11 -5.11)
@@ -13465,7 +13465,7 @@
 		(property ki_fp_filters "PinHeader?2x05?P1.27mm*")
 		(path "/7b93478c-c3ae-471e-a7be-dec3fa28012e")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 1.765 -3.235)
@@ -14110,7 +14110,7 @@
 		(property ki_fp_filters "C_*")
 		(path "/3d7a62d0-7d43-48b5-964b-4e9ad2d05157")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.237258 -0.5225)
@@ -14607,7 +14607,7 @@
 		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/85e16401-6108-4ce0-9aa2-8deb4de22228")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(attr through_hole)
 		(fp_line
 			(start -1.6 -2.75)
@@ -15422,7 +15422,7 @@
 		(property ki_fp_filters "VSSOP*2.3x2mm*P0.5mm*")
 		(path "/1b258e05-8ec6-4563-ad93-592495cdc435")
 		(sheetname "Root")
-		(sheetfile "swindle_ch32_revG.kicad_sch")
+		(sheetfile "swindle_ch32_revH.kicad_sch")
 		(clearance 0.2)
 		(attr smd)
 		(fp_line

@@ -8077,7 +8077,7 @@
 			(uuid "5d829438-2be8-4ee6-b78a-d4b8026b743d")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "U5")
 					(unit 1)
@@ -8579,7 +8579,7 @@
 			(uuid "ed93cf8c-d95b-4dd7-8411-109d512fde6f")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR032")
 					(unit 1)
@@ -8645,7 +8645,7 @@
 			(uuid "7213241f-625b-4962-94be-d39fbff2fe5b")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR026")
 					(unit 1)
@@ -8846,7 +8846,7 @@
 			(uuid "54be6d1e-f84e-410d-a3a7-334ba5a44d17")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR028")
 					(unit 1)
@@ -8985,7 +8985,7 @@
 			(uuid "c061a4b4-fe73-4b3c-b736-fa8a32d20f17")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C10")
 					(unit 1)
@@ -9186,7 +9186,7 @@
 			(uuid "543af273-5ce5-4a07-a6fe-bbd099590388")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR030")
 					(unit 1)
@@ -9251,7 +9251,7 @@
 			(uuid "b6163b4b-5614-44c9-89f4-55f5e071fb2d")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR027")
 					(unit 1)
@@ -9410,7 +9410,7 @@
 			(uuid "d225bcd2-4822-4f10-96c9-1f0af34ef9c9")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "U4")
 					(unit 1)
@@ -9617,7 +9617,7 @@
 			(uuid "48ea9c43-ff82-46fa-ae1d-49f22624bfef")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "D2")
 					(unit 1)
@@ -9749,7 +9749,7 @@
 			(uuid "359f7b9f-54d1-4327-9ac4-6a1c48956488")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR01")
 					(unit 1)
@@ -9880,7 +9880,7 @@
 			(uuid "b56023c7-aba0-49a5-8f0a-2e5b3133939c")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR031")
 					(unit 1)
@@ -10085,7 +10085,7 @@
 			(uuid "20c25f7d-85ec-4936-87c4-4f4a38a05b05")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C11")
 					(unit 1)
@@ -10567,7 +10567,7 @@
 			(uuid "6ec5b9e7-8dcb-4977-9b05-fe7a59655fa6")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR021")
 					(unit 1)
@@ -10776,7 +10776,7 @@
 			(uuid "4be89b2e-9f58-4c5c-8fab-993b0d67abb1")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR022")
 					(unit 1)
@@ -10841,7 +10841,7 @@
 			(uuid "a4cad95c-8581-4cdb-a240-7ceddfe19431")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR033")
 					(unit 1)
@@ -10907,7 +10907,7 @@
 			(uuid "de13bcf6-37a6-4b76-a668-c0dbb3398841")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR023")
 					(unit 1)
@@ -10972,7 +10972,7 @@
 			(uuid "ee135f50-0257-49f2-adeb-866af573aa0b")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR029")
 					(unit 1)
@@ -11305,7 +11305,7 @@
 			(uuid "64892a2c-c3b7-4948-bbf8-3aae066a0457")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR025")
 					(unit 1)
@@ -11371,7 +11371,7 @@
 			(uuid "f092b4ea-9ed0-422d-9fb8-fc400a63cdbc")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR024")
 					(unit 1)
@@ -11774,7 +11774,7 @@
 			(uuid "e24eb0db-98cc-4db3-b7ed-723365b12918")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR011")
 					(unit 1)
@@ -11848,7 +11848,7 @@
 			(uuid "7eb13681-468b-4db1-aa7e-be1115a307d1")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "Y1")
 					(unit 1)
@@ -11915,7 +11915,7 @@
 			(uuid "a0519259-81a5-404f-8d37-b1f389d7575c")
 		)
 		(instances
-			(project "swindle_ch32_revG"
+			(project "swindle_ch32revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "R7")
 					(unit 1)
