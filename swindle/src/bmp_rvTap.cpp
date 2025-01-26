@@ -117,7 +117,7 @@ bool rv_dm_reset()
     // toggle the clock 100 times
     rSWDIO->dir_output();
     rSWDIO->set(1);
-    for (int i = 0; i < 5; i++) // 199 bits to 1
+    for (int i = 0; i < 5; i++) // 100 bits to 1
     {
         rv_write_nbits(20, 0xfffff);
     }
