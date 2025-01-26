@@ -1,6 +1,6 @@
 #pragma once
 
-const lnPin _mapping[8] = {
+const lnPin _mapping[9] = {
     GPIO24, // 0 TMS_PIN
     GPIO24, // 1 TDI_PIN
     GPIO24, // 2 TDO_PIN
@@ -10,6 +10,7 @@ const lnPin _mapping[8] = {
     GPIO13, // 6 SWCLK_PIN
 
     GPIO11, // 7 RST
+    GPIO10, // 8 Direction (1: output, 0: input)
 };
 
 #define PIN_ADC_NRESET_DIV_BY_TWO GPIO26 // this pins is connected to NRST/2
