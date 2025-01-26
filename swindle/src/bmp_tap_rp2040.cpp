@@ -93,6 +93,7 @@ static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight
 {
     lnPin pin_swd = _mapping[TSWDIO_PIN];
     lnPin pin_clk = _mapping[TSWDCK_PIN];
+    lnPin pin_direction = _mapping[TDIRECTION_PIN];
     xsm->reset();
     rpPIO_pinConfig pinConfig;
     pinConfig.sets.pinNb = 1;
@@ -109,12 +110,14 @@ static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight
     xsm->setBitOrder(outputRight, inputRight); // SWD is LSB, shift right both
     xsm->setPinDir(pin_swd, true);
     xsm->setPinDir(pin_clk, true);
+    xsm->setPinDir(pin_direction, true);
     xsm->uploadCode(prgSizeInHalfWord, prg, wrapTarget, wrap);
     xsm->configure(pinConfig);
-    xsm->configureSideSet(pin_clk, 1, 2, true);
+    xsm->configureSideSet(pin_direction, 2, 2, true);
     xsm->execute();
     lnPinModePIO(pin_swd, LN_SWD_PIO_ENGINE, true);
     lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
+    lnPinModePIO(pin_direction, LN_SWD_PIO_ENGINE);
 }
 /**
  *

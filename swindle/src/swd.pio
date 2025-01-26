@@ -7,9 +7,19 @@
 ; R : ----______
 ;
 ;
+; GPIO11 = base+0 = IO direction (0=read, 1 = write)
+; GPIO12 = base+1 = clk value
+; GPIO13 =          IO value
+;
+
+.define READ_DIR_DOWN 0b00
+.define READ_DIR_UP 0b10
+.define WRITE_DIR_DOWN 0b01
+.define WRITE_DIR_UP 0b11 
+
 
 .program swd
-.side_set 1 opt
+.side_set 2 opt
 begin:
     pull            ; size (8..32 bits)
     out  y 1 
@@ -23,8 +33,8 @@ begin:
 lp1:        
     out x,1               ; pop one LSB bit    
     mov pins, x           ; out data
-    nop          side 1
-    jmp y-- lp1  side 0   ; and clock out
+    nop          side WRITE_DIR_UP
+    jmp y-- lp1  side WRITE_DIR_DOWN   ; and clock out
     
 out1:
     jmp begin    
@@ -33,10 +43,10 @@ out1:
 ;;_______________________________
 rread:
     set pindirs  0        ; SWDIO as input 
-    out  y,8     
+    out  y,8     side READ_DIR_UP 
 lp2:       
-    nop          side 1
-    nop          side 0
+    nop          side READ_DIR_UP 
+    nop          side READ_DIR_DOWN
     in  pins,1            ; pop one LSB bit        
     jmp y-- lp2  
 out2:
