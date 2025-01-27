@@ -1,8 +1,12 @@
 ;
 ;
+.define READ_DIR_DOWN 0b00
+.define READ_DIR_UP 0b10
+.define WRITE_DIR_DOWN 0b01
+.define WRITE_DIR_UP 0b11 
 
 .program rvswd
-.side_set 1 opt
+.side_set 2 opt
 begin:
     pull
     out pc,5
@@ -16,8 +20,8 @@ rd:
     out  y,5              ; size  as 5 bits 1..32
     set pindirs,0         ; SWDIO as input 
 lprd:
-    nop          side 0
-    nop          side 1
+    nop          side READ_DIR_DOWN
+    nop          side READ_DIR_UP
     in  pins,1            ; pop one LSB bit
     jmp y-- lprd  
     push
@@ -29,24 +33,24 @@ wr:
     set pindirs,1         ; output
     pull
 lpwr:
-    out x,1      side 0   ; pop one LSB bit
-    mov pins, x  side 0   ; out data
-    nop          side 1
-    jmp y-- lpwr side 1   ; and clock out
+    out x,1      side WRITE_DIR_DOWN   ; pop one LSB bit
+    mov pins, x  side WRITE_DIR_DOWN   ; out data
+    nop          side WRITE_DIR_UP
+    jmp y-- lpwr side WRITE_DIR_UP   ; and clock out
     jmp begin
 ;
 stop:
 ;-----
-    nop            side 0 ; clock off
+    nop            side WRITE_DIR_DOWN ; clock off
     set pindirs,1         ; output
     set pins,0            ; set 0
-    nop            side 1 ; clock on
+    nop            side WRITE_DIR_UP ; clock on
     set pins,1            ; set 1
     jmp begin
 ;
 start:
 ;-----
-    set pindirs 1  side 1 ; Clock High / SDIO high
-    set pins, 0    side 1 ; Clock High / SDIO Low
+    set pindirs 1  side WRITE_DIR_UP ; Clock High / SDIO high
+    set pins, 0    side WRITE_DIR_UP ; Clock High / SDIO Low
     jmp begin
 ; EOF
