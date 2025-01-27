@@ -1,5 +1,11 @@
 use crate::encoder::encoder;
 use core::ffi::CStr;
+//
+#[cfg(feature = "hosted")]
+type my_c_str = *const i8;
+#[cfg(not(feature = "hosted"))]
+type my_c_str = *const u8;
+
 // Send data to the host...
 #[no_mangle]
 pub extern "C" fn gdb_out(fmt: *const u8) {
@@ -9,7 +15,7 @@ pub extern "C" fn gdb_out(fmt: *const u8) {
 
     let slice: &str;
     unsafe {
-        slice = match CStr::from_ptr(fmt).to_str() {
+        slice = match CStr::from_ptr(fmt as my_c_str).to_str() {
             Ok(x) => x,
             Err(_y) => return,
         };

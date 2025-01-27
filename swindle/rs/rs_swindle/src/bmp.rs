@@ -5,6 +5,11 @@ use core::ffi::CStr;
 use core::ptr::null;
 use core::ptr::null_mut;
 
+#[cfg(feature = "hosted")]
+type my_c_str = *const i8;
+#[cfg(not(feature = "hosted"))]
+type my_c_str = *const u8;
+
 pub enum mapping {
     Flash = 0,
     Ram = 1,
@@ -26,7 +31,7 @@ pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
         #![allow(clippy::manual_unwrap_or_default)]
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c()).to_str() {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c() as my_c_str).to_str() {
             Ok(x) => x,
             Err(_y) => "",
         }
@@ -153,7 +158,7 @@ pub fn bmp_flash_write(addr: u32, data: &[u8]) -> bool {
 pub fn bmp_get_target_name() -> &'static str {
     unsafe {
         #![allow(clippy::manual_unwrap_or_default)]
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_driver_name_c()).to_str() {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_driver_name_c() as my_c_str).to_str() {
             Ok(x) => x,
             _ => "",
         }
@@ -453,7 +458,7 @@ pub fn bmp_supported_boards() -> &'static str {
     unsafe {
         let boards = rn_bmp_cmd_c::list_enabled_boards();
 
-        let output = CStr::from_ptr(boards).to_str();
+        let output = CStr::from_ptr(boards as my_c_str).to_str();
         if let Ok(x) = output {
             return x;
         }
@@ -465,7 +470,7 @@ pub fn bmp_supported_boards() -> &'static str {
  */
 pub fn bmp_get_version() -> &'static str {
     unsafe {
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string()).to_str() {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string() as my_c_str).to_str() {
             Ok(x) => x,
             _ => "??",
         }
