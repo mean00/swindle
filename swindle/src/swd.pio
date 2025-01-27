@@ -29,7 +29,7 @@ begin:
 ;;_______________________________
     out  y,8      
     pull                  ; value (8..32 bits)
-    set pindirs 1         ; start SWDIO low    / SWCLK low    
+    set pindirs 1  side WRITE_DIR_DOWN       ; start SWDIO low    / SWCLK low    
 lp1:        
     out x,1               ; pop one LSB bit    
     mov pins, x           ; out data
@@ -42,8 +42,8 @@ out1:
 ;; read : sample on falling edge
 ;;_______________________________
 rread:
-    set pindirs  0        ; SWDIO as input 
-    out  y,8     side READ_DIR_UP 
+    set pindirs  0  side READ_DIR_UP ; SWDIO as input 
+    out  y,8     
 lp2:       
     nop          side READ_DIR_UP 
     nop          side READ_DIR_DOWN
