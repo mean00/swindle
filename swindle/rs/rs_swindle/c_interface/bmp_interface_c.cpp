@@ -403,7 +403,7 @@ extern "C"
         if (!bmp_attached_c())
             return 0;
 
-        target_addr64_t watch;
+        target_addr_t watch;
         target_halt_reason_e reason = cur_target->halt_poll(cur_target, &watch);
         *watchpoint = watch; // warning ! 32 bits address only!
         return reason;
