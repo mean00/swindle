@@ -1,8 +1,8 @@
 diff --git a/src/target/adi.c b/src/target/adi.c
-index 8ddbfacd..a938e071 100644
+index 8ddbfacd..2448ed4b 100644
 --- a/src/target/adi.c
 +++ b/src/target/adi.c
-@@ -866,21 +866,21 @@ void adi_ap_component_probe(
+@@ -866,14 +866,14 @@ void adi_ap_component_probe(
  			DEBUG_INFO("%s-> cortexm_probe\n", indent + 1);
  			cortexm_probe(ap);
  			break;
@@ -14,28 +14,14 @@ index 8ddbfacd..a938e071 100644
 -			DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
 -			cortexr_probe(ap, base_address);
 -			break;
--		/* Handle when the component is a CoreSight component ROM table */
--		case aa_rom_table:
--			if (pidr & PIDR_SIZE_MASK)
--				DEBUG_ERROR("Fault reading ROM table\n");
--			else
--				adi_parse_coresight_v0_rom_table(ap, base_address, recursion, indent, pidr);
--			break;
-+			// meanx case aa_cortexa:
-+			// meanx DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
-+			// meanx cortexa_probe(ap, base_address);
-+			// meanx break;
-+			// meanx case aa_cortexr:
-+			// meanx DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
-+			// meanx cortexr_probe(ap, base_address);
-+			// meanx break;
-+			/* Handle when the component is a CoreSight component ROM table */
-+			// meanx case aa_rom_table:
-+			// meanx if (pidr & PIDR_SIZE_MASK)
-+			// meanx DEBUG_ERROR("Fault reading ROM table\n");
-+			// meanx else
-+			// meanx adi_parse_coresight_v0_rom_table(ap, base_address, recursion, indent, pidr);
-+			// meanx break;
- 		default:
- 			break;
- 		}
++		// meanx case aa_cortexa:
++		// meanx DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
++		// meanx cortexa_probe(ap, base_address);
++		// meanx break;
++		// meanx case aa_cortexr:
++		// meanx DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
++		// meanx cortexr_probe(ap, base_address);
++		// meanx break;
+ 		/* Handle when the component is a CoreSight component ROM table */
+ 		case aa_rom_table:
+ 			if (pidr & PIDR_SIZE_MASK)
