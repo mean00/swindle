@@ -63,17 +63,26 @@ class SwdDirectionPin : public SwdPin
   public:
     SwdDirectionPin(lnBMPPins no) : SwdPin(no)
     {
+        dir_output();
     }
 
     void dir_input()
     {
         lnPinMode(_me, lnINPUT_FLOATING);
         tapInput();
+        currentDrive = false;
     }
+    bool dir()
+    {
+        return currentDrive;
+    }
+
     void dir_output()
     {
         lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED); // 10 Mhz
         tapOutput();
+        currentDrive = true;
     }
+    bool currentDrive;
 };
 /**/
