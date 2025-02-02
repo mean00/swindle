@@ -15,7 +15,7 @@ const lnPin _mapping[9] = {
     PC3, // 8 direction
 };
 
-#define PIN_ADC_NRESET_DIV_BY_TWO PA3 // this pins is connected to NRST/2
+#define PIN_ADC_NRESET_DIV_BY_TWO PA4 // this pins is connected to NRST/2
 #define PIN_ADC_NRESET_MULTIPLIER 1.  // 2.0 if divided by 2 , 1.0 if not divided
 
 #define LN_USB_INSTANCE 1
