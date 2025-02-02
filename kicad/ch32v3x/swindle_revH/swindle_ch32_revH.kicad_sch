@@ -6,7 +6,7 @@
 	(paper "A4")
 	(title_block
 		(title "Swindle CH32V303")
-		(rev "G")
+		(rev "H")
 	)
 	(lib_symbols
 		(symbol "2024-10-20_09-04-45:RT9013-33GB"
@@ -7714,7 +7714,7 @@
 			(uuid "3eab4891-a973-4e8b-b022-69f2de3111a4")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "lnBMP_ch32_revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "J5")
 					(unit 1)
@@ -7783,7 +7783,7 @@
 			(uuid "29a0d557-dfa6-4dd2-a4f8-b4591e75b6a9")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "lnBMP_ch32_revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C8")
 					(unit 1)
@@ -7850,7 +7850,7 @@
 			(uuid "23596b18-3c66-45e6-a2b8-1fe9b9231ed2")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "lnBMP_ch32_revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C3")
 					(unit 1)
@@ -7916,7 +7916,7 @@
 			(uuid "5eb47558-b79f-46e7-8912-fe0286af6680")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "lnBMP_ch32_revH"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR013")
 					(unit 1)
@@ -12263,7 +12263,7 @@
 		(dnp no)
 		(uuid "ec1e9184-2829-4a0c-b23d-b678c7ab127f")
 		(property "Reference" "R5"
-			(at 93.98 72.39 90)
+			(at 91.694 80.01 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12271,7 +12271,7 @@
 			)
 		)
 		(property "Value" "1k"
-			(at 93.98 74.93 90)
+			(at 94.742 80.01 90)
 			(effects
 				(font
 					(size 1.27 1.27)
