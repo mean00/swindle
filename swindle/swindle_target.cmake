@@ -60,19 +60,21 @@ ENDIF()
 #MESSAGE(STATUS "Restricting flags for rvTap to -Os")
 #
 # ===========================================================================================
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
-add_subdirectory( rs )
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
+ADD_SUBDIRECTORY( rs )
 # ===========================================================================================
 
-add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE} )
-target_include_directories( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories( libswindle PRIVATE ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
-target_include_directories( libswindle PRIVATE ${myB}/private_include)
-target_include_directories( libswindle PUBLIC  ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
-target_link_libraries( libswindle lnArduino tinyUsb)
-
+ADD_LIBRARY(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE} )
+TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
+TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${myB}/private_include)
+TARGET_INCLUDE_DIRECTORIES( libswindle PUBLIC  ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
+TARGET_LINK_LIBRARIES( libswindle lnArduino tinyUsb)
+IF(USE_GD32F3)
+  TARGET_COMPILE_DEFINITIONS( libswindle PUBLIC  USE_GD32F303)
+ENDIF()
 IF(USE_RP2040)
-  target_link_libraries( libswindle rplib )
+  TARGET_LINK_LIBRARIES( libswindle rplib )
 ENDIF()
 
 #---------

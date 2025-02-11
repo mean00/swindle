@@ -22,9 +22,11 @@ enum lnBMPPins
 #else
 #include "lnBMP_pinout_rp2040.h"
 #endif
-#elif defined(USE_STLINK_PINOUT)
-#include "lnBMP_pinout_stlink.h"
 #else
-#include "lnBMP_pinout_ln.h"
+#ifdef USE_GD32F303
+#include "lnBMP_pinout_ln_gd32f303.h"
+#else
+#include "lnBMP_pinout_ln_ch32v3xx.h"
+#endif
 #endif
 // EOF
