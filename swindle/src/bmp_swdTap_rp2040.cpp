@@ -45,13 +45,12 @@ extern "C"
 #include "lnRP2040_pio.h"
 extern "C"
 {
-#include "hardware/structs/clocks.h"
-    uint32_t clock_get_hz(enum clock_index clk_index);
 #include "bmp_pio_rvswd.h"
 #include "bmp_pio_swd.h"
 #include "platform_support.h"
 }
 #include "lnbmp_parity.h"
+#include "ln_rp_clocks.h"
 extern void gmp_gpio_init_adc();
 extern rpPIO *swdpio;
 extern rpPIO_SM *xsm;

@@ -45,8 +45,7 @@ extern "C"
 #include "lnRP2040_pio.h"
 extern "C"
 {
-#include "hardware/structs/clocks.h"
-    uint32_t clock_get_hz(enum clock_index clk_index);
+#include "ln_rp_clocks.h"
 }
 #include "bmp_pio_rvswd.h"
 #include "bmp_pio_swd.h"
