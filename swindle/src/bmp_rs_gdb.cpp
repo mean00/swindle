@@ -149,6 +149,9 @@ BufferGdb *usbGdb = NULL;
  *
  */
 extern void lnSoftSystemReset(void);
+#ifdef USE_RP2040 //
+extern void Rp2040ResetToFwUpload();
+#endif
 /**
  */
 void goDfu()
@@ -165,10 +168,10 @@ void goDfu()
     // + set marker in ram
     uint64_t *marker = (uint64_t *)0x0000000020000000;
     *marker = 0xDEADBEEFCC00FFEEULL;
-#else
-    reset_usb_boot(0, 0);
-#endif
     lnSoftSystemReset();
+#else
+    Rp2040ResetToFwUpload();
+#endif
 }
 
 /**
