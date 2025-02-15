@@ -2856,13 +2856,13 @@
 	)
 	(wire
 		(pts
-			(xy 118.11 92.71) (xy 115.57 92.71)
+			(xy 154.94 67.31) (xy 158.75 67.31)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "547e8d33-ee82-4e60-a37a-c9e48f90dc27")
+		(uuid "55617fa9-8bbe-463b-a637-692975422b86")
 	)
 	(wire
 		(pts
@@ -3116,6 +3116,16 @@
 	)
 	(wire
 		(pts
+			(xy 158.75 63.5) (xy 166.37 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "89fa18d1-d06d-4be8-ac48-5dc376ce36c3")
+	)
+	(wire
+		(pts
 			(xy 120.65 40.64) (xy 124.46 40.64)
 		)
 		(stroke
@@ -3173,6 +3183,16 @@
 			(type default)
 		)
 		(uuid "a68b3358-9af4-4ba1-ab3c-ed07c7b7a9de")
+	)
+	(wire
+		(pts
+			(xy 158.75 67.31) (xy 158.75 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a6a47636-2d38-4dcb-a82f-9186617ef08a")
 	)
 	(wire
 		(pts
@@ -3522,28 +3542,6 @@
 			)
 		)
 	)
-	(global_label "SWIO_DIR_3V"
-		(shape input)
-		(at 115.57 92.71 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "3b00597a-f297-4984-8abc-c95350c85609")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 100.6105 92.71 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "UART_TX"
 		(shape output)
 		(at 160.02 87.63 0)
@@ -3645,6 +3643,28 @@
 		(uuid "8c19d267-0e92-4121-b43a-907b7b25ccbe")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 185.9257 85.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "SWIO_DIR_3V"
+		(shape input)
+		(at 166.37 63.5 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "9594e529-1af0-4976-842f-f197f61761eb")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 181.3295 63.5 0)
 			(effects
 				(font
 					(size 1.27 1.27)
