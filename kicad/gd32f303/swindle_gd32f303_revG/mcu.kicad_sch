@@ -2766,7 +2766,7 @@
 	)
 	(wire
 		(pts
-			(xy 119.38 88.9) (xy 119.38 77.47)
+			(xy 114.3 88.9) (xy 114.3 77.47)
 		)
 		(stroke
 			(width 0)
@@ -2816,16 +2816,6 @@
 	)
 	(wire
 		(pts
-			(xy 119.38 77.47) (xy 121.92 77.47)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3eb702b7-e794-40e9-b997-27039bbd2bbf")
-	)
-	(wire
-		(pts
 			(xy 173.99 92.71) (xy 180.34 92.71)
 		)
 		(stroke
@@ -2866,6 +2856,16 @@
 	)
 	(wire
 		(pts
+			(xy 118.11 92.71) (xy 115.57 92.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "547e8d33-ee82-4e60-a37a-c9e48f90dc27")
+	)
+	(wire
+		(pts
 			(xy 189.23 105.41) (xy 191.77 105.41)
 		)
 		(stroke
@@ -2883,6 +2883,16 @@
 			(type default)
 		)
 		(uuid "594eb4ba-b44b-49a5-b430-bc4812900640")
+	)
+	(wire
+		(pts
+			(xy 121.92 82.55) (xy 118.11 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5c075ebc-ce4b-4366-b7dc-df679187d652")
 	)
 	(wire
 		(pts
@@ -3033,6 +3043,16 @@
 			(type default)
 		)
 		(uuid "7b23711f-abae-4ad1-b8d8-6e2f6b4fe462")
+	)
+	(wire
+		(pts
+			(xy 118.11 82.55) (xy 118.11 92.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7cc23fdf-0f21-4e23-a04b-41eaa28ad540")
 	)
 	(wire
 		(pts
@@ -3296,6 +3316,16 @@
 	)
 	(wire
 		(pts
+			(xy 114.3 77.47) (xy 121.92 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e1eb4039-e4dc-4f15-89c3-1fe22d91b2f1")
+	)
+	(wire
+		(pts
 			(xy 154.94 97.79) (xy 161.29 97.79)
 		)
 		(stroke
@@ -3336,7 +3366,7 @@
 	)
 	(wire
 		(pts
-			(xy 104.14 88.9) (xy 119.38 88.9)
+			(xy 104.14 88.9) (xy 114.3 88.9)
 		)
 		(stroke
 			(width 0)
@@ -3488,6 +3518,28 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "SWIO_DIR_3V"
+		(shape input)
+		(at 115.57 92.71 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "3b00597a-f297-4984-8abc-c95350c85609")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.6105 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 				(hide yes)
 			)
 		)
@@ -3953,7 +4005,7 @@
 			)
 		)
 		(property "Value" "8Mhz"
-			(at 110.744 76.962 90)
+			(at 106.172 73.406 90)
 			(effects
 				(font
 					(size 1.27 1.27)
