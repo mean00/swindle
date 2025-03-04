@@ -7,7 +7,7 @@ type my_c_str = *const i8;
 type my_c_str = *const u8;
 
 // Send data to the host...
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn gdb_out(fmt: *const u8) {
     let mut e = encoder::new();
     e.begin();

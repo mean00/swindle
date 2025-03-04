@@ -1,5 +1,5 @@
-use alloc::alloc::alloc;
 use alloc::alloc::Layout;
+use alloc::alloc::alloc;
 use cty::size_t;
 
 /*
@@ -42,7 +42,7 @@ pub fn xmaxu(a: usize, b: usize) -> usize {
 //https://stackoverflow.com/questions/59232877/how-to-allocate-structs-on-the-heap-without-taking-up-space-on-the-stack-in-stab
 
 //-----------
-extern "C" {
+unsafe extern "C" {
     pub fn malloc(size: size_t) -> *mut cty::c_void;
 }
 

@@ -23,7 +23,7 @@ const RPC_BUFFER_SIZE: usize = 512;
 static mut rpc_buffer: [u8; RPC_BUFFER_SIZE] = [0; RPC_BUFFER_SIZE];
 
 //_______________________________________
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_bmp_set_frequency_rs(fq: u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
@@ -34,7 +34,7 @@ pub fn remote_bmp_set_frequency_rs(fq: u32) -> bool {
     check_reply(reply, 8)
 }
 //_______________________________________
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_bmp_get_frequency_rs(fq: &mut u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
@@ -47,11 +47,11 @@ pub fn remote_bmp_get_frequency_rs(fq: &mut u32) -> bool {
     *fq = u8s_string_to_u32_le(&reply[1..]);
     true
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn bmp_set_frequency_c(fq: u32) {
     remote_bmp_set_frequency_rs(fq);
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn bmp_get_frequency_c() -> u32 {
     let mut fq: u32 = 0;
     remote_bmp_get_frequency_rs(&mut fq);
@@ -82,7 +82,7 @@ fn check_reply(reply: &[u8], expected: usize) -> bool {
     true
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_reset_rs() -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
@@ -99,7 +99,7 @@ pub fn remote_ch32_riscv_dmi_reset_rs() -> bool {
 /**
  *
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_read_rs(address: u32, value: &mut u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
@@ -118,7 +118,7 @@ pub fn remote_ch32_riscv_dmi_read_rs(address: u32, value: &mut u32) -> bool {
 /**
  *
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_write_rs(address: u32, value: u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
@@ -134,7 +134,7 @@ pub fn remote_ch32_riscv_dmi_write_rs(address: u32, value: u32) -> bool {
     true
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
@@ -151,9 +151,9 @@ pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
     true
 }
 //-------------------------------------------------------------------------------
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_adiv5_swd_write_no_check_rs(addr: u16, data: u32) -> bool {
-    bmplog!("lnAdiv5SwdWrite:Addr{:x}:Data{:x}\n",addr,data);
+    bmplog!("lnAdiv5SwdWrite:Addr{:x}:Data{:x}\n", addr, data);
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_WRITE]);
@@ -165,13 +165,13 @@ pub fn remote_adiv5_swd_write_no_check_rs(addr: u16, data: u32) -> bool {
     if !check_reply(reply, 8) {
         gdb_print!("Incorret reply to adiv_swd_write\n");
         return false;
-    }    
+    }
     true
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 //---------------------
 pub fn remote_raw_swd_write_rs(tick: u32, value: u32) {
-    bmplog!("lnraw_swd_write:Tick{:x}:Value{:x}\n",tick,value);
+    bmplog!("lnraw_swd_write:Tick{:x}:Value{:x}\n", tick, value);
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_RAW_WRITE]);
@@ -185,9 +185,9 @@ pub fn remote_raw_swd_write_rs(tick: u32, value: u32) {
     }
 }
 //---------------------
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_adiv5_swd_read_no_check_rs(addr: u16) -> u32 {
-    bmplog!("lnadiv5_swd_read:Addr{:x}\n",addr);
+    bmplog!("lnadiv5_swd_read:Addr{:x}\n", addr);
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_READ]);
@@ -201,9 +201,14 @@ pub fn remote_adiv5_swd_read_no_check_rs(addr: u16) -> u32 {
     }
     u8s_string_to_u32_le(&reply[1..])
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn remote_adiv5_swd_raw_access_rs(rnw: u8, addr: u16, value: u32, fault: &mut u32) -> u32 {
-    bmplog!("lnadiv5_swd_raw_access:rnw{:x}, addr {:x}, value {:x} \n",rnw,addr,value);
+    bmplog!(
+        "lnadiv5_swd_raw_access:rnw{:x}, addr {:x}, value {:x} \n",
+        rnw,
+        addr,
+        value
+    );
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_LOWLEVEL]);

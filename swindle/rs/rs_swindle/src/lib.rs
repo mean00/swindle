@@ -45,20 +45,20 @@ fn clear_autoauto() {
         autoauto = None;
     }
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn rngdbstub_init() {
     unsafe {
         autoauto = Some(gdb_stream::<INPUT_BUFFER_SIZE>::new());
     }
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn rngdbstub_shutdown() {
     clear_autoauto();
 }
 /*
  *
  */
-extern "C" {
+unsafe extern "C" {
     fn rngdb_send_data_c(sz: u32, ptr: *const cty::c_uchar);
     fn rngdb_output_flush_c();
 }
@@ -87,7 +87,7 @@ fn rngdb_send_data_u8(data: &[u8]) {
  *
  *
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     let mut data_as_slice: &[u8];
     unsafe {
@@ -107,7 +107,7 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     // the target is stopped
     // we can parse the incoming commands
     match get_autoauto() {
-        Some(ref mut x) => {
+        Some(x) => {
             while !data_as_slice.is_empty() {
                 let consumed: usize;
                 let state: RESULT_AUTOMATON;

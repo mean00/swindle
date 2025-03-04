@@ -1,5 +1,5 @@
 use crate::bmp;
-use crate::commands::{exec_one, CallbackType, CommandTree, HelpTree};
+use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_decimal_to_u32};
@@ -13,7 +13,7 @@ use crate::{bmplog, bmpwarning, gdb_print};
 static mut targetCommandTree: Option<&[CommandTree]> = None;
 static mut targetHelpTree: Option<&[HelpTree]> = None;
 //
-extern "C" {
+unsafe extern "C" {
     pub fn _Z17lnSoftSystemResetv();
 }
 /*
@@ -165,24 +165,71 @@ const mon_command_tree: [CommandTree; 17] = [
     }, //
 ];
 //
-const help_tree : [HelpTree;16]=
-[
-    HelpTree{ command: "help",help :"Display help." },
-    HelpTree{ command: "bmp",help :"Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp.." },
-    HelpTree{ command: "boards",help :"Display supported boards. This is set at build time." },
-    HelpTree{ command: "ch32v3_obr",help :"Read/write the read protection status."},
-    HelpTree{ command: "ch32v3_option_byte",help :"Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f."},
-    HelpTree{ command: "fq or frequency",help :"set/get SWD frequency."},
-    HelpTree{ command: "fos",help :"Enable FreeRTOS support." },    
-    HelpTree{ command: "os_info",help :"Dump FreeRTOS internal state." },
-    HelpTree{ command: "ram",help :"Display stats about Ram usage." },
-    HelpTree{ command: "reboot",help :"Reboot the debugger." },
-    HelpTree{ command: "reset",help :"Reset the target." },
-    HelpTree{ command: "rvswdp_scan",help:"Probe WCH RISCV device(s)." },
-    HelpTree{ command: "swdp_scan",help :"Probe device(s) over SWD. You might want to increase wait state if it fails." },
-    HelpTree{ command: "version",help :"Display version." },
-    HelpTree{ command: "voltage",help :"Display target voltage." },
-    HelpTree{ command: "ws",help :"Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is." },
+const help_tree: [HelpTree; 16] = [
+    HelpTree {
+        command: "help",
+        help: "Display help.",
+    },
+    HelpTree {
+        command: "bmp",
+        help: "Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp..",
+    },
+    HelpTree {
+        command: "boards",
+        help: "Display supported boards. This is set at build time.",
+    },
+    HelpTree {
+        command: "ch32v3_obr",
+        help: "Read/write the read protection status.",
+    },
+    HelpTree {
+        command: "ch32v3_option_byte",
+        help: "Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f.",
+    },
+    HelpTree {
+        command: "fq or frequency",
+        help: "set/get SWD frequency.",
+    },
+    HelpTree {
+        command: "fos",
+        help: "Enable FreeRTOS support.",
+    },
+    HelpTree {
+        command: "os_info",
+        help: "Dump FreeRTOS internal state.",
+    },
+    HelpTree {
+        command: "ram",
+        help: "Display stats about Ram usage.",
+    },
+    HelpTree {
+        command: "reboot",
+        help: "Reboot the debugger.",
+    },
+    HelpTree {
+        command: "reset",
+        help: "Reset the target.",
+    },
+    HelpTree {
+        command: "rvswdp_scan",
+        help: "Probe WCH RISCV device(s).",
+    },
+    HelpTree {
+        command: "swdp_scan",
+        help: "Probe device(s) over SWD. You might want to increase wait state if it fails.",
+    },
+    HelpTree {
+        command: "version",
+        help: "Display version.",
+    },
+    HelpTree {
+        command: "voltage",
+        help: "Display target voltage.",
+    },
+    HelpTree {
+        command: "ws",
+        help: "Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is.",
+    },
 ];
 /*
  *
@@ -432,7 +479,7 @@ fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
  *
  *
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn _fq(_command: &str, args: &[&str]) -> bool {
     if args.is_empty() {
         let f: u32 = bmp::bmp_get_frequency();
@@ -456,7 +503,7 @@ pub fn _fq(_command: &str, args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
-#[no_mangle]
+#[unsafe(no_mangle)]
 static mut autoreset: u32 = 1;
 pub fn set_enable_reset(nw: u32) {
     unsafe {

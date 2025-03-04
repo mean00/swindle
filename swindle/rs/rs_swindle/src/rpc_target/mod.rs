@@ -29,7 +29,7 @@ fn rpc_message_out_no_flush(message: &[u8]) {
 
 /*
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_wrapper(input: &[u8]) -> bool {
     if input.len() < 2
     // unlikely...?
@@ -93,7 +93,7 @@ fn rpc_reply_full_error(complex: &[u8]) {
 /*
  *
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_reply_string(s: &[u8]) {
     let mut reply = rpc_reply_encoder::new();
     reply.add_string(s);
@@ -153,7 +153,7 @@ fn reply_adiv5_block(fault: i32, buffer: &[u8]) {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_lnadiv_packet(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("\tlnadiv packet\n");
     match parser.next_cmd() {
@@ -208,7 +208,7 @@ fn rpc_lnadiv_packet(parser: &mut rpc_parameter_parser) -> bool {
 
 /*
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_hl_packet_v3(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("\thl packet\n");
     let cmd = parser.next_cmd();
@@ -236,7 +236,7 @@ fn rpc_hl_packet_v3(parser: &mut rpc_parameter_parser) -> bool {
 }
 /*
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_gen_packet(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("\tgen packet\n");
 
@@ -308,7 +308,7 @@ fn rpc_gen_packet(parser: &mut rpc_parameter_parser) -> bool {
 /*
 
 */
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_swdp_packet(parser: &mut rpc_parameter_parser) -> bool {
     bmplog!("\tswd:\n");
     let cmd = parser.next_cmd();
@@ -334,7 +334,7 @@ fn rpc_jtag_packet(_parser: &mut rpc_parameter_parser) -> bool {
 /*
  *
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_rv_packet(parser: &mut rpc_parameter_parser) -> bool {
     match parser.next_cmd() {
         RPC_RV_RESET => {
@@ -507,7 +507,7 @@ pub fn rpc(input: &[u8]) -> bool {
 /*
  * \fn rpc_swindle_packet
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn rpc_swindle_packet(parser: &mut rpc_parameter_parser) -> bool {
     match parser.next_cmd() {
         RPC_SWINDLE_CRC32 => {

@@ -63,7 +63,7 @@ fn reply_wp(prefix: &str, num: u32, prefix2: &str, num2: u32) {
     e.end();
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn rngdbstub_poll() {
     // this is called regularily
     let check: bool;
