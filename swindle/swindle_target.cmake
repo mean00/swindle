@@ -16,6 +16,7 @@ SET(BRIDGE_SRCS
                 ${B}/bmp_gpio.cpp
                 ${B}/bmp_adc${EXTRA}.cpp
                 ${B}/bmp_serial.cpp
+                ${B}/bmp_cdc_logger.cpp
                 ${B}/bmp_rs_gdb.cpp
                 ${B}/bmp_jtagstubs.cpp
                 ${B}/bmp_tap.cpp

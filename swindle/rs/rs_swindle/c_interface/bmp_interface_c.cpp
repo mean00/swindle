@@ -397,7 +397,9 @@ extern "C"
         target_halt_resume(cur_target, step);
         return true;
     }
-
+    /**
+     *
+     */
     unsigned int bmp_poll_target_c(unsigned int *watchpoint)
     {
         if (!bmp_attached_c())
@@ -430,9 +432,14 @@ extern "C"
     /*
      *
      */
+    extern "C" void usbCdc_Logger(int n, const char *data);
     extern "C" void swindleRedirectLog_c(int32_t toggle)
     {
         Logger("Setting redirect to usb to %d\n", toggle);
+        if (toggle)
+            setLogger(usbCdc_Logger);
+        else
+            setLogger(NULL);
         Logger("Setting redirect to usb to %d\n", toggle);
     }
     /*

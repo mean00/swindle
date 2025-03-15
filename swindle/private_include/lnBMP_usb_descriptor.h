@@ -30,7 +30,8 @@ const char *descriptor[] = {
     "45678",                                 // 3: Serials, should use chip ID
     "swindle GDB Server",                    // 4: CDC Interface
     "swindle GDB Uart",                      // 5: CDC Interface
-    "swindle DFU",                           // 6: DFU Interface
+    "swindle GDB Log",                       // 6: CDC Interface
+    "swindle DFU",                           // 7: DFU Interface
 };
 #endif
 const tusb_desc_device_t desc_device = {
@@ -64,6 +65,8 @@ enum
     ITF_NUM_CDC_0_DATA,
     ITF_NUM_CDC_1,
     ITF_NUM_CDC_1_DATA,
+    ITF_NUM_CDC_2,
+    ITF_NUM_CDC_2_DATA,
     ITF_NUM_DFU_RT,
     ITF_NUM_TOTAL
 };
@@ -77,6 +80,10 @@ enum
 #define EPNUM_CDC_1_OUT 0x04
 #define EPNUM_CDC_1_IN 0x84
 
+#define EPNUM_CDC_2_NOTIF 0x85
+#define EPNUM_CDC_2_OUT 0x06
+#define EPNUM_CDC_2_IN 0x86
+
 const uint8_t desc_fs_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
@@ -86,7 +93,9 @@ const uint8_t desc_fs_configuration[] = {
 
     // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
-    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 6, 0x0d, 1000, 4096),
+    // 3rd CDC Logg
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 6, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 64),
+    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 7, 0x0d, 1000, 4096),
 
 };
 
@@ -101,7 +110,8 @@ const uint8_t desc_hs_configuration[] = {
 
     // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
-    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 6, 0x0d, 1000, 4096),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 6, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 512),
+    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 7, 0x0d, 1000, 4096),
 };
 
 // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed

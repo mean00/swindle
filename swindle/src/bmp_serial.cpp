@@ -45,189 +45,6 @@ class lnPump
     uint32_t _dex, _limit;
     uint8_t _buffer[LN_BMP_BUFFER_SIZE];
 };
-//
-class BMPUsbLogger : public lnTask
-{
-
-  public:
-    /**
-     * @brief Construct a new BMPSerial object
-     *
-     * @param usbInst
-     * @param serialInstance
-     */
-    BMPUsbLogger(int usbInst) : lnTask("usblogger", TASK_BMP_SERIAL_PRIORITY, TASK_BMP_SERIAL_STACK_SIZE)
-    {
-        _usbInstance = usbInst;
-        _evGroup = new lnFastEventGroup;
-        _usb = new lnUsbCDC(_usbInstance);
-        start();
-    }
-
-    /**
-     * @brief
-     *
-     */
-    void run()
-    {
-        _evGroup->takeOwnership();
-        lnDelayMs(50); // let the gdb part start first
-        _usb->setEventHandler(loggerCdcEventHandler, this);
-        uint32_t ev = USB_EVENTS;
-        bool oldbusy = true;
-        while (true)
-        {
-            bool busy = false;
-            busy = busy || pump();
-            if (!busy)
-            {
-                if (oldbusy)
-                {
-                    //_usb->flush();
-                }
-                oldbusy = false;
-                ev = _evGroup->waitEvents(USB_EVENTS);
-            }
-            oldbusy = true;
-        }
-    }
-    /**
-     * @brief
-     *
-     * @param ev
-     * @return true
-     * @return false
-     */
-    bool pump()
-    {
-#if KKK
-        int nb = 0;
-        switch ((int)_usb2serial._txing)
-        {
-        case 0: // idle
-        {
-            if ((ev & USB_EVENT_READ) == 0) // no event
-                return false;
-            nb = _usb->read(_usb2serial._buffer, LN_BMP_BUFFER_SIZE);
-            if (nb == 0)
-                return false;          // nothing to do
-            _usb2serial._txing = true; // prepare for txing, will happen at next round
-            _usb2serial._limit = nb;
-            _usb2serial._dex = 0;
-            return true;
-        }
-        break;
-        case 1: {
-            int avail = (int)(_usb2serial._limit - _usb2serial._dex);
-            uint8_t *ptr = _usb2serial._buffer + _usb2serial._dex;
-            XXD("<U2s:>");
-            XXD_C(avail, (const char *)(ptr));
-            int txed = _serial->transmitNoBlock(avail, ptr);
-            if (txed <= 0)
-                return false; // will wait for the tx done event
-
-            _usb2serial._dex += txed;
-            if (_usb2serial._limit == _usb2serial._dex) // all done
-            {
-                _usb2serial._txing = false;
-                _evGroup->setEvents(USB_EVENTS); // for re-evaluation at next loop
-            }
-            return true;
-        }
-        break;
-        default:
-            break;
-        }
-#endif
-        return false;
-    }
-
-    /**
-     *
-     *
-     */
-    static void _logCallback(void *cookie, lnSerialCore::Event event)
-    {
-        // BMPSerial *me = (BMPSerial *)cookie;
-        // me->serialCallback(event);
-        xAssert(0);
-    }
-    /**
-     *
-     *
-     */
-    void logCallback(lnSerialCore::Event event)
-    {
-        xAssert(0);
-#if 0
-        switch (event)
-        {
-
-        case lnSerialCore::dataAvailable:
-            _evGroup->setEvents(SERIAL_EVENT);
-            break;
-        case lnSerialCore::txDone:
-            _evGroup->setEvents(SERIAL_EVENT);
-            break;
-        default:
-            xAssert(0);
-            break;
-        }
-#endif
-    }
-    static void loggerCdcEventHandler(void *cookie, int interface, lnUsbCDC::lnUsbCDCEvents event, uint32_t payload)
-    {
-        BMPUsbLogger *bg = (BMPUsbLogger *)cookie;
-        xAssert(interface == bg->_usbInstance);
-        bg->cdcEventHandler(event, payload);
-    }
-    /**
-     *
-     *
-     */
-    void cdcEventHandler(lnUsbCDC::lnUsbCDCEvents event, uint32_t payload)
-    {
-        switch (event)
-        {
-        case lnUsbCDC::CDC_SET_SPEED:
-            Logger("CDC SET SPEED\n");
-            _serial->setSpeed((int)payload);
-            break;
-        case lnUsbCDC::CDC_DATA_AVAILABLE:
-            _evGroup->setEvents(USB_EVENT_READ);
-            break;
-        case lnUsbCDC::CDC_SESSION_START:
-            Logger("CDC SESSION START\n");
-            if (!_connected)
-            {
-                _serial->enableRx(true);
-            }
-            _connected = true;
-            break;
-        case lnUsbCDC::CDC_WRITE_AVAILABLE:
-            _evGroup->setEvents(USB_EVENT_WRITE);
-            break;
-        case lnUsbCDC::CDC_SESSION_END: // it is unlikely we'll get that one, some prg always sets it to 1, it works one
-                                        // time
-            //_connected = false; The DTR acts funky!
-            Logger("CDC SESSION END\n");
-            break;
-        default:
-            xAssert(0);
-            break;
-        }
-    }
-
-  protected:
-    bool _connected;
-    int _usbInstance, _serialInstance;
-    lnSerialRxTx *_serial;
-    lnUsbCDC *_usb;
-
-    lnFastEventGroup *_evGroup;
-    lnPump _usb2serial;
-    lnPump _serial2usb;
-};
 /**
  * @brief
  *
@@ -419,7 +236,6 @@ class BMPSerial : public lnTask
     {
         switch (event)
         {
-
         case lnSerialCore::dataAvailable:
             _evGroup->setEvents(SERIAL_EVENT);
             break;
@@ -430,12 +246,6 @@ class BMPSerial : public lnTask
             xAssert(0);
             break;
         }
-    }
-    static void gdbCdcEventHandler(void *cookie, int interface, lnUsbCDC::lnUsbCDCEvents event, uint32_t payload)
-    {
-        BMPSerial *bg = (BMPSerial *)cookie;
-        xAssert(interface == bg->_usbInstance);
-        bg->cdcEventHandler(event, payload);
     }
     /**
      *
@@ -473,6 +283,13 @@ class BMPSerial : public lnTask
             break;
         }
     }
+    //
+    static void gdbCdcEventHandler(void *cookie, int interface, lnUsbCDC::lnUsbCDCEvents event, uint32_t payload)
+    {
+        BMPSerial *bg = (BMPSerial *)cookie;
+        xAssert(interface == bg->_usbInstance);
+        bg->cdcEventHandler(event, payload);
+    }
 
   protected:
     bool _connected;
@@ -484,7 +301,7 @@ class BMPSerial : public lnTask
     lnPump _usb2serial;
     lnPump _serial2usb;
 };
-
+extern void initCDCLogger();
 void serialInit()
 {
 #ifdef USE_RP2040
@@ -493,6 +310,6 @@ void serialInit()
 #endif
     // bridge CDC ACMxxx to Serial port yy
     BMPSerial *serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE);
-    BMPUsbLogger *logger = new BMPUsbLogger(LN_LOGGER_INSTANCE);
+    initCDCLogger();
     EXTRA_SETUP();
 }
