@@ -217,7 +217,7 @@ const help_tree: [HelpTree; 17] = [
     },
     HelpTree {
         command: "redirect 0|1",
-        help: "Redirect log to usb1. mon redirect 1 to redirect, mon redirect 0 to not disable",
+        help: "Redirect log to usb2. mon redirect 1 to redirect, mon redirect 0 to not disable",
     },
     HelpTree {
         command: "reset",

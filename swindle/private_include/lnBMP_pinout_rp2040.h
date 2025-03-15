@@ -18,6 +18,7 @@ const lnPin _mapping[9] = {
 
 #define LN_USB_INSTANCE 1
 #define LN_SERIAL_INSTANCE 1
+#define LN_LOGGER_INSTANCE 2
 
 #define LN_UART_RX GPIO5
 #define LN_UART_TX GPIO4
