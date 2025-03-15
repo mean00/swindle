@@ -21,6 +21,12 @@ fn ret_to_bool(ret: core::ffi::c_int) -> bool {
     }
     false
 }
+fn bool_to_c(ret: bool) -> core::ffi::c_int {
+    if ret {
+        return 1;
+    }
+    return 0;
+}
 
 pub struct MemoryBlock {
     pub start_address: u32,
@@ -315,6 +321,12 @@ pub fn bmp_poll() -> HaltState {
 //----------------------------------
 pub fn rpc_init_swd() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rpc_init_swd_c()) }
+}
+//
+pub fn swindleRedirectLog(onoff: bool) {
+    unsafe {
+        rn_bmp_cmd_c::swindleRedirectLog_c(bool_to_c(onoff));
+    }
 }
 /*
 ----------------- platform --------------

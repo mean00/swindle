@@ -355,6 +355,9 @@ unsafe extern "C" {
     ) -> i32;
 }
 unsafe extern "C" {
+    pub fn swindleRedirectLog_c(onoff: bool_);
+}
+unsafe extern "C" {
     pub fn platform_nrst_set_val(assert: bool_);
 }
 unsafe extern "C" {

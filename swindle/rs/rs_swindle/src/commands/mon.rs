@@ -2,6 +2,7 @@ use crate::bmp;
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
+use crate::parsing_util;
 use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_decimal_to_u32};
 use alloc::vec::Vec;
 //
@@ -26,7 +27,15 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 17] = [
+const mon_command_tree: [CommandTree; 18] = [
+    CommandTree {
+        command: "redirect",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(_redirect),
+        start_separator: " ",
+        next_separator: " ",
+    },
     CommandTree {
         command: "enablereset",
         min_args: 0,
@@ -165,7 +174,7 @@ const mon_command_tree: [CommandTree; 17] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 16] = [
+const help_tree: [HelpTree; 17] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -207,6 +216,10 @@ const help_tree: [HelpTree; 16] = [
         help: "Reboot the debugger.",
     },
     HelpTree {
+        command: "redirect 0|1",
+        help: "Redirect log to usb1. mon redirect 1 to redirect, mon redirect 0 to not disable",
+    },
+    HelpTree {
         command: "reset",
         help: "Reset the target.",
     },
@@ -232,6 +245,17 @@ const help_tree: [HelpTree; 16] = [
     },
 ];
 /*
+ *
+ */
+fn _redirect(_command: &str, args: &[&str]) -> bool {
+    let onoff: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
+    #[cfg(not(feature = "hosted"))]
+    bmp::swindleRedirectLog(onoff != 0);
+    encoder::reply_ok();
+    true
+}
+/*
+ *
  *
  */
 fn _target_reset(_command: &str, _args: &[&str]) -> bool {

@@ -427,7 +427,14 @@ extern "C"
     {
         return (uint32_t)xPortGetMinimumEverFreeHeapSize();
     }
-
+    /*
+     *
+     */
+    extern "C" void swindleRedirectLog_c(int32_t toggle)
+    {
+        Logger("Setting redirect to usb to %d\n", toggle);
+        Logger("Setting redirect to usb to %d\n", toggle);
+    }
     /*
 
     z1,addr,kind’ insert hw breakpoint

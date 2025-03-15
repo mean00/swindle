@@ -76,6 +76,7 @@ int32_t bmp_adiv5_mem_read_c(const uint32_t device_index, const uint32_t ap_sele
 
 int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
                               const uint32_t address, const uint32_t align, const uint8_t *buffer, uint32_t len);
+void swindleRedirectLog_c(bool onoff);
 
 // platform
 void platform_nrst_set_val(bool assert);
