@@ -250,7 +250,7 @@ extern "C" void remote_v4_adiv6_mem_write_bytes()
 {
     xAssert(0);
 }
-extern "C" bool nrf51_ctrl_ap_probe(adiv5_access_port_s *ap)
+extern "C" bool x_nrf51_ctrl_ap_probe(adiv5_access_port_s *ap)
 {
     (void)ap;
     return false;
