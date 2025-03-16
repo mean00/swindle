@@ -182,6 +182,9 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
             if (expired)
             {
                 DEBUG_ERROR("SWD access resulted in wait, aborting\n");
+                if (dp->fault == SWD_ACK_WAIT)
+                    return 0;
+                dp->fault = ack; // prevent recursion
                 dp->abort(dp, ADIV5_DP_ABORT_DAPABORT);
                 dp->fault = ack;
                 return 0;
