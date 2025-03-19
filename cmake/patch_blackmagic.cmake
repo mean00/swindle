@@ -13,6 +13,7 @@ APPLY_PATCH_IF_NEEDED3(patched33 ${BMP_PATCH_FOLDER}/33blackmagic_redirect_adiv5
 APPLY_PATCH_IF_NEEDED3(patched36 ${BMP_PATCH_FOLDER}/36blackmagic_remove_printf_warning_v3.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
 APPLY_PATCH_IF_NEEDED3(patched37 ${BMP_PATCH_FOLDER}/37blackmagic_hack_remote_protocolv3.patch      ${LNBMP_TOP_FOLDER}   "dirty hack to bring back remote protocol v3, probably not the right way")
 APPLY_PATCH_IF_NEEDED3(patched40 ${BMP_PATCH_FOLDER}/40blackmagic_custom_crc.patch ${LNBMP_TOP_FOLDER}   "compute CRC via a stub.")
+APPLY_PATCH_IF_NEEDED3(patched43 ${BMP_PATCH_FOLDER}/42blackmagic_psplim_msplim.patch ${LNBMP_TOP_FOLDER}   "add psplim and msplim.") 
 # Merged upstream
 #APPLY_PATCH_IF_NEEDED3(patched80 ${BMP_PATCH_FOLDER}/80blackmagic_support_watchpoint_on_cm33.patch ${LNBMP_TOP_FOLDER}   "fix cortemx v8m watchpoint .")
 #>>APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/25blackmagic_riscv_disable_interrupt_during_step.patch ${LNBMP_TOP_FOLDER}   "disable interrupt during single step")
