@@ -12,15 +12,18 @@ index 58312329..2c8f7434 100644
  
  adiv5_access_port_s *cortex_ap(target_s *target);
 diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index a6445de5..9911ea28 100644
+index a6445de5..ff88e7e6 100644
 --- a/src/target/cortexm.c
 +++ b/src/target/cortexm.c
-@@ -101,6 +101,9 @@ static const uint8_t regnum_cortex_m[CORTEXM_GENERAL_REG_COUNT] = {
+@@ -98,9 +98,12 @@ static const uint8_t regnum_cortex_m[CORTEXM_GENERAL_REG_COUNT] = {
+ 	0x14U,                                                                /* special */
+ };
+ 
++/* NB the M23 has trustzone but no psplim/msplim, it seems safe to read them, it just returns zero */
  static const uint8_t regnum_cortex_m_trustzone[CORTEXM_TRUSTZONE_REG_COUNT] = {
  	0x18U, 0x19U, /* Non-secure msp + psp */
- 	0x1aU, 0x1bU, /* Secure msp + psp */
-+				  /* NB the M23 has trustzone but no psplim/msplim, it seems safe to read them, it just returns zero */
 +	0x1eU, 0x1fU, /* Non-Secure msplim + psplim (chap d.1.2)*/
+ 	0x1aU, 0x1bU, /* Secure msp + psp */
 +	0x1cU, 0x1dU, /* Secure msplim + psplim */
  };
  
