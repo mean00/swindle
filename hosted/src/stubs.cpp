@@ -255,5 +255,10 @@ extern "C" bool x_nrf51_ctrl_ap_probe(adiv5_access_port_s *ap)
     (void)ap;
     return false;
 }
-
+extern "C" void setLogger(void *)
+{
+}
 // -- eof --
+extern "C" void usbCdc_Logger(int n, const char *data)
+{
+}
