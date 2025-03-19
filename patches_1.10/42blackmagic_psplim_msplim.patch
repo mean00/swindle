@@ -1,0 +1,109 @@
+diff --git a/src/target/cortex.h b/src/target/cortex.h
+index 58312329..2c8f7434 100644
+--- a/src/target/cortex.h
++++ b/src/target/cortex.h
+@@ -79,7 +79,7 @@
+ #define CORTEX_FLOAT_REG_COUNT      33U
+ #define CORTEX_DOUBLE_REG_COUNT     17U
+ #define CORTEXM_GENERAL_REG_COUNT   20U /* General purpose register count for Cortex-M cores */
+-#define CORTEXM_TRUSTZONE_REG_COUNT 4U  /* TrustZone register count for Cortex-M cores */
++#define CORTEXM_TRUSTZONE_REG_COUNT 8U  /* TrustZone register count for Cortex-M cores */
+ #define CORTEXAR_GENERAL_REG_COUNT  17U /* General purpose register count for Cortex-A/R cores */
+ 
+ adiv5_access_port_s *cortex_ap(target_s *target);
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+index a6445de5..9911ea28 100644
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -101,6 +101,9 @@ static const uint8_t regnum_cortex_m[CORTEXM_GENERAL_REG_COUNT] = {
+ static const uint8_t regnum_cortex_m_trustzone[CORTEXM_TRUSTZONE_REG_COUNT] = {
+ 	0x18U, 0x19U, /* Non-secure msp + psp */
+ 	0x1aU, 0x1bU, /* Secure msp + psp */
++				  /* NB the M23 has trustzone but no psplim/msplim, it seems safe to read them, it just returns zero */
++	0x1eU, 0x1fU, /* Non-Secure msplim + psplim (chap d.1.2)*/
++	0x1cU, 0x1dU, /* Secure msplim + psplim */
+ };
+ 
+ static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
+@@ -120,6 +123,7 @@ static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
+  */
+ 
+ // Strings for the names of the Cortex-M's special purpose registers.
++#define CORTEXM_COMMON_REGISTERS_COUNT 10 /* The registers < CORTEXM_COMMON_REGISTERS_COUNT are always present */
+ static const char *cortex_m_spr_names[] = {
+ 	"sp",
+ 	"lr",
+@@ -131,6 +135,8 @@ static const char *cortex_m_spr_names[] = {
+ 	"basepri",
+ 	"faultmask",
+ 	"control",
++	"msplim",
++	"psplim",
+ };
+ 
+ // The "type" field for each Cortex-M special purpose register.
+@@ -145,6 +151,8 @@ static const gdb_reg_type_e cortex_m_spr_types[] = {
+ 	GDB_TYPE_UNSPECIFIED, // basepri
+ 	GDB_TYPE_UNSPECIFIED, // faultmask
+ 	GDB_TYPE_UNSPECIFIED, // control
++	GDB_TYPE_DATA_PTR,    // msplim
++	GDB_TYPE_DATA_PTR,    // psplim
+ };
+ 
+ // clang-format off
+@@ -165,6 +173,8 @@ static const gdb_reg_save_restore_e cortex_m_spr_save_restores[] = {
+ 	GDB_SAVE_RESTORE_NO,          // basepri
+ 	GDB_SAVE_RESTORE_NO,          // faultmask
+ 	GDB_SAVE_RESTORE_NO,          // control
++	GDB_SAVE_RESTORE_NO,          // msplim
++	GDB_SAVE_RESTORE_NO,          // psplim
+ };
+ 
+ // clang-format off
+@@ -185,6 +195,8 @@ static const uint8_t cortex_m_spr_bitsizes[] = {
+ 	8,  // basepri
+ 	8,  // faultmask
+ 	8,  // control
++	32, // msplim
++	32, // psplim
+ };
+ 
+ // clang-format off
+@@ -1347,8 +1359,16 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
+  *      <reg name="psp_ns" bitsize="32" save-restore="no" type="data_ptr"/>
+  *      <reg name="msp_s" bitsize="32" save-restore="no" type="data_ptr"/>
+  *      <reg name="psp_s" bitsize="32" save-restore="no" type="data_ptr"/>
++ *      <reg name="msplim_ns" bitsize="32" type="data_ptr" save-restore="no"/>
++ *      <reg name="psplim_ns" bitsize="32" type="data_ptr" save-restore="no"/>
++ *      <reg name="msplim_s" bitsize="32" type="data_ptr" save-restore="no"/>
++ *      <reg name="psplim_s" bitsize="32" type="data_ptr" save-restore="no"/>
++ *
+  *  </feature>
+  */
++static const size_t indeces[] = {4U, 5U, 10U, 11U};
++static const size_t nb_indeces = sizeof(indeces) / sizeof(size_t);
++
+ static size_t cortexm_build_target_secext_description(char *const buffer, const size_t max_length)
+ {
+ 	size_t offset = 0U;
+@@ -1359,8 +1379,9 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
+ 
+ 	/* Loop through first the non-secure and then the secure registers */
+ 	for (uint8_t mode = 0U; mode <= 1U; ++mode) {
+-		/* Then loop through the MSP and PSP entries */
+-		for (size_t i = 4U; i <= 5U; ++i) {
++		/* Then loop through the MSP,PSP, MSPLIM and PSPLIM entries */
++		for (size_t index = 0U; index < nb_indeces; ++index) {
++			size_t i = indeces[index];
+ 			if (max_length != 0U)
+ 				print_size = max_length - offset;
+ 
+@@ -1466,7 +1487,7 @@ static size_t cortexm_build_target_description(
+ 	 * We'll use the 'associative arrays' defined for those values.
+ 	 * NOTE: unlike the other loops, this loop uses a size_t for its counter, as it's used to index into arrays.
+ 	 */
+-	for (size_t i = 0U; i < ARRAY_LENGTH(cortex_m_spr_names); ++i) {
++	for (size_t i = 0U; i < CORTEXM_COMMON_REGISTERS_COUNT; ++i) {
+ 		if (max_length != 0U)
+ 			print_size = max_length - offset;
+ 
