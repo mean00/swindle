@@ -22,7 +22,7 @@ index 58312329..ebe1c9da 100644
  
  #endif /* TARGET_CORTEX_H */
 diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index a6445de5..46d4aece 100644
+index a6445de5..aec2a53b 100644
 --- a/src/target/cortexm.c
 +++ b/src/target/cortexm.c
 @@ -48,8 +48,12 @@
@@ -100,17 +100,17 @@ index a6445de5..46d4aece 100644
  	"xpsr",
 +};
 +static const char *cortex_m_sys_names[CORTEXM_SYS_REG_COUNT] = {
++	"msp",
++	"psp",
++	"state",
++};
++static const char *cortex_m_trustzone_names[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
  	"msp",
  	"psp",
 -	"primask",
 -	"basepri",
 -	"faultmask",
 -	"control",
-+	"state",
-+};
-+static const char *cortex_m_trustzone_names[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
-+	"msp",
-+	"psp",
 +	"msplim",
 +	"psplim",
 +	"state",
@@ -358,7 +358,39 @@ index a6445de5..46d4aece 100644
  	}
  	return -1;
  }
-@@ -1347,8 +1409,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
+@@ -743,9 +805,12 @@ static size_t cortexm_reg_read(target_s *target, uint32_t reg, void *data, size_
+ {
+ 	if (max < 4U)
+ 		return 0;
+-	uint32_t *reg_value = data;
+-	target_mem32_write32(target, CORTEXM_DCRSR, dcrsr_regnum(target, reg));
+-	*reg_value = target_mem32_read32(target, CORTEXM_DCRDR);
++	uint32_t *reg_value = data; // use the same scheme as read_reg**S**
++	adiv5_access_port_s *const ap = cortex_ap(target);
++	adi_ap_mem_access_setup(ap, CORTEXM_DHCSR, ALIGN_32BIT);
++	adi_ap_banked_access_setup(ap);
++	uint8_t translated = dcrsr_regnum(target, reg); /* NOTE : THIS IS WRONG FOR NON GDB ACCESS */
++	cortexm_read_reg_sequence(ap->dp, 1, &translated, reg_value);
+ 	return 4U;
+ }
+ 
+@@ -753,9 +818,12 @@ static size_t cortexm_reg_write(target_s *target, uint32_t reg, const void *data
+ {
+ 	if (max < 4U)
+ 		return 0;
+-	const uint32_t *reg_value = data;
+-	target_mem32_write32(target, CORTEXM_DCRDR, *reg_value);
+-	target_mem32_write32(target, CORTEXM_DCRSR, CORTEXM_DCRSR_REGWnR | dcrsr_regnum(target, reg));
++	adiv5_access_port_s *const ap = cortex_ap(target);
++	adi_ap_mem_access_setup(ap, CORTEXM_DHCSR, ALIGN_32BIT);
++	adi_ap_banked_access_setup(ap);
++	uint8_t translated = dcrsr_regnum(target, reg); /* NOTE : THIS IS WRONG FOR NON GDB ACCESS */
++	const uint32_t *reg_value = data;               // use the same scheme as read_reg**S**
++	cortexm_write_reg_sequence(ap->dp, 1, &translated, reg_value);
+ 	return 4U;
+ }
+ 
+@@ -1347,8 +1415,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
   *      <reg name="psp_ns" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="msp_s" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="psp_s" bitsize="32" save-restore="no" type="data_ptr"/>
@@ -373,7 +405,7 @@ index a6445de5..46d4aece 100644
  static size_t cortexm_build_target_secext_description(char *const buffer, const size_t max_length)
  {
  	size_t offset = 0U;
-@@ -1359,19 +1427,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
+@@ -1359,19 +1433,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
  
  	/* Loop through first the non-secure and then the secure registers */
  	for (uint8_t mode = 0U; mode <= 1U; ++mode) {
@@ -400,7 +432,7 @@ index a6445de5..46d4aece 100644
  		}
  	}
  
-@@ -1466,30 +1535,45 @@ static size_t cortexm_build_target_description(
+@@ -1466,30 +1541,45 @@ static size_t cortexm_build_target_description(
  	 * We'll use the 'associative arrays' defined for those values.
  	 * NOTE: unlike the other loops, this loop uses a size_t for its counter, as it's used to index into arrays.
  	 */
