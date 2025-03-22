@@ -1,18 +1,20 @@
 diff --git a/src/target/cortex.h b/src/target/cortex.h
-index 58312329..c1872ccc 100644
+index 58312329..ebe1c9da 100644
 --- a/src/target/cortex.h
 +++ b/src/target/cortex.h
-@@ -78,10 +78,13 @@
+@@ -76,12 +76,15 @@
+ #define CORTEX_CPUID_REVISION_MASK 0x00f00000U
+ #define CORTEX_CPUID_PATCH_MASK    0x0000000fU
  
++#define CORTEXM_GP_REG_COUNT        13U /* General purpose register count for Cortex-M cores r0 to r12 */
++#define CORTEXM_SP_REG_COUNT        04U /* sp lr pc xpsr */
++#define CORTEXM_SYS_REG_COUNT       03U /* Sys section : MSP/PSP/state */
++#define CORTEXM_TRUSTZONE_REG_COUNT 10U /* TrustZone register count for Cortex-M cores msp psp msplim psplim state x2 */
  #define CORTEX_FLOAT_REG_COUNT      33U
  #define CORTEX_DOUBLE_REG_COUNT     17U
 -#define CORTEXM_GENERAL_REG_COUNT   20U /* General purpose register count for Cortex-M cores */
 -#define CORTEXM_TRUSTZONE_REG_COUNT 4U  /* TrustZone register count for Cortex-M cores */
 -#define CORTEXAR_GENERAL_REG_COUNT  17U /* General purpose register count for Cortex-A/R cores */
-+#define CORTEXM_GP_REG_COUNT        13U /* General purpose register count for Cortex-M cores r0 r12 */
-+#define CORTEXM_SP_REG_COUNT        04U /* sp lr pc xpsr */
-+#define CORTEXM_SYS_REG_COUNT       3U  /* Sys section : MSP/PSP/basepri/... */
-+#define CORTEXM_TRUSTZONE_REG_COUNT 10U /* TrustZone register count for Cortex-M cores */
  
 +// obsolete, for compatibility with older lpc code
 +#define CORTEXM_GENERAL_REG_COUNT 20U
@@ -20,7 +22,7 @@ index 58312329..c1872ccc 100644
  
  #endif /* TARGET_CORTEX_H */
 diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index a6445de5..fa3587fb 100644
+index a6445de5..7fa5fbe2 100644
 --- a/src/target/cortexm.c
 +++ b/src/target/cortexm.c
 @@ -48,8 +48,12 @@
