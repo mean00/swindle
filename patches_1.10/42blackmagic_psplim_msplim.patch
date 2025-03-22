@@ -1,78 +1,344 @@
 diff --git a/src/target/cortex.h b/src/target/cortex.h
-index 58312329..2c8f7434 100644
+index 58312329..c1872ccc 100644
 --- a/src/target/cortex.h
 +++ b/src/target/cortex.h
-@@ -79,7 +79,7 @@
+@@ -78,10 +78,13 @@
+ 
  #define CORTEX_FLOAT_REG_COUNT      33U
  #define CORTEX_DOUBLE_REG_COUNT     17U
- #define CORTEXM_GENERAL_REG_COUNT   20U /* General purpose register count for Cortex-M cores */
+-#define CORTEXM_GENERAL_REG_COUNT   20U /* General purpose register count for Cortex-M cores */
 -#define CORTEXM_TRUSTZONE_REG_COUNT 4U  /* TrustZone register count for Cortex-M cores */
-+#define CORTEXM_TRUSTZONE_REG_COUNT 8U  /* TrustZone register count for Cortex-M cores */
- #define CORTEXAR_GENERAL_REG_COUNT  17U /* General purpose register count for Cortex-A/R cores */
+-#define CORTEXAR_GENERAL_REG_COUNT  17U /* General purpose register count for Cortex-A/R cores */
++#define CORTEXM_GP_REG_COUNT        13U /* General purpose register count for Cortex-M cores r0 r12 */
++#define CORTEXM_SP_REG_COUNT        04U /* sp lr pc xpsr */
++#define CORTEXM_SYS_REG_COUNT       3U  /* Sys section : MSP/PSP/basepri/... */
++#define CORTEXM_TRUSTZONE_REG_COUNT 10U /* TrustZone register count for Cortex-M cores */
  
++// obsolete, for compatibility with older lpc code
++#define CORTEXM_GENERAL_REG_COUNT 20U
  adiv5_access_port_s *cortex_ap(target_s *target);
+ 
+ #endif /* TARGET_CORTEX_H */
 diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index a6445de5..ff88e7e6 100644
+index a6445de5..fa3587fb 100644
 --- a/src/target/cortexm.c
 +++ b/src/target/cortexm.c
-@@ -98,9 +98,12 @@ static const uint8_t regnum_cortex_m[CORTEXM_GENERAL_REG_COUNT] = {
- 	0x14U,                                                                /* special */
- };
+@@ -48,8 +48,12 @@
+ #include <assert.h>
  
+ /* This is the size (in 32 bits integers) you must allocate when reading cortem registers */
+-#define CORTEXM_MAX_REG_COUNT (CORTEXM_GENERAL_REG_COUNT + CORTEX_FLOAT_REG_COUNT + CORTEXM_TRUSTZONE_REG_COUNT)
+-
++#define CORTEXM_MAX_REG_COUNT                                                                       \
++	(CORTEXM_GP_REG_COUNT + CORTEXM_SP_REG_COUNT + CORTEXM_SYS_REG_COUNT + CORTEX_FLOAT_REG_COUNT + \
++		CORTEXM_TRUSTZONE_REG_COUNT)
++/* For historical reasons, XSPR must be at index 25 */
++#define CORTEXM_XPSR_ORIGINAL_REGNUM 16
++#define CORTEXM_XPSR_NEW_REGNUM      25
+ static bool cortexm_vector_catch(target_s *target, int argc, const char **argv);
+ 
+ const command_s cortexm_cmd_list[] = {
+@@ -89,18 +93,35 @@ typedef struct cortexm_priv {
+ 	uint32_t demcr;
+ } cortexm_priv_s;
+ 
+-/* Register number tables */
+-static const uint8_t regnum_cortex_m[CORTEXM_GENERAL_REG_COUNT] = {
+-	0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U, 11U, 12U, 13U, 14U, 15U, /* r0-r15 */
+-	0x10U,                                                                /* xpsr */
+-	0x11U,                                                                /* msp */
+-	0x12U,                                                                /* psp */
+-	0x14U,                                                                /* special */
++/* Register number tables  see D.1.2.34 */
++static const uint8_t regnum_cortex_m_gp[CORTEXM_GP_REG_COUNT] = {
++	0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U, 11U,
++	12U, // r12
++};
++
++static const uint8_t regnum_cortex_m_sp[CORTEXM_SP_REG_COUNT] = {
++	13U, 14U, 15U, /* sp lr pc*/
++	0x10U,         /* xpsr */
+ };
++static const uint8_t regnum_cortex_m_sys[CORTEXM_SYS_REG_COUNT] = {
++	0x11U, /* msp */
++	0x12U, /* psp */
++	0x14U, /* state */
+ 
++};
++
 +/* NB the M23 has trustzone but no psplim/msplim, it seems safe to read them, it just returns zero */
  static const uint8_t regnum_cortex_m_trustzone[CORTEXM_TRUSTZONE_REG_COUNT] = {
- 	0x18U, 0x19U, /* Non-secure msp + psp */
-+	0x1eU, 0x1fU, /* Non-Secure msplim + psplim (chap d.1.2)*/
- 	0x1aU, 0x1bU, /* Secure msp + psp */
-+	0x1cU, 0x1dU, /* Secure msplim + psplim */
+-	0x18U, 0x19U, /* Non-secure msp + psp */
+-	0x1aU, 0x1bU, /* Secure msp + psp */
++	0x18U, // ns msp
++	0x19U, // ns psp
++	0x1eU, // ns msplim
++	0x1fU, // ns psplim
++	0x23U, // ns state
++	0x1aU, // s msp
++	0x1bU, // s psp
++	0x1cU, // s msplim
++	0x1dU, // s psplim
++	0x22U, // s state
  };
  
  static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
-@@ -120,6 +123,7 @@ static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
+@@ -120,76 +141,96 @@ static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
   */
  
  // Strings for the names of the Cortex-M's special purpose registers.
-+#define CORTEXM_COMMON_REGISTERS_COUNT 10 /* The registers < CORTEXM_COMMON_REGISTERS_COUNT are always present */
- static const char *cortex_m_spr_names[] = {
+-static const char *cortex_m_spr_names[] = {
++static const char *cortex_m_sp_names[CORTEXM_SP_REG_COUNT] = {
  	"sp",
  	"lr",
-@@ -131,6 +135,8 @@ static const char *cortex_m_spr_names[] = {
- 	"basepri",
- 	"faultmask",
- 	"control",
+ 	"pc",
+ 	"xpsr",
++};
++static const char *cortex_m_sys_names[CORTEXM_SYS_REG_COUNT] = {
+ 	"msp",
+ 	"psp",
+-	"primask",
+-	"basepri",
+-	"faultmask",
+-	"control",
++	"state",
++};
++static const char *cortex_m_trustzone_names[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
++	"msp",
++	"psp",
 +	"msplim",
 +	"psplim",
++	"state",
  };
  
  // The "type" field for each Cortex-M special purpose register.
-@@ -145,6 +151,8 @@ static const gdb_reg_type_e cortex_m_spr_types[] = {
- 	GDB_TYPE_UNSPECIFIED, // basepri
- 	GDB_TYPE_UNSPECIFIED, // faultmask
- 	GDB_TYPE_UNSPECIFIED, // control
+-static const gdb_reg_type_e cortex_m_spr_types[] = {
++static const gdb_reg_type_e cortex_m_sp_types[CORTEXM_SP_REG_COUNT] = {
+ 	GDB_TYPE_DATA_PTR,    // sp
+ 	GDB_TYPE_CODE_PTR,    // lr
+ 	GDB_TYPE_CODE_PTR,    // pc
+ 	GDB_TYPE_UNSPECIFIED, // xpsr
++};
++// The "type" field for each Cortex-M special purpose register.
++static const gdb_reg_type_e cortex_m_sys_types[CORTEXM_SYS_REG_COUNT] = {
+ 	GDB_TYPE_DATA_PTR,    // msp
+ 	GDB_TYPE_DATA_PTR,    // psp
+-	GDB_TYPE_UNSPECIFIED, // primask
+-	GDB_TYPE_UNSPECIFIED, // basepri
+-	GDB_TYPE_UNSPECIFIED, // faultmask
+-	GDB_TYPE_UNSPECIFIED, // control
++	GDB_TYPE_UNSPECIFIED, // state
++};
++// The "type" field for each Cortex-M special purpose register.
++static const gdb_reg_type_e cortex_m_trustzone_types[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
++	GDB_TYPE_DATA_PTR,    // msp
++	GDB_TYPE_DATA_PTR,    // psp
 +	GDB_TYPE_DATA_PTR,    // msplim
 +	GDB_TYPE_DATA_PTR,    // psplim
++	GDB_TYPE_UNSPECIFIED, // state
  };
  
  // clang-format off
-@@ -165,6 +173,8 @@ static const gdb_reg_save_restore_e cortex_m_spr_save_restores[] = {
- 	GDB_SAVE_RESTORE_NO,          // basepri
- 	GDB_SAVE_RESTORE_NO,          // faultmask
- 	GDB_SAVE_RESTORE_NO,          // control
-+	GDB_SAVE_RESTORE_NO,          // msplim
-+	GDB_SAVE_RESTORE_NO,          // psplim
+-static_assert(ARRAY_LENGTH(cortex_m_spr_types) == ARRAY_LENGTH(cortex_m_spr_names),
+-	"SPR array length mismatch! SPR type array should have the same length as SPR name array."
++static_assert(ARRAY_LENGTH(cortex_m_sp_types) == ARRAY_LENGTH(cortex_m_sp_names),
++	"SP array length mismatch! SP type array should have the same length as SP name array.");
++static_assert(ARRAY_LENGTH(cortex_m_sys_types) == ARRAY_LENGTH(cortex_m_sys_names),
++	"SYS array length mismatch! SYS type array should have the same length as SYS name array."
+ );
+ // clang-format on
+ 
+ // The "save-restore" field of each SPR.
+-static const gdb_reg_save_restore_e cortex_m_spr_save_restores[] = {
++static const gdb_reg_save_restore_e cortex_m_sp_save_restores[] = {
+ 	GDB_SAVE_RESTORE_UNSPECIFIED, // sp
+ 	GDB_SAVE_RESTORE_UNSPECIFIED, // lr
+ 	GDB_SAVE_RESTORE_UNSPECIFIED, // pc
+ 	GDB_SAVE_RESTORE_UNSPECIFIED, // xpsr
+-	GDB_SAVE_RESTORE_NO,          // msp
+-	GDB_SAVE_RESTORE_NO,          // psp
+-	GDB_SAVE_RESTORE_NO,          // primask
+-	GDB_SAVE_RESTORE_NO,          // basepri
+-	GDB_SAVE_RESTORE_NO,          // faultmask
+-	GDB_SAVE_RESTORE_NO,          // control
++};
++static const gdb_reg_save_restore_e cortex_m_sys_save_restores[CORTEXM_SYS_REG_COUNT] = {
++	GDB_SAVE_RESTORE_NO, // msp
++	GDB_SAVE_RESTORE_NO, // psp
++	GDB_SAVE_RESTORE_NO, // state
  };
  
  // clang-format off
-@@ -185,6 +195,8 @@ static const uint8_t cortex_m_spr_bitsizes[] = {
- 	8,  // basepri
- 	8,  // faultmask
- 	8,  // control
-+	32, // msplim
-+	32, // psplim
+-static_assert(ARRAY_LENGTH(cortex_m_spr_save_restores) == ARRAY_LENGTH(cortex_m_spr_names),
+-	"SPR array length mismatch! SPR save-restore array should have the same length as SPR name array."
++static_assert(ARRAY_LENGTH(cortex_m_sp_save_restores) == ARRAY_LENGTH(cortex_m_sp_names),
++	"SP array length mismatch! SP save-restore array should have the same length as SP name array."
++);
++static_assert(ARRAY_LENGTH(cortex_m_sys_save_restores) == ARRAY_LENGTH(cortex_m_sys_names),
++	"SYS array length mismatch! SYS save-restore array should have the same length as SYS name array."
+ );
+ // clang-format on
+ 
+ // The "bitsize" field of each SPR.
+-static const uint8_t cortex_m_spr_bitsizes[] = {
++static const uint8_t cortex_m_sp_bitsizes[CORTEXM_SP_REG_COUNT] = {
+ 	32, // sp
+ 	32, // lr
+ 	32, // pc
+ 	32, // xpsr
++};
++static const uint8_t cortex_m_sys_bitsizes[CORTEXM_SYS_REG_COUNT] = {
+ 	32, // msp
+ 	32, // psp
+-	8,  // primask
+-	8,  // basepri
+-	8,  // faultmask
+-	8,  // control
++	32, // state
  };
  
  // clang-format off
-@@ -1347,8 +1359,16 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
+-static_assert(ARRAY_LENGTH(cortex_m_spr_bitsizes) == ARRAY_LENGTH(cortex_m_spr_names),
+-	"SPR array length mismatch! SPR bitsize array should have the same length as SPR name array."
++static_assert(ARRAY_LENGTH(cortex_m_sp_bitsizes) == ARRAY_LENGTH(cortex_m_sp_names),
++	"SP array length mismatch! SP bitsize array should have the same length as SP name array."
++);
++static_assert(ARRAY_LENGTH(cortex_m_sys_bitsizes) == ARRAY_LENGTH(cortex_m_sys_names),
++	"SYS array length mismatch! SYS bitsize array should have the same length as SYS name array."
+ );
+ 
+ // clang-format on
+@@ -615,7 +656,7 @@ enum {
+ 
+ static void cortexm_regs_read(target_s *const target, void *const data)
+ {
+-	uint32_t *const regs = data;
++	uint32_t *regs = data;
+ 	adiv5_access_port_s *const ap = cortex_ap(target);
+ #if CONFIG_BMDA == 1
+ 	if (ap->dp->ap_regs_read && ap->dp->ap_reg_read) {
+@@ -640,24 +681,30 @@ static void cortexm_regs_read(target_s *const target, void *const data)
+ 		adi_ap_banked_access_setup(ap);
+ 
+ 		/* Walk the regnum_cortex_m array, reading the registers it specifies */
+-		for (size_t i = 0U; i < CORTEXM_GENERAL_REG_COUNT; ++i) {
+-			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m[i]);
+-			regs[i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
++		for (size_t i = 0U; i < CORTEXM_GP_REG_COUNT; ++i) { // r0..r12
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_gp[i]);
++			*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
++		}
++		for (size_t i = 0U; i < CORTEXM_SP_REG_COUNT; ++i) { // sp lr pc xpsr
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_sp[i]);
++			*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
++		}
++		for (size_t i = 0U; i < CORTEXM_SYS_REG_COUNT; ++i) { // sys
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_sys[i]);
++			*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
+ 		}
+-		size_t offset = CORTEXM_GENERAL_REG_COUNT;
+ 		/* If the core implements TrustZone, pull out the extra stack pointers */
+ 		if (target->target_options & CORTEXM_TOPT_TRUSTZONE) {
+ 			for (size_t i = 0U; i < CORTEXM_TRUSTZONE_REG_COUNT; ++i) {
+ 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_trustzone[i]);
+-				regs[offset + i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
++				*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
+ 			}
+-			offset += CORTEXM_TRUSTZONE_REG_COUNT;
+ 		}
+ 		/* If the core has a FPU, also walk the regnum_cortex_mf array */
+ 		if (target->target_options & CORTEXM_TOPT_FLAVOUR_FLOAT) {
+ 			for (size_t i = 0U; i < CORTEX_FLOAT_REG_COUNT; ++i) {
+ 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_mf[i]);
+-				regs[offset + i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
++				*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
+ 			}
+ 		}
+ #if CONFIG_BMDA == 1
+@@ -667,7 +714,7 @@ static void cortexm_regs_read(target_s *const target, void *const data)
+ 
+ static void cortexm_regs_write(target_s *const target, const void *const data)
+ {
+-	const uint32_t *const regs = data;
++	const uint32_t *regs = data;
+ 	adiv5_access_port_s *const ap = cortex_ap(target);
+ #if CONFIG_BMDA == 1
+ 	if (ap->dp->ap_reg_write) {
+@@ -690,23 +737,31 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
+ 		adi_ap_banked_access_setup(ap);
+ 
+ 		/* Walk the regnum_cortex_m array, writing the registers it specifies */
+-		for (size_t i = 0U; i < CORTEXM_GENERAL_REG_COUNT; ++i) {
+-			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), regs[i]);
+-			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m[i]);
++		for (size_t i = 0U; i < CORTEXM_GP_REG_COUNT; ++i) {
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_gp[i]);
++		}
++
++		for (size_t i = 0U; i < CORTEXM_SP_REG_COUNT; ++i) {
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_sp[i]);
++		}
++
++		for (size_t i = 0U; i < CORTEXM_SYS_REG_COUNT; ++i) {
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
++			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_sys[i]);
+ 		}
+-		size_t offset = CORTEXM_GENERAL_REG_COUNT;
+ 		/* If the core implements TrustZone, write in the extra stack pointers */
+ 		if (target->target_options & CORTEXM_TOPT_TRUSTZONE) {
+ 			for (size_t i = 0U; i < CORTEXM_TRUSTZONE_REG_COUNT; ++i) {
+-				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), regs[offset + i]);
++				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
+ 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_trustzone[i]);
+ 			}
+-			offset += CORTEXM_TRUSTZONE_REG_COUNT;
+ 		}
+ 		/* If the core has a FPU, also walk the regnum_cortex_mf array */
+ 		if (target->target_options & CORTEXM_TOPT_FLAVOUR_FLOAT) {
+ 			for (size_t i = 0U; i < CORTEX_FLOAT_REG_COUNT; ++i) {
+-				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), regs[offset + i]);
++				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
+ 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_mf[i]);
+ 			}
+ 		}
+@@ -724,17 +779,26 @@ int cortexm_mem_write_aligned(target_s *target, target_addr_t dest, const void *
+ 
+ static int dcrsr_regnum(target_s *target, uint32_t reg)
+ {
+-	if (reg < CORTEXM_GENERAL_REG_COUNT)
+-		return (int)regnum_cortex_m[reg];
+-	size_t offset = CORTEXM_GENERAL_REG_COUNT;
++	// Take into account the gap introduced by Xspr being forced to 25
++	if (reg >= CORTEXM_XPSR_NEW_REGNUM) {
++		reg = reg + CORTEXM_XPSR_ORIGINAL_REGNUM - CORTEXM_XPSR_NEW_REGNUM;
++	}
++
++#define LOOKUP(count, table)          \
++	{                                 \
++		if (reg < (count))            \
++			return (int)(table)[reg]; \
++		reg -= (count);               \
++	}
++
++	LOOKUP(CORTEXM_GP_REG_COUNT, regnum_cortex_m_gp)
++	LOOKUP(CORTEXM_SP_REG_COUNT, regnum_cortex_m_sp)
++	LOOKUP(CORTEXM_SYS_REG_COUNT, regnum_cortex_m_sys)
+ 	if (target->target_options & CORTEXM_TOPT_TRUSTZONE) {
+-		if (reg < offset + CORTEXM_TRUSTZONE_REG_COUNT)
+-			return (int)regnum_cortex_m_trustzone[reg - offset];
+-		offset += CORTEXM_TRUSTZONE_REG_COUNT;
++		LOOKUP(CORTEXM_TRUSTZONE_REG_COUNT, regnum_cortex_m_trustzone)
+ 	}
+ 	if (target->target_options & CORTEXM_TOPT_FLAVOUR_FLOAT) {
+-		if (reg < offset + CORTEX_FLOAT_REG_COUNT)
+-			return (int)regnum_cortex_mf[reg - offset];
++		LOOKUP(CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf)
+ 	}
+ 	return -1;
+ }
+@@ -1347,8 +1411,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
   *      <reg name="psp_ns" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="msp_s" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="psp_s" bitsize="32" save-restore="no" type="data_ptr"/>
@@ -83,30 +349,92 @@ index a6445de5..ff88e7e6 100644
 + *
   *  </feature>
   */
-+static const size_t indeces[] = {4U, 5U, 10U, 11U};
-+static const size_t nb_indeces = sizeof(indeces) / sizeof(size_t);
 +
  static size_t cortexm_build_target_secext_description(char *const buffer, const size_t max_length)
  {
  	size_t offset = 0U;
-@@ -1359,8 +1379,9 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
+@@ -1359,19 +1429,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
  
  	/* Loop through first the non-secure and then the secure registers */
  	for (uint8_t mode = 0U; mode <= 1U; ++mode) {
 -		/* Then loop through the MSP and PSP entries */
 -		for (size_t i = 4U; i <= 5U; ++i) {
 +		/* Then loop through the MSP,PSP, MSPLIM and PSPLIM entries */
-+		for (size_t index = 0U; index < nb_indeces; ++index) {
-+			size_t i = indeces[index];
++		for (size_t index = 0U; index < (CORTEXM_TRUSTZONE_REG_COUNT / 2); ++index) {
++			size_t i = index + ((mode * CORTEXM_TRUSTZONE_REG_COUNT) / 2);
  			if (max_length != 0U)
  				print_size = max_length - offset;
  
-@@ -1466,7 +1487,7 @@ static size_t cortexm_build_target_description(
+ 			/* Extract the register type and save-restore status from the tables at the top of the file */
+-			gdb_reg_type_e type = cortex_m_spr_types[i];
+-			gdb_reg_save_restore_e save_restore = cortex_m_spr_save_restores[i];
++			gdb_reg_type_e type = cortex_m_trustzone_types[index];
++			gdb_reg_save_restore_e save_restore = GDB_SAVE_RESTORE_NO; //cortex_m_trustzone_save_restores[index];
+ 
+ 			/* Build an appropriate entry for the register */
+ 			offset += (size_t)snprintf(buffer + offset, print_size, "<reg name=\"%s_%ss\" bitsize=\"%u\"%s%s/>",
+-				cortex_m_spr_names[i], mode == 0U ? "n" : "", cortex_m_spr_bitsizes[i],
+-				gdb_reg_save_restore_strings[save_restore], gdb_reg_type_strings[type]);
++				cortex_m_trustzone_names[index], mode == 0U ? "n" : "", 32, gdb_reg_save_restore_strings[save_restore],
++				gdb_reg_type_strings[type]);
+ 		}
+ 	}
+ 
+@@ -1466,30 +1537,45 @@ static size_t cortexm_build_target_description(
  	 * We'll use the 'associative arrays' defined for those values.
  	 * NOTE: unlike the other loops, this loop uses a size_t for its counter, as it's used to index into arrays.
  	 */
 -	for (size_t i = 0U; i < ARRAY_LENGTH(cortex_m_spr_names); ++i) {
-+	for (size_t i = 0U; i < CORTEXM_COMMON_REGISTERS_COUNT; ++i) {
++	/* SP section */
++	for (size_t i = 0U; i < CORTEXM_SP_REG_COUNT; ++i) {
  		if (max_length != 0U)
  			print_size = max_length - offset;
  
+ 		/* Extract the register type and save-restore status from the tables at the top of the file */
+-		gdb_reg_type_e type = cortex_m_spr_types[i];
+-		gdb_reg_save_restore_e save_restore = cortex_m_spr_save_restores[i];
++		gdb_reg_type_e type = cortex_m_sp_types[i];
++		gdb_reg_save_restore_e save_restore = cortex_m_sp_save_restores[i];
+ 
+ 		/*
+ 		 * There is one special extra thing that has to happen here -
+ 		 * xPSR (reg index 3) requires placement at register logical number 25
+ 		 */
++		const char *regnumstring = "";
++		static const char *forced_regnumstring = " regnum=\"25\""; //CORTEXM_XPSR_NEW_REGNUM
++		if (i == 3)
++			regnumstring = forced_regnumstring;
+ 		offset += (size_t)snprintf(buffer + offset, print_size, "<reg name=\"%s\" bitsize=\"%u\"%s%s%s/>",
+-			cortex_m_spr_names[i], cortex_m_spr_bitsizes[i], gdb_reg_save_restore_strings[save_restore],
+-			gdb_reg_type_strings[type], i == 3U ? " regnum=\"25\"" : "");
++			cortex_m_sp_names[i], cortex_m_sp_bitsizes[i], gdb_reg_save_restore_strings[save_restore],
++			gdb_reg_type_strings[type], regnumstring);
++	}
++	if (max_length != 0U)
++		print_size = max_length - offset;
+ 
+-		/* After the xPSR, then need to generate the system block to receive system regs */
+-		if (i == 3U) {
+-			if (max_length != 0U)
+-				print_size = max_length - offset;
++	offset +=
++		(size_t)snprintf(buffer + offset, print_size, "</feature><feature name=\"org.gnu.gdb.arm.m-%s\">", "system");
+ 
+-			offset += (size_t)snprintf(
+-				buffer + offset, print_size, "</feature><feature name=\"org.gnu.gdb.arm.m-%s\">", "system");
+-		}
++	/* Sys section */
++	for (size_t i = 0U; i < CORTEXM_SYS_REG_COUNT; ++i) {
++		if (max_length != 0U)
++			print_size = max_length - offset;
++
++		/* Extract the register type and save-restore status from the tables at the top of the file */
++		gdb_reg_type_e type = cortex_m_sys_types[i];
++		gdb_reg_save_restore_e save_restore = cortex_m_sys_save_restores[i];
++
++		offset += (size_t)snprintf(buffer + offset, print_size, "<reg name=\"%s\" bitsize=\"%u\"%s%s/>",
++			cortex_m_sys_names[i], cortex_m_sys_bitsizes[i], gdb_reg_save_restore_strings[save_restore],
++			gdb_reg_type_strings[type]);
+ 	}
+ 
+ 	/* If the target implements TrustZone, include the extra stack pointers */
