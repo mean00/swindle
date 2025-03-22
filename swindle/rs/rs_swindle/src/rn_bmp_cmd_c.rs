@@ -209,6 +209,12 @@ unsafe extern "C" {
     pub fn bmp_read_registers_c(val: *mut cty::c_uint) -> bool_;
 }
 unsafe extern "C" {
+    pub fn bmp_read_all_registers_c(regs: *mut cty::c_uint) -> bool_;
+}
+unsafe extern "C" {
+    pub fn bmp_write_all_registers_c(regs: *const cty::c_uint) -> bool_;
+}
+unsafe extern "C" {
     pub fn bmp_target_description_c() -> *const cty::c_uchar;
 }
 unsafe extern "C" {

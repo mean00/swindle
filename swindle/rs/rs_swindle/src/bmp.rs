@@ -52,17 +52,13 @@ pub fn bmp_read_registers() -> Vec<u32> {
         let r: Vec<u32> = Vec::new();
         return r;
     }
-    let mut r: Vec<u32> = Vec::new();
-    let n = unsafe { rn_bmp_cmd_c::bmp_registers_count_c() };
-    for i in 0..n {
-        let mut val: u32 = 0;
-        unsafe {
-            if rn_bmp_cmd_c::bmp_read_register_c(i, &mut val as *mut u32) != 0 {
-                r.push(val);
-            }
-        }
+    unsafe {
+        let n = rn_bmp_cmd_c::bmp_registers_count_c() as usize;
+        let mut r: Vec<u32> = Vec::with_capacity(n);
+        r.set_len(n);
+        rn_bmp_cmd_c::bmp_read_all_registers_c(r.as_mut_ptr()); // as *mut u32);
+        r
     }
-    r
 }
 pub fn bmp_get_mapping(map: mapping) -> Vec<MemoryBlock> {
     if !bmp_attached() {

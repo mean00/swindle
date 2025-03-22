@@ -28,6 +28,8 @@ bool bmp_map_get_c(const uint32_t, const uint32_t, uint32_t *start, uint32_t *si
 unsigned int bmp_registers_count_c();
 bool bmp_read_register_c(const unsigned int reg, unsigned int *val);
 bool bmp_read_registers_c(unsigned int *val); // carefull, must be able to store all regs
+bool bmp_read_all_registers_c(unsigned int *regs);
+bool bmp_write_all_registers_c(const unsigned int *regs);
 const unsigned char *bmp_target_description_c();
 void bmp_target_description_clear_c();
 

@@ -25,6 +25,10 @@ pub fn _p(_command: &str, args: &[&str]) -> bool {
 
 // Read registers
 pub fn _g(_command: &str, _args: &[&str]) -> bool {
+    unsafe { _g2() }
+}
+// split it to have easier debug option from gdb
+pub extern "C" fn _g2() -> bool {
     let regs = crate::bmp::bmp_read_registers();
     let mut e = encoder::new();
 

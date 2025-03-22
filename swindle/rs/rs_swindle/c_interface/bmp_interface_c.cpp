@@ -248,6 +248,16 @@ extern "C"
             return false;
         return true;
     }
+    bool bmp_read_all_registers_c(unsigned int *regs)
+    {
+        if (!bmp_attached_c())
+        {
+            return false;
+        }
+        target_regs_read(cur_target, regs);
+        return true;
+    }
+
     void *copy = NULL;
     const char *bmp_target_description_c()
     {
