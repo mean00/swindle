@@ -22,7 +22,7 @@ index 58312329..ebe1c9da 100644
  
  #endif /* TARGET_CORTEX_H */
 diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index a6445de5..7fa5fbe2 100644
+index a6445de5..46d4aece 100644
 --- a/src/target/cortexm.c
 +++ b/src/target/cortexm.c
 @@ -48,8 +48,12 @@
@@ -40,7 +40,7 @@ index a6445de5..7fa5fbe2 100644
  static bool cortexm_vector_catch(target_s *target, int argc, const char **argv);
  
  const command_s cortexm_cmd_list[] = {
-@@ -89,18 +93,35 @@ typedef struct cortexm_priv {
+@@ -89,18 +93,38 @@ typedef struct cortexm_priv {
  	uint32_t demcr;
  } cortexm_priv_s;
  
@@ -52,22 +52,25 @@ index a6445de5..7fa5fbe2 100644
 -	0x12U,                                                                /* psp */
 -	0x14U,                                                                /* special */
 +/* Register number tables  see D.1.2.34 */
++/* R0..R12 */
 +static const uint8_t regnum_cortex_m_gp[CORTEXM_GP_REG_COUNT] = {
 +	0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U, 11U,
 +	12U, // r12
 +};
-+
++/* R13..R15 +xpsr */
 +static const uint8_t regnum_cortex_m_sp[CORTEXM_SP_REG_COUNT] = {
 +	13U, 14U, 15U, /* sp lr pc*/
-+	0x10U,         /* xpsr */
- };
++	16,            /* xpsr */
++};
++/* MSP PSP STATE */
 +static const uint8_t regnum_cortex_m_sys[CORTEXM_SYS_REG_COUNT] = {
 +	0x11U, /* msp */
 +	0x12U, /* psp */
 +	0x14U, /* state */
- 
-+};
 +
+ };
+ 
++/* MSP PSP MSPLIM PSPLIM STATE x2, ns and s */
 +/* NB the M23 has trustzone but no psplim/msplim, it seems safe to read them, it just returns zero */
  static const uint8_t regnum_cortex_m_trustzone[CORTEXM_TRUSTZONE_REG_COUNT] = {
 -	0x18U, 0x19U, /* Non-secure msp + psp */
@@ -85,7 +88,7 @@ index a6445de5..7fa5fbe2 100644
  };
  
  static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
-@@ -120,76 +141,96 @@ static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
+@@ -120,76 +144,96 @@ static const uint8_t regnum_cortex_mf[CORTEX_FLOAT_REG_COUNT] = {
   */
  
  // Strings for the names of the Cortex-M's special purpose registers.
@@ -123,18 +126,18 @@ index a6445de5..7fa5fbe2 100644
 +};
 +// The "type" field for each Cortex-M special purpose register.
 +static const gdb_reg_type_e cortex_m_sys_types[CORTEXM_SYS_REG_COUNT] = {
++	GDB_TYPE_DATA_PTR,    // msp
++	GDB_TYPE_DATA_PTR,    // psp
++	GDB_TYPE_UNSPECIFIED, // state
++};
++// The "type" field for each Cortex-M special purpose register.
++static const gdb_reg_type_e cortex_m_trustzone_types[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
  	GDB_TYPE_DATA_PTR,    // msp
  	GDB_TYPE_DATA_PTR,    // psp
 -	GDB_TYPE_UNSPECIFIED, // primask
 -	GDB_TYPE_UNSPECIFIED, // basepri
 -	GDB_TYPE_UNSPECIFIED, // faultmask
 -	GDB_TYPE_UNSPECIFIED, // control
-+	GDB_TYPE_UNSPECIFIED, // state
-+};
-+// The "type" field for each Cortex-M special purpose register.
-+static const gdb_reg_type_e cortex_m_trustzone_types[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
-+	GDB_TYPE_DATA_PTR,    // msp
-+	GDB_TYPE_DATA_PTR,    // psp
 +	GDB_TYPE_DATA_PTR,    // msplim
 +	GDB_TYPE_DATA_PTR,    // psplim
 +	GDB_TYPE_UNSPECIFIED, // state
@@ -210,8 +213,18 @@ index a6445de5..7fa5fbe2 100644
  );
  
  // clang-format on
-@@ -615,7 +656,7 @@ enum {
+@@ -613,9 +657,17 @@ enum {
+ 	DB_DEMCR
+ };
  
++static void cortexm_read_reg_sequence(adiv5_debug_port_s *dp, size_t count, const uint8_t *map, uint32_t *values)
++{
++	for (size_t i = 0U; i < count; ++i) { // r0..r12
++		adiv5_dp_write(dp, ADIV5_AP_DB(DB_DCRSR), map[i]);
++		values[i] = adiv5_dp_read(dp, ADIV5_AP_DB(DB_DCRDR));
++	}
++}
++
  static void cortexm_regs_read(target_s *const target, void *const data)
  {
 -	uint32_t *const regs = data;
@@ -219,46 +232,54 @@ index a6445de5..7fa5fbe2 100644
  	adiv5_access_port_s *const ap = cortex_ap(target);
  #if CONFIG_BMDA == 1
  	if (ap->dp->ap_regs_read && ap->dp->ap_reg_read) {
-@@ -640,24 +681,30 @@ static void cortexm_regs_read(target_s *const target, void *const data)
+@@ -640,34 +692,39 @@ static void cortexm_regs_read(target_s *const target, void *const data)
  		adi_ap_banked_access_setup(ap);
  
  		/* Walk the regnum_cortex_m array, reading the registers it specifies */
 -		for (size_t i = 0U; i < CORTEXM_GENERAL_REG_COUNT; ++i) {
 -			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m[i]);
 -			regs[i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
-+		for (size_t i = 0U; i < CORTEXM_GP_REG_COUNT; ++i) { // r0..r12
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_gp[i]);
-+			*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
-+		}
-+		for (size_t i = 0U; i < CORTEXM_SP_REG_COUNT; ++i) { // sp lr pc xpsr
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_sp[i]);
-+			*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
-+		}
-+		for (size_t i = 0U; i < CORTEXM_SYS_REG_COUNT; ++i) { // sys
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_sys[i]);
-+			*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
- 		}
+-		}
 -		size_t offset = CORTEXM_GENERAL_REG_COUNT;
++		cortexm_read_reg_sequence(ap->dp, CORTEXM_GP_REG_COUNT, regnum_cortex_m_gp, regs);
++		regs += CORTEXM_GP_REG_COUNT;
++		cortexm_read_reg_sequence(ap->dp, CORTEXM_SP_REG_COUNT, regnum_cortex_m_sp, regs);
++		regs += CORTEXM_SP_REG_COUNT;
++		cortexm_read_reg_sequence(ap->dp, CORTEXM_SYS_REG_COUNT, regnum_cortex_m_sys, regs);
++		regs += CORTEXM_SYS_REG_COUNT;
++
  		/* If the core implements TrustZone, pull out the extra stack pointers */
  		if (target->target_options & CORTEXM_TOPT_TRUSTZONE) {
- 			for (size_t i = 0U; i < CORTEXM_TRUSTZONE_REG_COUNT; ++i) {
- 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_trustzone[i]);
+-			for (size_t i = 0U; i < CORTEXM_TRUSTZONE_REG_COUNT; ++i) {
+-				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_m_trustzone[i]);
 -				regs[offset + i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
-+				*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
- 			}
+-			}
 -			offset += CORTEXM_TRUSTZONE_REG_COUNT;
++			cortexm_read_reg_sequence(ap->dp, CORTEXM_TRUSTZONE_REG_COUNT, regnum_cortex_m_trustzone, regs);
++			regs += CORTEXM_TRUSTZONE_REG_COUNT;
  		}
  		/* If the core has a FPU, also walk the regnum_cortex_mf array */
  		if (target->target_options & CORTEXM_TOPT_FLAVOUR_FLOAT) {
- 			for (size_t i = 0U; i < CORTEX_FLOAT_REG_COUNT; ++i) {
- 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_mf[i]);
+-			for (size_t i = 0U; i < CORTEX_FLOAT_REG_COUNT; ++i) {
+-				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_mf[i]);
 -				regs[offset + i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
-+				*(regs++) = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
- 			}
+-			}
++			cortexm_read_reg_sequence(ap->dp, CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf, regs);
++			regs += CORTEX_FLOAT_REG_COUNT;
  		}
  #if CONFIG_BMDA == 1
-@@ -667,7 +714,7 @@ static void cortexm_regs_read(target_s *const target, void *const data)
+ 	}
+ #endif
+ }
  
++static void cortexm_write_reg_sequence(adiv5_debug_port_s *dp, size_t count, const uint8_t *map, const uint32_t *values)
++{
++	for (size_t i = 0U; i < count; ++i) {
++		adiv5_dp_write(dp, ADIV5_AP_DB(DB_DCRDR), values[i]);
++		adiv5_dp_write(dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | map[i]);
++	}
++}
++
  static void cortexm_regs_write(target_s *const target, const void *const data)
  {
 -	const uint32_t *const regs = data;
@@ -266,46 +287,43 @@ index a6445de5..7fa5fbe2 100644
  	adiv5_access_port_s *const ap = cortex_ap(target);
  #if CONFIG_BMDA == 1
  	if (ap->dp->ap_reg_write) {
-@@ -690,23 +737,31 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
+@@ -690,25 +747,21 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
  		adi_ap_banked_access_setup(ap);
  
  		/* Walk the regnum_cortex_m array, writing the registers it specifies */
 -		for (size_t i = 0U; i < CORTEXM_GENERAL_REG_COUNT; ++i) {
 -			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), regs[i]);
 -			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m[i]);
-+		for (size_t i = 0U; i < CORTEXM_GP_REG_COUNT; ++i) {
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_gp[i]);
-+		}
-+
-+		for (size_t i = 0U; i < CORTEXM_SP_REG_COUNT; ++i) {
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_sp[i]);
-+		}
-+
-+		for (size_t i = 0U; i < CORTEXM_SYS_REG_COUNT; ++i) {
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
-+			adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_sys[i]);
- 		}
+-		}
 -		size_t offset = CORTEXM_GENERAL_REG_COUNT;
++		cortexm_write_reg_sequence(ap->dp, CORTEXM_GP_REG_COUNT, regnum_cortex_m_gp, regs);
++		regs += CORTEXM_GP_REG_COUNT;
++		cortexm_write_reg_sequence(ap->dp, CORTEXM_SP_REG_COUNT, regnum_cortex_m_sp, regs);
++		regs += CORTEXM_SP_REG_COUNT;
++		cortexm_write_reg_sequence(ap->dp, CORTEXM_SYS_REG_COUNT, regnum_cortex_m_sys, regs);
++		regs += CORTEXM_SYS_REG_COUNT;
  		/* If the core implements TrustZone, write in the extra stack pointers */
  		if (target->target_options & CORTEXM_TOPT_TRUSTZONE) {
- 			for (size_t i = 0U; i < CORTEXM_TRUSTZONE_REG_COUNT; ++i) {
+-			for (size_t i = 0U; i < CORTEXM_TRUSTZONE_REG_COUNT; ++i) {
 -				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), regs[offset + i]);
-+				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
- 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_trustzone[i]);
- 			}
+-				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_m_trustzone[i]);
+-			}
 -			offset += CORTEXM_TRUSTZONE_REG_COUNT;
++			cortexm_write_reg_sequence(ap->dp, CORTEXM_TRUSTZONE_REG_COUNT, regnum_cortex_m_trustzone, regs);
++			regs += CORTEXM_TRUSTZONE_REG_COUNT;
  		}
  		/* If the core has a FPU, also walk the regnum_cortex_mf array */
  		if (target->target_options & CORTEXM_TOPT_FLAVOUR_FLOAT) {
- 			for (size_t i = 0U; i < CORTEX_FLOAT_REG_COUNT; ++i) {
+-			for (size_t i = 0U; i < CORTEX_FLOAT_REG_COUNT; ++i) {
 -				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), regs[offset + i]);
-+				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRDR), *(regs++));
- 				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_mf[i]);
- 			}
+-				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | regnum_cortex_mf[i]);
+-			}
++			cortexm_write_reg_sequence(ap->dp, CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf, regs);
++			regs += CORTEX_FLOAT_REG_COUNT;
  		}
-@@ -724,17 +779,26 @@ int cortexm_mem_write_aligned(target_s *target, target_addr_t dest, const void *
+ #if CONFIG_BMDA == 1
+ 	}
+@@ -724,17 +777,26 @@ int cortexm_mem_write_aligned(target_s *target, target_addr_t dest, const void *
  
  static int dcrsr_regnum(target_s *target, uint32_t reg)
  {
@@ -340,7 +358,7 @@ index a6445de5..7fa5fbe2 100644
  	}
  	return -1;
  }
-@@ -1347,8 +1411,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
+@@ -1347,8 +1409,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
   *      <reg name="psp_ns" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="msp_s" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="psp_s" bitsize="32" save-restore="no" type="data_ptr"/>
@@ -355,7 +373,7 @@ index a6445de5..7fa5fbe2 100644
  static size_t cortexm_build_target_secext_description(char *const buffer, const size_t max_length)
  {
  	size_t offset = 0U;
-@@ -1359,19 +1429,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
+@@ -1359,19 +1427,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
  
  	/* Loop through first the non-secure and then the secure registers */
  	for (uint8_t mode = 0U; mode <= 1U; ++mode) {
@@ -382,7 +400,7 @@ index a6445de5..7fa5fbe2 100644
  		}
  	}
  
-@@ -1466,30 +1537,45 @@ static size_t cortexm_build_target_description(
+@@ -1466,30 +1535,45 @@ static size_t cortexm_build_target_description(
  	 * We'll use the 'associative arrays' defined for those values.
  	 * NOTE: unlike the other loops, this loop uses a size_t for its counter, as it's used to index into arrays.
  	 */
