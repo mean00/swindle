@@ -10,7 +10,7 @@
  *
  */
 // RP2040
-#ifdef USE_RP2040
+#if defined(USE_RP2040) || defined(USE_RP2350)
 #define USB_PID 0x6050
 const char *descriptor[] = {
     (const char[]){0x09, 0x04},                     // 0: is supported language is English (0x0409)

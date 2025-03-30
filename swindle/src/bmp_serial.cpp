@@ -304,7 +304,7 @@ class BMPSerial : public lnTask
 extern void initCDCLogger();
 void serialInit()
 {
-#ifdef USE_RP2040
+#if defined(USE_RP2040) || defined(USE_RP2350)
     lnPinMode(LN_UART_RX, lnUART);
     lnPinMode(LN_UART_TX, lnUART);
 #endif

@@ -17,7 +17,7 @@ extern "C"
 #include "version.h"
 }
 
-#ifdef USE_RP2040
+#if defined(USE_RP2040) || defined(USE_RP2350)
 #include "pico/bootrom.h"
 #endif
 
@@ -149,7 +149,7 @@ BufferGdb *usbGdb = NULL;
  *
  */
 extern void lnSoftSystemReset(void);
-#ifdef USE_RP2040 //
+#if defined(USE_RP2040) || defined(USE_RP2350)
 extern void Rp2040ResetToFwUpload();
 #endif
 /**
@@ -158,7 +158,7 @@ void goDfu()
 {
     Logger("Rebooting to DFU...\n");
     // pull DP to low
-#ifndef USE_RP2040 //
+#if !defined(USE_RP2040) && !defined(USE_RP2350)
     lnDigitalWrite(PA12, 0);
     lnPinMode(PA12, lnOUTPUT);
     lnDelayMs(50);

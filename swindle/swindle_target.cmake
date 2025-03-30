@@ -6,7 +6,7 @@
 #
 # ===========================================================================================
 MESSAGE(STATUS "Building for embedded mode (${SWINDLE_HOSTED})")
-IF(USE_RP2040)
+IF(USE_RP2040 OR USE_RP2350)
   SET(EXTRA _rp2040)
 ELSE()
   SET(EXTRA _ln)
@@ -37,7 +37,7 @@ ADD_DEFINITIONS("-include miniplatform.h")
 ADD_DEFINITIONS("-DBMD_IS_STDC=1")
 # ===========================================================================================
 #  add swindle target code and host connection stuff
-IF(USE_RP2040)
+IF(USE_RP2040 OR USE_RP2350)
   IF(TRUE)
     RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/swd.pio ${CMAKE_BINARY_DIR}/bmp_pio_swd.h)
     RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/rvswd.pio ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h)
@@ -74,7 +74,7 @@ TARGET_LINK_LIBRARIES( libswindle lnArduino tinyUsb)
 IF(USE_GD32F3)
   TARGET_COMPILE_DEFINITIONS( libswindle PUBLIC  USE_GD32F303)
 ENDIF()
-IF(USE_RP2040)
+IF(USE_RP2040 OR USE_RP2350)
   TARGET_LINK_LIBRARIES( libswindle rplib )
 ENDIF()
 

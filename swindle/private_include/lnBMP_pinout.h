@@ -16,7 +16,7 @@ enum lnBMPPins
     TDIRECTION_PIN = 8,
 };
 
-#ifdef USE_RP2040
+#if defined(USE_RP2040) || defined(USE_RP2350)
 #ifdef USE_RP_CARRIER
 #include "lnBMP_pinout_rp_carrier.h"
 #else
