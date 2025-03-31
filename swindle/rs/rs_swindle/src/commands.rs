@@ -15,15 +15,15 @@ mod registers;
 pub mod run;
 mod v;
 use alloc::vec;
-use breakpoints::_z;
 use breakpoints::_Z;
+use breakpoints::_z;
 use flash::_flashv;
-use memory::{_m, _X};
+use memory::{_X, _m};
 use q::_q;
-use registers::{_g, _p, _P};
+use registers::{_P, _g, _p};
 use v::_v;
 
-use run::{_c, _k, _s, _vCont, _R};
+use run::{_R, _c, _k, _s, _vCont};
 
 type Callback_raw = fn(command: &str, args: &[u8]) -> bool;
 type Callback_text = fn(command: &str, args: &[&str]) -> bool;
@@ -289,7 +289,7 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                         bmplog!("\n");
                         let prefix_size = c.command.len() + c.start_separator.len();
                         if command.len() > prefix_size && !c.next_separator.is_empty() {
-                            return (x)(command, command[prefix_size..].as_bytes());
+                            return (x)(command, &command.as_bytes()[prefix_size..]);
                         } else {
                             // no extra data
                             return (x)(command, &[]);

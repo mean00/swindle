@@ -4,6 +4,9 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
+//
+#[macro_use]
+extern crate alloc;
 //#![allow(unused_imports)]
 mod bmp;
 mod bmplogger;
@@ -26,9 +29,8 @@ mod sw_breakpoints;
 mod util;
 
 use crate::decoder::gdb_stream;
-use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
-extern crate alloc;
 use decoder::RESULT_AUTOMATON;
+use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 
 crate::setup_log!(false);
 //use crate::{bmplog,bmpwarning};

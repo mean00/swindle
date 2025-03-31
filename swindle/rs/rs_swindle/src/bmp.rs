@@ -25,7 +25,7 @@ fn bool_to_c(ret: bool) -> core::ffi::c_int {
     if ret {
         return 1;
     }
-    return 0;
+    0
 }
 
 pub struct MemoryBlock {
@@ -54,7 +54,7 @@ pub fn bmp_read_registers() -> Vec<u32> {
     }
     unsafe {
         let n = rn_bmp_cmd_c::bmp_registers_count_c() as usize;
-        let mut r: Vec<u32> = Vec::with_capacity(n);
+        let mut r: Vec<u32> = vec![0; n];
         r.set_len(n);
         rn_bmp_cmd_c::bmp_read_all_registers_c(r.as_mut_ptr()); // as *mut u32);
         r

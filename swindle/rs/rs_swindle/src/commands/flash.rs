@@ -1,7 +1,7 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use super::{exec_one, CommandTree};
+use super::{CommandTree, exec_one};
 use crate::encoder::encoder;
 
 use crate::bmp::{bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
@@ -68,7 +68,7 @@ fn _vFlashWrite(command: &str, _args: &[u8]) -> bool {
         return true;
     }
 
-    let block: &[u8] = (command[12..]).as_bytes();
+    let block: &[u8] = &command.as_bytes()[12..];
     let len = block.len();
 
     if len < 9 {
