@@ -27,7 +27,15 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 18] = [
+const mon_command_tree: [CommandTree; 19] = [
+    CommandTree {
+        command: "map",
+        min_args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_map),
+        start_separator: " ",
+        next_separator: " ",
+    },
     CommandTree {
         command: "redirect",
         min_args: 1,
@@ -174,7 +182,7 @@ const mon_command_tree: [CommandTree; 18] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 17] = [
+const help_tree: [HelpTree; 18] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -202,6 +210,10 @@ const help_tree: [HelpTree; 17] = [
     HelpTree {
         command: "fos",
         help: "Enable FreeRTOS support.",
+    },
+    HelpTree {
+        command: "map",
+        help: "Show the memory map .",
     },
     HelpTree {
         command: "os_info",
@@ -593,6 +605,27 @@ pub fn set_custom_target_command(
         targetHelpTree = Some(helpTree);
     }
 }
+fn _map(_command: &str, _args: &[&str]) -> bool {
+    let ram: Vec<bmp::MemoryBlock> = bmp::bmp_get_mapping(bmp::mapping::Ram);
+    for i in ram {
+        gdb_print!(
+            " RAM   : start=0x{:x} size={} kB\n",
+            i.start_address,
+            i.length / 1024
+        );
+    }
+    let flash: Vec<bmp::MemoryBlock> = bmp::bmp_get_mapping(bmp::mapping::Flash);
+    for i in flash {
+        gdb_print!(
+            " FLASH : start=0x{:x} size={} kB\n",
+            i.start_address,
+            i.length / 1024
+        );
+    }
+    encoder::reply_ok();
+    true
+}
+
 /*
  *
  *
