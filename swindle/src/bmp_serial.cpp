@@ -310,6 +310,8 @@ void serialInit()
 #endif
     // bridge CDC ACMxxx to Serial port yy
     BMPSerial *serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE);
+#if defined(USE_3_CDC)
     initCDCLogger();
+#endif
     EXTRA_SETUP();
 }
