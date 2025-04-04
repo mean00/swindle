@@ -445,16 +445,13 @@ extern "C"
     extern "C" void usbCdc_Logger(int n, const char *data);
     extern "C" void swindleRedirectLog_c(int32_t toggle)
     {
-#if defined(USE_3_CDC)
         Logger("Setting redirect to usb to %d\n", toggle);
         if (toggle)
             setLogger(usbCdc_Logger);
         else
             setLogger(NULL);
         Logger("Setting redirect to usb to %d\n", toggle);
-#else
         Logger("cant redirect logger \n");
-#endif
     }
     /*
 

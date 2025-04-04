@@ -291,17 +291,20 @@ class BMPSerial : public lnTask
         bg->cdcEventHandler(event, payload);
     }
 
+  public:
+    lnUsbCDC *_usb;
+
   protected:
     bool _connected;
     int _usbInstance, _serialInstance;
     lnSerialRxTx *_serial;
-    lnUsbCDC *_usb;
 
     lnFastEventGroup *_evGroup;
     lnPump _usb2serial;
     lnPump _serial2usb;
 };
 extern void initCDCLogger();
+static BMPSerial *serial = NULL;
 void serialInit()
 {
 #if defined(USE_RP2040) || defined(USE_RP2350)
@@ -309,9 +312,17 @@ void serialInit()
     lnPinMode(LN_UART_TX, lnUART);
 #endif
     // bridge CDC ACMxxx to Serial port yy
-    BMPSerial *serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE);
+    serial = new BMPSerial(LN_USB_INSTANCE, LN_SERIAL_INSTANCE);
 #if defined(USE_3_CDC)
     initCDCLogger();
 #endif
     EXTRA_SETUP();
 }
+#if !defined(USE_3_CDC)
+extern "C" void usbCdc_Logger(int n, const char *data)
+{
+    // thread safe ?
+    serial->_usb->write((const uint8_t *)data, n);
+}
+#endif
+// EOF
