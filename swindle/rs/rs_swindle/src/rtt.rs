@@ -1,14 +1,7 @@
 /*
  *
  */
-use crate::bmp;
-use crate::rn_bmp_cmd_c;
-use crate::rn_bmp_cmd_c::{
-    bmp_rtt_get_info_c, bmp_rtt_set_info_c, rttField, rttField_ADDRESS, rttField_ENABLED,
-    rttField_POLLING, rttInfo,
-};
-#[cfg(not(feature = "hosted"))]
-use rnarduino as rn;
+use crate::rn_bmp_cmd_c::{bmp_rtt_get_info_c, bmp_rtt_set_info_c, rttField, rttInfo};
 
 impl rttInfo {
     pub fn new() -> Self {
