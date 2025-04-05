@@ -3,18 +3,18 @@
 
 use alloc::vec::Vec;
 
-use super::{exec_one, CommandTree};
+use super::{CommandTree, exec_one};
 use crate::encoder::encoder;
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
+use crate::bmp::MemoryBlock;
 use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
-use crate::bmp::MemoryBlock;
+use crate::commands::CallbackType;
 use crate::commands::mon::_qRcmd;
 use crate::commands::q_thread::{
     _qC, _qP, _qSymbol, _qThreadExtraInfo, _qfThreadInfo, _qsThreadInfo,
 };
-use crate::commands::CallbackType;
 use crate::crc::abstract_crc32;
 
 use numtoa::NumToA;
@@ -57,10 +57,10 @@ const q_command_tree: [CommandTree; 13] = [
     }, // trace status
     CommandTree {
         command: "qRcmd",
-        min_args: 0,
+        min_args: 1,
         require_connected: false,
         cb: CallbackType::text(_qRcmd),
-        start_separator: "",
+        start_separator: ",",
         next_separator: "",
     }, // execute command
     CommandTree {

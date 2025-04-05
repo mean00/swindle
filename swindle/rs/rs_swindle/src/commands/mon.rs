@@ -11,6 +11,9 @@ crate::setup_log!(false);
 crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning, gdb_print};
 //
+pub const MAX_SPACE: usize = 40;
+pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
+//
 static mut targetCommandTree: Option<&[CommandTree]> = None;
 static mut targetHelpTree: Option<&[HelpTree]> = None;
 //
@@ -27,7 +30,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 19] = [
+const mon_command_tree: [CommandTree; 20] = [
     CommandTree {
         command: "map",
         min_args: 0,
@@ -141,6 +144,14 @@ const mon_command_tree: [CommandTree; 19] = [
         next_separator: "",
     }, //
     CommandTree {
+        command: "rtt",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(crate::commands::mon_rtt::_rtt),
+        start_separator: "",
+        next_separator: "",
+    }, //
+    CommandTree {
         command: "rvswdp_scan",
         min_args: 0,
         require_connected: false,
@@ -182,7 +193,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 18] = [
+const help_tree: [HelpTree; 19] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -236,6 +247,10 @@ const help_tree: [HelpTree; 18] = [
         help: "Reset the target.",
     },
     HelpTree {
+        command: "rtt",
+        help: "use mon rtt help to get the details.",
+    },
+    HelpTree {
         command: "rvswdp_scan",
         help: "Probe WCH RISCV device(s).",
     },
@@ -260,9 +275,11 @@ const help_tree: [HelpTree; 18] = [
  *
  */
 fn _redirect(_command: &str, args: &[&str]) -> bool {
-    let onoff: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
     #[cfg(not(feature = "hosted"))]
-    bmp::swindleRedirectLog(onoff != 0);
+    {
+        let onoff: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
+        bmp::swindleRedirectLog(onoff != 0);
+    }
     encoder::reply_ok();
     true
 }
@@ -333,8 +350,6 @@ fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
     true
 }
-const MAX_SPACE: usize = 40;
-const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
 fn print_help_tree(helptree: &[HelpTree]) {
     let mut mxsize: usize = 0;
@@ -396,16 +411,20 @@ pub fn _voltage(_command: &str, _args: &[&str]) -> bool {
 //
 // Execute command
 //
-pub fn _qRcmd(command: &str, _args: &[&str]) -> bool {
-    let largs: Vec<&str> = command.split(',').collect();
-    //NOTARGET
-    let ln = largs.len();
-    if ln != 2 {
+const MAX_RCMD_SIZE: usize = 128;
+pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
+    if args.len() != 1 {
+        gdb_print!("qRCmd : wrong args\n");
+        return false;
+    }
+    if args[0].len() > 2 * MAX_RCMD_SIZE {
+        //
+        gdb_print!("qRCmd : too long {}\n", args[0].len());
         return false;
     }
     // The command is hex encoded, decode it
-    let mut out: [u8; 32] = [0; 32];
-    let rcmd = match ascii_hex_string_to_u8s(largs[1], &mut out) {
+    let mut out: [u8; MAX_RCMD_SIZE] = [0; MAX_RCMD_SIZE];
+    let rcmd = match ascii_hex_string_to_u8s(args[0], &mut out) {
         Ok(x) => x,
         Err(_y) => {
             return false;

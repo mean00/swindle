@@ -25,11 +25,12 @@ extern "C" void pins_init();
 extern void serialInit();
 extern void bmp_io_begin_session();
 extern void bmp_io_end_session();
+extern "C" void bmp_rtt_poll_c();
 
 #define GDB_CDC_DATA_AVAILABLE (1 << 0)
 #define GDB_SESSION_START (1 << 1)
 #define GDB_SESSION_END (1 << 2)
-
+#define GDB_MAX_POLLING_PERIOD 20 // 20 ms
 // Rust part
 extern "C"
 {
@@ -102,7 +103,7 @@ class BufferGdb
     }
     uint32_t waitEvents()
     {
-        return _eventGroup->waitEvents(0xffff, 100);
+        return _eventGroup->waitEvents(0xffff, GDB_MAX_POLLING_PERIOD);
     }
     void cdcEventHandler(lnUsbCDC::lnUsbCDCEvents event)
     {
@@ -214,10 +215,11 @@ void gdb_task(void *parameters)
     while (true)
     {
         uint32_t ev = usbGdb->waitEvents();
-        // We get here at worst every 100 ms
+        // We get here at worst every GDB_MAX_POLLING_PERIOD (20ms ?)
         if (connected)
         {
             rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
+            bmp_rtt_poll_c();
         }
         if (ev)
         {

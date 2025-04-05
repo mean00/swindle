@@ -120,3 +120,7 @@ bool bmp_adiv5_swd_write_no_check_c(const uint16_t addr, const uint32_t data);
 uint32_t bmp_adiv5_swd_read_no_check_c(const uint16_t addr);
 void bmp_raw_swd_write_c(uint32_t tick, uint32_t value);
 uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t addr, const uint32_t value, uint32_t *fault);
+#include "bmp_rtt_command.h"
+void bmp_rtt_get_info_c(rttInfo *info);
+void bmp_rtt_set_info_c(rttField field, const rttInfo *info);
+// EOF
