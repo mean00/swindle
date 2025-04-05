@@ -13,7 +13,7 @@ use crate::gdb_print;
 /*
  *
  */
-const rtt_command_tree: [CommandTree; 3] = [
+const rtt_command_tree: [CommandTree; 6] = [
     CommandTree {
         command: "help",
         min_args: 0,
@@ -23,18 +23,42 @@ const rtt_command_tree: [CommandTree; 3] = [
         next_separator: " ",
     },
     CommandTree {
-        command: "two",
-        min_args: 1,
+        command: "enable",
+        min_args: 0,
         require_connected: false,
-        cb: CallbackType::text(_two),
+        cb: CallbackType::text(_enable),
         start_separator: " ",
         next_separator: " ",
     },
     CommandTree {
-        command: "tree",
+        command: "disable",
         min_args: 0,
         require_connected: false,
-        cb: CallbackType::text(_tree),
+        cb: CallbackType::text(_disable),
+        start_separator: " ",
+        next_separator: " ",
+    },
+    CommandTree {
+        command: "status",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_status),
+        start_separator: " ",
+        next_separator: " ",
+    },
+    CommandTree {
+        command: "cblock",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_cblock),
+        start_separator: " ",
+        next_separator: " ",
+    },
+    CommandTree {
+        command: "ram",
+        min_args: 2,
+        require_connected: false,
+        cb: CallbackType::text(_scan),
         start_separator: " ",
         next_separator: " ",
     },
@@ -42,18 +66,30 @@ const rtt_command_tree: [CommandTree; 3] = [
 /*
  *
  */
-const rtt_help_tree: [HelpTree; 3] = [
+const rtt_help_tree: [HelpTree; 6] = [
     HelpTree {
         command: "help",
         help: "Display help.",
     },
     HelpTree {
-        command: "rttcmd1",
-        help: "rttcmd1 ..",
+        command: "enable",
+        help: "enable rtt.",
     },
     HelpTree {
-        command: "rttcmd2",
-        help: "rttcmd2 .",
+        command: "disable",
+        help: "disable rtt .",
+    },
+    HelpTree {
+        command: "status",
+        help: "print status.",
+    },
+    HelpTree {
+        command: "cblock",
+        help: "printf control block info .",
+    },
+    HelpTree {
+        command: "ram startadr endadr",
+        help: "scan ram to find the RTT block.",
     },
 ];
 /*
@@ -91,13 +127,36 @@ pub fn _help(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
-pub fn _two(_command: &str, _args: &[&str]) -> bool {
+pub fn _enable(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_ok();
     true
 }
 /*
  *
  */
-pub fn _tree(_command: &str, _args: &[&str]) -> bool {
+pub fn _disable(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_ok();
+    true
+}
+/*
+ *
+ */
+pub fn _status(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_ok();
+    true
+}
+/*
+ *
+ */
+pub fn _cblock(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_ok();
+    true
+}
+/*
+ *
+ */
+pub fn _scan(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_ok();
     true
 }
 // EOF
