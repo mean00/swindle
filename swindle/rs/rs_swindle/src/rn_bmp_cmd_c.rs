@@ -134,9 +134,6 @@ pub type uint_fast64_t = cty::c_ulonglong;
 pub type target_s = cty::c_void;
 pub type bool_ = cty::c_int;
 unsafe extern "C" {
-    pub fn rtt_poll_c();
-}
-unsafe extern "C" {
     pub fn bmp_custom_crc32_c(
         adr: cty::c_uint,
         size_in_bytes: cty::c_uint,

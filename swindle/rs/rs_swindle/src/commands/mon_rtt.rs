@@ -134,6 +134,7 @@ fn _help(_command: &str, _args: &[&str]) -> bool {
 fn _enable(_command: &str, _args: &[&str]) -> bool {
     let mut info = get_rtt_info();
     info.enabled = 1;
+    info.found = 0;
     set_rtt_info(rttField_ENABLED, &info);
     encoder::reply_ok();
     true
@@ -144,6 +145,7 @@ fn _enable(_command: &str, _args: &[&str]) -> bool {
 fn _disable(_command: &str, _args: &[&str]) -> bool {
     let mut info = get_rtt_info();
     info.enabled = 0;
+    info.found = 0;
     set_rtt_info(rttField_ENABLED, &info);
     encoder::reply_ok();
     true

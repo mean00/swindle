@@ -47,6 +47,10 @@ extern "C"
         case ADDRESS:
             rtt_ram_start = info->min_address;
             rtt_ram_end = info->max_address;
+            if (rtt_ram_start || rtt_ram_start)
+            {
+                rtt_flag_ram = true;
+            }
             break;
         case POLLING:
             rtt_min_poll_ms = info->min_poll_ms;
