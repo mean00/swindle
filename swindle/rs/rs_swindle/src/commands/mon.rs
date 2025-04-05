@@ -11,6 +11,9 @@ crate::setup_log!(false);
 crate::gdb_print_init!();
 use crate::{bmplog, bmpwarning, gdb_print};
 //
+pub const MAX_SPACE: usize = 40;
+pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
+//
 static mut targetCommandTree: Option<&[CommandTree]> = None;
 static mut targetHelpTree: Option<&[HelpTree]> = None;
 //
@@ -142,7 +145,7 @@ const mon_command_tree: [CommandTree; 20] = [
     }, //
     CommandTree {
         command: "rtt",
-        min_args: 0,
+        min_args: 1,
         require_connected: false,
         cb: CallbackType::text(crate::commands::mon_rtt::_rtt),
         start_separator: "",
@@ -272,9 +275,11 @@ const help_tree: [HelpTree; 19] = [
  *
  */
 fn _redirect(_command: &str, args: &[&str]) -> bool {
-    let onoff: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
     #[cfg(not(feature = "hosted"))]
-    bmp::swindleRedirectLog(onoff != 0);
+    {
+        let onoff: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
+        bmp::swindleRedirectLog(onoff != 0);
+    }
     encoder::reply_ok();
     true
 }
@@ -345,8 +350,6 @@ fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
     true
 }
-pub const MAX_SPACE: usize = 40;
-pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
 fn print_help_tree(helptree: &[HelpTree]) {
     let mut mxsize: usize = 0;

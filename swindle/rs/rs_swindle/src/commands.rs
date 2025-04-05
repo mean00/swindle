@@ -259,7 +259,7 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                         let as_string = command;
                         // do we have a start separator ?
                         let prefix_size = c.command.len() + c.start_separator.len();
-                        let conf: Vec<&str>;
+                        let mut conf: Vec<&str>;
                         if as_string.len() > prefix_size && !c.next_separator.is_empty() {
                             //} && !c.next_separator.is_empty() {
                             conf = as_string[prefix_size..].split(c.next_separator).collect();
@@ -271,6 +271,10 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                             } else {
                                 conf = vec![];
                             }
+                        }
+                        // Remove starting " "
+                        for i in 0..conf.len() {
+                            conf[i] = crate::parsing_util::chomp(conf[i]);
                         }
                         bmplog!(command);
                         bmplog!("\n");

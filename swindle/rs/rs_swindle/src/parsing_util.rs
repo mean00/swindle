@@ -4,6 +4,14 @@ crate::setup_log!(false);
 use crate::bmplog;
 //
 //
+pub fn chomp(input: &str) -> &str {
+    let mut st: &str = input;
+    if st.starts_with(" ") {
+        st = &st[1..];
+    }
+    st
+}
+//
 //
 pub fn ascii_hex_string_to_u8s<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&'a [u8], i32> {
     let datain = sin.as_bytes();
