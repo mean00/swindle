@@ -77,6 +77,14 @@ pub fn _tohex(v: u8) -> u8 {
     }
     b'0' + v
 }
+//
+pub fn ascii_hex_or_dec_to_u32(input: &str) -> u32 {
+    if input.starts_with("0x") || input.starts_with("0X") {
+        ascii_hex_to_u32(&input[2..])
+    } else {
+        ascii_string_decimal_to_u32(input)
+    }
+}
 //---
 pub fn ascii_string_hex_to_u32_le(s: &str) -> u32 {
     let datain = s.as_bytes();

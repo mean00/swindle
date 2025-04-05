@@ -3,8 +3,34 @@
 extern "C"
 {
 #include "rtt_if.h"
+    // Warning this is duplicated from bmp_command.h
+    typedef enum
+    {
+        ENABLED,
+        ADDRESS,
+        POLLING,
+    } rttField;
+    //--
+    typedef struct
+    {
+        uint32_t enabled;
+        uint32_t found;
+        uint32_t min_address;
+        uint32_t max_address;
+        uint32_t min_pool_ms;
+        uint32_t max_pool_ms;
+        uint32_t max_pool_error;
+    } rttInfo;
+}
+//
+extern "C" void bmp_rtt_get_info_c(rttInfo *info)
+{
+}
+extern "C" void bmp_rtt_set_info_c(rttField field, const rttInfo *info)
+{
 }
 
+//---------
 int rtt_if_init(void)
 {
     return 0;
