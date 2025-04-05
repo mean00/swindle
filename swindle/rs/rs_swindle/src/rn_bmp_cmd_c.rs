@@ -460,12 +460,13 @@ pub type rttField = cty::c_uint;
 #[derive(Debug, Copy, Clone)]
 pub struct rttInfo {
     pub enabled: cty::c_uint,
-    pub found: cty::c_uint,
     pub min_address: cty::c_uint,
     pub max_address: cty::c_uint,
-    pub min_pool_ms: cty::c_uint,
-    pub max_pool_ms: cty::c_uint,
-    pub max_pool_error: cty::c_uint,
+    pub min_poll_ms: cty::c_uint,
+    pub max_poll_ms: cty::c_uint,
+    pub max_poll_error: cty::c_uint,
+    pub found: cty::c_uint,
+    pub cb_address: cty::c_uint,
 }
 unsafe extern "C" {
     pub fn bmp_rtt_get_info_c(info: *mut rttInfo);

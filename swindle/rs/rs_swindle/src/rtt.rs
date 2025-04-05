@@ -17,9 +17,10 @@ impl rttInfo {
             found: 0,
             min_address: 0,
             max_address: 0,
-            min_pool_ms: 0,
-            max_pool_ms: 0,
-            max_pool_error: 0,
+            min_poll_ms: 0,
+            max_poll_ms: 0,
+            max_poll_error: 0,
+            cb_address: 0,
         }
     }
 }

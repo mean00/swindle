@@ -5,6 +5,7 @@ use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
 use crate::rn_bmp_cmd_c::rttField_ADDRESS;
 use crate::rn_bmp_cmd_c::rttField_ENABLED;
+use crate::rn_bmp_cmd_c::rttField_POLLING;
 use crate::rtt;
 use numtoa::NumToA;
 
@@ -50,10 +51,10 @@ const rtt_command_tree: [CommandTree; 6] = [
         next_separator: " ",
     },
     CommandTree {
-        command: "cblock",
-        min_args: 0,
+        command: "poll",
+        min_args: 3,
         require_connected: false,
-        cb: CallbackType::text(_cblock),
+        cb: CallbackType::text(_poll),
         start_separator: " ",
         next_separator: " ",
     },
@@ -87,8 +88,8 @@ const rtt_help_tree: [HelpTree; 6] = [
         help: "print status.",
     },
     HelpTree {
-        command: "cblock",
-        help: "printf control block info .",
+        command: "poll min_ms max_ms error_limit",
+        help: "set polling rate.",
     },
     HelpTree {
         command: "ram startadr endadr",
@@ -159,23 +160,22 @@ fn TrueFalse(onoff: u32) -> &'static str {
 fn _status(_command: &str, _args: &[&str]) -> bool {
     let mut info = get_rtt_info();
     gdb_print!("Rtt : \n");
-    gdb_print!("\tEnabled   :{}\n", TrueFalse(info.enabled));
-    gdb_print!("\tFound     :{}\n", TrueFalse(info.found));
-    gdb_print!("\tMinAddress:{:x}\n", info.min_address);
-    gdb_print!("\tMaxAddress:{:x}\n", info.max_address);
+    gdb_print!("\t**ACTIVE** :{}\n", TrueFalse(info.enabled & info.found));
+    gdb_print!("\tFound      :{}\n", TrueFalse(info.found));
+    gdb_print!("\tEnabled    :{}\n", TrueFalse(info.enabled));
+    gdb_print!("\tFound      :{}\n", TrueFalse(info.found));
+    gdb_print!("\tMinAddress :0x{:x}\n", info.min_address);
+    gdb_print!("\tMaxAddress :0x{:x}\n", info.max_address);
+    gdb_print!("\tCtrlAddress:0x{:x}\n", info.cb_address);
+    gdb_print!("\tPollMin(ms):{}\n", info.min_poll_ms);
+    gdb_print!("\tPollMax(ms):{}\n", info.max_poll_ms);
+    gdb_print!("\tPollErr    :{}\n", info.max_poll_error);
     encoder::reply_ok();
     true
 }
 /*
  *
- */
-fn _cblock(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_ok();
-    true
-}
-/*
- * scan ram to find the RTT block...
- * Ram BEGIN_ADDR END_ADDR
+ *
  */
 fn _scan(_command: &str, args: &[&str]) -> bool {
     let mut start: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[0]);
@@ -189,6 +189,27 @@ fn _scan(_command: &str, args: &[&str]) -> bool {
     info.min_address = start;
     info.max_address = end;
     set_rtt_info(rttField_ADDRESS, &info);
+    encoder::reply_ok();
+    true
+}
+/*
+ * scan ram to find the RTT block...
+ * Ram BEGIN_ADDR END_ADDR
+ */
+fn _poll(_command: &str, args: &[&str]) -> bool {
+    let mut min: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[0]);
+    let mut max: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[1]);
+    let mut er: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[2]);
+    if max > min {
+        gdb_print!("Invalid minmax\n");
+        encoder::reply_e01();
+        return true;
+    }
+    let mut info = get_rtt_info();
+    info.min_poll_ms = min;
+    info.max_poll_ms = max;
+    info.max_poll_error = er;
+    set_rtt_info(rttField_POLLING, &info);
     encoder::reply_ok();
     true
 }
