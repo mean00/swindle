@@ -27,7 +27,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 19] = [
+const mon_command_tree: [CommandTree; 20] = [
     CommandTree {
         command: "map",
         min_args: 0,
@@ -141,6 +141,14 @@ const mon_command_tree: [CommandTree; 19] = [
         next_separator: "",
     }, //
     CommandTree {
+        command: "rtt",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(crate::commands::mon_rtt::_rtt),
+        start_separator: "",
+        next_separator: "",
+    }, //
+    CommandTree {
         command: "rvswdp_scan",
         min_args: 0,
         require_connected: false,
@@ -182,7 +190,7 @@ const mon_command_tree: [CommandTree; 19] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 18] = [
+const help_tree: [HelpTree; 19] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -234,6 +242,10 @@ const help_tree: [HelpTree; 18] = [
     HelpTree {
         command: "reset",
         help: "Reset the target.",
+    },
+    HelpTree {
+        command: "rtt",
+        help: "use mon rtt help to get the details.",
     },
     HelpTree {
         command: "rvswdp_scan",
@@ -333,8 +345,8 @@ fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
     true
 }
-const MAX_SPACE: usize = 40;
-const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
+pub const MAX_SPACE: usize = 40;
+pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
 fn print_help_tree(helptree: &[HelpTree]) {
     let mut mxsize: usize = 0;

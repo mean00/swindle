@@ -9,6 +9,7 @@ mod flash;
 mod memory;
 mod mon;
 mod mon_ch32vxx;
+mod mon_rtt;
 pub mod q;
 pub mod q_thread;
 mod registers;

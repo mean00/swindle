@@ -71,6 +71,7 @@ extern "C" fn rngdbstub_poll() {
         check = bmp::bmp_attached() && running;
     }
     if check {
+        bmp::rtt_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
         match bmp::bmp_poll() {
             HaltState::Running => return,           // nothing to do !
             HaltState::Error => reply_2("X", 29),   // SIGLOST

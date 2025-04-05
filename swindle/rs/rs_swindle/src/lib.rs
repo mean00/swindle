@@ -25,6 +25,7 @@ pub mod rpc_common;
 pub mod rpc_host;
 #[cfg(not(feature = "hosted"))]
 pub mod rpc_target;
+mod rtt;
 mod sw_breakpoints;
 mod util;
 

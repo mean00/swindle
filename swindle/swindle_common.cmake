@@ -7,6 +7,7 @@ ADD_DEFINITIONS("-DENABLE_RISCV")
 ADD_DEFINITIONS("-DCONFIG_RISCV")
 ADD_DEFINITIONS("-DCONFIG_GD32")
 ADD_DEFINITIONS("-DCONFIG_MM32")
+ADD_DEFINITIONS("-DENABLE_RTT")
 ADD_DEFINITIONS("-DNO_LIBOPENCM3=1")
 #----------------------------
 # Supported boards
@@ -26,6 +27,7 @@ SET(BM_SRC      ${S}/command.c
                 ${S}/hex_utils.c
                 ${S}/timing.c
                 ${S}/maths_utils.c
+                ${S}/rtt.c
                 #${S}/remote.c
                 #${S}/gdb_main.c
                 #${S}/gdb_packet.c

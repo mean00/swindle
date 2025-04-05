@@ -315,6 +315,10 @@ pub fn bmp_poll() -> HaltState {
     }
 }
 //----------------------------------
+pub fn rtt_poll() {
+    unsafe { rn_bmp_cmd_c::rtt_poll_c() }
+}
+//----------------------------------
 pub fn rpc_init_swd() -> bool {
     unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_rpc_init_swd_c()) }
 }
