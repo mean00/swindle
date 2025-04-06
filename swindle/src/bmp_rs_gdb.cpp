@@ -25,7 +25,7 @@ extern "C" void pins_init();
 extern void serialInit();
 extern void bmp_io_begin_session();
 extern void bmp_io_end_session();
-extern "C" void rnrtt_poll();
+extern "C" void bmp_rtt_poll_c();
 
 #define GDB_CDC_DATA_AVAILABLE (1 << 0)
 #define GDB_SESSION_START (1 << 1)
@@ -219,6 +219,7 @@ void gdb_task(void *parameters)
         if (connected)
         {
             rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
+            bmp_rtt_poll_c();
         }
         if (ev)
         {

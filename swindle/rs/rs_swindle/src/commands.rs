@@ -273,8 +273,8 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                             }
                         }
                         // Remove starting " "
-                        for i in 0..conf.len() {
-                            conf[i] = crate::parsing_util::chomp(conf[i]);
+                        for i in conf.iter_mut() {
+                            *i = crate::parsing_util::chomp(i);
                         }
                         bmplog!(command);
                         bmplog!("\n");

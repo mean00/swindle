@@ -411,16 +411,20 @@ pub fn _voltage(_command: &str, _args: &[&str]) -> bool {
 //
 // Execute command
 //
-pub fn _qRcmd(command: &str, _args: &[&str]) -> bool {
-    let largs: Vec<&str> = command.split(',').collect();
-    //NOTARGET
-    let ln = largs.len();
-    if ln != 2 {
+const MAX_RCMD_SIZE: usize = 128;
+pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
+    if args.len() != 1 {
+        gdb_print!("qRCmd : wrong args\n");
+        return false;
+    }
+    if args[0].len() > 2 * MAX_RCMD_SIZE {
+        //
+        gdb_print!("qRCmd : too long {}\n", args[0].len());
         return false;
     }
     // The command is hex encoded, decode it
-    let mut out: [u8; 32] = [0; 32];
-    let rcmd = match ascii_hex_string_to_u8s(largs[1], &mut out) {
+    let mut out: [u8; MAX_RCMD_SIZE] = [0; MAX_RCMD_SIZE];
+    let rcmd = match ascii_hex_string_to_u8s(args[0], &mut out) {
         Ok(x) => x,
         Err(_y) => {
             return false;

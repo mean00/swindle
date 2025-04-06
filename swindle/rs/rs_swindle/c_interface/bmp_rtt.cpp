@@ -87,8 +87,11 @@ extern "C"
      *
      *
      */
+    extern "C" void usbCdc_Logger(int n, const char *data);
+
     uint32_t rtt_write(const uint32_t channel, const char *buf, uint32_t len)
     {
+        usbCdc_Logger(len, buf);
         return len;
     }
     /* host to target: read one character from the channel, non-blocking. return character, -1 if no character */
@@ -107,7 +110,7 @@ extern "C"
      */
     bool rtt_nodata(const uint32_t channel)
     {
-        return false;
+        return true;
     }
 }
 // EOF
