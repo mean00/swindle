@@ -41,6 +41,7 @@ class BMPUsbLogger
     void printOut(int n, const char *data)
     {
         _usb->write((const uint8_t *)data, n);
+        _usb->flush();
     }
     static void loggerCdcEventHandler(void *cookie, int interface, lnUsbCDC::lnUsbCDCEvents event, uint32_t payload)
     {
