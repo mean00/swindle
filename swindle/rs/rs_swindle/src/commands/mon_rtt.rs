@@ -196,7 +196,7 @@ fn _poll(_command: &str, args: &[&str]) -> bool {
     let min: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[0]);
     let max: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[1]);
     let er: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[2]);
-    if max > min {
+    if max < min {
         gdb_print!("Invalid minmax\n");
         encoder::reply_e01();
         return true;
