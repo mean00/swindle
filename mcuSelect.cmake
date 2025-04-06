@@ -22,11 +22,11 @@ IF(NOT DEFINED LN_ARCH)
       SET(LN_ARCH            "ARM" CACHE INTERNAL "")
       SET(LN_MCU             "M4"  CACHE INTERNAL "")
       SET(LN_MCU_FLASH_SIZE  256   CACHE INTERNAL "")
-      SET(LN_MCU_RAM_SIZE    46    CACHE INTERNAL "")
-      SET(LN_MCU_STATIC_RAM  8     CACHE INTERNAL "")
+      SET(LN_MCU_RAM_SIZE    38    CACHE INTERNAL "")
+      SET(LN_MCU_STATIC_RAM  9     CACHE INTERNAL "")
       #SET(LN_MCU_SPEED 72000000    CACHE INTERNAL "") #=> ok
       SET(LN_MCU_SPEED 96000000    CACHE INTERNAL "") #=> ok
-      SET(LN_USB_NB_CDC 2) # 2 CDC interfaces
+      SET(LN_USB_NB_CDC 2 CACHE INTERNAL "")
 
       #      SET(LN_MCU_SPEED  72000000    CACHE INTERNAL "") #=> ok
       SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
