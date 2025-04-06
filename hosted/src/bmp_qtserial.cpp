@@ -20,7 +20,7 @@ extern "C"
 #define BMP_VID 0x1d50
 #define BMP_PID 0x6018
 // RP2040
-#define LNBMP_PID 0x6050
+#define LNBMP_PID 0x6030
 // CH/GD
 // #define LNBMP_PID 0x6030
 
