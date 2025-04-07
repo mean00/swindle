@@ -323,6 +323,7 @@ extern "C" void usbCdc_Logger(int n, const char *data)
 {
     // thread safe ?
     serial->_usb->write((const uint8_t *)data, n);
+    serial->_usb->flush();
 }
 #endif
 // EOF
