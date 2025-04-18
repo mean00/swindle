@@ -4,6 +4,7 @@ use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 use crate::parsing_util;
 use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_decimal_to_u32};
+use crate::settings;
 use alloc::vec::Vec;
 //
 //
@@ -30,7 +31,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 20] = [
+const mon_command_tree: [CommandTree; 22] = [
     CommandTree {
         command: "map",
         min_args: 0,
@@ -100,6 +101,22 @@ const mon_command_tree: [CommandTree; 20] = [
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_fos),
+        start_separator: " ",
+        next_separator: " ",
+    }, //
+    CommandTree {
+        command: "set",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_set),
+        start_separator: " ",
+        next_separator: " ",
+    }, //
+    CommandTree {
+        command: "unset",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(_unset),
         start_separator: " ",
         next_separator: " ",
     }, //
@@ -193,7 +210,7 @@ const mon_command_tree: [CommandTree; 20] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 19] = [
+const help_tree: [HelpTree; 21] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -253,6 +270,14 @@ const help_tree: [HelpTree; 19] = [
     HelpTree {
         command: "rvswdp_scan",
         help: "Probe WCH RISCV device(s).",
+    },
+    HelpTree {
+        command: "set",
+        help: "set [key] [value] , just set to get the current set",
+    },
+    HelpTree {
+        command: "unset key",
+        help: "unset key",
     },
     HelpTree {
         command: "swdp_scan",
@@ -640,6 +665,43 @@ fn _map(_command: &str, _args: &[&str]) -> bool {
             i.start_address,
             i.length / 1024
         );
+    }
+    encoder::reply_ok();
+    true
+}
+/*
+ *
+ *
+ *
+ */
+fn _set(_command: &str, args: &[&str]) -> bool {
+    if args.is_empty() {
+        settings::dump();
+        encoder::reply_ok();
+        return true;
+    }
+    if args.len() == 2 {
+        let value: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[1]);
+        settings::set(args[0], value);
+        encoder::reply_ok();
+        return true;
+    }
+    false
+}
+/*
+ *
+ *
+ */
+fn _unset(_command: &str, args: &[&str]) -> bool {
+    match args.len() {
+        0 => settings::dump(),
+        1 => {
+            if !settings::remove(args[0]) {
+                gdb_print!("That key does not exist\n");
+                return false;
+            }
+        }
+        _ => return false,
     }
     encoder::reply_ok();
     true

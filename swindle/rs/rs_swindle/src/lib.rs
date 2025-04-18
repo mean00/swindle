@@ -19,6 +19,7 @@ mod glue;
 mod packet_symbols;
 mod parsing_util;
 mod rn_bmp_cmd_c;
+mod settings;
 //mod rpc;
 pub mod rpc_common;
 #[cfg(feature = "hosted")]
@@ -50,6 +51,7 @@ fn clear_autoauto() {
 }
 #[unsafe(no_mangle)]
 extern "C" fn rngdbstub_init() {
+    settings::init_settings();
     unsafe {
         autoauto = Some(gdb_stream::<INPUT_BUFFER_SIZE>::new());
     }

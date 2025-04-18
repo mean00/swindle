@@ -17,6 +17,8 @@ ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
 numtoa = {version = "0.2.4"}
 crc = { version ="3.0.1", features = []}
+hashbrown = "0.15.2"
+arraystring = { version = "*", default-features = false, features = [] }
 [lib]
 name = "rsbmp"
 path = "src/lib.rs"
@@ -37,10 +39,10 @@ crate-type = ["staticlib"] # Creates static lib
 
 [profile.dev]
 debug = true
-lto = false
-opt-level       = 0
+lto = true
+opt-level       = 2
 
 [profile.release]
 debug = true
 lto = true
-opt-level       = 0
+opt-level       = 2
