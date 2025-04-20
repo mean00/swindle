@@ -5,9 +5,22 @@ use crate::rn_bmp_cmd_c::{rttField_ADDRESS, rttField_ENABLED, rttField_POLLING};
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
+use crate::bmpwarning;
 use crate::gdb_print;
-
 use crate::rtt::{get_rtt_info, set_rtt_info};
+
+pub const RTTSymbolName: [&str; 1] = ["_SEGGER_RTT"];
+/*
+ *
+ */
+#[unsafe(no_mangle)]
+pub fn rtt_processing(key: &str, value: &str) -> bool {
+    bmpwarning!("processing :key {} value {}", key, value);
+    gdb_print!("Rtt Key  : {}", key);
+    gdb_print!("Value Key  : {}\n", key);
+    true
+}
+
 /*
  *
  */

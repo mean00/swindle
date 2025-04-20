@@ -83,7 +83,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
 
     // Read pcCurrentTcb
     let mut data: [u32; 1] = [0];
-    if !bmp_read_mem32(symbol.symbols[0], &mut data) {
+    if !bmp_read_mem32(get_current_tcb_address(), &mut data) {
         bmpwarning!("cannot read value of pxCurrentTCB\n");
         return output;
     }
@@ -100,7 +100,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
     bmplog!("---- scanning ----\n");
     for index in 1..5 {
         bmplog!(" list {}\n", index);
-        for i in freertos_crawl_list(symbol.symbols[index]) {
+        for i in freertos_crawl_list(symbol.addresses[index].unwrap()) {
             bmplog!(
                 "\t\t found TCB 0x{:x} indexed as {}\n",
                 i,

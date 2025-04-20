@@ -10,26 +10,33 @@
 
 use crate::encoder::encoder;
 
+use crate::commands::mon_rtt as rttsym;
 use crate::freertos::freertos_symbols as fosym;
 use crate::parsing_util;
 crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 crate::gdb_print_init!();
 use crate::gdb_print;
+/*
+ *
+ */
 
 struct list_of_symbols {
     symbols: &'static [&'static str],
     processing: fn(&str, &str) -> bool,
+    clear: fn() -> bool,
 }
 const NB_OF_SYMBOL_TABLE: usize = 2;
 const symbols_to_collect: [list_of_symbols; NB_OF_SYMBOL_TABLE] = [
     list_of_symbols {
         symbols: &fosym::FreeRTOSSymbolName,
         processing: fosym::freertos_processing,
+        clear: fosym::freertos_clear_symbols,
     },
     list_of_symbols {
-        symbols: &fosym::FreeRTOSSymbolName,
-        processing: fosym::freertos_processing,
+        symbols: &rttsym::RTTSymbolName,
+        processing: rttsym::rtt_processing,
+        clear: dummy_symbol_clear,
     },
 ];
 
@@ -51,10 +58,15 @@ fn get_index() -> &'static mut parser_index {
 /*
  *
  */
+#[unsafe(no_mangle)]
 pub fn reset_symbols() {
+    bmplog!("Clearing symbols\n");
     let indeces: &mut parser_index = get_index();
     indeces.table_index = 0;
     indeces.line_index = 0;
+    for ref i in symbols_to_collect {
+        (i.clear)();
+    }
 }
 /*
  *
@@ -72,6 +84,12 @@ fn update_indeces(indeces: &mut parser_index) -> bool {
             return false;
         }
     }
+    true
+}
+/**
+ *
+ */
+pub fn dummy_symbol_clear() -> bool {
     true
 }
 /*
@@ -111,8 +129,7 @@ pub fn q_symbols(args: &[&str]) -> bool {
     } else {
         value = args[0];
     }
-    gdb_print!("Key {}", key);
-    gdb_print!("value {}", value);
+    bmplog!("Key {} value {}\n", key, value);
     (symbols_to_collect[indeces.table_index].processing)(key, value);
     indeces.line_index += 1;
     if update_indeces(&mut indeces) {

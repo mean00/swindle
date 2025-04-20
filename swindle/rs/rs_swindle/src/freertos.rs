@@ -83,7 +83,7 @@ pub fn enable_freertos(flavor: &str) -> bool {
     all_symbols.mcu_handler = core;
     os_attach(bmp_cpuid());
 
-    all_symbols.valid = all_symbols.loaded && core != LN_MCU_CORE::LN_MCU_NONE;
+    all_symbols.valid = all_symbols.valid && core != LN_MCU_CORE::LN_MCU_NONE;
 
     true
 }
