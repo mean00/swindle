@@ -1,5 +1,4 @@
 //use crate::bmp::{bmp_read_mem, bmp_read_mem32};
-use crate::encoder::encoder;
 use crate::parsing_util;
 use core::ptr::addr_of_mut;
 
@@ -69,11 +68,12 @@ fn lookup_name(key: &str) -> freeRtosSymbolIndex {
         if i == freeRtosSymbolIndex::invalid {
             return freeRtosSymbolIndex::invalid;
         }
-        if key == FreeRTOSSymbolName[i.clone() as usize] {
+        let index = i.clone() as usize;
+        if key == FreeRTOSSymbolName[index] {
             return i;
         }
     }
-    return freeRtosSymbolIndex::invalid;
+    freeRtosSymbolIndex::invalid
 }
 /*
  *
@@ -118,8 +118,7 @@ pub fn freertos_processing(key: &str, value_str: &str) -> bool {
  */
 pub fn get_current_tcb_address() -> u32 {
     let all_symbols = get_symbols();
-    let px_adr: u32 = all_symbols.addresses[freeRtosSymbolIndex::pxCurrentTCB as usize].unwrap();
-    px_adr
+    all_symbols.addresses[freeRtosSymbolIndex::pxCurrentTCB as usize].unwrap()
 }
 /*
  *

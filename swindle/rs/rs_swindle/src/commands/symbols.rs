@@ -8,15 +8,11 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use crate::encoder::encoder;
-
 use crate::commands::mon_rtt as rttsym;
 use crate::freertos::freertos_symbols as fosym;
-use crate::parsing_util;
 crate::setup_log!(true);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 crate::gdb_print_init!();
-use crate::gdb_print;
 /*
  *
  */
@@ -86,7 +82,7 @@ fn update_indeces(indeces: &mut parser_index) -> bool {
     }
     true
 }
-/**
+/*
  *
  */
 pub fn dummy_symbol_clear() -> bool {
@@ -97,7 +93,7 @@ pub fn dummy_symbol_clear() -> bool {
  *
  */
 fn ask_for_next_symbol(name: &str) -> bool {
-    let mut e = encoder::new();
+    let mut e = crate::encoder::encoder::new();
     e.begin();
     e.add("qSymbol:");
     e.hex_and_add(name);
@@ -111,7 +107,7 @@ fn ask_for_next_symbol(name: &str) -> bool {
  */
 #[unsafe(no_mangle)]
 pub fn q_symbols(args: &[&str]) -> bool {
-    let mut indeces = get_index();
+    let indeces = get_index();
     // empty one = let's start
     if args[0].is_empty() && args[1].is_empty() {
         reset_symbols();
@@ -123,17 +119,12 @@ pub fn q_symbols(args: &[&str]) -> bool {
         return true;
     }
     let key = symbols_to_collect[indeces.table_index].symbols[indeces.line_index];
-    let value: &str;
-    if args.is_empty() {
-        value = "";
-    } else {
-        value = args[0];
-    }
+    let value: &str = if args.is_empty() { "" } else { args[0] };
     bmplog!("Key {} value {}\n", key, value);
     (symbols_to_collect[indeces.table_index].processing)(key, value);
     indeces.line_index += 1;
-    if update_indeces(&mut indeces) {
+    if update_indeces(indeces) {
         ask_for_next_symbol(symbols_to_collect[indeces.table_index].symbols[indeces.line_index]);
     }
-    return true;
+    true
 }
