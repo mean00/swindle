@@ -12,6 +12,9 @@ crate::setup_log!(false);
 use crate::freertos::freertos_symbols::freertos_symbol_valid;
 use crate::freertos::freertos_tcb::{freertos_is_thread_present, freertos_switch_task};
 use crate::freertos::freertos_tcb::{get_current_thread_id, get_tcb_info_from_id};
+
+crate::gdb_print_init!();
+use crate::gdb_print;
 //
 // ‘m thread-id’
 // A single thread ID
@@ -147,7 +150,13 @@ pub fn _qC(_command: &str, _args: &[&str]) -> bool {
  *
  */
 pub fn _qSymbol(_command: &str, args: &[&str]) -> bool {
-    crate::freertos::freertos_symbols::q_freertos_symbols(args)
+    if args.len() != 2 {
+        gdb_print!("Malformed reply to qsymbol\n");
+    } else {
+        crate::commands::symbols::q_symbols(args);
+    }
+    encoder::reply_ok();
+    true
 }
 
 // EOF

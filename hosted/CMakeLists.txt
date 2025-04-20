@@ -14,7 +14,7 @@ ADD_DEFINITIONS("-DCONFIG_BMDA")
 #
 set(LN_EXT                  arm_gd32fx)
 set(LN_MCU_FOLDER           ${CMAKE_SOURCE_DIR}/../lnArduino/mcus/arm_gd32fx/)
-SET(SWINDLE_HOSTED           True CACHE INTERNAL "")
+SET(SWINDLE_HOSTED          True CACHE INTERNAL "")
 SET(LN_ARCH                 "X86" CACHE INTERNAL "")
 SET(LN_MCU                  "M4" CACHE INTERNAL "")
 SET(LN_TOOLCHAIN_EXT        "arm_gd32fx_clang" CACHE INTERNAL "")

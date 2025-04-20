@@ -1,16 +1,18 @@
 //use crate::bmp::{bmp_read_mem, bmp_read_mem32};
-use crate::encoder::encoder;
 use crate::parsing_util;
 use core::ptr::addr_of_mut;
 
 //use crate::freertos::freertos_trait::{freertos_task_info, freertos_task_state};
 use crate::freertos::LN_MCU_CORE;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
-const NB_FREERTOS_SYMBOLS: usize = 6;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
+const NB_FREERTOS_SYMBOLS: usize = 6;
+#[derive(PartialEq, EnumIter, Clone)]
 enum freeRtosSymbolIndex {
     pxCurrentTCB = 0,
     xSuspendedTaskList = 1,
@@ -18,8 +20,9 @@ enum freeRtosSymbolIndex {
     xDelayedTaskList2 = 3,
     pxReadyTasksLists = 4,
     xSchedulerRunning = 5,
+    invalid = 0xff,
 }
-const FreeRTOSSymbolName: [&str; NB_FREERTOS_SYMBOLS] = [
+pub const FreeRTOSSymbolName: [&str; NB_FREERTOS_SYMBOLS] = [
     "pxCurrentTCB",
     "xSuspendedTaskList",
     "xDelayedTaskList1",
@@ -29,18 +32,14 @@ const FreeRTOSSymbolName: [&str; NB_FREERTOS_SYMBOLS] = [
 ];
 pub struct FreeRTOSSymbols {
     pub valid: bool,
-    pub loaded: bool,
-    pub index: usize,
-    pub symbols: [u32; NB_FREERTOS_SYMBOLS],
+    pub addresses: [Option<u32>; NB_FREERTOS_SYMBOLS],
     pub cpuid: u32,
     pub mcu_handler: LN_MCU_CORE,
 }
 
 static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
     valid: false,
-    loaded: false,
-    index: 0,
-    symbols: [0; NB_FREERTOS_SYMBOLS],
+    addresses: [None; NB_FREERTOS_SYMBOLS],
     cpuid: 0,
     mcu_handler: LN_MCU_CORE::LN_MCU_NONE,
 };
@@ -51,90 +50,82 @@ pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
     unsafe { &mut *addr_of_mut!(freeRtosSymbols_internal) }
 }
 /*
- * \brief : ask gdb for pxCurrentTCB address
+ * \brief : clear the loaded symbols
  */
 
-fn ask_for_next_symbol() -> bool {
-    let mut e = encoder::new();
-    e.begin();
-    e.add("qSymbol:");
-    let symbol = get_symbols();
-    e.hex_and_add(FreeRTOSSymbolName[symbol.index]);
-    e.end();
+pub fn freertos_clear_symbols() -> bool {
+    let all_symbols = get_symbols();
+    all_symbols.valid = false;
+    all_symbols.addresses = [None; NB_FREERTOS_SYMBOLS];
+    true
+}
+/*
+ *
+ *
+ */
+fn lookup_name(key: &str) -> freeRtosSymbolIndex {
+    for i in freeRtosSymbolIndex::iter() {
+        if i == freeRtosSymbolIndex::invalid {
+            return freeRtosSymbolIndex::invalid;
+        }
+        let index = i.clone() as usize;
+        if key == FreeRTOSSymbolName[index] {
+            return i;
+        }
+    }
+    freeRtosSymbolIndex::invalid
+}
+/*
+ *
+ *
+ */
+fn update_valid(symbols: &mut FreeRTOSSymbols) {
+    let mut missing: bool = false;
+    for ref i in symbols.addresses {
+        //if let Some(x) = i {
+        if i.is_none() {
+            missing = true;
+        }
+    }
+    symbols.valid = !missing;
+}
+/*
+ *
+ *
+ */
+#[unsafe(no_mangle)]
+pub fn freertos_processing(key: &str, value_str: &str) -> bool {
+    let all_symbols = get_symbols();
+    let value = parsing_util::ascii_hex_to_u32(value_str);
+    bmplog!(
+        "\tprocessing :key {} value {}=>0x{:x}\n",
+        key,
+        value_str,
+        value
+    );
+    // lookup key
+    let index = lookup_name(key);
+    if index == freeRtosSymbolIndex::invalid {
+        bmpwarning!("That key does not exist\n");
+        return false;
+    }
+    all_symbols.addresses[index as usize] = Some(value);
+    update_valid(all_symbols);
     true
 }
 /*
  *
  */
-pub fn q_freertos_symbols(args: &[&str]) -> bool {
-    let all_symbols = get_symbols();
-    if all_symbols.valid {
-        encoder::reply_ok();
-        return true;
-    }
-    if args.len() != 2 {
-        bmpwarning!("Incorrect reply size {}", args.len());
-        encoder::reply_e01();
-        return true;
-    }
-    // is it an empty one ?, if so ask for pxCurrentTcb
-    if args[0].is_empty() && args[1].is_empty() {
-        all_symbols.index = 0;
-        all_symbols.valid = false;
-        return ask_for_next_symbol();
-    }
-    // Ok what is the symbol ?
-    let mut symbol: [u8; 32] = [0; 32];
-    let clear_text = parsing_util::ascii_hex_string_to_str(args[1], &mut symbol);
-    if let Ok(text) = clear_text {
-        if text.eq(FreeRTOSSymbolName[all_symbols.index]) {
-            if args[0].is_empty() {
-                bmpwarning!("cannot find symbol {}\n", text);
-                encoder::reply_ok();
-                return true;
-            } else {
-                // next
-                let address: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
-                bmplog!(
-                    "Found symbol {} : 0x{:x}\n",
-                    FreeRTOSSymbolName[all_symbols.index],
-                    address
-                );
-                all_symbols.symbols[all_symbols.index] = address;
-                all_symbols.index += 1;
-                if all_symbols.index == NB_FREERTOS_SYMBOLS {
-                    bmplog!("Got all symbols\n");
-                    all_symbols.loaded = true;
-                    encoder::reply_ok();
-                    return true;
-                }
-                return ask_for_next_symbol();
-            }
-        } else {
-            bmpwarning!(
-                "Inconsistent reply for index {}, reply is {}\n",
-                all_symbols.index,
-                text
-            );
-        }
-    }
-    bmpwarning!("Invalid qsymbol reply\n");
-    false
-}
-
-/*
- *
- */
 pub fn get_current_tcb_address() -> u32 {
     let all_symbols = get_symbols();
-    let px_adr: u32 = all_symbols.symbols[freeRtosSymbolIndex::pxCurrentTCB as usize];
-    px_adr
+    all_symbols.addresses[freeRtosSymbolIndex::pxCurrentTCB as usize].unwrap()
 }
 /*
+ *
  *
  */
 pub fn freertos_symbol_valid() -> bool {
-    let all_symbols = get_symbols();
-    all_symbols.valid
+    get_symbols().valid
 }
+//
 // EOF

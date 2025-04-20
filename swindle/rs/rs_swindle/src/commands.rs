@@ -14,6 +14,7 @@ pub mod q;
 pub mod q_thread;
 mod registers;
 pub mod run;
+pub mod symbols;
 mod v;
 use alloc::vec;
 use breakpoints::_Z;
@@ -68,10 +69,10 @@ const main_command_tree: [CommandTree; 22] = [
     }, // enable extended mode
     CommandTree {
         command: "T",
-        min_args: 1,
+        min_args: 0,
         require_connected: true,
         cb: CallbackType::text(q_thread::_T),
-        start_separator: " ",
+        start_separator: "",
         next_separator: "",
     }, // enable extended mode
     CommandTree {

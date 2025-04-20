@@ -19,6 +19,9 @@ numtoa = {version = "0.2.4"}
 crc = { version ="3.0.1", features = []}
 hashbrown = "0.15.2"
 arraystring = { version = "*", default-features = false, features = [] }
+strum = { version = "0.27", default-features = false, features = []}
+strum_macros = { version = "0.27", default-features = false, features = []}
+#
 [lib]
 name = "rsbmp"
 path = "src/lib.rs"

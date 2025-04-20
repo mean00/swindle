@@ -4,17 +4,13 @@
  */
 use crate::rpc_host::remote_encoder::*;
 
-use crate::bmplogger::*;
-use crate::parsing_util::ascii_hex_string_to_u8s;
-use crate::parsing_util::ascii_octet_to_hex;
 use crate::parsing_util::u8s_string_to_u32_le;
 use crate::rpc_common::*;
-use crate::rpc_host::remote_encoder::*;
 
 crate::setup_log!(false);
 
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning, gdb_print};
+use crate::{bmplog, gdb_print};
 
 use crate::rn_bmp_cmd_c::platform_buffer_read;
 
