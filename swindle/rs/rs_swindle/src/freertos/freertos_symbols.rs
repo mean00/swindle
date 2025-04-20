@@ -6,7 +6,7 @@ use core::ptr::addr_of_mut;
 //use crate::freertos::freertos_trait::{freertos_task_info, freertos_task_state};
 use crate::freertos::LN_MCU_CORE;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
 const NB_FREERTOS_SYMBOLS: usize = 6;
@@ -19,7 +19,7 @@ enum freeRtosSymbolIndex {
     pxReadyTasksLists = 4,
     xSchedulerRunning = 5,
 }
-const FreeRTOSSymbolName: [&str; NB_FREERTOS_SYMBOLS] = [
+pub const FreeRTOSSymbolName: [&str; NB_FREERTOS_SYMBOLS] = [
     "pxCurrentTCB",
     "xSuspendedTaskList",
     "xDelayedTaskList1",
@@ -65,23 +65,19 @@ fn ask_for_next_symbol() -> bool {
 }
 /*
  *
+ *
  */
-pub fn q_freertos_symbols(args: &[&str]) -> bool {
+#[unsafe(no_mangle)]
+pub fn freertos_processing(key: &str, value: &str) -> bool {
+    bmplog!("processing :key {} value {}", key, value);
+    /*
     let all_symbols = get_symbols();
     if all_symbols.valid {
-        encoder::reply_ok();
-        return true;
+        return false;
     }
     if args.len() != 2 {
-        bmpwarning!("Incorrect reply size {}", args.len());
-        encoder::reply_e01();
-        return true;
-    }
-    // is it an empty one ?, if so ask for pxCurrentTcb
-    if args[0].is_empty() && args[1].is_empty() {
-        all_symbols.index = 0;
-        all_symbols.valid = false;
-        return ask_for_next_symbol();
+        gdb_print("Incorrect reply size {}", args.len());
+        return false;
     }
     // Ok what is the symbol ?
     let mut symbol: [u8; 32] = [0; 32];
@@ -89,8 +85,7 @@ pub fn q_freertos_symbols(args: &[&str]) -> bool {
     if let Ok(text) = clear_text {
         if text.eq(FreeRTOSSymbolName[all_symbols.index]) {
             if args[0].is_empty() {
-                bmpwarning!("cannot find symbol {}\n", text);
-                encoder::reply_ok();
+                gdb_print!("cannot find symbol {}\n", text);
                 return true;
             } else {
                 // next
@@ -120,8 +115,9 @@ pub fn q_freertos_symbols(args: &[&str]) -> bool {
     }
     bmpwarning!("Invalid qsymbol reply\n");
     false
+    */
+    true
 }
-
 /*
  *
  */

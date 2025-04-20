@@ -11,6 +11,7 @@ mod mon;
 mod mon_ch32vxx;
 mod mon_rtt;
 pub mod q;
+pub mod symbols;
 pub mod q_thread;
 mod registers;
 pub mod run;

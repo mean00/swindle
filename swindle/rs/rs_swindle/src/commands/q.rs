@@ -28,8 +28,8 @@ const q_command_tree: [CommandTree; 13] = [
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qSymbol),
-        start_separator: "",
-        next_separator: "",
+        start_separator: ":",
+        next_separator: ":",
     }, // read symbol
     CommandTree {
         command: "qSupported", // : qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev
