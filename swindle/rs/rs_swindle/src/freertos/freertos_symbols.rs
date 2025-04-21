@@ -31,6 +31,7 @@ pub const FreeRTOSSymbolName: [&str; NB_FREERTOS_SYMBOLS] = [
     "xSchedulerRunning",
 ];
 pub struct FreeRTOSSymbols {
+    pub running: bool,
     pub valid: bool,
     pub addresses: [Option<u32>; NB_FREERTOS_SYMBOLS],
     pub cpuid: u32,
@@ -38,6 +39,7 @@ pub struct FreeRTOSSymbols {
 }
 
 static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
+    running: false,
     valid: false,
     addresses: [None; NB_FREERTOS_SYMBOLS],
     cpuid: 0,
@@ -55,6 +57,7 @@ pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
 
 pub fn freertos_clear_symbols() -> bool {
     let all_symbols = get_symbols();
+    all_symbols.running = false;
     all_symbols.valid = false;
     all_symbols.addresses = [None; NB_FREERTOS_SYMBOLS];
     true
@@ -127,5 +130,11 @@ pub fn get_current_tcb_address() -> u32 {
 pub fn freertos_symbol_valid() -> bool {
     get_symbols().valid
 }
-//
+/*
+ *
+ *
+ */
+pub fn freertos_running() -> bool {
+    get_symbols().running
+}
 // EOF

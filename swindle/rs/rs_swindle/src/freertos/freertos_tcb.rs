@@ -77,7 +77,7 @@ fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> 
 pub fn freertos_collect_information() -> Vec<freertos_task_info> {
     let mut output: Vec<freertos_task_info> = Vec::new();
     let symbol = get_symbols();
-    if !symbol.valid {
+    if !symbol.running {
         return output;
     }
 
@@ -128,7 +128,7 @@ pub fn get_threads() -> Vec<u32> {
     bmplog!("get_threads\n");
     let mut output: Vec<u32> = Vec::new();
     let symbol = get_symbols();
-    if !symbol.valid {
+    if !symbol.running {
         bmplog!("invalid symbols\n");
         return output;
     }
@@ -144,7 +144,7 @@ pub fn get_threads() -> Vec<u32> {
 pub fn get_current_thread_id() -> Option<u32> {
     bmplog!("get_current_thread\n");
     let symbol = get_symbols();
-    if !symbol.valid {
+    if !symbol.running {
         return None;
     }
     let t = freertos_collect_information();

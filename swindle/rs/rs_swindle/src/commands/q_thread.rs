@@ -10,7 +10,7 @@ use crate::parsing_util;
 crate::setup_log!(false);
 use crate::bmplog;
 
-use crate::freertos::freertos_symbols::freertos_symbol_valid;
+use crate::freertos::freertos_symbols::{freertos_running, freertos_symbol_valid};
 use crate::freertos::freertos_tcb::{freertos_is_thread_present, freertos_switch_task};
 use crate::freertos::freertos_tcb::{get_current_thread_id, get_tcb_info_from_id};
 
@@ -78,7 +78,7 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
 pub fn _Hg(_command: &str, args: &[&str]) -> bool {
     let thread_id: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
     bmplog!("Thread switch to 0x{:x} \n", thread_id);
-    if !freertos_symbol_valid() {
+    if !freertos_running() {
         bmplog!("invalid  thread 0x{:x} \n", thread_id);
         encoder::reply_ok();
         return true;
@@ -98,7 +98,7 @@ pub fn _Hg(_command: &str, args: &[&str]) -> bool {
 pub fn _T(_command: &str, args: &[&str]) -> bool {
     let thread_id: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
 
-    let ok = match freertos_symbol_valid() {
+    let ok = match freertos_running() {
         true => freertos_is_thread_present(thread_id),
         false => thread_id == 1,
     };
@@ -138,7 +138,7 @@ pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
 
 pub fn _qC(_command: &str, _args: &[&str]) -> bool {
     let mut current_thread_id = 1;
-    if !freertos_symbol_valid() {
+    if !freertos_running() {
         current_thread_id = 1;
     } else if let Some(x) = get_current_thread_id() {
         current_thread_id = x;

@@ -30,6 +30,14 @@ pub fn freertos_crawl_list(address: u32) -> Vec<u32> {
         return v;
     }
     let count = list_header[0];
+
+    if count > 20
+    // if it's unresonnable it's garbage
+    {
+        bmplog!("Unreasonnably large list\n");
+        return v;
+    }
+
     let mut next = list_header[3];
 
     let mut items: [u32; 5] = [0, 0, 0, 0, 0];
