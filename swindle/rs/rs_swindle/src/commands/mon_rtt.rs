@@ -1,6 +1,7 @@
 use crate::commands::mon::{MAX_SPACE, spacebar};
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
+use crate::parsing_util;
 use crate::rn_bmp_cmd_c::{rttField_ADDRESS, rttField_ENABLED, rttField_POLLING};
 
 crate::setup_log!(false);
@@ -9,22 +10,32 @@ use crate::bmpwarning;
 use crate::gdb_print;
 use crate::rtt::{get_rtt_info, set_rtt_info};
 
+use crate::settings;
 pub const RTTSymbolName: [&str; 1] = ["_SEGGER_RTT"];
+
+const KEY: &str = &"RTT_ADDR";
+/*
+ *
+ *
+ */
+pub fn rtt_clear_symbols() -> bool {
+    settings::remove(KEY);
+    true
+}
 /*
  *
  */
-#[unsafe(no_mangle)]
-pub fn rtt_processing(key: &str, value: &str) -> bool {
-    bmpwarning!("processing :key {} value {}", key, value);
-    gdb_print!("Rtt Key  : {}", key);
-    gdb_print!("Value Key  : {}\n", key);
+pub fn rtt_processing(key: &str, value_str: &str) -> bool {
+    bmpwarning!("processing :key {} value {}", key, value_str);
+    let value = parsing_util::ascii_hex_to_u32(value_str);
+    settings::set(KEY, value);
     true
 }
 
 /*
  *
  */
-const rtt_command_tree: [CommandTree; 6] = [
+const rtt_command_tree: [CommandTree; 7] = [
     CommandTree {
         command: "help",
         min_args: 0,
@@ -73,14 +84,26 @@ const rtt_command_tree: [CommandTree; 6] = [
         start_separator: " ",
         next_separator: " ",
     },
+    CommandTree {
+        command: "auto",
+        min_args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_auto_rtt),
+        start_separator: "",
+        next_separator: "",
+    },
 ];
 /*
  *
  */
-const rtt_help_tree: [HelpTree; 6] = [
+const rtt_help_tree: [HelpTree; 7] = [
     HelpTree {
         command: "help",
         help: "Display help.",
+    },
+    HelpTree {
+        command: "auto",
+        help: "automatically get rtt address from elf.",
     },
     HelpTree {
         command: "enable",
@@ -143,6 +166,9 @@ fn _enable(_command: &str, _args: &[&str]) -> bool {
     info.enabled = 1;
     info.found = 0;
     set_rtt_info(rttField_ENABLED, &info);
+    info.min_address = 0;
+    info.max_address = 0;
+    set_rtt_info(rttField_ADDRESS, &info);
     encoder::reply_ok();
     true
 }
@@ -179,6 +205,27 @@ fn _status(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("\tPollMin(ms):{}\n", info.min_poll_ms);
     gdb_print!("\tPollMax(ms):{}\n", info.max_poll_ms);
     gdb_print!("\tPollErr    :{}\n", info.max_poll_error);
+    encoder::reply_ok();
+    true
+}
+/*
+ *
+ *
+ */
+fn _auto_rtt(_command: &str, _args: &[&str]) -> bool {
+    let adr: u32 = settings::get_or_default(KEY, 0);
+    if adr == 0 {
+        gdb_print!("Segger RTT block not found\n");
+        encoder::reply_e01();
+        return true;
+    }
+    let mut info = get_rtt_info();
+    info.min_address = adr;
+    info.max_address = adr + 255;
+    set_rtt_info(rttField_ADDRESS, &info);
+    info.enabled = 1;
+    info.found = 0;
+    set_rtt_info(rttField_ENABLED, &info);
     encoder::reply_ok();
     true
 }
