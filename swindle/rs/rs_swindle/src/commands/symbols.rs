@@ -2,6 +2,7 @@
  *
  *      Generic get symbol engine from gdb
  *      we call the different symbols group one per one
+ *      so each of them can fill their info block
  *
  */
 
@@ -10,16 +11,18 @@
 
 use crate::commands::mon_rtt as rttsym;
 use crate::freertos::freertos_symbols as fosym;
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::bmplog;
 crate::gdb_print_init!();
-/*
- *
+/**
+ * This structure describes a symbol client
  */
-
 struct list_of_symbols {
+    /// list of symbols to search for as &[&str]
     symbols: &'static [&'static str],
+    /// callback to process one info, empty string if not avail
     processing: fn(&str, &str) -> bool,
+    /// callback to clear previously loaded info
     clear: fn() -> bool,
 }
 const NB_OF_SYMBOL_TABLE: usize = 2;
@@ -35,7 +38,9 @@ const symbols_to_collect: [list_of_symbols; NB_OF_SYMBOL_TABLE] = [
         clear: rttsym::rtt_clear_symbols,
     },
 ];
-
+/**
+ * This is used to do bookkeeping of the symbol parser
+ */
 struct parser_index {
     table_index: usize,
     line_index: usize,
@@ -50,19 +55,6 @@ static mut symbol_indeces: parser_index = parser_index {
  */
 fn get_index() -> &'static mut parser_index {
     unsafe { &mut symbol_indeces }
-}
-/*
- *
- */
-#[unsafe(no_mangle)]
-pub fn reset_symbols() {
-    bmplog!("Clearing symbols\n");
-    let indeces: &mut parser_index = get_index();
-    indeces.table_index = 0;
-    indeces.line_index = 0;
-    for ref i in symbols_to_collect {
-        (i.clear)();
-    }
 }
 /*
  *
@@ -84,12 +76,6 @@ fn update_indeces(indeces: &mut parser_index) -> bool {
 }
 /*
  *
- */
-pub fn dummy_symbol_clear() -> bool {
-    true
-}
-/*
- *
  *
  */
 fn ask_for_next_symbol(name: &str) -> bool {
@@ -100,9 +86,21 @@ fn ask_for_next_symbol(name: &str) -> bool {
     e.end();
     true
 }
-
-/*
- *
+/**
+ *  This calls all the clients to clear up previously loaded symbols
+ */
+#[unsafe(no_mangle)]
+pub fn reset_symbols() {
+    bmplog!("Clearing symbols\n");
+    let indeces: &mut parser_index = get_index();
+    indeces.table_index = 0;
+    indeces.line_index = 0;
+    for ref i in symbols_to_collect {
+        (i.clear)();
+    }
+}
+/**
+ *  This is the processing function of the gdb qSymbol call
  *
  */
 #[unsafe(no_mangle)]
@@ -128,3 +126,4 @@ pub fn q_symbols(args: &[&str]) -> bool {
     }
     true
 }
+// EOF

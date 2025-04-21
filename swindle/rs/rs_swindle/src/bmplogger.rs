@@ -90,6 +90,7 @@ macro_rules! setup_log {
     ($x:expr) => {
         static log_enabled: bool = $x;
         extern crate std;
+        #[allow(unused_imports)]
         use std::print;
     };
 }

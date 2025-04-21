@@ -8,6 +8,7 @@ use cty::size_t;
 #[cfg(feature = "hosted")]
 extern crate std;
 #[cfg(feature = "hosted")]
+#[allow(unused_imports)]
 use std::print;
 
 pub fn xswap(a: &mut isize, b: &mut isize) {

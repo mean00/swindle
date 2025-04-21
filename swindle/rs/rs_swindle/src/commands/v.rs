@@ -1,10 +1,11 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
-use super::{exec_one, CommandTree};
+use super::{CommandTree, exec_one};
 use crate::bmp;
 use crate::bmp::bmp_attach;
 use crate::commands::CallbackType;
+use crate::commands::symbols;
 use crate::encoder::encoder;
 use crate::freertos::os_detach;
 
@@ -85,6 +86,7 @@ fn _vAttach(_command: &str, args: &[&str]) -> bool {
         encoder::simple_send("T05thread:1;");
         return true;
     }
+    symbols::reset_symbols();
     os_detach();
     crate::sw_breakpoints::clear_sw_breakpoint();
     crate::commands::mon::clear_custom_target_command();

@@ -13,7 +13,7 @@ use crate::rtt::{get_rtt_info, set_rtt_info};
 use crate::settings;
 pub const RTTSymbolName: [&str; 1] = ["_SEGGER_RTT"];
 
-const KEY: &str = &"RTT_ADDR";
+const KEY: &str = "RTT_ADDR";
 /*
  *
  *
