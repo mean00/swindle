@@ -1,0 +1,25 @@
+diff --git a/src/target/cortexm.c b/src/target/cortexm.e
+index 58312329..ebe1c9da 100644
+--- a/src/target/cortexm.c	2025-04-21 08:37:19.688758211 +0200
++++ b/src/target/cortexm.c	2025-04-21 08:39:13.841817786 +0200
+@@ -909,10 +909,18 @@
+ 		dhcsr = target_mem32_read32(target, CORTEXM_DHCSR);
+ 	}
+ 	CATCH () {
+-	case EXCEPTION_ERROR:
++	case EXCEPTION_ERROR: {
+ 		/* Things went seriously wrong and there is no recovery from this... */
+-		target_list_free();
++		TRY (EXCEPTION_ALL) { // it might go wrong here too..
++			target_list_free();
++		}
++		CATCH () {
++		default:
++			break;
++		}
+ 		return TARGET_HALT_ERROR;
++		break;
++	}
+ 	case EXCEPTION_TIMEOUT:
+ 		/* Timeout isn't actually a problem and probably means target is in WFI */
+ 		return TARGET_HALT_RUNNING;
