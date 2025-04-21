@@ -8,6 +8,7 @@ use crate::encoder::encoder;
 use crate::parsing_util;
 
 crate::setup_log!(false);
+use crate::bmplog;
 
 use crate::freertos::freertos_symbols::freertos_symbol_valid;
 use crate::freertos::freertos_tcb::{freertos_is_thread_present, freertos_switch_task};
@@ -65,6 +66,7 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
         e.hex_and_add(x.state.as_str());
         e.end();
     } else {
+        bmplog!("Thread not found (extra)\n");
         encoder::reply_e01();
     }
 
@@ -75,13 +77,17 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
  */
 pub fn _Hg(_command: &str, args: &[&str]) -> bool {
     let thread_id: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
+    bmplog!("Thread switch to 0x{:x} \n", thread_id);
     if !freertos_symbol_valid() {
+        bmplog!("invalid  thread 0x{:x} \n", thread_id);
         encoder::reply_ok();
         return true;
     }
     if freertos_switch_task(thread_id) {
+        bmplog!(" switch ok   thread 0x{:x} \n", thread_id);
         encoder::reply_ok();
     } else {
+        bmplog!("failed to switch   thread 0x{:x} \n", thread_id);
         encoder::reply_e01();
     }
     true
