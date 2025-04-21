@@ -80,7 +80,7 @@ const main_command_tree: [CommandTree; 22] = [
         min_args: 1,
         require_connected: true,
         cb: CallbackType::text(q_thread::_Hg),
-        start_separator: " ",
+        start_separator: "",
         next_separator: "",
     }, // select thread
     CommandTree {
