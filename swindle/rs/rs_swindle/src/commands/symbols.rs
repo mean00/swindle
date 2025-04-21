@@ -32,7 +32,7 @@ const symbols_to_collect: [list_of_symbols; NB_OF_SYMBOL_TABLE] = [
     list_of_symbols {
         symbols: &rttsym::RTTSymbolName,
         processing: rttsym::rtt_processing,
-        clear: dummy_symbol_clear,
+        clear: rttsym::rtt_clear_symbols,
     },
 ];
 
