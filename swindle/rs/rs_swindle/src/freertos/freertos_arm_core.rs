@@ -1,3 +1,7 @@
+crate::setup_log!(false);
+use crate::{bmplog, bmpwarning};
+crate::gdb_print_init!();
+
 use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
 /*
@@ -5,9 +9,10 @@ use crate::bmp::{bmp_read_registers, bmp_write_register};
  *
  */
 const CORTEXM_GPR_REG_COUNT: usize = 17; // r00..r15+xpr = 17 reg
-                                         /*
-                                          *
-                                          */
+
+/*
+ *
+ */
 pub struct freertos_cortexm_core {
     pub registers: [u32; CORTEXM_GPR_REG_COUNT], // R0..R15 + PSR
     pub pointer: u32,                            // pseudo stack
@@ -37,6 +42,7 @@ impl freertos_cortexm_core {
     pub fn read_current_gpr_registers(&mut self) -> bool {
         let regs = bmp_read_registers();
         if regs.len() < CORTEXM_GPR_REG_COUNT {
+            bmpwarning!("Registers list too small\n");
             return false;
         }
         self.registers[..CORTEXM_GPR_REG_COUNT].copy_from_slice(&regs[..CORTEXM_GPR_REG_COUNT]);

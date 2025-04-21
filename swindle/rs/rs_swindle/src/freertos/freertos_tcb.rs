@@ -125,9 +125,11 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
  *
  */
 pub fn get_threads() -> Vec<u32> {
+    bmplog!("get_threads\n");
     let mut output: Vec<u32> = Vec::new();
     let symbol = get_symbols();
     if !symbol.valid {
+        bmplog!("invalid symbols\n");
         return output;
     }
     let t = freertos_collect_information();
@@ -140,12 +142,14 @@ pub fn get_threads() -> Vec<u32> {
  *
  */
 pub fn get_current_thread_id() -> Option<u32> {
+    bmplog!("get_current_thread\n");
     let symbol = get_symbols();
     if !symbol.valid {
         return None;
     }
     let t = freertos_collect_information();
     if t.is_empty() {
+        bmplog!("invalid info\n");
         return None;
     }
     // lookup which one is current thread
@@ -162,11 +166,12 @@ pub fn get_current_thread_id() -> Option<u32> {
  *
  */
 pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
+    bmplog!("get_tcb_info_from\n");
     let t = freertos_collect_information();
     if t.is_empty() {
+        bmplog!("invalid info\n");
         return None;
     }
-
     t.into_iter().find(|i| i.tcb_no == id)
 }
 
@@ -174,9 +179,11 @@ pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
  * \fn return a copy of pxCurrentTCB
  */
 pub fn get_pxCurrentTCB() -> Option<u32> {
+    bmplog!("get_pxCurrentTCB\n");
     let px_adr = get_current_tcb_address();
     let mut data: [u32; 1] = [0; 1];
     if !bmp_read_mem32(px_adr, &mut data[0..1]) {
+        bmplog!("read error at 0x{:x}\n", px_adr);
         return None;
     }
     Some(data[0])
@@ -185,6 +192,7 @@ pub fn get_pxCurrentTCB() -> Option<u32> {
  *
  */
 pub fn set_pxCurrentTCB(tcb: u32) -> bool {
+    bmplog!("set_pxCurrentTCB\n");
     let px_adr = get_current_tcb_address();
     let mut data: [u32; 1] = [0; 1];
     data[0] = tcb;
@@ -195,17 +203,21 @@ pub fn freertos_is_thread_present(thread_id: u32) -> bool {
     if new_info.is_some() {
         return true;
     }
+    bmplog!("thread {} not present\n", thread_id);
     false
 }
 pub fn freertos_switch_task(thread_id: u32) -> bool {
     // if we cant switch no need to go further
+    bmplog!("switch_task\n");
     if !os_can_switch() {
+        bmplog!("thread cannot switch ");
         return false;
     }
     let new_info = get_tcb_info_from_id(thread_id);
     // read new tcb
     let new_tcb = match new_info {
         None => {
+            bmplog!("no tcb info for thread {} \n", thread_id);
             return false;
         }
         Some(x) => x,
@@ -213,10 +225,12 @@ pub fn freertos_switch_task(thread_id: u32) -> bool {
     // read old tcb, exit if it is actually the same as the new one
     let old_current_tcb_adr = match get_pxCurrentTCB() {
         None => {
+            bmplog!("no tcb info for current TCB\n");
             return false;
         }
         Some(x) => {
             if x == new_tcb.tcb_addr {
+                bmplog!("already at the right thread, nothing to do\n");
                 return true;
             }
             x
@@ -224,6 +238,7 @@ pub fn freertos_switch_task(thread_id: u32) -> bool {
     };
 
     // let's switch
+    bmplog!("switching...\n");
     let old_stack = freertos_switch_task_action(new_tcb.top_of_stack);
     // write new top of stack
     let item: [u32; 1] = [old_stack];

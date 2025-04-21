@@ -4,16 +4,16 @@
 
 */
 crate::setup_log!(false);
-
+use crate::{bmplog, bmpwarning};
 crate::gdb_print_init!();
 
+use crate::freertos::LN_MCU_CORE;
 use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
 use crate::freertos::freertos_arm_m33::freertos_switch_handler_m33;
 use crate::freertos::freertos_riscv_rv32::freertos_switch_handler_rv32;
 use crate::freertos::freertos_symbols::get_symbols;
 use crate::freertos::freertos_trait::freertos_switch_handler;
-use crate::freertos::LN_MCU_CORE;
 use alloc::boxed::Box;
 
 const ARM_PARTNO_MASK: u32 = 0xfff0;
@@ -36,6 +36,7 @@ static mut FreeRTOS_switcher_internal: FreeRTOS_switcher = FreeRTOS_switcher { s
  */
 
 fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> u32 {
+    bmplog!("Switching to new stack 0x:{:x}\n", new_stack);
     // load current regs into cortex
     cortex.read_current_registers();
     // save on to tcb
