@@ -4,7 +4,7 @@
 use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_trait::freertos_switch_handler;
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 
 const STACKED_REGISTER_SIZE: u32 = 16 * 4;
 

@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use core::ptr::addr_of_mut;
 crate::setup_log!(false);
 use crate::gdb_print;
-use crate::{bmplog, bmpwarning};
+//use crate::{bmplog, bmpwarning};
 crate::gdb_print_init!();
 
 pub struct tcb_to_tid {

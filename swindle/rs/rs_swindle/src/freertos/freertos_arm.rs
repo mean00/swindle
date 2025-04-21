@@ -4,7 +4,7 @@
 
 */
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmplog;
 crate::gdb_print_init!();
 
 use crate::freertos::LN_MCU_CORE;

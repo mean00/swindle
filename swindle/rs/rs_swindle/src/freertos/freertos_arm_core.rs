@@ -1,5 +1,5 @@
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+use crate::bmpwarning;
 crate::gdb_print_init!();
 
 use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
