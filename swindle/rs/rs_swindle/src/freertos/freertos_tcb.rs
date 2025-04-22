@@ -2,13 +2,14 @@ use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use alloc::vec::Vec;
 
 use crate::freertos::freertos_hashtcb::get_hashtcb;
-use crate::freertos::freertos_list::freertos_crawl_list;
+use crate::freertos::freertos_list::{freertos_crawl_list, freertos_replace_in_list};
+
 use crate::freertos::freertos_symbols::{get_current_tcb_address, get_symbols};
 use crate::freertos::freertos_trait::freertos_task_state;
 
 use crate::freertos::{freertos_switch_task_action, freertos_task_info, os_can_switch};
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::{bmplog, bmpwarning};
 
 const OFFSET_TO_SIZE: u32 = 44;
@@ -99,7 +100,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
     // read other lists
     bmplog!("---- scanning ----\n");
     for index in 1..5 {
-        bmplog!(" list {}\n", index);
+        bmplog!(" parsing list {}:\n", index);
         for i in freertos_crawl_list(symbol.addresses[index].unwrap()) {
             bmplog!(
                 "\t\t found TCB 0x{:x} indexed as {}\n",
@@ -113,12 +114,17 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
                     x.tcb_no = tid;
                     output.push(x);
                 }
+            } else {
+                bmplog!("\t\t ==current, skipping\n");
             }
         }
     }
+    bmplog!("---- scanning done ----\n");
+    bmplog!("---- dumping ----\n");
     for t in &output {
         t.print_tcb();
     }
+    bmplog!("---- dumping done----\n");
     output
 }
 /*
@@ -129,7 +135,7 @@ pub fn get_threads() -> Vec<u32> {
     let mut output: Vec<u32> = Vec::new();
     let symbol = get_symbols();
     if !symbol.running {
-        bmplog!("invalid symbols\n");
+        bmplog!("fos not running \n");
         return output;
     }
     let t = freertos_collect_information();
@@ -172,7 +178,16 @@ pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
         bmplog!("invalid info\n");
         return None;
     }
-    t.into_iter().find(|i| i.tcb_no == id)
+
+    for r in t.into_iter() {
+        r.print_tcb();
+        if r.tcb_no == id {
+            return Some(r);
+        }
+    }
+    bmplog!("Not found!\n");
+    None
+    //t.into_iter().find(|i| i.tcb_no == id)
 }
 
 /*
@@ -198,6 +213,10 @@ pub fn set_pxCurrentTCB(tcb: u32) -> bool {
     data[0] = tcb;
     bmp_write_mem32(px_adr, &data)
 }
+/*
+ *
+ *
+ */
 pub fn freertos_is_thread_present(thread_id: u32) -> bool {
     let new_info = get_tcb_info_from_id(thread_id);
     if new_info.is_some() {
@@ -206,6 +225,11 @@ pub fn freertos_is_thread_present(thread_id: u32) -> bool {
     bmplog!("thread {} not present\n", thread_id);
     false
 }
+/*
+ *
+ *
+ *
+ */
 pub fn freertos_switch_task(thread_id: u32) -> bool {
     // if we cant switch no need to go further
     bmplog!("switch_task\n");
@@ -243,6 +267,17 @@ pub fn freertos_switch_task(thread_id: u32) -> bool {
     // write new top of stack
     let item: [u32; 1] = [old_stack];
     bmp_write_mem32(old_current_tcb_adr, &item);
+    let symbol = get_symbols();
+    // swap old and new tcb
+    for index in 1..5 {
+        bmplog!(" replacing in  list {}:\n", index);
+        freertos_replace_in_list(
+            symbol.addresses[index].unwrap(),
+            new_tcb.tcb_addr,
+            old_current_tcb_adr,
+        );
+    }
+
     // switch to that thread..
     set_pxCurrentTCB(new_tcb.tcb_addr);
     true
