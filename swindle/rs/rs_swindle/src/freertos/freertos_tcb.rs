@@ -9,7 +9,7 @@ use crate::freertos::freertos_trait::freertos_task_state;
 
 use crate::freertos::{freertos_switch_task_action, freertos_task_info, os_can_switch};
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
 const OFFSET_TO_SIZE: u32 = 44;

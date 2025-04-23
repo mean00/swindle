@@ -10,7 +10,7 @@ use crate::parsing_util;
 crate::setup_log!(false);
 use crate::bmplog;
 
-use crate::freertos::freertos_symbols::{freertos_running, freertos_symbol_valid};
+use crate::freertos::freertos_symbols::freertos_running;
 use crate::freertos::freertos_tcb::{freertos_is_thread_present, freertos_switch_task};
 use crate::freertos::freertos_tcb::{get_current_thread_id, get_tcb_info_from_id};
 

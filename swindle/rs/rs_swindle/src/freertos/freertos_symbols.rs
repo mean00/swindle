@@ -5,7 +5,7 @@ use core::ptr::addr_of_mut;
 //use crate::freertos::freertos_trait::{freertos_task_info, freertos_task_state};
 use crate::freertos::LN_MCU_CORE;
 
-crate::setup_log!(true);
+crate::setup_log!(false);
 use crate::{bmplog, bmpwarning};
 
 use strum::IntoEnumIterator;
