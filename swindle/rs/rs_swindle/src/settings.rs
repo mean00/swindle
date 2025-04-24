@@ -140,31 +140,31 @@ type my_c_str = *const u8;
 #[unsafe(no_mangle)]
 extern "C" fn bmp_settings_set(key: my_c_str, value: u32) -> bool {
     let c_str = unsafe { core::ffi::CStr::from_ptr(key) };
-    return match c_str.to_str() {
+    match c_str.to_str() {
         Ok(x) => {
             set(x, value);
             true
         }
         Err(_) => false,
-    };
+    }
 }
 //
 #[unsafe(no_mangle)]
 extern "C" fn bmp_settings_get_or_default(key: my_c_str, def: u32) -> u32 {
     let c_str = unsafe { core::ffi::CStr::from_ptr(key) };
-    return match c_str.to_str() {
+    match c_str.to_str() {
         Ok(x) => get_or_default(x, def),
         Err(_) => 0,
-    };
+    }
 }
 //
 #[unsafe(no_mangle)]
 extern "C" fn bmp_settings_unset(key: my_c_str) -> bool {
     let c_str = unsafe { core::ffi::CStr::from_ptr(key) };
-    return match c_str.to_str() {
+    match c_str.to_str() {
         Ok(x) => remove(x),
         Err(_) => false,
-    };
+    }
 }
 
 //
