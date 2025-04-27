@@ -1,0 +1,66 @@
+diff --git a/src/target/stm32f1.c b/src/target/stm32f1.c
+index 58312329..ebe1c9da 100644
+--- a/src/target/stm32f1.c	2025-04-27 08:54:46.528863903 +0200
++++ b/src/target/stm32f1.c	2025-04-27 08:54:57.426275645 +0200
+@@ -174,6 +174,7 @@
+ static bool stm32f1_flash_erase(target_flash_s *flash, target_addr_t addr, size_t len);
+ static bool stm32f1_flash_write(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
+ static bool stm32f1_mass_erase(target_s *target, platform_timeout_s *print_progess);
++static bool gd32_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32);
+ 
+ static void stm32f1_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize)
+ {
+@@ -282,7 +283,7 @@
+ 	target_addr32_t dbgmcu_config_taddr;
+ 	const uint16_t device_id = stm32f1_read_idcode(target, &dbgmcu_config_taddr);
+ 	size_t block_size = 0x400;
+-
++	target->crc32 = gd32_crc32;
+ 	switch (device_id) {
+ 	case 0x414U: /* GD32F30x_HD, High density */
+ 	case 0x430U: /* GD32F30x_XD, XL-density */
+@@ -1359,3 +1360,44 @@
+ 		uid_base = STM32F3_UID_BASE;
+ 	return stm32_uid(target, uid_base);
+ }
++
++#include "../../../blackmagic_addon/flashstub/gd32_crc32.stub"
++#define GD32_CRC_STUB_ADDR 0x20000000
++static uint32_t gd32_crc32_buf[(GD32_CRC32_BIN_LEN + 3) >> 2];
++
++bool gd32_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32)
++{
++	bool ret = false;
++	printf("gd32 CRC => at %x; size = %d\n", start_address, size);
++	if (size < 300)
++		return false; // if it is small it's not worth it
++	// is the area we are CRCing collides with the stub ?
++	if ((start_address >= GD32_CRC_STUB_ADDR) && (start_address < GD32_CRC32_BIN_LEN + GD32_CRC_STUB_ADDR))
++		return false;
++	if ((start_address <= GD32_CRC_STUB_ADDR) && (start_address + size) > GD32_CRC_STUB_ADDR)
++		return false;
++	// not aligned
++	if (start_address & 3)
++		return false;
++	if (size & 3) // TODO FIXME we can deal with that
++		return false;
++#define LN_RCU_AHB_CRCEN (1 << 6)
++#define RCU_CTL          (0x40021000 + 0x14)
++	// Step1 : copy the ram to a temp buffer
++	target_mem32_read(target, gd32_crc32_buf, GD32_CRC_STUB_ADDR, GD32_CRC32_BIN_LEN);
++	// step2 : Upload the stub
++	target_mem32_write(target, GD32_CRC_STUB_ADDR, gd32_crc32_bin, GD32_CRC32_BIN_LEN);
++	// step3 : run the stub
++	if (!cortexm_run_stub(target, GD32_CRC_STUB_ADDR + 1, start_address, size >> 2, 0, 0)) {
++		printf("STUB SUCCESS\n");
++		target->reg_read(target, 1, crc32, 4); // oytput in r1
++		printf("CRC %d\n", *crc32);
++		ret = true;
++	} else {
++		printf("STUB ** FAILED **\n");
++	}
++	// step4 : replace the ram
++	target_mem32_write(target, GD32_CRC_STUB_ADDR, gd32_crc32_buf, GD32_CRC32_BIN_LEN);
++done_and_done:
++	return ret;
++}

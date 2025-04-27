@@ -15,6 +15,7 @@ APPLY_PATCH_IF_NEEDED3(patched37 ${BMP_PATCH_FOLDER}/37blackmagic_hack_remote_pr
 APPLY_PATCH_IF_NEEDED3(patched40 ${BMP_PATCH_FOLDER}/40blackmagic_custom_crc.patch ${LNBMP_TOP_FOLDER}   "compute CRC via a stub.")
 APPLY_PATCH_IF_NEEDED3(patched42 ${BMP_PATCH_FOLDER}/42blackmagic_psplim_msplim.patch ${LNBMP_TOP_FOLDER}   "add psplim and msplim.") 
 APPLY_PATCH_IF_NEEDED3(patched43 ${BMP_PATCH_FOLDER}/43dontdoubleassert.patch ${LNBMP_TOP_FOLDER}   "Try to manage double assert better.") 
+APPLY_PATCH_IF_NEEDED3(patched44 ${BMP_PATCH_FOLDER}/44blackmagic_gd32_crc32.patch ${LNBMP_TOP_FOLDER}   "stub CRC32 computation (GD32).") 
 #APPLY_PATCH_IF_NEEDED3(patched80 ${BMP_PATCH_FOLDER}/80blackmagic_support_watchpoint_on_cm33.patch ${LNBMP_TOP_FOLDER}   "fix cortemx v8m watchpoint .")
 #>>APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/25blackmagic_riscv_disable_interrupt_during_step.patch ${LNBMP_TOP_FOLDER}   "disable interrupt during single step")
 # Obsoleted by newer version
