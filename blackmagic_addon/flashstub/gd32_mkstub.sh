@@ -19,7 +19,7 @@ build_stub() {
   $OBJCOPY -Obinary $1.o $1.bin
   $OBJDUMP -S $1.o >$1.asm
   xxd -i $1.bin >$1.tmp
-  cat $1.tmp | sed 's/unsigned char/const unsigned char/g' | sed 's/^.*_len =/#define GD32_CRC32_BIN_LEN/g' >$1.stub
+  cat $1.tmp | sed 's/unsigned char/const unsigned char/g' | sed 's/^.*_len =/#define GD32_CRC32_BIN_LEN/g' | head -c -2 >$1.stub
 }
 
 build_stub gd32_crc32
