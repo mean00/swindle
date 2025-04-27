@@ -29,6 +29,16 @@ extern "C"
     target_s *cur_target;
     bool shutdown_bmda;
 
+#define STUB_BUFFER_SIZE 256
+    static uint8_t stub_buffer[STUB_BUFFER_SIZE];
+    extern "C" void *bmp_get_temporary_buffer(uint32_t asked)
+    {
+        if (asked > STUB_BUFFER_SIZE)
+        {
+            xAssert(0);
+        }
+        return stub_buffer;
+    }
     /**
      *
      *

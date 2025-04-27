@@ -398,12 +398,11 @@ uint8_t ch32v3xx_read_user_byte(target_s *target) // eof
 /*
  *
  */
+void *bmp_get_temporary_buffer(uint32_t asked);
 bool ch32v3xx_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32)
 {
     bool ret = false;
-    uint8_t *temp_buffer = malloc(LN_CH32VXX_CRC_STUB_LEN); // around 100 bytes
-    if (!temp_buffer)
-        return false;
+    uint8_t *temp_buffer = bmp_get_temporary_buffer(LN_CH32VXX_CRC_STUB_LEN); // around 100 bytes
     // is the area we are CRCing collides with the stub ?
     if ((start_address >= LN_CH32VXX_CRC_STUB_ADDR) &&
         (start_address < LN_CH32VXX_CRC_STUB_LEN + LN_CH32VXX_CRC_STUB_ADDR))
@@ -421,13 +420,12 @@ bool ch32v3xx_crc32(target_s *target, target_addr32_t start_address, size_t size
     target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, ch32v3x_crc32_bin, LN_CH32VXX_CRC_STUB_LEN);
     // step3 : run the stub
     if (riscv32_run_stub(target, LN_CH32VXX_CRC_STUB_ADDR, start_address, size >> 2, 0, 0))
-    {        
+    {
         target->reg_read(target, RISCV_REG_A2, crc32, 4);
         ret = true;
     }
     // step4 : replace the ram
     target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, temp_buffer, LN_CH32VXX_CRC_STUB_LEN);
 done_and_done:
-    free(temp_buffer);
     return ret;
 }
