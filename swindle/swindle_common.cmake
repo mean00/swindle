@@ -15,7 +15,7 @@ ADD_DEFINITIONS("-DNO_LIBOPENCM3=1")
 
 SET(BMP_EXTRA  ${B}/../../blackmagic_addon/)
 SET(BOARDS      ${enabled_sources}
-                ${BMP_EXTRA}/target/ch32v3xx.c
+                ${BMP_EXTRA}/target/CH32V3xx/ch32v3xx.c
                 ${B}/bmp_disabledBoard.cpp
                 ${T}/lpc_common.c
                 CACHE INTERNAL ""
