@@ -12,6 +12,7 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 #include "rtt_if.h"
+#include "exception.h"
 }
 // C++
 bool rv_dm_probe(uint32_t *chip_id); // C++
@@ -477,6 +478,36 @@ extern "C"
         Logger("Setting redirect to usb to %d\n", toggle);
         Logger("cant redirect logger \n");
     }
+    /*
+     *
+     */
+    extern "C" void bmp_raise_exception_c()
+    {
+        raise_exception(1, "oops");
+    }
+    /*
+     *
+     *
+     */
+    static exception_s global_exception_frame;
+
+    extern "C" bool bmp_try_c()
+    {
+        global_exception_frame.type = 0U;
+        global_exception_frame.mask = 1;
+        global_exception_frame.outer = innermost_exception;
+        innermost_exception = &global_exception_frame;
+        return setjmp(global_exception_frame.jmpbuf) == 0;
+    }
+    /*
+     *
+     */
+    extern "C" int bmp_catch_c()
+    {
+        innermost_exception = global_exception_frame.outer;
+        return (global_exception_frame.type);
+    }
+
     /*
 
     z1,addr,kind’ insert hw breakpoint

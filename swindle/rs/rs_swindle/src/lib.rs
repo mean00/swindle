@@ -33,6 +33,7 @@ mod util;
 use crate::decoder::gdb_stream;
 use decoder::RESULT_AUTOMATON;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
+crate::gdb_print_init!();
 
 crate::setup_log!(false);
 //use crate::{bmplog,bmpwarning};
@@ -148,8 +149,14 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             bmplog!("Exec..:");
                             bmplog!(as_string);
                             bmplog!("\n");
-                            commands::exec(as_string);
-                            bmplog!("Exec done\n");
+                            if bmp::bmp_try() {
+                                commands::exec(as_string);
+                                bmplog!("Exec done\n");
+                            }
+                            if bmp::bmp_catch() != 0 {
+                                gdb_print!("Stray exception\n");
+                                crate::encoder::encoder::reply_e01();
+                            }
                         }
                     }
                     RESULT_AUTOMATON::Error => {

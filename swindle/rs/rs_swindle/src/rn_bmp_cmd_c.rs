@@ -5,20 +5,20 @@ pub const _ELIX_LEVEL: u32 = 4;
 pub const _NEWLIB_VERSION: &[u8; 6] = b"4.3.0\0";
 pub const _PICOLIBC_CTYPE_SMALL: u32 = 0;
 pub const _PICOLIBC_MINOR__: u32 = 8;
-pub const _PICOLIBC_VERSION: &[u8; 6] = b"1.8.6\0";
+pub const _PICOLIBC_VERSION: &[u8; 6] = b"1.8.9\0";
 pub const _PICOLIBC__: u32 = 1;
 pub const __NEWLIB_MINOR__: u32 = 3;
 pub const __NEWLIB_PATCHLEVEL__: u32 = 0;
 pub const __NEWLIB__: u32 = 4;
 pub const __PICOLIBC_MINOR__: u32 = 8;
-pub const __PICOLIBC_PATCHLEVEL__: u32 = 6;
-pub const __PICOLIBC_VERSION__: &[u8; 6] = b"1.8.6\0";
+pub const __PICOLIBC_PATCHLEVEL__: u32 = 9;
+pub const __PICOLIBC_VERSION__: &[u8; 6] = b"1.8.9\0";
 pub const __PICOLIBC__: u32 = 1;
 pub const _ATFILE_SOURCE: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;
 pub const _ISOC99_SOURCE: u32 = 1;
 pub const _ISOC11_SOURCE: u32 = 1;
-pub const _ISOC2X_SOURCE: u32 = 1;
+pub const _ISOC23_SOURCE: u32 = 1;
 pub const _POSIX_SOURCE: u32 = 1;
 pub const _POSIX_C_SOURCE: u32 = 200809;
 pub const _XOPEN_SOURCE: u32 = 700;
@@ -28,11 +28,11 @@ pub const __ATFILE_VISIBLE: u32 = 1;
 pub const __BSD_VISIBLE: u32 = 1;
 pub const __GNU_VISIBLE: u32 = 1;
 pub const __ZEPHYR_VISIBLE: u32 = 0;
-pub const __ISO_C_VISIBLE: u32 = 2020;
+pub const __ISO_C_VISIBLE: u32 = 2023;
 pub const __LARGEFILE_VISIBLE: u32 = 1;
 pub const __LARGEFILE64_VISIBLE: u32 = 1;
 pub const __MISC_VISIBLE: u32 = 1;
-pub const __POSIX_VISIBLE: u32 = 200809;
+pub const __POSIX_VISIBLE: u32 = 202405;
 pub const __SVID_VISIBLE: u32 = 1;
 pub const __XSI_VISIBLE: u32 = 700;
 pub const __SSP_FORTIFY_LEVEL: u32 = 0;
@@ -43,6 +43,8 @@ pub const __OBSOLETE_MATH_DOUBLE: u32 = 1;
 pub const __RAND_MAX: u32 = 2147483647;
 pub const __have_longlong64: u32 = 1;
 pub const __have_long32: u32 = 1;
+pub const __SCHAR_WIDTH__: u32 = 8;
+pub const __LONG_LONG_WIDTH__: u32 = 64;
 pub const ___int8_t_defined: u32 = 1;
 pub const ___int16_t_defined: u32 = 1;
 pub const ___int32_t_defined: u32 = 1;
@@ -54,6 +56,7 @@ pub const ___int_least64_t_defined: u32 = 1;
 pub const __GNUCLIKE_ASM: u32 = 3;
 pub const __GNUCLIKE___TYPEOF: u32 = 1;
 pub const __GNUCLIKE___SECTION: u32 = 1;
+pub const __GNUCLIKE_PRAGMA_DIAGNOSTIC: u32 = 1;
 pub const __GNUCLIKE_CTOR_SECTION_HANDLING: u32 = 1;
 pub const __GNUCLIKE_BUILTIN_CONSTANT_P: u32 = 1;
 pub const __GNUCLIKE_BUILTIN_VARARGS: u32 = 1;
@@ -470,4 +473,13 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn bmp_rtt_set_info_c(field: rttField, info: *const rttInfo);
+}
+unsafe extern "C" {
+    pub fn bmp_raise_exception_c();
+}
+unsafe extern "C" {
+    pub fn bmp_try_c() -> bool_;
+}
+unsafe extern "C" {
+    pub fn bmp_catch_c() -> cty::c_int;
 }

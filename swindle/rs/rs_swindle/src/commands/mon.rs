@@ -32,7 +32,15 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 22] = [
+const mon_command_tree: [CommandTree; 23] = [
+    CommandTree {
+        command: "crash",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_crash),
+        start_separator: "",
+        next_separator: "",
+    },
     CommandTree {
         command: "map",
         min_args: 0,
@@ -671,6 +679,15 @@ fn _map(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
+/*
+ *
+ *
+ */
+fn _crash(_command: &str, _args: &[&str]) -> bool {
+    bmp::bmp_raise_exception();
+    false
+}
+
 /*
  *
  *

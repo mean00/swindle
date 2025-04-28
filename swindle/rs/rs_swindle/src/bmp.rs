@@ -600,6 +600,26 @@ pub fn bmp_custom_crc32(address: u32, size_in_bytes: u32) -> (bool, u32) {
         (r, crc)
     }
 }
+/*
+ *
+ */
+pub fn bmp_raise_exception() {
+    unsafe {
+        rn_bmp_cmd_c::bmp_raise_exception_c();
+    }
+}
+/*
+ *
+ */
+pub fn bmp_try() -> bool {
+    unsafe { ret_to_bool(rn_bmp_cmd_c::bmp_try_c()) }
+}
+/*
+ *
+ */
+pub fn bmp_catch() -> i32 {
+    unsafe { rn_bmp_cmd_c::bmp_catch_c() }
+}
 
 /*
  */
