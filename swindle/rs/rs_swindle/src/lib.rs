@@ -59,6 +59,7 @@ extern "C" fn rngdbstub_init() {
 }
 #[unsafe(no_mangle)]
 extern "C" fn rngdbstub_shutdown() {
+    bmp::bmp_detach();
     clear_autoauto();
 }
 /*

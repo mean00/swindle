@@ -28,6 +28,7 @@ extern "C"
     extern "C" void poll_rtt(target_s *const cur_target);
     extern "C" bool rtt_enabled;
     target_s *cur_target;
+    target_s *last_target;
     bool shutdown_bmda;
 
 #define STUB_BUFFER_SIZE 256
@@ -119,7 +120,17 @@ extern "C"
         if (cur_target)
         {
             SET_RUN_STATE(true);
-            target_detach(cur_target);
+            TRY(EXCEPTION_ALL)
+            {
+                rtt_enabled = false;
+                target_detach(cur_target);
+                last_target = cur_target;
+            }
+            CATCH()
+            {
+            default:
+                break;
+            }
             cur_target = NULL;
         }
         return true;
