@@ -16,6 +16,9 @@ enum lnBMPPins
     TDIRECTION_PIN = 8,
 };
 
+#if defined(LN_SWINDLE_AS_EXTERNAL)
+#include "lnBMP_pinout_external.h"
+#else
 #if defined(USE_RP2040) || defined(USE_RP2350)
 #ifdef USE_RP_CARRIER
 #include "lnBMP_pinout_rp_carrier.h"
@@ -27,6 +30,7 @@ enum lnBMPPins
 #include "lnBMP_pinout_ln_gd32f303.h"
 #else
 #include "lnBMP_pinout_ln_ch32v3xx.h"
+#endif
 #endif
 #endif
 // EOF

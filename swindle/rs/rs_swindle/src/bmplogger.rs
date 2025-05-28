@@ -1,7 +1,7 @@
 use core::convert::Infallible;
 #[allow(unused_imports)]
 #[cfg(feature = "native")]
-use rnarduino as rn;
+use rust_esprit as rn;
 use ufmt::uWrite;
 
 #[cfg(feature = "native")]
@@ -41,7 +41,7 @@ macro_rules! bmpwarning
 macro_rules! setup_log {
     ($x:expr) => {
         #[allow(unused)]
-        use rnarduino::{lnLogger, lnLogger_init};
+        use rust_esprit::{lnLogger, lnLogger_init};
         lnLogger_init!();
         static log_enabled: bool = $x;
     };

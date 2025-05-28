@@ -38,7 +38,7 @@ IO is sampled when clock goes ___---
  * This is similar to the non rp2040 except we switch to bit banging dynamically
  *
  */
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 
 extern "C"
@@ -46,9 +46,12 @@ extern "C"
 #include "jep106.h"
 #include "riscv_debug.h"
 }
+
+#ifndef __clang__
 #pragma GCC optimize("Ofast")
+#endif
 #include "bmp_rvTap.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
 #include "lnBMP_tap.h"

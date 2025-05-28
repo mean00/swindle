@@ -1,4 +1,4 @@
-#pragma ONCE
+#pragma once
 
 #define TASK_BMP_SERIAL_PRIORITY 4
 

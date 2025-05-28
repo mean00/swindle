@@ -24,7 +24,7 @@ Original license header
  This file implements the SW-DP interface.
 
  */
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 extern "C"
 {
