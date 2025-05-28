@@ -14,15 +14,18 @@ ENDIF()
 SET(BRIDGE_SRCS
                 ${B}/bridge.cpp
                 ${B}/bmp_gpio.cpp
-                ${B}/bmp_adc${EXTRA}.cpp
-                ${B}/bmp_serial.cpp
-                ${B}/bmp_rs_gdb.cpp
                 ${B}/bmp_jtagstubs.cpp
                 ${B}/bmp_tap.cpp
                 CACHE INTERNAL ""
                 )
-IF("${LN_USB_NB_CDC}" STREQUAL "3")
-  SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
+IF(NOT LN_SWINDLE_AS_EXTERNAL)
+  LIST( APPEND BRIDGE_SRCS ${B}/bmp_serial.cpp
+                ${B}/bmp_adc${EXTRA}.cpp
+                ${B}/bmp_rs_gdb.cpp
+  )
+  IF("${LN_USB_NB_CDC}" STREQUAL "3")
+    SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
+  ENDIF()
 ENDIF()
 # #
 include(./swindle_common.cmake)
@@ -72,7 +75,9 @@ TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOUR
 TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
 TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${myB}/private_include)
 TARGET_INCLUDE_DIRECTORIES( libswindle PUBLIC  ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
-TARGET_LINK_LIBRARIES( libswindle lnArduino tinyUsb)
+IF(NOT LN_EXTERNAL_TUSBD)
+  TARGET_LINK_LIBRARIES( libswindle lnArduino tinyUsb)
+ENDIF()
 IF(USE_GD32F3)
   TARGET_COMPILE_DEFINITIONS( libswindle PUBLIC  USE_GD32F303)
 ENDIF()

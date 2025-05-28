@@ -46,7 +46,10 @@ extern "C"
 #include "jep106.h"
 #include "riscv_debug.h"
 }
+
+#ifndef __clang__
 #pragma GCC optimize("Ofast")
+#endif
 #include "bmp_rvTap.h"
 #include "lnArduino.h"
 #include "lnBMP_pinout.h"

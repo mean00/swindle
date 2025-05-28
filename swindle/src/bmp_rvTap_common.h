@@ -46,7 +46,9 @@ extern "C"
 #include "jep106.h"
 #include "riscv_debug.h"
 }
+#ifndef __clang__
 #pragma GCC optimize("Ofast")
+#endif
 #include "bmp_pinmode.h"
 #include "bmp_rvTap.h"
 #include "lnArduino.h"
@@ -60,7 +62,7 @@ extern void bmp_gpio_init();
 extern "C" void bmp_set_wait_state_c(uint32_t ws);
 extern "C" uint32_t bmp_get_wait_state_c();
 
-#warning this is duplicated from riscv_jtag_dtm
+// #warning this is duplicated from riscv_jtag_dtm
 #define RV_DMI_SUCCESS 0U
 #define RV_DMI_FAILURE 2U
 
