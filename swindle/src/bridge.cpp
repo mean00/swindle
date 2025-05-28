@@ -93,7 +93,7 @@ extern "C"
      */
     bool platform_timeout_is_expired(const platform_timeout_s *t)
     {
-#warning Take care of wrapping !
+        // #warning Take care of wrapping !
         uint32_t now = lnGetMs();
         if (now > t->time)
             return true;
