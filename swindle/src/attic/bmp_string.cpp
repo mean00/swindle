@@ -2,7 +2,7 @@
 
 #include "bmp_string.h"
 #include "inttypes.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "stdint.h"
 extern "C"
 {

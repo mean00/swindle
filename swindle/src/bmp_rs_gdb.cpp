@@ -4,7 +4,7 @@
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbDFUrt.h"
 #include "include/lnUsbStack.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_usb_descriptor.h"
 
 extern "C"
