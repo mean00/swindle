@@ -152,15 +152,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rnarduino"
-version = "0.0.0"
-dependencies = [
- "cty",
- "heapless",
- "ufmt",
-]
-
-[[package]]
 name = "rsbmp"
 version = "0.1.0"
 dependencies = [
@@ -170,9 +161,18 @@ dependencies = [
  "hashbrown",
  "heapless",
  "numtoa",
- "rnarduino",
+ "rust_esprit",
  "strum",
  "strum_macros",
+ "ufmt",
+]
+
+[[package]]
+name = "rust_esprit"
+version = "0.0.0"
+dependencies = [
+ "cty",
+ "heapless",
  "ufmt",
 ]
 

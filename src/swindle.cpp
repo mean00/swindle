@@ -21,7 +21,7 @@ void loop()
     while (1)
     {
         // Logger("*\n");
-        delay(1000);
+        lnDelayMs(1000);
         for (int i = 0; i < NB_LEDS; i++)
             lnOpenDrainClose(ledPins[i], onoff);
         onoff = !onoff;
