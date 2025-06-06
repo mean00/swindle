@@ -5,7 +5,7 @@
 
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbStack.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 #include "lnBmpTask.h"
 #include "lnSerial.h"

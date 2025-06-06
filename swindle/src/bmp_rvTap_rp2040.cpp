@@ -9,7 +9,7 @@
  * This is similar to the non rp2040
  *
  */
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 
 extern "C"
@@ -20,7 +20,7 @@ extern "C"
 #pragma GCC optimize("Ofast")
 #include "bmp_pinmode.h"
 #include "bmp_rvTap.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
 #include "lnBMP_tap.h"

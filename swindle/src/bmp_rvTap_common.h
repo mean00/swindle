@@ -38,7 +38,7 @@ IO is sampled when clock goes ___---
  * This is similar to the non rp2040 except we switch to bit banging dynamically
  *
  */
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 
 extern "C"
@@ -51,7 +51,7 @@ extern "C"
 #endif
 #include "bmp_pinmode.h"
 #include "bmp_rvTap.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
 #include "lnBMP_tap.h"

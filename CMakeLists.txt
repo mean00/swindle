@@ -46,9 +46,9 @@ SET(LN_USB_BUFFER_SIZE 256 CACHE INTERNAL "") # increase usb cdc buffer size
 
 #SET(USE_RP2040_PURE_RAM True CACHE INTERNAL "")
 #___________________________________________________
-SET(AF_FOLDER  ${CMAKE_CURRENT_SOURCE_DIR}/lnArduino)
+SET(AF_FOLDER  ${CMAKE_CURRENT_SOURCE_DIR}/esprit)
 INCLUDE(./mcuSelect.cmake)
-SET(CMAKE_TOOLCHAIN_FILE ${AF_FOLDER}/lnArduino.cmake)
+SET(CMAKE_TOOLCHAIN_FILE ${AF_FOLDER}/esprit.cmake)
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
 PROJECT(swindle NONE) # the NONE is very important !
@@ -64,6 +64,7 @@ INCLUDE(all_boards)
 #
 INCLUDE(patch_blackmagic)
 
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -120,10 +121,9 @@ ELSE()
 ENDIF()
 
 ADD_SUBDIRECTORY(swindle)
-TARGET_LINK_LIBRARIES(swindle lnarduino_c_bindings)
-TARGET_LINK_LIBRARIES(swindle libswindle)
-TARGET_LINK_LIBRARIES(swindle swindle_interface)
-TARGET_LINK_LIBRARIES(swindle rsbmp)
+TARGET_LINK_LIBRARIES(swindle PUBLIC libswindle)
+TARGET_LINK_LIBRARIES(swindle PUBLIC swindle_interface)
+TARGET_LINK_LIBRARIES(swindle PUBLIC rsbmp)
 
 #
 TUNE_NAME(USE_CH32V3x CH32V3x)
@@ -153,4 +153,10 @@ IF(NOT LN_EXTERNAL_GENERATE)
   SET_TARGET_PROPERTIES(swindle PROPERTIES OUTPUT_NAME swindle${TGT_NAME})
 
   MESSAGE(STATUS "Final name extension <${TGT_NAME}>")
+
+  #get_target_property(if swindle INTERFACE_LINK_LIBRARIES)
+  #message(STATUS " *********** interface : <${if}>")
+
+
+
 ENDIF() #---

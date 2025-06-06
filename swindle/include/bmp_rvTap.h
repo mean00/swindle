@@ -34,7 +34,7 @@ CLK **HIGH**
 IO is sampled when clock goes ___---
 
  */
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBMP_pinout.h"
 #pragma once
 

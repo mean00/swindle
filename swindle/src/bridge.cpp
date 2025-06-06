@@ -2,7 +2,7 @@
 
  */
 #include "bmp_string.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBmpTask.h"
 #include "lnStopWatch.h"
 extern "C"

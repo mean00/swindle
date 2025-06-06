@@ -3,7 +3,7 @@
  */
 #include "bmp_string.h"
 #include "bmp_util.h"
-#include "lnArduino.h"
+#include "esprit.h"
 #include "lnBmpTask.h"
 #include "lnStopWatch.h"
 
