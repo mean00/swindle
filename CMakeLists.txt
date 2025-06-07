@@ -46,7 +46,7 @@ SET(LN_USB_BUFFER_SIZE 256 CACHE INTERNAL "") # increase usb cdc buffer size
 
 #SET(USE_RP2040_PURE_RAM True CACHE INTERNAL "")
 #___________________________________________________
-SET(AF_FOLDER  ${CMAKE_CURRENT_SOURCE_DIR}/lnArduino)
+SET(AF_FOLDER  ${CMAKE_CURRENT_SOURCE_DIR}/esprit)
 INCLUDE(./mcuSelect.cmake)
 SET(CMAKE_TOOLCHAIN_FILE ${AF_FOLDER}/esprit.cmake)
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${AF_FOLDER}/cmake CACHE INTERNAL "")

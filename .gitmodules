@@ -1,3 +1,6 @@
 [submodule "blackmagic"]
 	path = blackmagic
 	url = https://github.com/blackmagic-debug/blackmagic.git
+[submodule "esprit"]
+	path = esprit
+	url = ../lnArduino.git
