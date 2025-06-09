@@ -69,13 +69,14 @@ SET(BM_HOSTED
           )
 # ===========================================================================================
 
-add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE} )
-
+add_library(libswindle STATIC )
+target_sources(libswindle PRIVATE ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE} )
 target_include_directories( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories( libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
 target_include_directories(libswindle PRIVATE  ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
 target_include_directories(libswindle PRIVATE  ${myB}/private_include)
-target_link_libraries( libswindle esprit)
+target_link_libraries(libswindle PRIVATE  esprit_dev )
+target_link_libraries( libswindle PRIVATE esprit)
 
 # ===========================================================================================
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
