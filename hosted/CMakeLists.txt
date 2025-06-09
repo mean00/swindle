@@ -13,13 +13,13 @@ ADD_DEFINITIONS("-DCONFIG_BMDA")
 # Create a dummy setup to build BMP/lnBMP
 #
 set(LN_EXT                  arm_gd32fx)
-set(LN_MCU_FOLDER           ${CMAKE_SOURCE_DIR}/../lnArduino/mcus/arm_gd32fx/)
+set(LN_MCU_FOLDER           ${CMAKE_SOURCE_DIR}/../esprit/mcus/arm_gd32fx/)
 SET(SWINDLE_HOSTED          True CACHE INTERNAL "")
 SET(LN_ARCH                 "X86" CACHE INTERNAL "")
 SET(LN_MCU                  "M4" CACHE INTERNAL "")
 SET(LN_TOOLCHAIN_EXT        "arm_gd32fx_clang" CACHE INTERNAL "")
 SET(LN_ENABLE_RUST          ON   CACHE INTERNAL "")
-set(AF_FOLDER               ${CMAKE_SOURCE_DIR}/../lnArduino CACHE INTERNAL "")
+set(AF_FOLDER               ${CMAKE_SOURCE_DIR}/../esprit CACHE INTERNAL "")
 set(CMAKE_MODULE_PATH       ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../cmake ${AF_FOLDER}/cmake CACHE INTERNAL "")
 
 
@@ -41,19 +41,18 @@ include(patch_blackmagic)
 #
 #
 
-add_library(lnArduino INTERFACE)
+add_library(esprit INTERFACE)
 
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/include)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/arduinoLayer/include)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/FreeRTOS/include)
-target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER})
-target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER}/boards/bluepill)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/FreeRTOS/portable/GCC/ARM_CM3/)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/mcus/arm_gd32fx/include)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/mcus/common_bluepill/include)
+target_include_directories(esprit INTERFACE ${AF_FOLDER}/)
+target_include_directories(esprit INTERFACE ${AF_FOLDER}/include)
+target_include_directories(esprit INTERFACE ${AF_FOLDER}/FreeRTOS/include)
+target_include_directories(esprit INTERFACE ${LN_MCU_FOLDER})
+target_include_directories(esprit INTERFACE ${LN_MCU_FOLDER}/boards/bluepill)
+target_include_directories(esprit INTERFACE ${AF_FOLDER}/FreeRTOS/portable/GCC/ARM_CM3/)
+target_include_directories(esprit INTERFACE ${AF_FOLDER}/mcus/arm_gd32fx/include)
+target_include_directories(esprit INTERFACE ${AF_FOLDER}/mcus/common_bluepill/include)
 
-target_include_directories(lnArduino INTERFACE ${CMAKE_BINARY_DIR})
+target_include_directories(esprit INTERFACE ${CMAKE_BINARY_DIR})
 
 
 
@@ -72,9 +71,9 @@ find_package(Qt6 COMPONENTS Network SerialPort REQUIRED)
 
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
-SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../lnArduino)
+SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../esprit)
 ADD_DEFINITIONS("-DLN_LINUX=1")
-include( ${ARDUINO_GD32_FREERTOS}/embeddedPrintf.cmake)
+include( ${ARDUINO_GD32_FREERTOS}/lnEmbeddedPrintf.cmake)
 
 include_directories(include)
 include_directories(${BMP}/)

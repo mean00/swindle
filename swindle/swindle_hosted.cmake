@@ -23,14 +23,14 @@ ADD_DEFINITIONS("-DPC_HOSTED=1")
 # if the next line is present, wchlink will not work
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 
-# Set a dummy configuration for lnArduino so it builds
+# Set a dummy configuration for epsrit so it builds
 ADD_DEFINITIONS("-DLN_ARCH=LN_ARCH_ARM")
 include(${ARDUINO_GD32_FREERTOS}/setup.cmake)
 # ===========================================================================================
 
 include_directories(${S})
 include_directories(../)
-include_directories(../lnArduino/arm_gd32fx/boards/bluepill)
+include_directories(../esprit/arm_gd32fx/boards/bluepill)
 include_directories( ${HOSTED} ${BMP_EXTRA}/hosted/)
 include_directories( ${BMP}/src/include)
 include_directories( ${BMP}/src)
@@ -75,7 +75,7 @@ target_include_directories( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOUR
 target_include_directories( libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
 target_include_directories(libswindle PRIVATE  ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
 target_include_directories(libswindle PRIVATE  ${myB}/private_include)
-target_link_libraries( libswindle lnArduino)
+target_link_libraries( libswindle esprit)
 
 # ===========================================================================================
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
