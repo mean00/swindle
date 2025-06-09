@@ -87,6 +87,7 @@ include_directories(${BMP}/../lnBlackmagic/include )
 #
 #
 ADD_DEFINITIONS("-DPC_HOSTED=1")
+ADD_DEFINITIONS("-DLN_NO_FREERTOS")
 # If HOSTED_BMP_ONLY is set, whclink will not work
 ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1") # HOSTED_BMP_ONLY
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
