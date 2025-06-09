@@ -8,19 +8,34 @@ SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 PROJECT(lnBMPHosted C CXX)
 
+
+# Qt5
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+
+#find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
+find_package(Qt6 COMPONENTS Network SerialPort REQUIRED)
+
+
 ADD_DEFINITIONS("-DCONFIG_BMDA")
 #
 # Create a dummy setup to build BMP/lnBMP
 #
 set(LN_EXT                  arm_gd32fx)
-set(LN_MCU_FOLDER           ${CMAKE_SOURCE_DIR}/../lnArduino/mcus/arm_gd32fx/)
+set(LN_MCU_FOLDER           ${CMAKE_SOURCE_DIR}/../esprit/mcus/arm_gd32fx/)
 SET(SWINDLE_HOSTED          True CACHE INTERNAL "")
 SET(LN_ARCH                 "X86" CACHE INTERNAL "")
 SET(LN_MCU                  "M4" CACHE INTERNAL "")
 SET(LN_TOOLCHAIN_EXT        "arm_gd32fx_clang" CACHE INTERNAL "")
 SET(LN_ENABLE_RUST          ON   CACHE INTERNAL "")
-set(AF_FOLDER               ${CMAKE_SOURCE_DIR}/../lnArduino CACHE INTERNAL "")
-set(CMAKE_MODULE_PATH       ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../cmake ${AF_FOLDER}/cmake CACHE INTERNAL "")
+set(ESPRIT_ROOT             ${CMAKE_SOURCE_DIR}/../esprit CACHE INTERNAL "")
+set(CMAKE_MODULE_PATH       ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../cmake ${ESPRIT_ROOT}/cmake CACHE INTERNAL "")
 
 
 SET(Rust_CARGO_TARGET "" CACHE INTERNAL "")
@@ -41,42 +56,28 @@ include(patch_blackmagic)
 #
 #
 
-add_library(lnArduino INTERFACE)
+add_library(esprit_dev INTERFACE)
+add_library(esprit INTERFACE)
 
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/include)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/arduinoLayer/include)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/FreeRTOS/include)
-target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER})
-target_include_directories(lnArduino INTERFACE ${LN_MCU_FOLDER}/boards/bluepill)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/FreeRTOS/portable/GCC/ARM_CM3/)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/mcus/arm_gd32fx/include)
-target_include_directories(lnArduino INTERFACE ${AF_FOLDER}/mcus/common_bluepill/include)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/include)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/FreeRTOS/include)
+target_include_directories(esprit_dev INTERFACE ${LN_MCU_FOLDER})
+target_include_directories(esprit_dev INTERFACE ${LN_MCU_FOLDER}/boards/bluepill)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/FreeRTOS/portable/GCC/ARM_CM3/)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/mcus/arm_gd32fx/include)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/mcus/common_bluepill/include)
 
-target_include_directories(lnArduino INTERFACE ${CMAKE_BINARY_DIR})
-
-
-
-# Qt5
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
-
-#find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
-find_package(Qt6 COMPONENTS Network SerialPort REQUIRED)
+target_include_directories(esprit_dev INTERFACE ${CMAKE_BINARY_DIR})
 
 
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
-SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../lnArduino)
+SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../esprit)
 ADD_DEFINITIONS("-DLN_LINUX=1")
-include( ${ARDUINO_GD32_FREERTOS}/embeddedPrintf.cmake)
+include( ${ARDUINO_GD32_FREERTOS}/lnEmbeddedPrint.cmake)
 
 include_directories(include)
+include_directories(${CMAKE_BINARY_DIR})
 include_directories(${BMP}/)
 include_directories(${BMP}/src/include)
 include_directories(${BMP}/src/platforms/pc)
@@ -86,6 +87,7 @@ include_directories(${BMP}/../lnBlackmagic/include )
 #
 #
 ADD_DEFINITIONS("-DPC_HOSTED=1")
+ADD_DEFINITIONS("-DLN_NO_FREERTOS")
 # If HOSTED_BMP_ONLY is set, whclink will not work
 ADD_DEFINITIONS("-DHOSTED_BMP_ONLY=1") # HOSTED_BMP_ONLY
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
@@ -94,6 +96,7 @@ ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-DBMD_IS_STDC=1")
 
 include(all_boards)
+target_include_directories(esprit INTERFACE esprit_dev)
 
 ADD_SUBDIRECTORY(../swindle lnswindle)
 
@@ -108,6 +111,7 @@ SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/dm_decoder.cpp ${H}/b
 
 ADD_EXECUTABLE(swindle_hosted ${SRC})
 target_link_libraries(swindle_hosted PRIVATE rsbmp)
+target_link_libraries(swindle_hosted PRIVATE esprit_dev)
 target_link_libraries(swindle_hosted PRIVATE swindle_interface)
 target_link_libraries(swindle_hosted PRIVATE libswindle  )
 target_link_libraries(swindle_hosted PRIVATE swindle_interface)

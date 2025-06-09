@@ -55,10 +55,10 @@ SET(LN_USB_BUFFER_SIZE 256 CACHE INTERNAL "") # increase usb cdc buffer size
 
 #SET(USE_RP2040_PURE_RAM True CACHE INTERNAL "")
 #___________________________________________________
-SET(AF_FOLDER  ${CMAKE_CURRENT_SOURCE_DIR}/esprit)
+SET(ESPRIT_ROOT  ${CMAKE_CURRENT_SOURCE_DIR}/esprit)
 INCLUDE(./mcuSelect.cmake)
-SET(CMAKE_TOOLCHAIN_FILE ${AF_FOLDER}/esprit.cmake)
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${AF_FOLDER}/cmake CACHE INTERNAL "")
+SET(CMAKE_TOOLCHAIN_FILE ${ESPRIT_ROOT}/esprit.cmake)
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${ESPRIT_ROOT}/cmake CACHE INTERNAL "")
 
 PROJECT(swindle NONE) # the NONE is very important !
 
@@ -82,13 +82,13 @@ IF("${LN_USB_NB_CDC}" STREQUAL "3")
   ADD_DEFINITIONS(-DUSE_3_CDC)
 ENDIF()
 
-ADD_SUBDIRECTORY(${AF_FOLDER})
+ADD_SUBDIRECTORY(${ESPRIT_ROOT})
 
-INCLUDE(${AF_FOLDER}/setup.cmake)
+INCLUDE(${ESPRIT_ROOT}/setup.cmake)
 
 IF(NOT LN_EXTERNAL_TUSBD)
   USE_LIBRARY(tinyUsb)
-  INCLUDE(${AF_FOLDER}/libraries/tinyUsb/tiny.cmake)
+  INCLUDE(${ESPRIT_ROOT}/libraries/tinyUsb/tiny.cmake)
 ENDIF()
 #__________________________________________________________________
 #
