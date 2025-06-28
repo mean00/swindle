@@ -83,7 +83,7 @@ extern "C"
     {
         if (!cur_target)
             return false;
-#warning INCORRECT HACK only RV32 supported
+        // FIXME #warning INCORRECT HACK only RV32 supported
         const char *name = cur_target->core;
         if (!name)
             return false;

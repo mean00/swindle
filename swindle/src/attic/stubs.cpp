@@ -20,7 +20,7 @@ IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include "lnArduino.h"
+#include "esprit.h"
 extern "C"
 {
     char *last_strk = NULL;

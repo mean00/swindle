@@ -26,7 +26,7 @@ OFFSET_TASK_NUM = 68}
  */
 
 #include "bmp_string.h"
-#include "lnArduino.h"
+#include "esprit.h"
 extern "C"
 {
 #include "gdb_packet.h"

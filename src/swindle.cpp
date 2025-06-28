@@ -1,7 +1,7 @@
 /*
     On the RP2040 gum stick boards the led is driven by GPIO26, it is NOT open drain
 */
-#include "lnArduino.h"
+#include "esprit.h"
 static const lnPin ledPins[] = {LN_SYSTEM_LED, PA8, PB13};
 #define NB_LEDS (sizeof(ledPins) / sizeof(lnPin))
 
@@ -21,7 +21,7 @@ void loop()
     while (1)
     {
         // Logger("*\n");
-        delay(1000);
+        lnDelayMs(1000);
         for (int i = 0; i < NB_LEDS; i++)
             lnOpenDrainClose(ledPins[i], onoff);
         onoff = !onoff;

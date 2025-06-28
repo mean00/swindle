@@ -2,7 +2,7 @@
 #include "bmp_gdb_cmd.h"
 #include "bmp_cortex_registers.h"
 #include "bmp_util.h"
-#include "lnArduino.h"
+#include "esprit.h"
 
 #if 0
 #define GDB_LOGGER(...)                                                                                                \
