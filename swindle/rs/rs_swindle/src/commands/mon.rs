@@ -1,11 +1,13 @@
 use crate::bmp;
+use crate::commands::mon_ch32vxx;
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
-use crate::freertos::enable_freertos;
+use crate::freertos;
+use crate::freertos::{enable_freertos, freertos_symbols, os_detach};
 #[cfg(not(feature = "hosted"))]
 use crate::parsing_util;
 use crate::parsing_util::{
-    ascii_hex_or_dec_to_u32, ascii_hex_string_to_u8s, ascii_string_decimal_to_u32,
+    ascii_hex_or_dec_to_u32, ascii_hex_string_to_u8s, ascii_string_decimal_to_u32, split_command,
 };
 use crate::settings;
 use alloc::vec::Vec;
@@ -346,7 +348,7 @@ fn _reboot(_command: &str, _args: &[&str]) -> bool {
  *
  */
 fn _fos_info(_command: &str, _args: &[&str]) -> bool {
-    crate::freertos::os_info();
+    freertos::os_info();
     encoder::reply_ok();
     true
 }
@@ -358,7 +360,7 @@ fn _fos(_command: &str, args: &[&str]) -> bool {
     if args.is_empty() {
         gdb_print!("Error. Please use :\nmon fos [M0|M3|M4|M33|RV32|NONE|AUTO]\n");
     } else if enable_freertos(args[0]) {
-        if crate::freertos::freertos_symbols::freertos_running() {
+        if freertos_symbols::freertos_running() {
             gdb_print!("FreeRTOS support enabled\n");
         } else {
             gdb_print!("FreeRTOS support *NOT *enabled\n");
@@ -470,7 +472,7 @@ pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
     // split command and args
     let command: &[u8];
     let args: &[u8];
-    match crate::parsing_util::split_command(rcmd) {
+    match split_command(rcmd) {
         None => {
             bmpwarning!("Cannot convert string (rcmd)\n");
             return false;
@@ -516,7 +518,7 @@ pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
         bmpwarning!("swdp failed!\n");
         return false;
     }
-    crate::freertos::os_detach();
+    os_detach();
     encoder::reply_ok();
     true
 }
@@ -531,7 +533,7 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
         bmpwarning!("rvswdp_scan failed!\n");
         return false;
     }
-    crate::freertos::os_detach();
+    os_detach();
     encoder::reply_ok();
     true
 }
@@ -630,8 +632,8 @@ pub fn _enable_reset(_command: &str, args: &[&str]) -> bool {
 pub fn add_target_commands(target_name: &str) {
     if target_name.starts_with("CH32V2") || target_name.starts_with("CH32V3") {
         set_custom_target_command(
-            &crate::commands::mon_ch32vxx::ch32vxx_command_tree,
-            &crate::commands::mon_ch32vxx::ch32vxx_help_tree,
+            &mon_ch32vxx::ch32vxx_command_tree,
+            &mon_ch32vxx::ch32vxx_help_tree,
         );
     } else {
         clear_custom_target_command();

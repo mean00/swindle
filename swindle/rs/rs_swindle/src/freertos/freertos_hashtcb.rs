@@ -9,6 +9,7 @@ crate::setup_log!(false);
 use crate::gdb_print;
 //use crate::{bmplog, bmpwarning};
 crate::gdb_print_init!();
+use crate::bmp;
 
 pub struct tcb_to_tid {
     tcb: u32,
@@ -87,11 +88,11 @@ pub fn dump_hash_info() {
         let id: u32 = i.tid;
         gdb_print!("------------ID: {:x}-----------\n", id);
         gdb_print!("TCB: {:x} ", val);
-        crate::bmp::bmp_read_mem32(val, &mut regs[0..1]);
+        bmp::bmp_read_mem32(val, &mut regs[0..1]);
         let stack: u32 = regs[0];
         gdb_print!("SP: {:x} \n", stack);
         // Read the regs
-        crate::bmp::bmp_read_mem32(stack, &mut regs);
+        bmp::bmp_read_mem32(stack, &mut regs);
         #[allow(clippy::needless_range_loop)]
         for r in 0..4 {
             gdb_print!(" R{} = 0x{:x}", r, regs[r + 8]);

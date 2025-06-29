@@ -1,6 +1,7 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
+use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util::ascii_string_hex_to_u32;
 
@@ -12,7 +13,7 @@ use crate::bmplog;
 // memory read m80070f6,4 // m2000000,4
 
 pub fn _m(_command: &str, args: &[&str]) -> bool {
-    if !crate::bmp::bmp_attached() {
+    if !bmp::bmp_attached() {
         encoder::reply_e01();
         return true;
     }
@@ -26,7 +27,7 @@ pub fn _m(_command: &str, args: &[&str]) -> bool {
 
     while left != 0 {
         let chunk: usize = core::cmp::min(16, left);
-        crate::bmp::bmp_read_mem(current_address, &mut tmp[0..chunk]);
+        bmp::bmp_read_mem(current_address, &mut tmp[0..chunk]);
         left -= chunk;
         for i in 0..chunk {
             crate::parsing_util::u8_to_ascii_to_buffer(tmp[i], &mut char_buffer[(2 * i)..]);

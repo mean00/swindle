@@ -7,6 +7,7 @@ use super::{CommandTree, exec_one};
 use crate::encoder::encoder;
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
+use crate::bmp;
 use crate::bmp::MemoryBlock;
 use crate::bmp::bmp_get_mapping;
 use crate::bmp::mapping::{Flash, Ram};
@@ -206,17 +207,17 @@ fn _qXfer_features_regs(arg: &str) -> bool {
     }
 
     // offset & size in hex
-    let reply = crate::bmp::bmp_register_description();
+    let reply = bmp::bmp_register_description();
     let reply_size = reply.len();
 
     if reply_size == 0 {
-        crate::bmp::bmp_drop_register_description();
+        bmp::bmp_drop_register_description();
         encoder::reply_e01();
         return true;
     }
 
     if start_address >= reply_size {
-        crate::bmp::bmp_drop_register_description();
+        bmp::bmp_drop_register_description();
         encoder::simple_send("l");
         return true;
     }
@@ -228,7 +229,7 @@ fn _qXfer_features_regs(arg: &str) -> bool {
     let end_pos = core::cmp::min(start_address + length, reply_size);
     e.add(&reply[start_address..end_pos]);
     e.end();
-    crate::bmp::bmp_drop_register_description();
+    bmp::bmp_drop_register_description();
     true
 }
 //

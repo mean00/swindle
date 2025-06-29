@@ -2,6 +2,7 @@
  *
  */
 crate::setup_log!(false);
+use crate::bmp;
 use crate::bmplog;
 use crate::util::xmin;
 
@@ -32,7 +33,7 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     let mut adr: u32 = address;
     while adr < tail {
         let rd: usize = xmin(tail - adr, CRC_BUFFER_SIZE as u32) as usize;
-        if !crate::bmp::bmp_read_mem(adr, &mut buffer[0..rd]) {
+        if !bmp::bmp_read_mem(adr, &mut buffer[0..rd]) {
             return (false, 0);
         }
         digest.update(&buffer[0..rd]);
@@ -53,7 +54,7 @@ TODO
 pub fn abstract_crc32(address: u32, len: u32, crc: &mut u32) -> bool {
     let mut status: bool;
     // can we use an optimized version ?
-    (status, *crc) = crate::bmp::bmp_custom_crc32(address, len);
+    (status, *crc) = bmp::bmp_custom_crc32(address, len);
     bmplog!(" CRC custom 0x{:x}\n", *crc);
     if !status {
         (status, *crc) = do_local_crc32(address, len);

@@ -1,6 +1,7 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
+use crate::bmp;
 use crate::encoder::encoder;
 
 use crate::parsing_util::ascii_string_hex_to_u32;
@@ -68,7 +69,7 @@ fn common_z(set: bool, args: &[&str]) -> bool {
             return true;
         }
         bmplog!("adding breakpoint at 0x{:x}\n", address);
-        encoder::reply_bool(crate::bmp::bmp_add_breakpoint(
+        encoder::reply_bool(bmp::bmp_add_breakpoint(
             Breakpoints::to_bmp(&breakpoint_watchpoint),
             address,
             len,
@@ -82,7 +83,7 @@ fn common_z(set: bool, args: &[&str]) -> bool {
         return true;
     }
     bmplog!("removing breakpoint at 0x{:x}\n", address);
-    encoder::reply_bool(crate::bmp::bmp_remove_breakpoint(
+    encoder::reply_bool(bmp::bmp_remove_breakpoint(
         Breakpoints::to_bmp(&breakpoint_watchpoint),
         address,
         len,

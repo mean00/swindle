@@ -79,7 +79,7 @@ impl rpc_reply_encoder {
     //
     pub fn add_u32_be_wrapped(&mut self, val: u32) {
         for i in 0..4 {
-            let ascii = crate::parsing_util::u8_to_ascii(((val >> (8 * (3 - i))) & 0xff) as u8);
+            let ascii = u8_to_ascii(((val >> (8 * (3 - i))) & 0xff) as u8);
             self.add_u8s(&ascii);
         }
     }
@@ -87,14 +87,14 @@ impl rpc_reply_encoder {
     pub fn add_u32_le_wrapped(&mut self, val: u32) {
         let mut val = val;
         for _i in 0..4 {
-            let ascii = crate::parsing_util::u8_to_ascii((val & 0xff) as u8);
+            let ascii = u8_to_ascii((val & 0xff) as u8);
             val >>= 8;
             self.add_u8s(&ascii);
         }
     }
     //
     pub fn add_u8_wrapped(&mut self, byt: u8) {
-        self.add_u8s(&crate::parsing_util::u8_to_ascii(byt));
+        self.add_u8s(&u8_to_ascii(byt));
     }
     //
     pub fn add_u8s_wrapped(&mut self, byt: &[u8]) {

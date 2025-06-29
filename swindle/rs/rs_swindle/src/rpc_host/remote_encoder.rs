@@ -72,7 +72,7 @@ impl rpc_encoder {
         let mut offset = 0;
         for _i in 0..4 {
             let digit: u8 = ((val >> shift) & 0xff) as u8;
-            crate::parsing_util::u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
+            u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
             shift -= 8;
             offset += 2;
         }
@@ -89,7 +89,7 @@ impl rpc_encoder {
             let digit: u8 = ((val >> shift) & 0xff) as u8;
             if digit == 0 && nb_digit == 0 {
             } else {
-                crate::parsing_util::u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
+                u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
                 nb_digit += 2;
             }
             shift -= 8;
@@ -109,7 +109,7 @@ impl rpc_encoder {
         let mut offset = 0;
         for _i in 0..4 {
             let digit: u8 = ((val >> shift) & 0xff) as u8;
-            crate::parsing_util::u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
+            u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
             shift += 8;
             offset += 2;
         }

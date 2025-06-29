@@ -8,6 +8,7 @@ pub mod rpc_parser;
 pub mod rpc_reply;
 use crate::bmp::{bmp_get_frequency, bmp_set_frequency};
 use crate::crc::do_local_crc32;
+use crate::parsing_util;
 use crate::rpc_common::*;
 use crate::rpc_target::rpc_reply::*;
 use rpc_parser::rpc_parameter_parser;
@@ -481,7 +482,7 @@ fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
                 return true;
             }
             let mut buffer: [u8; 1024] = [0; 1024];
-            let decoded = crate::parsing_util::u8_hex_string_to_u8s(parser.end(), &mut buffer);
+            let decoded = parsing_util::u8_hex_string_to_u8s(parser.end(), &mut buffer);
             let fault: i32 =
                 bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
             bmplog!("\t\t fault  :{}\n", fault);

@@ -30,6 +30,7 @@ mod rtt;
 mod sw_breakpoints;
 mod util;
 
+use crate::commands::run;
 use crate::decoder::gdb_stream;
 use decoder::RESULT_AUTOMATON;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
@@ -102,10 +103,10 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     }
     // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
     // i'm not sure what happens escaping-wise if we let the parser handle it
-    if crate::commands::run::target_is_running() {
+    if run::target_is_running() {
         if data_as_slice.len() == 1 {
             match data_as_slice[0] {
-                3 => crate::commands::run::target_halt(),
+                3 => run::target_halt(),
                 _ => bmplog!("Warning : garbage received"),
             }
         }
@@ -129,7 +130,7 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             //bmplog!("--> ACK\n");
                             //rngdb_send_data( CHAR_ACK );
                             #[cfg(not(feature = "hosted"))]
-                            crate::rpc_target::rpc(s);
+                            rpc_target::rpc(s);
                             bmplog!("Rpc done\n");
                         }
                     }
@@ -156,7 +157,7 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             }
                             if bmp::bmp_catch() != 0 {
                                 gdb_print!("Stray exception\n");
-                                crate::encoder::encoder::reply_e01();
+                                encoder::encoder::reply_e01();
                             }
                         }
                     }

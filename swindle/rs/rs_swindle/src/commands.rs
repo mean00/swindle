@@ -1,7 +1,9 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
 // https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
+use crate::bmp;
 use crate::encoder::encoder;
+use crate::parsing_util;
 use alloc::vec::Vec;
 
 pub mod breakpoints;
@@ -239,7 +241,7 @@ const main_command_tree: [CommandTree; 22] = [
 ];
 
 pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
-    let connected: bool = crate::bmp::bmp_attached();
+    let connected: bool = bmp::bmp_attached();
     //bmplog!(command);
     //bmplog!("\n");
     for c in tree {
@@ -275,7 +277,7 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                         }
                         // Remove starting " "
                         for i in conf.iter_mut() {
-                            *i = crate::parsing_util::chomp(i);
+                            *i = parsing_util::chomp(i);
                         }
                         bmplog!(command);
                         bmplog!("\n");
@@ -333,8 +335,8 @@ fn _Hc(_command: &str, _args: &[&str]) -> bool {
 
 // detach
 fn _D(_command: &str, _args: &[&str]) -> bool {
-    if crate::bmp::bmp_attached() {
-        crate::bmp::bmp_detach();
+    if bmp::bmp_attached() {
+        bmp::bmp_detach();
     }
     encoder::reply_ok();
     true

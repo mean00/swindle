@@ -12,6 +12,7 @@
 use alloc::vec::Vec;
 
 crate::setup_log!(false);
+use crate::bmp;
 use crate::bmplog;
 
 const ARM_BREAKPOINT_OPCODE: [u8; 2] = [0x00u8, 0xbeu8];
@@ -93,21 +94,21 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     };
     // store breakpoint
     let aligned_address: u32 = address & 0xfffffffcu32;
-    if !(crate::bmp::bmp_read_mem(aligned_address, &mut breakpoint.old_opcode)) {
+    if !(bmp::bmp_read_mem(aligned_address, &mut breakpoint.old_opcode)) {
         bmplog!("cant read old sw value\n");
         return false;
     }
     // put new opcode
     let mut new_opcode: [u8; 4] = breakpoint.old_opcode;
     let offset: usize = (address & 2) as usize;
-    if !crate::bmp::bmp_is_riscv() {
+    if !bmp::bmp_is_riscv() {
         new_opcode[offset] = ARM_BREAKPOINT_OPCODE[0];
         new_opcode[offset + 1] = ARM_BREAKPOINT_OPCODE[1];
     } else {
         new_opcode[offset] = RISCV_BREAKPOINT_OPCODE[0];
         new_opcode[offset + 1] = RISCV_BREAKPOINT_OPCODE[1];
     }
-    if !crate::bmp::bmp_mem_write(aligned_address, &new_opcode) {
+    if !bmp::bmp_mem_write(aligned_address, &new_opcode) {
         bmplog!("cant write new sw value\n");
         return false;
     }
@@ -126,8 +127,7 @@ pub fn remove_sw_breakpoint(address: u32, _len: u32) -> bool {
             Some(index) => {
                 // put back the old code
                 let aligned_address: u32 = address & 0xfffffffcu32;
-                if !crate::bmp::bmp_mem_write(aligned_address, &get_list_ref().at(index).old_opcode)
-                {
+                if !bmp::bmp_mem_write(aligned_address, &get_list_ref().at(index).old_opcode) {
                     bmplog!("cant restore old sw value\n");
                 }
                 // remove X from list

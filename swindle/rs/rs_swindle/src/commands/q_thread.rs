@@ -11,6 +11,7 @@ crate::setup_log!(false);
 use crate::bmplog;
 
 use crate::freertos::freertos_symbols::freertos_running;
+use crate::freertos::freertos_tcb::get_threads;
 use crate::freertos::freertos_tcb::{freertos_is_thread_present, freertos_switch_task};
 use crate::freertos::freertos_tcb::{get_current_thread_id, get_tcb_info_from_id};
 
@@ -26,7 +27,7 @@ use crate::gdb_print;
 // (lower case letter ‘L’) denotes end of list.
 //
 pub fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
-    let list = crate::freertos::freertos_tcb::get_threads();
+    let list = get_threads();
     if list.is_empty() {
         encoder::simple_send("m1");
     } else {

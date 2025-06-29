@@ -35,7 +35,7 @@ pub fn target_is_running() -> bool {
 //
 fn reply_2(prefix: &str, num: u32) {
     let mut buffer: [u8; 20] = [0; 20];
-    let mut e = crate::encoder::encoder::new();
+    let mut e = encoder::new();
     e.begin();
     e.add(prefix);
     if num < 16 {
@@ -47,7 +47,7 @@ fn reply_2(prefix: &str, num: u32) {
 //
 fn reply_wp(prefix: &str, num: u32, prefix2: &str, num2: u32) {
     let mut buffer: [u8; 20] = [0; 20];
-    let mut e = crate::encoder::encoder::new();
+    let mut e = encoder::new();
     e.begin();
     e.add(prefix);
     if num < 16 {
@@ -89,12 +89,12 @@ extern "C" fn rngdbstub_poll() {
 
 //
 pub fn _R(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_bool(crate::bmp::bmp_reset_target());
+    encoder::reply_bool(bmp::bmp_reset_target());
     true
 }
 pub fn _k(_command: &str, _args: &[&str]) -> bool {
     if get_enable_reset() != 0 {
-        encoder::reply_bool(crate::bmp::bmp_reset_target());
+        encoder::reply_bool(bmp::bmp_reset_target());
     } else {
         gdb_print!("reset disabled by mon enablereset\n");
         encoder::reply_ok();
@@ -124,7 +124,7 @@ pub fn _vCont(command: &str, _args: &[&str]) -> bool {
         unsafe {
             running = true;
         }
-        crate::bmp::bmp_halt_resume(false);
+        bmp::bmp_halt_resume(false);
         //encoder::reply_ok();
         return true;
     }
@@ -134,14 +134,14 @@ pub fn _vCont(command: &str, _args: &[&str]) -> bool {
             unsafe {
                 running = true;
             }
-            crate::bmp::bmp_halt_resume(false);
+            bmp::bmp_halt_resume(false);
             true
         }
         b's' => {
             unsafe {
                 running = true;
             }
-            crate::bmp::bmp_halt_resume(true);
+            bmp::bmp_halt_resume(true);
             true
         }
         b't' => {

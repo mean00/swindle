@@ -5,9 +5,11 @@ use super::{CommandTree, exec_one};
 use crate::bmp;
 use crate::bmp::bmp_attach;
 use crate::commands::CallbackType;
+use crate::commands::mon;
 use crate::commands::symbols;
 use crate::encoder::encoder;
 use crate::freertos::os_detach;
+use crate::sw_breakpoints;
 
 crate::setup_log!(false);
 use crate::parsing_util::ascii_string_decimal_to_u32;
@@ -82,14 +84,14 @@ fn _vAttach(_command: &str, args: &[&str]) -> bool {
          * https://sourceware.org/pipermail/gdb-patches/2022-April/188058.html
          * https://sourceware.org/pipermail/gdb-patches/2022-July/190869.html
          */
-        crate::commands::mon::add_target_commands(bmp::bmp_get_target_name());
+        mon::add_target_commands(bmp::bmp_get_target_name());
         encoder::simple_send("T05thread:1;");
         return true;
     }
     symbols::reset_symbols();
     os_detach();
-    crate::sw_breakpoints::clear_sw_breakpoint();
-    crate::commands::mon::clear_custom_target_command();
+    sw_breakpoints::clear_sw_breakpoint();
+    mon::clear_custom_target_command();
     encoder::reply_e01();
     true
 }
