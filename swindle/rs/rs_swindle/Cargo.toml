@@ -15,7 +15,7 @@ cty = "0.2.2"
 rust_esprit = { path = "../../../esprit/rust/rust_esprit", features = ["cdc"] , optional = true}
 ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
-numtoa = {version = "0.2.4"}
+numtoa = {version = "0.3.0"}
 crc = { version ="3.0.1", features = []}
 hashbrown = "0.15.2"
 arraystring = { version = "*", default-features = false, features = [] }
