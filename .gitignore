@@ -1,4 +1,5 @@
 taist*
+out
 *.bkp
 *.lck
 build_default.cmake
