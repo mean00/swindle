@@ -156,8 +156,8 @@ pub fn take_adress_length(xin: &str) -> Option<(u32, u32)> {
         bmplog!("take_adress_length : wrong param");
         return None;
     }
-    let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
-    let len = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
+    let address = ascii_string_hex_to_u32(args[0]);
+    let len = ascii_string_hex_to_u32(args[1]);
     Some((address, len))
 }
 

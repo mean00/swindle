@@ -16,6 +16,7 @@ use crate::commands::q_thread::{
     _qC, _qP, _qSymbol, _qThreadExtraInfo, _qfThreadInfo, _qsThreadInfo,
 };
 use crate::crc::abstract_crc32;
+use crate::parsing_util::ascii_string_hex_to_u32;
 
 use numtoa::NumToA;
 
@@ -183,8 +184,8 @@ fn validate_q_query(arg: &str) -> Option<(usize, usize)> {
         return None;
     }
     //
-    let start_address: usize = crate::parsing_util::ascii_string_hex_to_u32(conf[0]) as usize;
-    let length: usize = crate::parsing_util::ascii_string_hex_to_u32(conf[1]) as usize;
+    let start_address: usize = ascii_string_hex_to_u32(conf[0]) as usize;
+    let length: usize = ascii_string_hex_to_u32(conf[1]) as usize;
     Some((start_address, length))
 }
 //
@@ -311,8 +312,8 @@ fn _qCRC(_command: &str, args: &[&str]) -> bool {
         return true;
     }
 
-    let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
-    let length = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
+    let address = ascii_string_hex_to_u32(args[0]);
+    let length = ascii_string_hex_to_u32(args[1]);
 
     let mut crc: u32 = 0;
     let status = abstract_crc32(address, length, &mut crc); // remote

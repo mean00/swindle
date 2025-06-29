@@ -2,6 +2,7 @@ use crate::commands::mon::{MAX_SPACE, spacebar};
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
 use crate::parsing_util;
+use crate::parsing_util::ascii_hex_or_dec_to_u32;
 use crate::rn_bmp_cmd_c::{rttField_ADDRESS, rttField_ENABLED, rttField_POLLING};
 
 crate::setup_log!(false);
@@ -234,8 +235,8 @@ fn _auto_rtt(_command: &str, _args: &[&str]) -> bool {
  *
  */
 fn _scan(_command: &str, args: &[&str]) -> bool {
-    let start: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[0]);
-    let end: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[1]);
+    let start: u32 = ascii_hex_or_dec_to_u32(args[0]);
+    let end: u32 = ascii_hex_or_dec_to_u32(args[1]);
     if end <= start {
         gdb_print!("Invalid address\n");
         encoder::reply_e01();
@@ -253,9 +254,9 @@ fn _scan(_command: &str, args: &[&str]) -> bool {
  * Ram BEGIN_ADDR END_ADDR
  */
 fn _poll(_command: &str, args: &[&str]) -> bool {
-    let min: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[0]);
-    let max: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[1]);
-    let er: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[2]);
+    let min: u32 = ascii_hex_or_dec_to_u32(args[0]);
+    let max: u32 = ascii_hex_or_dec_to_u32(args[1]);
+    let er: u32 = ascii_hex_or_dec_to_u32(args[2]);
     if max < min {
         gdb_print!("Invalid minmax\n");
         encoder::reply_e01();

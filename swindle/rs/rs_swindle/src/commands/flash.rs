@@ -6,6 +6,7 @@ use crate::encoder::encoder;
 
 use crate::bmp::{bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
 use crate::commands::CallbackType;
+use crate::parsing_util::ascii_string_hex_to_u32;
 
 crate::setup_log!(false);
 use crate::bmplog;
@@ -54,8 +55,8 @@ fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
         encoder::reply_ok();
         return true;
     }
-    let address = crate::parsing_util::ascii_string_hex_to_u32(args[0]);
-    let length = crate::parsing_util::ascii_string_hex_to_u32(args[1]);
+    let address = ascii_string_hex_to_u32(args[0]);
+    let length = ascii_string_hex_to_u32(args[1]);
 
     encoder::reply_bool(bmp_flash_erase(address, length));
     true

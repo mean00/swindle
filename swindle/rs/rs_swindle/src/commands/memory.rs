@@ -68,9 +68,8 @@ pub fn _X(command: &str, _args: &[u8]) -> bool {
     if !ret {
         return false;
     }
-    let address = crate::parsing_util::ascii_string_hex_to_u32(&command[1..coma]);
-    let mut length =
-        crate::parsing_util::ascii_string_hex_to_u32(&command[coma + 1..semicolumn]) as usize;
+    let address = ascii_string_hex_to_u32(&command[1..coma]);
+    let mut length = ascii_string_hex_to_u32(&command[coma + 1..semicolumn]) as usize;
 
     let as_byte = command.as_bytes();
     let data = &as_byte[(semicolumn + 1)..];

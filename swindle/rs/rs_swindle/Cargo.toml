@@ -19,26 +19,13 @@ numtoa = {version = "0.3.0"}
 crc = { version ="3.0.1", features = []}
 hashbrown = "0.15.2"
 arraystring = { version = "*", default-features = false, features = [] }
-strum = { version = "0.27", default-features = false, features = []}
-strum_macros = { version = "0.27", default-features = false, features = []}
+strum = { version = "0.27.1", default-features = false, features = []}
+strum_macros = { version = "0.27.1", default-features = false, features = []}
 #
 [lib]
 name = "rsbmp"
 path = "src/lib.rs"
 crate-type = ["staticlib"] # Creates static lib
-
-#[profile.dev]
-#codegen-units = 1
-#debug = true
-#lto = true
-#opt-level       = 's'
-
-#[profile.release]
-#codegen-units = 1
-#debug = true
-#lto = true
-#opt-level       = 's'
-
 
 [profile.dev]
 debug = true

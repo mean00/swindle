@@ -4,7 +4,9 @@ use crate::encoder::encoder;
 use crate::freertos::enable_freertos;
 #[cfg(not(feature = "hosted"))]
 use crate::parsing_util;
-use crate::parsing_util::{ascii_hex_string_to_u8s, ascii_string_decimal_to_u32};
+use crate::parsing_util::{
+    ascii_hex_or_dec_to_u32, ascii_hex_string_to_u8s, ascii_string_decimal_to_u32,
+};
 use crate::settings;
 use alloc::vec::Vec;
 //
@@ -700,7 +702,7 @@ fn _set(_command: &str, args: &[&str]) -> bool {
         return true;
     }
     if args.len() == 2 {
-        let value: u32 = crate::parsing_util::ascii_hex_or_dec_to_u32(args[1]);
+        let value: u32 = ascii_hex_or_dec_to_u32(args[1]);
         settings::set(args[0], value);
         encoder::reply_ok();
         return true;
