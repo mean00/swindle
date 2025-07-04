@@ -1,2 +1,3 @@
 SUBSYSTEM=="tty", ATTRS{interface}=="swindle GDB Server", SYMLINK+="ttySwindleGdb2"
 SUBSYSTEM=="tty", ATTRS{interface}=="swindle GDB Uart",SYMLINK+="ttySwindleUart2"  
+SUBSYSTEM=="tty", ATTRS{interface}=="swindle GDB Log",SYMLINK+="ttySwindleLog2"  
