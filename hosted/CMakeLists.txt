@@ -74,7 +74,7 @@ target_include_directories(esprit_dev INTERFACE ${CMAKE_BINARY_DIR})
 SET(BMP ${CMAKE_SOURCE_DIR}/../blackmagic)
 SET(ARDUINO_GD32_FREERTOS ${CMAKE_SOURCE_DIR}/../esprit)
 ADD_DEFINITIONS("-DLN_LINUX=1")
-include( ${ARDUINO_GD32_FREERTOS}/lnEmbeddedPrint.cmake)
+include( ${ARDUINO_GD32_FREERTOS}/cmake/lnEmbeddedPrint.cmake)
 
 include_directories(include)
 include_directories(${CMAKE_BINARY_DIR})
