@@ -11,10 +11,10 @@ IF(NOT DEFINED LN_ARCH)
     SET(LN_MCU  "CH32V3x"                 CACHE INTERNAL "")
     SET(LN_MCU_RAM_SIZE       64          CACHE INTERNAL "")
     SET(LN_MCU_FLASH_SIZE     256         CACHE INTERNAL "")
-    SET(LN_MCU_STATIC_RAM     12           CACHE INTERNAL "")
+    SET(LN_MCU_STATIC_RAM     13           CACHE INTERNAL "")
     SET(LN_SPEC               "picolibc"  CACHE INTERNAL "") # if not set we use nano
     SET(LN_BOOTLOADER_SIZE     16          CACHE INTERNAL "")
-    SET(LN_USB_NB_CDC 2 CACHE INTERNAL "") # 2 CDC interfaces
+    SET(LN_USB_NB_CDC 3 CACHE INTERNAL "") # 2 CDC interfaces
     #SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
   ELSE()
     IF(USE_GD32F3)

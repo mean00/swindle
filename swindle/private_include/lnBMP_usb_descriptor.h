@@ -12,28 +12,26 @@
 // RP2040
 #if defined(USE_RP2040) || defined(USE_RP2350)
 #define USB_PID 0x6050
-const char *descriptor[] = {
-    (const char[]){0x09, 0x04},                     // 0: is supported language is English (0x0409)
-    "picolnSwindle",                                // 1: Manufacturer
-    "Swindle, Custom implementation of BMP (pico)", // 2: Product
-    "45678",                                        // 3: Serials, should use chip ID
-    "pswindle GDB Server",                          // 4: CDC Interface
-    "pswindle GDB Uart",                            // 5: CDC Interface
-    "pswindle GDB Log",                             // 5: CDC Interface
-    "pswindle DFU",                                 // 6: DFU Interface
-};
-#include "lnBMP_usb_descriptor_3cdc.h"
+#define MKNAME(x) "p"##x
 #else
 #define USB_PID 0x6030
+#define MKNAME(x) x
+#endif
 const char *descriptor[] = {
-    (const char[]){0x09, 0x04},              // 0: is supported language is English (0x0409)
-    "swindle",                               // 1: Manufacturer
-    "Swindle, Custom implementation of BMP", // 2: Product
-    "45678",                                 // 3: Serials, should use chip ID
-    "swindle GDB Server",                    // 4: CDC Interface
-    "swindle GDB Uart",                      // 5: CDC Interface
-    "swindle DFU",                           // 7: DFU Interface
+    (const char[]){0x09, 0x04},   // 0: is supported language is English (0x0409)
+    MKNAME("Swindle"),            // 1: Manufacturer
+    MKNAME("Swindle debugger "),  // 2: Product
+    "45678",                      // 3: Serials, should use chip ID
+    MKNAME("swindle GDB Server"), // 4: CDC Interface
+    MKNAME("swindle GDB Uart"),   // 5: CDC Interface
+#ifdef USE_3_CDC
+    MKNAME("swindle GDB Log"), // 5: CDC Interface
+#endif
+    MKNAME("swindle DFU"), // 6: DFU Interface
 };
+#ifdef USE_3_CDC
+#include "lnBMP_usb_descriptor_3cdc.h"
+#else
 #include "lnBMP_usb_descriptor_2cdc.h"
 #endif
 
