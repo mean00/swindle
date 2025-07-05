@@ -59,16 +59,15 @@
         }
       ],
       "drc_exclusions": [
-        "clearance|128025000|96100000|a66011f9-fbf3-4eb7-b161-575cdf32fcaf|150ba6b6-ff3a-4c2c-a3f6-c2c32e64105a",
-        "clearance|129100000|96100000|150ba6b6-ff3a-4c2c-a3f6-c2c32e64105a|f9de0aca-e24f-440d-af94-f23bc9d4bb2f",
-        "clearance|130100000|96100000|f9de0aca-e24f-440d-af94-f23bc9d4bb2f|5d4fbe5f-1412-4c0a-ad7b-34334a120d14",
-        "clearance|131100000|96100000|5d4fbe5f-1412-4c0a-ad7b-34334a120d14|19ca56a4-5aee-4437-a905-dc2fccf18ddc",
-        "clearance|138800000|96600000|290777f0-4265-40a7-9986-7a09126d3287|a2d690ad-0d27-423c-82e4-58086c029b2b",
-        "clearance|139800000|96600000|a2d690ad-0d27-423c-82e4-58086c029b2b|d374d8cb-7454-4529-9d6a-84977f05b90b",
-        "clearance|140900000|86525000|7dca7278-9d82-4dfe-b158-8a83a9686b60|fd7ab3d7-16b1-40da-8790-5f26de6c595d",
-        "clearance|140900000|87600000|fd7ab3d7-16b1-40da-8790-5f26de6c595d|e24c7058-6ca3-4131-802b-be9f0f6fe1c1",
-        "clearance|140900000|88600000|e24c7058-6ca3-4131-802b-be9f0f6fe1c1|02c29c6c-b135-41cc-8d61-ad380d7d224e",
-        "clearance|140900000|89600000|02c29c6c-b135-41cc-8d61-ad380d7d224e|751b253a-095c-4959-8a9a-27032ea494e2"
+        "hole_clearance|149035025|88074975|8c59092e-370b-415c-83b2-cbe248348c67|bd705e1b-b25b-4823-8d21-3b2e6acf12d5",
+        "hole_clearance|149035025|88074975|8c59092e-370b-415c-83b2-cbe248348c67|dc8f8e4e-bdd2-48a8-9f87-eca8bb34d1b6",
+        "hole_clearance|149035025|88274975|8c59092e-370b-415c-83b2-cbe248348c67|3f98cc30-d47f-4c49-b91d-52a1e359e3c0",
+        "hole_clearance|149035025|88274975|8c59092e-370b-415c-83b2-cbe248348c67|550f97fe-3313-4894-9ac5-ab81b0822862",
+        "hole_clearance|149035025|93674975|438367fa-e1e0-44a8-9fa0-87743dbefcfd|24f44262-6b41-4d23-8e14-d48c12ed00a6",
+        "hole_clearance|149035025|93674975|438367fa-e1e0-44a8-9fa0-87743dbefcfd|fb7abb8f-d221-42b0-aa3d-0251d7ddff45",
+        "hole_clearance|149035025|93874975|438367fa-e1e0-44a8-9fa0-87743dbefcfd|456ed133-2275-4bff-bcc0-d42ace39e616",
+        "hole_clearance|149035025|93874975|438367fa-e1e0-44a8-9fa0-87743dbefcfd|e88db1a9-fe77-48b4-947f-5f1d13add10d",
+        "net_conflict|150965025|90974975|f426d6dc-f145-4d05-8613-48e5c2a32969|00000000-0000-0000-0000-000000000000"
       ],
       "meta": {
         "version": 2
@@ -609,6 +608,18 @@
     [
       "fbe443d6-6d74-4abc-9dee-16e0160553bc",
       "Root"
+    ],
+    [
+      "ed84c662-1e11-4141-9b01-0918066453ad",
+      "Connectors"
+    ],
+    [
+      "987b18c5-39d2-44f2-a01c-25fb187a732e",
+      "voltage_translators"
+    ],
+    [
+      "9ae6e029-7457-493b-8bae-ed725714055d",
+      "usb"
     ]
   ],
   "text_variables": {}
