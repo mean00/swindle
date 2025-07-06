@@ -5783,6 +5783,7 @@
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.digikey.de/de/products/detail/txc-corporation/7M-12-000MAAE-T/3674337"
