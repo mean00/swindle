@@ -12,7 +12,8 @@
 // RP2040
 #if defined(USE_RP2040) || defined(USE_RP2350)
 #define USB_PID 0x6050
-#define MKNAME(x) "p"##x
+#define MERGE2(a, b) a b
+#define MKNAME(x) MERGE2("p", x)
 #else
 #define USB_PID 0x6030
 #define MKNAME(x) x
