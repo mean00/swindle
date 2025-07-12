@@ -1,1 +1,35 @@
-launch_cortexdebug.json
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+      
+        {
+            "name": "Debug RP2040 Swindle",
+            "cwd": "${workspaceFolder}",                          
+            "executable": "build/swindle_zero_carrier_RP2040_125Mhz_CLANG.elf",
+            "gdbPath" : "${config:armToolchainPath}/arm-none-eabi-gdb",        
+            "request": "launch",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "bmp",
+            "interface": "swd",
+            "device": "rp2040",
+            "BMPGDBSerialPort" : "/dev/ttySwindleGdb2",
+            "runToMain": true,
+            "preLaunchCommands":[
+            "b deadEnd",
+            "set mem inaccessible-by-default off",
+            "set confirm off",
+            ],
+            "preRestartCommands": [
+            "enable breakpoint",
+            "break main"
+            ]
+    
+        },
+        
+
+    ]
+}

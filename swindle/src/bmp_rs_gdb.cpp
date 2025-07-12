@@ -1,10 +1,10 @@
 /*
 
  */
+#include "esprit.h"
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbDFUrt.h"
 #include "include/lnUsbStack.h"
-#include "esprit.h"
 #include "lnBMP_usb_descriptor.h"
 
 extern "C"
@@ -26,6 +26,29 @@ extern void serialInit();
 extern void bmp_io_begin_session();
 extern void bmp_io_end_session();
 extern "C" void bmp_rtt_poll_c();
+extern "C" void swindle_init_rtt();
+extern "C" void swindle_run_rtt();
+extern "C" void swindle_purge_rtt();
+extern "C" bool swindle_rtt_enabled();
+extern "C" void usbCdc_Logger(int n, const char *data);
+// device -> host
+extern "C" uint32_t usbCdc_write_available();
+extern "C" bool swindle_write_rtt_channel(uint32_t channel, uint32_t size, const uint8_t *data);
+// host -> device
+extern "C" void swindle_reinit_rtt();
+extern "C" uint32_t swindle_rtt_write_available(uint32_t channel);
+/*
+ *
+ *
+ */
+extern "C" void swindle_rtt_send_data_to_host(unsigned int index, uint32_t len, const uint8_t *data)
+{
+    usbCdc_Logger((int)len, (const char *)data);
+}
+extern "C" uint32_t swindle_rtt_room_available_to_host(uint32_t dex)
+{
+    return usbCdc_write_available();
+}
 
 #define GDB_CDC_DATA_AVAILABLE (1 << 0)
 #define GDB_SESSION_START (1 << 1)
@@ -209,6 +232,7 @@ void gdb_task(void *parameters)
     pins_init();
     gdb_if_init();
     initFreeRTOS();
+    swindle_init_rtt();
     Logger("Here we go... \n");
     usbGdb->takeOwnership();
     bool connected = false;
@@ -216,15 +240,30 @@ void gdb_task(void *parameters)
     {
         uint32_t ev = usbGdb->waitEvents();
         // We get here at worst every GDB_MAX_POLLING_PERIOD (20ms ?)
-        if (connected)
+        if (connected) // connected to a debugger
         {
             rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
-            bmp_rtt_poll_c();
+            if (cur_target)   // and we are connected to a target...
+            {
+#if 0
+                swindle_run_rtt();
+#else
+                if (swindle_rtt_enabled())
+                {
+                    swindle_run_rtt();
+                }
+                else
+                {
+                    swindle_purge_rtt();
+                }
+#endif
+            }
         }
         if (ev)
         {
             if (ev & GDB_SESSION_START)
             {
+                swindle_reinit_rtt();
                 rngdbstub_init();
                 connected = true;
             }
@@ -251,7 +290,7 @@ void gdb_task(void *parameters)
         }
         if (!connected)
         {
-            lnDelayMs(100);
+            lnDelayMs(20);
         }
     }
     xAssert(0);

@@ -452,28 +452,6 @@ unsafe extern "C" {
         fault: *mut cty::c_uint,
     ) -> cty::c_uint;
 }
-pub const rttField_ENABLED: rttField = 0;
-pub const rttField_ADDRESS: rttField = 1;
-pub const rttField_POLLING: rttField = 2;
-pub type rttField = cty::c_uint;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct rttInfo {
-    pub enabled: cty::c_uint,
-    pub min_address: cty::c_uint,
-    pub max_address: cty::c_uint,
-    pub min_poll_ms: cty::c_uint,
-    pub max_poll_ms: cty::c_uint,
-    pub max_poll_error: cty::c_uint,
-    pub found: cty::c_uint,
-    pub cb_address: cty::c_uint,
-}
-unsafe extern "C" {
-    pub fn bmp_rtt_get_info_c(info: *mut rttInfo);
-}
-unsafe extern "C" {
-    pub fn bmp_rtt_set_info_c(field: rttField, info: *const rttInfo);
-}
 unsafe extern "C" {
     pub fn bmp_raise_exception_c();
 }
