@@ -34,10 +34,6 @@ pub struct MemoryBlock {
     pub block_size: u32,
 }
 
-pub fn bmp_get_setting_or_default(setting: &str, def: u32) -> u32 {
-    0
-}
-
 pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
