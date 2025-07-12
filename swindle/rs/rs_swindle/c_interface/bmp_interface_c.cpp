@@ -4,15 +4,15 @@ extern "C"
 
 #include "ctype.h"
 // #include "gdb_hostio.h"
+#include "exception.h"
 #include "gdb_if.h"
 #include "gdb_packet.h"
 #include "general.h"
 #include "hex_utils.h"
 #include "platform.h"
+#include "rtt_if.h"
 #include "target.h"
 #include "target_internal.h"
-#include "rtt_if.h"
-#include "exception.h"
 }
 // C++
 bool rv_dm_probe(uint32_t *chip_id); // C++
@@ -26,7 +26,7 @@ extern "C"
     extern "C" int command_process(target_s *const t, const char *cmd_buffer);
     extern "C" bool bmd_crc32(target_s *const target, uint32_t *const result, const uint32_t base, const size_t len);
     extern "C" void poll_rtt(target_s *const cur_target);
-    extern "C" bool rtt_enabled;
+    extern "C" void swindle_enable_rtt(bool);
     target_s *cur_target;
     target_s *last_target;
     bool shutdown_bmda;
@@ -40,17 +40,6 @@ extern "C"
             xAssert(0);
         }
         return stub_buffer;
-    }
-    /**
-     *
-     *
-     */
-    extern "C" void bmp_rtt_poll_c()
-    {
-        if (cur_target && rtt_enabled)
-        {
-            poll_rtt(cur_target);
-        }
     }
     /*
      *
@@ -122,7 +111,7 @@ extern "C"
             SET_RUN_STATE(true);
             TRY(EXCEPTION_ALL)
             {
-                rtt_enabled = false;
+                swindle_enable_rtt(false);
                 target_detach(cur_target);
                 last_target = cur_target;
             }

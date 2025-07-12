@@ -33,6 +33,7 @@ pub struct MemoryBlock {
     pub length: u32,
     pub block_size: u32,
 }
+
 pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
@@ -211,6 +212,12 @@ pub fn bmp_crc32(address: u32, length: u32) -> Option<u32> {
     }
 }
 
+pub fn bmp_read_mem_ptr(address: u32, size: u32, data: *mut u8) -> bool {
+    unsafe {
+        // mem_read_c returns flase if ok (WTF)
+        ret_to_bool(rn_bmp_cmd_c::bmp_mem_read_c(address, size, data))
+    }
+}
 pub fn bmp_read_mem(address: u32, data: &mut [u8]) -> bool {
     unsafe {
         // mem_read_c returns flase if ok (WTF)

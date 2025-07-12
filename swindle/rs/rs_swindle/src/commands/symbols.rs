@@ -11,6 +11,7 @@
 
 use crate::commands::mon_rtt as rttsym;
 use crate::freertos::freertos_symbols as fosym;
+use crate::rtt_consts;
 crate::setup_log!(false);
 use crate::bmplog;
 crate::gdb_print_init!();
@@ -33,7 +34,7 @@ const symbols_to_collect: [list_of_symbols; NB_OF_SYMBOL_TABLE] = [
         clear: fosym::freertos_clear_symbols,
     },
     list_of_symbols {
-        symbols: &rttsym::RTTSymbolName,
+        symbols: &rtt_consts::RTTSymbolName,
         processing: rttsym::rtt_processing,
         clear: rttsym::rtt_clear_symbols,
     },
