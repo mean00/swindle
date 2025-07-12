@@ -3,9 +3,9 @@
 
 */
 
+#include "esprit.h"
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbStack.h"
-#include "esprit.h"
 #include "lnBMP_pinout.h"
 #include "lnBmpTask.h"
 #include "lnSerial.h"
@@ -325,5 +325,8 @@ extern "C" void usbCdc_Logger(int n, const char *data)
     serial->_usb->write((const uint8_t *)data, n);
     serial->_usb->flush();
 }
+extern "C" uint32_t usbCdc_write_available()
+{
+    return serial->_usb->writeAvailable();
 #endif
-// EOF
+    // EOF
