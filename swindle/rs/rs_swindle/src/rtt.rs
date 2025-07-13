@@ -2,7 +2,6 @@
  *
  */
 use crate::bmp;
-use crate::bmplog;
 use crate::commands::run::HaltState;
 use crate::gdb_print;
 use crate::rtt_consts::RTT_SETTING_KEY;
@@ -15,7 +14,8 @@ const RTT_SIGNATURE_LEN: usize = 11;
 const TRANSFER_BUFFER_SIZE: usize = 512;
 
 unsafe extern "C" {
-    fn swindle_rtt_send_data_to_host(index: usize, len: u32, data: *const u8);
+    fn swindle_rtt_send_data_to_host(index: u32, len: u32, data: *const u8);
+    fn swindle_rtt_room_available_to_host(index: u32) -> u32;
 }
 
 #[repr(C)]
@@ -63,6 +63,20 @@ enum RttHalt {
 }
 
 fn swindle_rtt_access_to_target() -> RttHalt {
+    let mut retries = 20;
+    let mut proceed = false;
+    while retries > 0 {
+        let state = bmp::bmp_poll();
+        if state == HaltState::Request {
+            retries = retries - 1;
+        } else {
+            proceed = true;
+            break;
+        }
+    }
+    if !proceed {
+        return RttHalt::Failure;
+    }
     match bmp::bmp_poll() {
         HaltState::Request => RttHalt::Failure,
         HaltState::Fault => {
@@ -83,7 +97,7 @@ fn swindle_rtt_access_to_target() -> RttHalt {
             RttHalt::Stepping
         }
         HaltState::Error =>
-        //gdb_print!("Target is in error state, halting for RTT access!\n");
+        //gdb_print!
         {
             RttHalt::Failure
         } //_ => {
@@ -214,9 +228,30 @@ pub fn swindle_rtt_print_info() {
         gdb_print!("We dont have the RTT symbol available! \n");
         return;
     }
+    gdb_print!("Checking control block at  address 0x{:x}\n", adr);
+
+    let halted = swindle_rtt_access_to_target();
+    if halted == RttHalt::Failure {
+        gdb_print!("Failed to access target for Control Block  reading!\n");
+        return;
+    }
     let cb = RttControlBlock::read(adr);
-    if !cb.is_valid() {
-        gdb_print!("invalid control block! \n");
+    swindle_rtt_release_target(halted);
+
+    if cb.max_num_up_buffers == 0 || cb.max_num_up_buffers > 4 {
+        gdb_print!("Invalid number of up buffers {}\n", cb.max_num_up_buffers);
+        return;
+    }
+    if cb.max_num_down_buffers > 4 {
+        gdb_print!(
+            "Invalid number of down buffers {}\n",
+            cb.max_num_down_buffers
+        );
+        return;
+    }
+    // check signature
+    if cb.id[0..RTT_SIGNATURE_LEN] != *RTT_SIGNATURE {
+        gdb_print!("Invalid signature \n");
         return;
     }
     gdb_print!("RTT control block   :\n");
@@ -263,7 +298,12 @@ pub fn swindle_rtt_print_info() {
 *
 */
 #[unsafe(no_mangle)]
-pub extern "C" fn swindle_read_rtt_channel(index: usize, buffer: &RttBuffer, address: u32) -> bool {
+pub extern "C" fn swindle_read_rtt_channel(
+    index: usize,
+    buffer: &RttBuffer,
+    address: u32,
+    available: u32,
+) -> bool {
     if buffer.write_offset == buffer.read_offset || buffer.size == 0 || buffer.buffer == 0 {
         return false;
     }
@@ -275,6 +315,12 @@ pub extern "C" fn swindle_read_rtt_channel(index: usize, buffer: &RttBuffer, add
     }
     if chunk > (TRANSFER_BUFFER_SIZE as u32) {
         chunk = TRANSFER_BUFFER_SIZE as u32;
+    }
+    if chunk > available {
+        chunk = available;
+    }
+    if chunk == 0 {
+        return false;
     }
     let extra = (buffer.buffer + buffer.read_offset) & 3;
     let extra_chunk = (chunk + 3 + extra) & !3;
@@ -303,7 +349,11 @@ pub extern "C" fn swindle_read_rtt_channel(index: usize, buffer: &RttBuffer, add
     // do something with it
     let offset: usize = extra as usize;
     unsafe {
-        swindle_rtt_send_data_to_host(index, chunk, RTT_BUFFER[offset..(offset+1)].as_ptr());
+        swindle_rtt_send_data_to_host(
+            index as u32,
+            chunk,
+            RTT_BUFFER[offset..(offset + 1)].as_ptr(),
+        );
     }
     // the usable part is RTT_BUFFER[ extra, (extra+chunk)]
     // TODO
@@ -339,8 +389,11 @@ impl SeggerRTT {
         };
         let mut adr_buf: u32 = adr + HEADER_SIZE;
         for index in 0..cb.max_num_up_buffers {
-            if true == Self::read_buffer(adr_buf, &mut buffer) {
-                swindle_read_rtt_channel(index as usize, &buffer, adr_buf);
+            let available = unsafe { swindle_rtt_room_available_to_host(index) };
+            if available > 4 {
+                if true == Self::read_buffer(adr_buf, &mut buffer) {
+                    swindle_read_rtt_channel(index as usize, &buffer, adr_buf, available);
+                }
             }
             adr_buf += BUFFER_SIZE;
         }

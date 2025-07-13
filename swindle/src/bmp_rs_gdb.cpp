@@ -31,7 +31,7 @@ extern "C" void swindle_run_rtt();
 extern "C" void swindle_purge_rtt();
 extern "C" bool swindle_rtt_enabled();
 extern "C" void usbCdc_Logger(int n, const char *data);
-
+extern "C" uint32_t usbCdc_write_available();
 /*
  *
  *
@@ -39,6 +39,10 @@ extern "C" void usbCdc_Logger(int n, const char *data);
 extern "C" void swindle_rtt_send_data_to_host(unsigned int index, uint32_t len, const uint8_t *data)
 {
     usbCdc_Logger((int)len, (const char *)data);
+}
+extern "C" uint32_t swindle_rtt_room_available_to_host(uint32_t dex)
+{
+    return usbCdc_write_available();
 }
 
 #define GDB_CDC_DATA_AVAILABLE (1 << 0)
