@@ -3,9 +3,9 @@
 
 */
 
+#include "esprit.h"
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbStack.h"
-#include "esprit.h"
 #include "lnBMP_pinout.h"
 #include "lnSerial.h"
 
@@ -48,6 +48,10 @@ class BMPUsbLogger
         BMPUsbLogger *bg = (BMPUsbLogger *)cookie;
         xAssert(interface == bg->_usbInstance);
         bg->cdcEventHandler(event, payload);
+    }
+    int writeAvailable()
+    {
+        return _usb->writeAvailable();
     }
     /**
      *
@@ -99,5 +103,9 @@ void initCDCLogger()
 extern "C" void usbCdc_Logger(int n, const char *data)
 {
     usbLogger->printOut(n, data);
+}
+extern "C" uint32_t usbCdc_write_available()
+{
+    return usbLogger->writeAvailable();
 }
 // EOF
