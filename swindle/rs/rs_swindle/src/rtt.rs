@@ -68,7 +68,7 @@ fn swindle_rtt_access_to_target() -> RttHalt {
     while retries > 0 {
         let state = bmp::bmp_poll();
         if state == HaltState::Request {
-            retries = retries - 1;
+            retries -= 1;
         } else {
             proceed = true;
             break;
@@ -111,18 +111,14 @@ fn swindle_rtt_access_to_target() -> RttHalt {
 */
 fn swindle_rtt_release_target(halt: RttHalt) -> bool {
     match halt {
-        RttHalt::AlreadyHalted => {
-            return true;
-        }
-        RttHalt::Stepping => {
-            return true;
-        }
+        RttHalt::AlreadyHalted => true,
+        RttHalt::Stepping => true,
         RttHalt::Halted => {
             if !bmp::bmp_halt_resume(false) {
                 gdb_print!("Failed to resume target after RTT access!\n");
                 return false;
             }
-            return true;
+            true
         }
         RttHalt::Failure => {
             panic!("Should not try to resumt \n");
@@ -189,7 +185,7 @@ pub fn swindle_init_rtt() {}
 pub fn swindle_rtt_enabled() -> bool {
     swindle_get_rtt().enabled
 }
-/**
+/*
 *
 *
 */
@@ -270,7 +266,7 @@ pub fn swindle_rtt_print_info() {
     for i in 0..cb.max_num_up_buffers {
         buffer.invalidate();
         gdb_print!("Up Channel  {}\n", i);
-        if SeggerRTT::read_buffer(adr_buf, &mut buffer) && buffer.is_valid() == true {
+        if SeggerRTT::read_buffer(adr_buf, &mut buffer) && buffer.is_valid() {
             buffer.print();
             // process up
         } else {
@@ -282,7 +278,7 @@ pub fn swindle_rtt_print_info() {
     for i in 0..cb.max_num_down_buffers {
         buffer.invalidate();
         gdb_print!("Down Channel  {}\n", i);
-        if SeggerRTT::read_buffer(adr_buf, &mut buffer) && buffer.is_valid() == true {
+        if SeggerRTT::read_buffer(adr_buf, &mut buffer) && buffer.is_valid() {
             buffer.print();
             // process up
         } else {
@@ -293,7 +289,7 @@ pub fn swindle_rtt_print_info() {
     }
 }
 
-/**
+/*
 *
 *
 */
@@ -309,9 +305,9 @@ pub extern "C" fn swindle_read_rtt_channel(
     }
     let mut chunk: u32;
     if buffer.read_offset < buffer.write_offset {
-        chunk = (buffer.write_offset - buffer.read_offset) as u32;
+        chunk = buffer.write_offset - buffer.read_offset;
     } else {
-        chunk = (buffer.size - buffer.read_offset) as u32;
+        chunk = buffer.size - buffer.read_offset;
     }
     if chunk > (TRANSFER_BUFFER_SIZE as u32) {
         chunk = TRANSFER_BUFFER_SIZE as u32;
@@ -357,7 +353,7 @@ pub extern "C" fn swindle_read_rtt_channel(
     }
     // the usable part is RTT_BUFFER[ extra, (extra+chunk)]
     // TODO
-    return true;
+    true
 }
 impl SeggerRTT {
     pub fn new() -> Self {
@@ -390,15 +386,13 @@ impl SeggerRTT {
         let mut adr_buf: u32 = adr + HEADER_SIZE;
         for index in 0..cb.max_num_up_buffers {
             let available = unsafe { swindle_rtt_room_available_to_host(index) };
-            if available > 4 {
-                if true == Self::read_buffer(adr_buf, &mut buffer) {
-                    swindle_read_rtt_channel(index as usize, &buffer, adr_buf, available);
-                }
+            if available > 4 && Self::read_buffer(adr_buf, &mut buffer) {
+                swindle_read_rtt_channel(index as usize, &buffer, adr_buf, available);
             }
             adr_buf += BUFFER_SIZE;
         }
         for index in 0..cb.max_num_down_buffers {
-            if true == Self::read_buffer(adr_buf, &mut buffer) {
+            if Self::read_buffer(adr_buf, &mut buffer) {
                 Self::write_rtt(index as usize, &buffer, adr_buf);
             }
             adr_buf += BUFFER_SIZE;
