@@ -31,7 +31,12 @@ extern "C" void swindle_run_rtt();
 extern "C" void swindle_purge_rtt();
 extern "C" bool swindle_rtt_enabled();
 extern "C" void usbCdc_Logger(int n, const char *data);
+// device -> host
 extern "C" uint32_t usbCdc_write_available();
+extern "C" bool swindle_write_rtt_channel(uint32_t channel, uint32_t size, const uint8_t *data);
+// host -> device
+extern "C" void swindle_reinit_rtt();
+extern "C" uint32_t swindle_rtt_write_available(uint32_t channel);
 /*
  *
  *
@@ -258,6 +263,7 @@ void gdb_task(void *parameters)
         {
             if (ev & GDB_SESSION_START)
             {
+                swindle_reinit_rtt();
                 rngdbstub_init();
                 connected = true;
             }

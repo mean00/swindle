@@ -17,6 +17,9 @@ unsafe extern "C" {
     fn swindle_rtt_send_data_to_host(index: u32, len: u32, data: *const u8);
     fn swindle_rtt_room_available_to_host(index: u32) -> u32;
 }
+pub extern "C" fn swindle_rtt_room_available_to_device(index: u32) -> u32 {
+    unsafe { segger_rtt.write_room[index as usize] }
+}
 
 #[repr(C)]
 pub struct RttBuffer {
@@ -161,13 +164,17 @@ impl RttControlBlock {
 */
 struct SeggerRTT {
     enabled: bool,
+    write_room: [u32; 4],
 }
 static mut RTT_BUFFER: [u8; TRANSFER_BUFFER_SIZE + 4] = [0; TRANSFER_BUFFER_SIZE + 4];
 fn get_transfer_buffer() -> *mut u8 {
     unsafe { &mut RTT_BUFFER as *mut _ as *mut u8 }
 }
 
-static mut segger_rtt: SeggerRTT = SeggerRTT { enabled: false };
+static mut segger_rtt: SeggerRTT = SeggerRTT {
+    enabled: false,
+    write_room: [0, 0, 0, 0],
+};
 //
 fn swindle_get_rtt() -> &'static mut SeggerRTT {
     unsafe { &mut segger_rtt }
@@ -177,6 +184,12 @@ fn swindle_get_rtt() -> &'static mut SeggerRTT {
 */
 #[unsafe(no_mangle)]
 pub fn swindle_init_rtt() {}
+#[unsafe(no_mangle)]
+pub fn swindle_reinit_rtt() {
+    unsafe {
+        segger_rtt.write_room = [0, 0, 0, 0];
+    }
+}
 
 /*
 *
@@ -216,7 +229,10 @@ pub extern "C" fn swindle_enable_rtt(enable: bool) {
         segger_rtt.enabled = enable;
     }
 }
-
+#[unsafe(no_mangle)]
+pub extern "C" fn swindle_rtt_write_available(channel: u32) -> u32 {
+    swindle_get_rtt().write_room[channel as usize]
+}
 #[unsafe(no_mangle)]
 pub fn swindle_rtt_print_info() {
     let adr = settings::get_or_default(RTT_SETTING_KEY, 0);
@@ -288,7 +304,69 @@ pub fn swindle_rtt_print_info() {
         adr_buf += BUFFER_SIZE;
     }
 }
+/*
+*
+*
+*/
+#[unsafe(no_mangle)]
+pub extern "C" fn swindle_write_rtt_channel(_channel: u32, _size: u32, _data: *const u8) -> bool {
+    /*
+        if buffer.write_offset == buffer.read_offset || buffer.size == 0 || buffer.buffer == 0 {
+            return false;
+        }
+        let mut chunk: u32;
+        if buffer.read_offset < buffer.write_offset {
+            chunk = buffer.write_offset - buffer.read_offset;
+        } else {
+            chunk = buffer.size - buffer.read_offset;
+        }
+        if chunk > (TRANSFER_BUFFER_SIZE as u32) {
+            chunk = TRANSFER_BUFFER_SIZE as u32;
+        }
+        if chunk > available {
+            chunk = available;
+        }
+        if chunk == 0 {
+            return false;
+        }
+        let extra = (buffer.buffer + buffer.read_offset) & 3;
+        let extra_chunk = (chunk + 3 + extra) & !3;
+        let extra_address = (buffer.buffer + buffer.read_offset) & !3;
+        let halted = swindle_rtt_access_to_target();
+        if halted == RttHalt::Failure {
+            gdb_print!("Failed to access target for RTT read!\n");
+            return false;
+        }
 
+        bmp::bmp_read_mem_ptr(
+            // Read aligned ..
+            extra_address,
+            extra_chunk,
+            get_transfer_buffer(),
+        );
+        let mut new_read = buffer.read_offset + chunk;
+        if new_read == buffer.size {
+            new_read = 0;
+        }
+
+        //
+        let updated: [u32; 1] = [new_read];
+        bmp::bmp_write_mem32(address + 16, &updated);
+        swindle_rtt_release_target(halted);
+        // do something with it
+        let offset: usize = extra as usize;
+        unsafe {
+            swindle_rtt_send_data_to_host(
+                index as u32,
+                chunk,
+                RTT_BUFFER[offset..(offset + 1)].as_ptr(),
+            );
+        }
+        // the usable part is RTT_BUFFER[ extra, (extra+chunk)]
+        // TODO
+    */
+    true
+}
 /*
 *
 *
@@ -356,13 +434,6 @@ pub extern "C" fn swindle_read_rtt_channel(
     true
 }
 impl SeggerRTT {
-    pub fn new() -> Self {
-        SeggerRTT { enabled: false }
-    }
-    fn write_rtt(_index: usize, _buffer: &RttBuffer, _address: u32) -> bool {
-        false
-    }
-
     fn process(&mut self) -> bool {
         if !self.enabled {
             return false;
@@ -391,10 +462,20 @@ impl SeggerRTT {
             }
             adr_buf += BUFFER_SIZE;
         }
-        for index in 0..cb.max_num_down_buffers {
+        let mut top = cb.max_num_down_buffers;
+        if top > 4 {
+            top = 4;
+        }
+        for index in 0..top {
+            let mut available: u32 = 0;
             if Self::read_buffer(adr_buf, &mut buffer) {
-                Self::write_rtt(index as usize, &buffer, adr_buf);
+                if buffer.write_offset >= buffer.read_offset {
+                    available = buffer.size - (buffer.write_offset - buffer.read_offset);
+                } else {
+                    available = buffer.read_offset - buffer.write_offset - 1;
+                }
             }
+            swindle_get_rtt().write_room[index as usize] = available;
             adr_buf += BUFFER_SIZE;
         }
         true
