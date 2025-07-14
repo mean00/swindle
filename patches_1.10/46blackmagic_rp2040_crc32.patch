@@ -1,0 +1,96 @@
+diff --git a/src/target/rp2040.c b/src/target/rp2040.c
+index ffb11fce..8ffee594 100644
+--- a/src/target/rp2040.c
++++ b/src/target/rp2040.c
+@@ -148,6 +148,7 @@
+ #define RP_RESETS_BASE_ADDR            0x4000c000U
+ #define RP_RESETS_RESET                (RP_RESETS_BASE_ADDR + 0x00U)
+ #define RP_RESETS_RESET_DONE           (RP_RESETS_BASE_ADDR + 0x08U)
++#define RP_RESETS_RESET_DMA_BITS       (1U << 2)
+ #define RP_RESETS_RESET_IO_QSPI_BITS   0x00000040U
+ #define RP_RESETS_RESET_PADS_QSPI_BITS 0x00000200U
+ 
+@@ -203,6 +204,8 @@ static void rp_flash_enter_xip(target_s *target);
+ static void rp_flash_connect_internal(target_s *target);
+ static void rp_flash_flush_cache(target_s *target);
+ 
++static bool rp_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32);
++
+ static void rp_add_flash(target_s *target)
+ {
+ 	const bool por_state = rp_flash_in_por_state(target);
+@@ -248,6 +251,7 @@ bool rp2040_probe(target_s *const target)
+ 	target->target_storage = (void *)priv_storage;
+ 
+ 	target->driver = "RP2040";
++	target->crc32 = rp_crc32;
+ 	target->target_options |= TOPT_INHIBIT_NRST;
+ 	target->attach = rp_attach;
+ 	target->enter_flash_mode = rp_flash_prepare;
+@@ -729,3 +733,66 @@ bool rp2040_rescue_probe(adiv5_access_port_s *ap)
+ 
+ 	return true;
+ }
++
++#include "../../../blackmagic_addon/flashstub/rp2040_crc32.stub"
++#define RP_CRC_STUB_ADDR 0x20000000
++//#define RP_CRC_STUB_ADDR 0x20040000 // scratch
++
++void *bmp_get_temporary_buffer(uint32_t asked);
++
++/*
++  * if it returns false, we use the "normal" crc32
++  *
++  */
++bool rp_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32)
++{
++	bool ret = false;
++	uint8_t *rp_crc32_buf = bmp_get_temporary_buffer(RP2040_CRC32_BIN_LEN + 4);
++	if (size < 100)
++		return false; // if it is small it's not worth it
++	// is the area we are CRCing collides with the stub ?
++	if ((start_address >= RP_CRC_STUB_ADDR) && (start_address < RP2040_CRC32_BIN_LEN + RP_CRC_STUB_ADDR + 4))
++		return false;
++	if ((start_address <= RP_CRC_STUB_ADDR) && (start_address + size) > RP_CRC_STUB_ADDR)
++		return false;
++	// not aligned
++	if (start_address & 3)
++		return false;
++	if (size & 3) // TODO FIXME we can deal with that
++		return false;
++	// -----------------------------
++	//  RESET DMA
++	// -----------------------------
++	uint32_t dma_reset = target_mem32_read32(target, RP_RESETS_RESET);
++	dma_reset &= ~(RP_RESETS_RESET_DMA_BITS);
++	target_mem32_write32(target, RP_RESETS_RESET, dma_reset | RP_RESETS_RESET_DMA_BITS);
++	// Step1 : copy the ram to a temp buffer
++	target_mem32_read(target, rp_crc32_buf, RP_CRC_STUB_ADDR, RP2040_CRC32_BIN_LEN + 4);
++	target_mem32_write32(target, RP_RESETS_RESET, dma_reset);
++	// step2 : Upload the stub
++	target_mem32_write(target, RP_CRC_STUB_ADDR + 4, rp2040_crc32_bin, RP2040_CRC32_BIN_LEN);
++
++	uint32_t target_source_address = start_address;
++	uint32_t target_source_length = size;
++
++#if 0 // test data
++#define TEST_VECTOR_ADDR (RP_CRC_STUB_ADDR + 200)
++	//const uint8_t test_vector[10] = "123456789"; // 0xfc891918
++	const uint8_t test_vector[] = "Hello, World!"; // 0x19270120
++	target_source_address = TEST_VECTOR_ADDR;
++	target_source_length = strlen((const char *)test_vector);
++	target_mem32_write(target, TEST_VECTOR_ADDR, test_vector, target_source_length);
++#endif
++	// step3 : run the stub, the 3rd param is the scratch buffer where the DMA will write
++	if (!cortexm_run_stub(target, RP_CRC_STUB_ADDR + 4, //
++			target_source_length, target_source_address, RP_CRC_STUB_ADDR, RP_CRC_STUB_ADDR)) {
++		target->reg_read(target, 1, crc32, 4); // oytput in r1
++		*crc32 ^= 0xFFFFFFFFU;
++		//DEBUG_WARN( "\n>>RP HW CRC  ADDR:0x%x Len=%d CRC=:0x%x \n ", target_source_address, target_source_length, *crc32);
++		ret = true;
++	}
++	// step4 : replace the ram
++	target_mem32_write(target, RP_CRC_STUB_ADDR, rp_crc32_buf, RP2040_CRC32_BIN_LEN + 4);
++done_and_done:
++	return ret;
++}

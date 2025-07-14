@@ -1,61 +1,63 @@
-/*
- *    This is a hw assisted crc32 as use by gdb through compare-sections
- *    The byte order is reversed compared to the native way
- *    ( the flashstub can only process 32 bits aligned data , which is fairly normal)
- *
- *
- */
-
 #include "stdint.h"
+//
+#include "rp_dmax.h"
+
+#define dma_chan 0
 #include "stub.h"
-#define GD32_CRC32_ADDR 0x40023000
-#define GD32_CRC32_CONTROL_RESET 1
-#define AHBPCENR (*(uint32_t *)0x40021014UL)
-typedef struct
-{
-    uint32_t data;
-    uint32_t independant_data;
-    uint32_t control;
-} CRC_IPx;
-
-typedef volatile CRC_IPx CRC_IP;
-
-/**
- *  crc output is in r1
+/*
+ * Use RP2040 sniffer to compute CRC
+ * output is in r1
  */
-void __attribute__((naked)) __attribute__((noreturn)) ch32_cr(uint32_t addr, uint32_t len_in_u32, uint32_t *output)
-{
-    // Enable  CRC clock
-    AHBPCENR |= 1 << 6;
-    //
-    CRC_IP *crc = (CRC_IP *)GD32_CRC32_ADDR;
-    // reset writes 0xFFFFFFF by itself
-    crc->control = GD32_CRC32_CONTROL_RESET;
-    // crc->data = init;
-    uint32_t *mem = (uint32_t *)addr;
-    uint32_t *lim = mem + len_in_u32;
-    while (mem + 32 < lim)
-    {
-        crc->data = __builtin_bswap32(mem[0]);
-        crc->data = __builtin_bswap32(mem[1]);
-        crc->data = __builtin_bswap32(mem[2]);
-        crc->data = __builtin_bswap32(mem[3]);
-        crc->data = __builtin_bswap32(mem[4]);
-        crc->data = __builtin_bswap32(mem[5]);
-        crc->data = __builtin_bswap32(mem[6]);
-        crc->data = __builtin_bswap32(mem[7]);
-        mem += 8;
-    }
-    while (mem < lim)
-    {
-        crc->data = __builtin_bswap32(*(mem++));
-    }
-    uint32_t out = crc->data;
-    __asm__("mov r1,%0" ::"r"(out));
-    stub_exit(0);
-    while (1)
-    {
-    };
-}
+void __attribute__((naked)) __attribute__((noreturn))
+rp_crc32(uint32_t len, uint32_t address, uint32_t *tmp) {
+  // Initialize stdio
+  LN_RP_DMA_channel *channel = (LN_RP_DMA_channel *)LN_RP_DMA_CHANNEL_BASE;
+  LN_RP_DMA *dma = (LN_RP_DMA *)LN_RP_DMA_CONTROL;
+  LN_RP_DMA_EXT *dma_ext = (LN_RP_DMA_EXT *)LN_RP_DMA_EXT_ADDR;
 
-// EOF
+  channel = RP_DMA_CHANNEL(dma_chan);
+  // Apply configuration
+  uint32_t _control = 0;
+  _control |= LN_RP_DMA_CONTROL_SET_DATA_SIZE_8;
+  _control |= LN_RP_DMA_CONTROL_INCR_READ;
+  _control |= LN_RP_DMA_CONTROL_HIGH_PRIO;
+  _control |= LN_RP_DMA_CONTROL_CHAIN_TO(dma_chan); // chain to self
+  _control |= LN_RP_DMA_CONTROL_INCR_READ;
+  _control |= LN_RP_DMA_CONTROL_SNIFF_ENABLE;
+  _control |= LN_RP_DMA_CONTROL_ENABLE;
+  _control |= LN_RP_DMA_CONTROL_TREQ(0x3f); // no trigger
+  channel->DMA_CONTROL = _control;
+  channel->DMA_COUNT = len;
+  channel->DMA_READ = address;
+  channel->DMA_WRITE = (uint32_t)tmp;
+  dma_ext->SNIFF_DATA = 0xffffffffU;
+  dma_ext->SNIFF_CTRL = LN_RP_DMAEXT_CALC_CRC32 | LN_RP_DMAEXT_OUTPUT_INV |
+                        0 * LN_RP_DMAEXT_OUTPUT_REV | (dma_chan << 1) |
+                        LN_RP_DMAEXT_ENABLE;
+  dma_ext->MULTI_CHANNEL_TRIGGER = 1 << dma_chan;
+
+  // Wait for transfer to complete
+  while (channel->DMA_CONTROL & LN_RP_DMA_CONTROL_IS_BUSY_MASK) {
+    __asm__("nop");
+  }
+  uint32_t out = dma_ext->SNIFF_DATA;
+  __asm__("mov r1,%0" ::"r"(out));
+  stub_exit(0);
+}
+#if 0
+/*
+ *
+ *
+ *
+ */
+int main(void) {
+  const uint8_t *src_buffer = (const uint8_t *)"123456789";
+  // expecting 0xfc891918
+  volatile uint32_t r = rp_crc32(9, (uint32_t)src_buffer);
+  __asm__("bkpt #0");
+  while (1) {
+    __asm__("nop");
+  }
+  return 0;
+}
+#endif
