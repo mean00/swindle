@@ -13,6 +13,7 @@
     "cortex-debug.variableUseNaturalFormat": false,
     "riscv_gdb" : "/riscv/xpack-14.2.0-2/bin/riscv-none-elf-gdb",    
     "riscv_openocd_path" : "/opt/wch/MounRiver_Studio_Community_Linux_x64_V160/MRS_Community/toolchain/OpenOCD/bin",
-    "armToolchainPath" : "/arm/xpack-arm-none-eabi-gcc-12.3.1-1.2/bin/",
+    "armToolchainPath": "/arm/xpack-arm-none-eabi-gcc-12.3.1-1.2/bin/",
+    "idf.pythonInstallPath": "/usr/bin/python",
 
 }

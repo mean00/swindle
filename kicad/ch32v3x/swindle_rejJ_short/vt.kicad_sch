@@ -1,0 +1,228 @@
+(kicad_sch
+	(version 20231120)
+	(generator "eeschema")
+	(generator_version "8.0")
+	(uuid "dc770d85-7d31-4557-a7d9-fde79ceecd68")
+	(paper "A4")
+	(title_block
+		(title "Swindle CH32V303")
+		(rev "H")
+	)
+	(lib_symbols)
+	(wire
+		(pts
+			(xy 41.91 101.6) (xy 68.58 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "77dc4494-d284-495b-88b9-9f13b3ffd523")
+	)
+	(wire
+		(pts
+			(xy 41.91 96.52) (xy 68.58 96.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "821bab43-3b2e-4699-bd95-c087ca477011")
+	)
+	(wire
+		(pts
+			(xy 41.91 120.65) (xy 69.85 120.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cd7b7ab2-df33-4337-98f6-f73dff8bcf19")
+	)
+	(wire
+		(pts
+			(xy 41.91 106.68) (xy 68.58 106.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f20ac4b0-c101-469b-bd1c-973ee304c7e5")
+	)
+	(global_label "OUT_UART_RX"
+		(shape input)
+		(at 41.91 101.6 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "1f95401b-67ae-43d9-b1d3-1b9b1dbf1456")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 26.2248 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_SWDCLK_3V"
+		(shape input)
+		(at 69.85 120.65 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "38c127d5-8f7e-41cd-a347-50edeb8453c6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 88.1961 120.65 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_SWO"
+		(shape input)
+		(at 41.91 106.68 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "6169e4da-1ba2-4963-a01f-16d4be2f91e0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 28.4019 106.68 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_SWDCLK"
+		(shape output)
+		(at 41.91 120.65 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "6f43ee76-c8c8-489e-9f8f-f55681681cb6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 26.8296 120.65 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_SWO_3v"
+		(shape output)
+		(at 68.58 106.68 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "8ed464de-ffca-4c6c-a5e3-d604793c5a14")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 85.2328 106.68 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_UART_RX_3V"
+		(shape output)
+		(at 68.58 101.6 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "c704dff4-888e-4b2f-996a-f25edbccf5b0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 87.5309 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_SWDIO_3V"
+		(shape bidirectional)
+		(at 41.91 96.52 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "d91e3f54-6f66-4561-b48b-334750d7c230")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 24.0854 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_SWDIO"
+		(shape bidirectional)
+		(at 68.58 96.52 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "f820e15e-c9b9-4d5a-b987-85f258c3690d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 83.1389 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+)
