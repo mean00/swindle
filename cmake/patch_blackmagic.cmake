@@ -31,6 +31,9 @@ APPLY_PATCH_IF_NEEDED4(patched42 ${BMP_PATCH_FOLDER}/42blackmagic_psplim_msplim.
 APPLY_PATCH_IF_NEEDED4(patched43 ${BMP_PATCH_FOLDER}/43dontdoubleassert.patch ${LNBMP_TOP_FOLDER}   "Try to manage double assert better.")
 APPLY_PATCH_IF_NEEDED4(patched44 ${BMP_PATCH_FOLDER}/44blackmagic_gd32_crc32.patch ${LNBMP_TOP_FOLDER}   "stub CRC32 computation (GD32).")
 APPLY_PATCH_IF_NEEDED4(patched45 ${BMP_PATCH_FOLDER}/45blackmagic_disable_bmda_read_regs.patch ${LNBMP_TOP_FOLDER} "disable shortcut for read/write register in hosted mode.")
+APPLY_PATCH_IF_NEEDED4(patched46 ${BMP_PATCH_FOLDER}/46blackmagic_rp2040_crc32.patch ${LNBMP_TOP_FOLDER} "use RP2040 DMA to compute GDB CRC32")
+
+
 string(JOIN " " pretty ${already_patched})
 MESSAGE(STATUS "Patch already applied ${pretty} already done")
 #APPLY_PATCH_IF_NEEDED3(patched80 ${BMP_PATCH_FOLDER}/80blackmagic_support_watchpoint_on_cm33.patch ${LNBMP_TOP_FOLDER}   "fix cortemx v8m watchpoint .")
