@@ -1,15 +1,15 @@
 #!/bin/sh
 #set -x
-export TOOLCHAIN=/arm/llvm_21/bin/
-CC=${TOOLCHAIN}/clang-21
-OBJCOPY=${TOOLCHAIN}/llvm-objcopy
-OBJDUMP=${TOOLCHAIN}/llvm-objdump
-OPT="--target=armv6m-none-eabi -mcpu=cortex-m0"
-export TOOLCHAIN=/usr/bin
+#export TOOLCHAIN=/arm/llvm_21/bin/
+#CC=${TOOLCHAIN}/clang-21
+#OBJCOPY=${TOOLCHAIN}/llvm-objcopy
+#OBJDUMP=${TOOLCHAIN}/llvm-objdump
+#OPT="--target=armv6m-none-eabi -mcpu=cortex-m0"
+export TOOLCHAIN=/arm/113/bin
 CC=${TOOLCHAIN}/arm-none-eabi-gcc
 OBJCOPY=${TOOLCHAIN}/arm-none-eabi-objcopy
 OBJDUMP=${TOOLCHAIN}/arm-none-eabi-objdump
-OPT="-mcpu=cortex-m3"
+OPT="-mcpu=cortex-m0plus"
 
 SYS=${TOOLCHAIN}/../arm/llvm_21/lib/clang-runtimes/arm-none-eabi/armv6m_soft_nofp/include
 build_stub() {
