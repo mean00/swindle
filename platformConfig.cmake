@@ -60,7 +60,7 @@ ELSE()
     #SET(PLATFORM_CLANG_PATH  /opt/llvm_arm/14/bin)
     #SET(PLATFORM_CLANG_VERSION "")
     SET(PLATFORM_TOOLCHAIN_PATH "/arm/14.2/bin/")
-    SET(PICO_SDK_PATH /pico/pico-sdk2 CACHE INTERNAL "") # For PICO2040
+    SET(PICO_SDK_PATH /opt/pico/pico-sdk CACHE INTERNAL "") # For PICO2040
 
   ENDIF()
 ENDIF()
