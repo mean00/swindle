@@ -485,360 +485,6 @@
 				)
 			)
 		)
-		(symbol "Connector:Conn_ARM_JTAG_SWD_10"
-			(pin_names
-				(offset 1.016)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "J"
-				(at -2.54 16.51 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify right)
-				)
-			)
-			(property "Value" "Conn_ARM_JTAG_SWD_10"
-				(at -2.54 13.97 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify right bottom)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" "http://infocenter.arm.com/help/topic/com.arm.doc.ddi0314h/DDI0314H_coresight_components_trm.pdf"
-				(at -8.89 -31.75 90)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "Cortex Debug Connector, standard ARM Cortex-M SWD and JTAG interface"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_keywords" "Cortex Debug Connector ARM SWD JTAG"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_fp_filters" "PinHeader?2x05?P1.27mm*"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(symbol "Conn_ARM_JTAG_SWD_10_0_1"
-				(rectangle
-					(start -10.16 12.7)
-					(end 10.16 -12.7)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type background)
-					)
-				)
-				(rectangle
-					(start -2.794 -12.7)
-					(end -2.286 -11.684)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(rectangle
-					(start -0.254 -12.7)
-					(end 0.254 -11.684)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(rectangle
-					(start -0.254 12.7)
-					(end 0.254 11.684)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(rectangle
-					(start 9.144 2.286)
-					(end 10.16 2.794)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(rectangle
-					(start 10.16 -2.794)
-					(end 9.144 -2.286)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(rectangle
-					(start 10.16 -0.254)
-					(end 9.144 0.254)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(rectangle
-					(start 10.16 7.874)
-					(end 9.144 7.366)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "Conn_ARM_JTAG_SWD_10_1_1"
-				(rectangle
-					(start 9.144 -5.334)
-					(end 10.16 -4.826)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(pin power_in line
-					(at 0 15.24 270)
-					(length 2.54)
-					(name "VTref"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin open_collector line
-					(at 12.7 7.62 180)
-					(length 2.54)
-					(name "~{RESET}"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "10"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin bidirectional line
-					(at 12.7 0 180)
-					(length 2.54)
-					(name "SWDIO/TMS"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at 0 -15.24 90)
-					(length 2.54)
-					(name "GND"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin output line
-					(at 12.7 2.54 180)
-					(length 2.54)
-					(name "SWDCLK/TCK"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -15.24 90)
-					(length 2.54) hide
-					(name "GND"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "5"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at 12.7 -2.54 180)
-					(length 2.54)
-					(name "SWO/TDO"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "6"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin no_connect line
-					(at -10.16 0 0)
-					(length 2.54) hide
-					(name "KEY"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "7"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin output line
-					(at 12.7 -5.08 180)
-					(length 2.54)
-					(name "NC/TDI"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "8"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -2.54 -15.24 90)
-					(length 2.54)
-					(name "GNDDetect"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "9"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-		)
 		(symbol "power:+3.3V"
 			(power)
 			(pin_numbers hide)
@@ -1063,12 +709,6 @@
 		(uuid "77ed342f-bbdc-4afe-98d5-d28e47d90277")
 	)
 	(junction
-		(at 91.44 49.53)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "9956af9f-d8ab-4bd7-81ee-8dc728988ec6")
-	)
-	(junction
 		(at 85.09 92.71)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -1146,16 +786,6 @@
 	)
 	(wire
 		(pts
-			(xy 91.44 49.53) (xy 92.71 49.53)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "46c69528-0d7e-448e-b6fe-cbbd3e16a824")
-	)
-	(wire
-		(pts
 			(xy 107.95 85.09) (xy 114.3 85.09)
 		)
 		(stroke
@@ -1193,16 +823,6 @@
 			(type default)
 		)
 		(uuid "56b6dd26-20ff-4a54-8bf9-62c96d69a86d")
-	)
-	(wire
-		(pts
-			(xy 105.41 26.67) (xy 107.95 26.67)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "68b7063d-4bfc-49f5-91a4-59c33434d523")
 	)
 	(wire
 		(pts
@@ -1336,16 +956,6 @@
 	)
 	(wire
 		(pts
-			(xy 90.17 49.53) (xy 91.44 49.53)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b06ce153-ce04-4ffe-8b3d-311c55375289")
-	)
-	(wire
-		(pts
 			(xy 49.53 31.75) (xy 53.34 31.75)
 		)
 		(stroke
@@ -1366,16 +976,6 @@
 	)
 	(wire
 		(pts
-			(xy 105.41 31.75) (xy 107.95 31.75)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c66ed301-b08c-4c90-8dc9-292573d3baa0")
-	)
-	(wire
-		(pts
 			(xy 40.64 68.58) (xy 40.64 76.2)
 		)
 		(stroke
@@ -1383,16 +983,6 @@
 			(type default)
 		)
 		(uuid "d4db4af8-65ac-4b44-92f7-cab4007c7148")
-	)
-	(wire
-		(pts
-			(xy 105.41 34.29) (xy 107.95 34.29)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d77c49cb-28ad-45ea-b1fe-2383a2be9307")
 	)
 	(wire
 		(pts
@@ -1413,16 +1003,6 @@
 			(type default)
 		)
 		(uuid "e4acde06-f357-4f62-b75e-067e6596bb77")
-	)
-	(wire
-		(pts
-			(xy 105.41 36.83) (xy 107.95 36.83)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "e6dc0f9e-0760-41a7-ae07-c7bad4615eb9")
 	)
 	(wire
 		(pts
@@ -1494,28 +1074,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "INOUT_NRESET"
-		(shape input)
-		(at 107.95 26.67 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "0cbda863-b7c6-43c1-b77a-8b4971b02780")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 124.5423 26.67 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
 				(hide yes)
 			)
 		)
@@ -1784,28 +1342,6 @@
 			)
 		)
 	)
-	(global_label "OUT_SWDIO"
-		(shape input)
-		(at 107.95 34.29 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "a2d9c214-cc44-47dd-99f7-87122e3b4192")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 121.3976 34.29 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "UART_TX"
 		(shape input)
 		(at 48.26 76.2 270)
@@ -1872,28 +1408,6 @@
 			)
 		)
 	)
-	(global_label "OUT_SWDCLK"
-		(shape input)
-		(at 107.95 31.75 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "d30dd90a-6a24-4dfb-a4f1-b0dd0ffc3ef8")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 123.0304 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "PB0"
 		(shape input)
 		(at 86.36 72.39 180)
@@ -1956,28 +1470,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "INOUT_SWO"
-		(shape bidirectional)
-		(at 107.95 36.83 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "e078c80b-3065-4a67-a3ab-6f0e176f6506")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 122.5694 36.83 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
 				(hide yes)
 			)
 		)
@@ -2144,100 +1636,6 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/ed84c662-1e11-4141-9b01-0918066453ad"
 					(reference "J8")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector:Conn_ARM_JTAG_SWD_10")
-		(at 92.71 34.29 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "2add6ea2-1c98-4bad-92b6-d3b2a2e5f2bc")
-		(property "Reference" "J1"
-			(at 85.852 18.034 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Value" "jtag"
-			(at 81.28 35.5599 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-				(hide yes)
-			)
-		)
-		(property "Footprint" "Connector_PinHeader_1.27mm:PinHeader_2x05_P1.27mm_Vertical_SMD"
-			(at 92.71 34.29 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "http://infocenter.arm.com/help/topic/com.arm.doc.ddi0314h/DDI0314H_coresight_components_trm.pdf"
-			(at 83.82 66.04 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Cortex Debug Connector, standard ARM Cortex-M SWD and JTAG interface"
-			(at 92.71 34.29 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "8"
-			(uuid "f004e704-4555-41bb-8c01-da5d2bbefca9")
-		)
-		(pin "7"
-			(uuid "d2d6af6f-af4f-4fcc-b5e4-bc1916d192b9")
-		)
-		(pin "9"
-			(uuid "cd39a606-7677-4ede-909d-db3cb3d04d66")
-		)
-		(pin "4"
-			(uuid "e6cfadf1-0f20-4693-8989-7f0c0bfe578f")
-		)
-		(pin "5"
-			(uuid "5ae2e9e6-f378-457b-8be9-39ed78d58b68")
-		)
-		(pin "1"
-			(uuid "90c68c53-5c45-4fbf-ba41-915c00f61b7e")
-		)
-		(pin "6"
-			(uuid "3106a0bf-a530-4388-9390-3fc2c7d234d8")
-		)
-		(pin "2"
-			(uuid "7f4cc107-86cd-4ac4-93f5-537aaa698269")
-		)
-		(pin "10"
-			(uuid "1bdb582b-6a97-4883-833c-d21e0fb89311")
-		)
-		(pin "3"
-			(uuid "473605ca-6751-4573-b27b-3b3e11c61ca1")
-		)
-		(instances
-			(project "swindle_ch32_revJ_mini"
-				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/ed84c662-1e11-4141-9b01-0918066453ad"
-					(reference "J1")
 					(unit 1)
 				)
 			)
@@ -2823,72 +2221,6 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/ed84c662-1e11-4141-9b01-0918066453ad"
 					(reference "#PWR020")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 91.44 49.53 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "e8436fcd-100e-476d-960e-6dec620970ef")
-		(property "Reference" "#PWR010"
-			(at 91.44 55.88 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 91.44 54.61 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 91.44 49.53 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 91.44 49.53 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 91.44 49.53 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "4fed1145-d452-4071-a12c-2cab87acde0f")
-		)
-		(instances
-			(project "swindle_ch32_revJ_mini"
-				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/ed84c662-1e11-4141-9b01-0918066453ad"
-					(reference "#PWR010")
 					(unit 1)
 				)
 			)

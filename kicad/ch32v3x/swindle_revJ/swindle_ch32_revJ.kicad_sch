@@ -4133,7 +4133,7 @@
 			(uuid "29a0d557-dfa6-4dd2-a4f8-b4591e75b6a9")
 		)
 		(instances
-			(project "lnBMP_ch32_revJ"
+			(project "swindle_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C8")
 					(unit 1)
@@ -4200,7 +4200,7 @@
 			(uuid "23596b18-3c66-45e6-a2b8-1fe9b9231ed2")
 		)
 		(instances
-			(project "lnBMP_ch32_revJ"
+			(project "swindle_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C3")
 					(unit 1)
@@ -4271,7 +4271,7 @@
 			(uuid "a2a49d75-056d-416a-b3e0-22333b5724d8")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "RST1")
 					(unit 1)
@@ -4340,7 +4340,7 @@
 			(uuid "3b566126-745d-4b04-ae21-1153c3b4ce84")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "R1")
 					(unit 1)
@@ -4410,7 +4410,7 @@
 			(uuid "de8d070a-2faf-40c7-bdc6-56ff33ddfa18")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C9")
 					(unit 1)
@@ -4479,7 +4479,7 @@
 			(uuid "cfcf8c23-f7d9-4fab-9576-f198ffad0e8b")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "D1")
 					(unit 1)
@@ -4548,7 +4548,7 @@
 			(uuid "b5a2c5b2-1e6b-4bb9-8797-76928f6433e6")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C7")
 					(unit 1)
@@ -4614,7 +4614,7 @@
 			(uuid "40e81ab7-3643-4d21-988c-4cdac92234d4")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR016")
 					(unit 1)
@@ -4746,7 +4746,7 @@
 			(uuid "36416fe8-068b-43d4-9247-0a399382e329")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR02")
 					(unit 1)
@@ -4816,7 +4816,7 @@
 			(uuid "e6353a4b-53b8-40e2-b561-9c9af518354d")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "R2")
 					(unit 1)
@@ -5073,7 +5073,7 @@
 			(uuid "c35a4097-8f43-4d1f-aaa0-306add562006")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "U1")
 					(unit 1)
@@ -5139,7 +5139,7 @@
 			(uuid "764871cd-e98d-4cd5-8505-2f3652e529ae")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR07")
 					(unit 1)
@@ -5208,7 +5208,7 @@
 			(uuid "c92c3320-258c-4c01-8af9-5a4ecedbed1c")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C6")
 					(unit 1)
@@ -5277,7 +5277,7 @@
 			(uuid "7bc46e1d-8a42-4805-89a7-10db0c563ce9")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C1")
 					(unit 1)
@@ -5410,7 +5410,7 @@
 			(uuid "39c5bbad-5b3f-4cb8-9e7f-3714a3e4a777")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR03")
 					(unit 1)
@@ -5476,7 +5476,7 @@
 			(uuid "d2efc1c3-1725-4c2c-bfcb-a08cb1e1922e")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR04")
 					(unit 1)
@@ -5542,7 +5542,7 @@
 			(uuid "27757f43-ec7f-4a03-8c4c-2e4e8be37c6a")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR017")
 					(unit 1)
@@ -5608,7 +5608,7 @@
 			(uuid "d200fc11-779e-4bf8-84eb-a80104a379c2")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR06")
 					(unit 1)
@@ -5676,7 +5676,7 @@
 			(uuid "53e8706f-2006-4947-b6ac-af39fa88d330")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "R3")
 					(unit 1)
@@ -5882,7 +5882,7 @@
 			(uuid "ee04f9d8-3f87-4148-afb3-291cd1658f54")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR018")
 					(unit 1)
@@ -5949,7 +5949,7 @@
 			(uuid "18dca30f-406b-4663-a1dd-3c5b25af913b")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C2")
 					(unit 1)
@@ -6016,7 +6016,7 @@
 			(uuid "1f39ca97-e231-48c3-977d-e7845c0b0dc5")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "R5")
 					(unit 1)
@@ -6082,7 +6082,7 @@
 			(uuid "2fb0553e-4707-4f9d-82ea-99bcb19e5c21")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR05")
 					(unit 1)
@@ -6148,7 +6148,7 @@
 			(uuid "c63f4eb2-d716-4bb6-9627-1a4893601e3b")
 		)
 		(instances
-			(project "lnBMP_ch32_revF_5pins"
+			(project "swindle_ch32_revJ"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR08")
 					(unit 1)
