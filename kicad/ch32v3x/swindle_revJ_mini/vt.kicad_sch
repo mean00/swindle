@@ -21,6 +21,16 @@
 	)
 	(wire
 		(pts
+			(xy 39.37 50.8) (xy 67.31 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7a86763f-11cb-480f-8cf5-624bea3cdab1")
+	)
+	(wire
+		(pts
 			(xy 38.1 43.18) (xy 66.04 43.18)
 		)
 		(stroke
@@ -93,6 +103,28 @@
 			)
 		)
 	)
+	(global_label "INOUT_NRESET"
+		(shape bidirectional)
+		(at 67.31 50.8 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "24193481-b262-4270-ac59-ed43229f6e10")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 83.3302 50.7206 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "OUT_UART_RX"
 		(shape input)
 		(at 39.37 30.48 180)
@@ -128,6 +160,28 @@
 		(uuid "39c160d0-df06-4932-9c36-8b44c5a1ee02")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 25.8619 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_NRESET_3V"
+		(shape bidirectional)
+		(at 39.37 50.8 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "6e252db0-784e-47c1-a655-fbced5409a17")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 18.4007 50.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
