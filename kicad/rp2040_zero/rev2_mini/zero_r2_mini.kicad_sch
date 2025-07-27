@@ -761,6 +761,423 @@
 				)
 			)
 		)
+		(symbol "Device:R_Small"
+			(pin_numbers hide)
+			(pin_names
+				(offset 0.254) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "R"
+				(at 0.762 0.508 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "R_Small"
+				(at 0.762 -1.016 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Resistor, small symbol"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "R resistor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "R_Small_0_1"
+				(rectangle
+					(start -0.762 1.778)
+					(end 0.762 -1.778)
+					(stroke
+						(width 0.2032)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "R_Small_1_1"
+				(pin passive line
+					(at 0 2.54 270)
+					(length 0.762)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -2.54 90)
+					(length 0.762)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+		(symbol "Transistor_FET:DMG2302U"
+			(pin_names hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "Q"
+				(at 5.08 1.905 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "DMG2302U"
+				(at 5.08 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+				(at 5.08 -1.905 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+						(italic yes)
+					)
+					(justify left)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "http://www.diodes.com/assets/Datasheets/DMG2302U.pdf"
+				(at 5.08 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+					(hide yes)
+				)
+			)
+			(property "Description" "4.2A Id, 20V Vds, N-Channel MOSFET, SOT-23"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "N-Channel MOSFET"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "SOT?23*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "DMG2302U_0_1"
+				(polyline
+					(pts
+						(xy 0.254 0) (xy -2.54 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.254 1.905) (xy 0.254 -1.905)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.762 -1.27) (xy 0.762 -2.286)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.762 0.508) (xy 0.762 -0.508)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.762 2.286) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.54 2.54) (xy 2.54 1.778)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.54 -2.54) (xy 2.54 0) (xy 0.762 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.762 -1.778) (xy 3.302 -1.778) (xy 3.302 1.778) (xy 0.762 1.778)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.016 0) (xy 2.032 0.381) (xy 2.032 -0.381) (xy 1.016 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.794 0.508) (xy 2.921 0.381) (xy 3.683 0.381) (xy 3.81 0.254)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 3.302 0.381) (xy 2.921 -0.254) (xy 3.683 -0.254) (xy 3.302 0.381)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 1.651 0)
+					(radius 2.794)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 2.54 -1.778)
+					(radius 0.254)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+				(circle
+					(center 2.54 1.778)
+					(radius 0.254)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+			)
+			(symbol "DMG2302U_1_1"
+				(pin input line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "G"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 2.54 -5.08 90)
+					(length 2.54)
+					(name "S"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 2.54 5.08 270)
+					(length 2.54)
+					(name "D"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
 		(symbol "power:+3.3V"
 			(power)
 			(pin_numbers hide)
@@ -978,6 +1395,12 @@
 			)
 		)
 	)
+	(junction
+		(at 106.68 90.17)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "6fdc4789-7b2e-4c34-b429-1ddf20772c4f")
+	)
 	(wire
 		(pts
 			(xy 30.48 33.02) (xy 40.64 33.02)
@@ -1070,6 +1493,16 @@
 	)
 	(wire
 		(pts
+			(xy 101.6 90.17) (xy 106.68 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4c46096a-526f-45a9-bfc4-0dc061b7fd0b")
+	)
+	(wire
+		(pts
 			(xy 20.32 34.29) (xy 31.75 34.29)
 		)
 		(stroke
@@ -1120,6 +1553,16 @@
 	)
 	(wire
 		(pts
+			(xy 115.57 77.47) (xy 115.57 80.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7d7f98e8-bf8f-40bc-9885-5121b219f651")
+	)
+	(wire
+		(pts
 			(xy 100.33 57.15) (xy 127 57.15)
 		)
 		(stroke
@@ -1147,6 +1590,16 @@
 			(type default)
 		)
 		(uuid "9fa9dd7d-6d50-42f7-b78c-e8bf6ff0efb8")
+	)
+	(wire
+		(pts
+			(xy 106.68 90.17) (xy 107.95 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a0e79591-992f-4405-9400-2b52342215d9")
 	)
 	(wire
 		(pts
@@ -1266,6 +1719,28 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_NRESET"
+		(shape bidirectional)
+		(at 115.57 77.47 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "0d330074-783c-428e-abcc-fdd334fbeea9")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 131.5902 77.3906 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 				(hide yes)
 			)
 		)
@@ -1490,6 +1965,28 @@
 			)
 		)
 	)
+	(global_label "DRIVE_RESET"
+		(shape input)
+		(at 58.42 63.5 270)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "89a1b9c1-e105-4cc4-85b3-e81314489bc3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 58.42 78.5803 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "INOUT_SWO"
 		(shape input)
 		(at 100.33 57.15 180)
@@ -1512,9 +2009,9 @@
 			)
 		)
 	)
-	(global_label "INOUT_NRESET"
-		(shape bidirectional)
-		(at 58.42 63.5 270)
+	(global_label "DRIVE_RESET"
+		(shape input)
+		(at 101.6 90.17 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1522,9 +2019,9 @@
 			)
 			(justify right)
 		)
-		(uuid "91e4bbff-2a90-4991-9a06-627caf4af1fc")
+		(uuid "ab7a46bf-acea-49c0-a315-b71cd0cefb39")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 58.42 81.2036 90)
+			(at 86.5197 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2017,6 +2514,147 @@
 	)
 	(symbol
 		(lib_id "power:GND")
+		(at 115.57 95.25 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "7af67786-c7fc-40fe-b128-046c3d3e2534")
+		(property "Reference" "#PWR05"
+			(at 115.57 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 110.998 95.758 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 115.57 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 115.57 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 115.57 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "25a39583-2cc5-459f-95a0-140d2a6cf1c5")
+		)
+		(instances
+			(project "zero_r2_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "#PWR05")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Transistor_FET:DMG2302U")
+		(at 113.03 90.17 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7c7f2c34-37b5-43b6-9c14-57055e562dea")
+		(property "Reference" "Q1"
+			(at 119.38 88.8999 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "DMG2302U"
+			(at 119.38 91.4399 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+			(at 118.11 92.075 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.diodes.com/assets/Datasheets/DMG2302U.pdf"
+			(at 118.11 93.98 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" "4.2A Id, 20V Vds, N-Channel MOSFET, SOT-23"
+			(at 113.03 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "60ed2f5b-65c6-4680-9ff7-d1e756e9b0e7")
+		)
+		(pin "2"
+			(uuid "058d6bcd-28b0-4071-ab65-3317da807daa")
+		)
+		(pin "3"
+			(uuid "d81efe5d-945e-4ed6-aaba-69a3f5cffc2c")
+		)
+		(instances
+			(project "zero_r2_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "Q1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
 		(at 165.1 44.45 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -2076,6 +2714,75 @@
 			(project "zero_r2_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR04")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R_Small")
+		(at 115.57 82.55 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "9e1a0705-f3a1-4841-bce4-541eada7deff")
+		(property "Reference" "R2"
+			(at 110.744 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "330"
+			(at 110.49 83.312 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 115.57 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 115.57 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 115.57 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "6672bab0-8d8a-4c8b-b5e8-fba149f1d376")
+		)
+		(pin "2"
+			(uuid "7655839a-82e7-4ff2-b60e-f32ce8ba8691")
+		)
+		(instances
+			(project "zero_r2_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "R2")
 					(unit 1)
 				)
 			)
@@ -2284,6 +2991,140 @@
 			(project "lnBMP_ch32_revF_5pins"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "#PWR020")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R_Small")
+		(at 106.68 92.71 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "f19a0cf6-26dd-4857-8fd0-9e39ff119715")
+		(property "Reference" "R1"
+			(at 101.854 91.44 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1k"
+			(at 101.6 93.472 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 106.68 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 106.68 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 106.68 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "62a3b7c7-0f71-4ffe-9de7-69b16a68f103")
+		)
+		(pin "2"
+			(uuid "1867c79c-0e6d-43c9-8093-775b191019ac")
+		)
+		(instances
+			(project "zero_r2_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "R1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 106.68 95.25 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "f59d7028-8506-48b5-86f1-8d108cf64f5b")
+		(property "Reference" "#PWR03"
+			(at 106.68 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 102.108 95.758 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 106.68 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 106.68 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 106.68 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b16bfd55-8af3-4a61-8e7c-32b981e8a419")
+		)
+		(instances
+			(project "zero_r2_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "#PWR03")
 					(unit 1)
 				)
 			)
