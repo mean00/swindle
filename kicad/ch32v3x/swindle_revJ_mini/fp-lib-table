@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "RT9013")(type "KiCad")(uri "${KIPRJMOD}/lib/footprints.pretty")(options "")(descr "")(disabled))
+  (lib (name "footprints")(type "KiCad")(uri "${KIPRJMOD}/lib/footprints.pretty")(options "")(descr ""))
+)

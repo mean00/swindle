@@ -1,0 +1,282 @@
+(kicad_sch
+	(version 20231120)
+	(generator "eeschema")
+	(generator_version "8.0")
+	(uuid "dc770d85-7d31-4557-a7d9-fde79ceecd68")
+	(paper "A4")
+	(title_block
+		(title "Swindle CH32V303")
+		(rev "H")
+	)
+	(lib_symbols)
+	(wire
+		(pts
+			(xy 39.37 30.48) (xy 66.04 30.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "57ca1d26-c717-4b40-bdab-0811ef410817")
+	)
+	(wire
+		(pts
+			(xy 39.37 50.8) (xy 67.31 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7a86763f-11cb-480f-8cf5-624bea3cdab1")
+	)
+	(wire
+		(pts
+			(xy 38.1 43.18) (xy 66.04 43.18)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8d437970-43fb-4bd3-b5cd-3ed6a6636526")
+	)
+	(wire
+		(pts
+			(xy 39.37 35.56) (xy 66.04 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e9c60ea3-dfdf-4594-9bed-b1a491a8c407")
+	)
+	(wire
+		(pts
+			(xy 39.37 24.13) (xy 66.04 24.13)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eedbefc6-6d31-43de-b120-643869d14f9d")
+	)
+	(global_label "OUT_SWDCLK_3V"
+		(shape input)
+		(at 66.04 43.18 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "0e6a1a27-4fc5-46f1-aedb-1f82234d5c6d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 84.3861 43.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_UART_RX_3V"
+		(shape output)
+		(at 66.04 30.48 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "11f7006e-06d7-4221-a316-69280026d099")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 84.9909 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_NRESET"
+		(shape bidirectional)
+		(at 67.31 50.8 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "24193481-b262-4270-ac59-ed43229f6e10")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 83.3302 50.7206 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_UART_RX"
+		(shape input)
+		(at 39.37 30.48 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "2c1fb332-f7a3-412b-91b2-c8ca3e658e47")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 23.6848 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_SWO"
+		(shape input)
+		(at 39.37 35.56 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "39c160d0-df06-4932-9c36-8b44c5a1ee02")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 25.8619 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_NRESET_3V"
+		(shape bidirectional)
+		(at 39.37 50.8 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "6e252db0-784e-47c1-a655-fbced5409a17")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 18.4007 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_SWDIO_3V"
+		(shape bidirectional)
+		(at 39.37 24.13 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "81693336-72ab-4c3e-bf70-3df1419df273")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 21.5454 24.13 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_SWDIO"
+		(shape bidirectional)
+		(at 66.04 24.13 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "944fd483-ab10-421e-ab10-ad8c8a6e24d4")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.5989 24.13 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "INOUT_SWO_3v"
+		(shape output)
+		(at 66.04 35.56 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "9c309a36-56f2-4ea5-8e97-cd337839eb52")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 82.6928 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "OUT_SWDCLK"
+		(shape output)
+		(at 38.1 43.18 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "c4103d56-daa2-42bb-a2b8-5975ec79be32")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 23.0196 43.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+)

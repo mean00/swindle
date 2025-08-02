@@ -3,15 +3,15 @@
     "3dviewports": [],
     "design_settings": {
       "defaults": {
-        "apply_defaults_to_fp_fields": true,
-        "apply_defaults_to_fp_shapes": true,
-        "apply_defaults_to_fp_text": true,
-        "board_outline_line_width": 0.05,
+        "apply_defaults_to_fp_fields": false,
+        "apply_defaults_to_fp_shapes": false,
+        "apply_defaults_to_fp_text": false,
+        "board_outline_line_width": 0.1,
         "copper_line_width": 0.2,
         "copper_text_italic": false,
-        "copper_text_size_h": 1.0,
-        "copper_text_size_v": 1.0,
-        "copper_text_thickness": 0.2,
+        "copper_text_size_h": 1.5,
+        "copper_text_size_v": 1.5,
+        "copper_text_thickness": 0.3,
         "copper_text_upright": false,
         "courtyard_line_width": 0.05,
         "dimension_precision": 4,
@@ -30,7 +30,7 @@
         "fab_text_size_v": 1.0,
         "fab_text_thickness": 0.15,
         "fab_text_upright": false,
-        "other_line_width": 0.1,
+        "other_line_width": 0.15,
         "other_text_italic": false,
         "other_text_size_h": 1.0,
         "other_text_size_v": 1.0,
@@ -38,13 +38,13 @@
         "other_text_upright": false,
         "pads": {
           "drill": 0.0,
-          "height": 0.3,
-          "width": 1.475
+          "height": 0.95,
+          "width": 0.8
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
-        "silk_text_size_h": 0.8,
-        "silk_text_size_v": 0.8,
+        "silk_text_size_h": 1.0,
+        "silk_text_size_v": 1.0,
         "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
@@ -59,10 +59,8 @@
         }
       ],
       "drc_exclusions": [
-        "silk_edge_clearance|155400000|87250000|57db86de-8cb2-4ff6-b3a6-893a4e7c99d8|6ff1f812-b86d-4414-a1b1-9b8ca491d8cf",
-        "silk_edge_clearance|155400000|87250000|57db86de-8cb2-4ff6-b3a6-893a4e7c99d8|bb48d101-b9f1-4bdf-a7c6-4c545f48c471",
-        "silk_edge_clearance|155400000|96190000|57db86de-8cb2-4ff6-b3a6-893a4e7c99d8|f47f060b-fca9-434b-8bba-2fc9c5e447c0",
-        "starved_thermal|120950000|92650000|07051790-3b00-4577-97fc-0629b4ebf109|3b202639-67ec-457e-a576-90546e0102e4|F.Cu"
+        "silk_edge_clearance|150023025|77958579|744f32e9-386e-40c1-93c9-4e31a9a6c6d2|36cfbc4b-f42d-439b-8181-1e7d6efc5ed3",
+        "silk_edge_clearance|150023025|90033832|69d668aa-a0cf-490b-977e-3671c3eb25eb|15250b45-fb0e-4504-ae75-92cbff4c031d"
       ],
       "meta": {
         "version": 2
@@ -135,7 +133,7 @@
         "min_through_hole_diameter": 0.2,
         "min_track_width": 0.1016,
         "min_via_annular_width": 0.1016,
-        "min_via_diameter": 0.45,
+        "min_via_diameter": 0.5,
         "solder_mask_clearance": 0.0,
         "solder_mask_min_width": 0.0,
         "solder_mask_to_copper_clearance": 0.0,
@@ -170,7 +168,7 @@
           "td_maxlen": 1.0,
           "td_on_pad_in_zone": false,
           "td_target_name": "td_rect_shape",
-          "td_width_to_size_filter_ratio": 0.9
+          "td_width_to_size_filter_ratio": 0.5
         },
         {
           "td_allow_use_two_tracks": true,
@@ -185,38 +183,30 @@
         }
       ],
       "track_widths": [
-        0.0,
-        0.1016,
-        0.127,
-        0.1524,
-        0.2032,
-        0.254,
-        0.3048,
-        0.508,
-        0.762
+        0.0
       ],
       "tuning_pattern_settings": {
         "diff_pair_defaults": {
-          "corner_radius_percentage": 80,
+          "corner_radius_percentage": 100,
           "corner_style": 1,
           "max_amplitude": 1.0,
-          "min_amplitude": 0.2,
+          "min_amplitude": 0.1,
           "single_sided": false,
-          "spacing": 1.0
+          "spacing": 0.6
         },
         "diff_pair_skew_defaults": {
-          "corner_radius_percentage": 80,
+          "corner_radius_percentage": 100,
           "corner_style": 1,
           "max_amplitude": 1.0,
-          "min_amplitude": 0.2,
+          "min_amplitude": 0.1,
           "single_sided": false,
           "spacing": 0.6
         },
         "single_track_defaults": {
-          "corner_radius_percentage": 80,
+          "corner_radius_percentage": 100,
           "corner_style": 1,
           "max_amplitude": 1.0,
-          "min_amplitude": 0.2,
+          "min_amplitude": 0.1,
           "single_sided": false,
           "spacing": 0.6
         }
@@ -225,18 +215,6 @@
         {
           "diameter": 0.0,
           "drill": 0.0
-        },
-        {
-          "diameter": 0.4064,
-          "drill": 0.2032
-        },
-        {
-          "diameter": 0.4572,
-          "drill": 0.254
-        },
-        {
-          "diameter": 0.61,
-          "drill": 0.3
         }
       ],
       "zones_allow_external_fillets": false
@@ -443,12 +421,10 @@
       "duplicate_sheet_names": "error",
       "endpoint_off_grid": "warning",
       "extra_units": "error",
-      "footprint_link_issues": "warning",
       "global_label_dangling": "warning",
       "hier_label_mismatch": "error",
       "label_dangling": "error",
       "lib_symbol_issues": "warning",
-      "lib_symbol_mismatch": "warning",
       "missing_bidi_pin": "warning",
       "missing_input_pin": "warning",
       "missing_power_pin": "error",
@@ -474,7 +450,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "gd32f303_revG_mini.kicad_pro",
+    "filename": "zero_r2_mini.kicad_pro",
     "version": 1
   },
   "net_settings": {
@@ -482,52 +458,18 @@
       {
         "bus_width": 12,
         "clearance": 0.15,
-        "diff_pair_gap": 0.1524,
+        "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.1524,
+        "diff_pair_width": 0.2,
         "line_style": 0,
-        "microvia_diameter": 0.4572,
-        "microvia_drill": 0.254,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
         "name": "Default",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.15,
-        "via_diameter": 0.4572,
-        "via_drill": 0.254,
-        "wire_width": 6
-      },
-      {
-        "bus_width": 12,
-        "clearance": 0.15,
-        "diff_pair_gap": 0.1524,
-        "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.1524,
-        "line_style": 0,
-        "microvia_diameter": 0.4572,
-        "microvia_drill": 0.254,
-        "name": "Power_1",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.3048,
-        "via_diameter": 0.4572,
-        "via_drill": 0.254,
-        "wire_width": 6
-      },
-      {
-        "bus_width": 12,
-        "clearance": 0.15,
-        "diff_pair_gap": 0.1524,
-        "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.1524,
-        "line_style": 0,
-        "microvia_diameter": 0.4572,
-        "microvia_drill": 0.254,
-        "name": "Power_2",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.508,
-        "via_diameter": 0.4572,
-        "via_drill": 0.254,
+        "track_width": 0.25,
+        "via_diameter": 0.8,
+        "via_drill": 0.4,
         "wire_width": 6
       }
     ],
@@ -543,7 +485,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "plot": "",
+      "plot": "pcbway_manual/",
       "pos_files": "",
       "specctra_dsn": "",
       "step": "",
@@ -659,18 +601,6 @@
     [
       "fbe443d6-6d74-4abc-9dee-16e0160553bc",
       "Root"
-    ],
-    [
-      "3e3374ff-17d6-414d-9a63-96aa322d3dc0",
-      "PowerSupply"
-    ],
-    [
-      "d69ade2a-4297-4849-b967-fee3fb9a9870",
-      "output"
-    ],
-    [
-      "860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5",
-      "MCU"
     ]
   ],
   "text_variables": {}
