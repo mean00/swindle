@@ -6,13 +6,16 @@ use crate::commands::run::HaltState;
 use crate::gdb_print;
 use crate::rtt_consts::RTT_SETTING_KEY;
 use crate::settings;
+use rust_esprit::rn_freertos_c::xTaskGetTickCount;
 crate::gdb_print_init!();
 crate::setup_log!(false);
 
 const RTT_SIGNATURE: &[u8] = b"SEGGER RTT\0";
 const RTT_SIGNATURE_LEN: usize = 11;
 const TRANSFER_BUFFER_SIZE: usize = 512;
-
+const RTT_POLLING_PERIOD: u32 = 10;
+const RTT_POLL_ROUNDUP: u32 = 1 << 16; // wrap time every 64k ms 
+//
 unsafe extern "C" {
     fn swindle_rtt_send_data_to_host(index: u32, len: u32, data: *const u8);
     fn swindle_rtt_room_available_to_host(index: u32) -> u32;
@@ -63,6 +66,12 @@ enum RttHalt {
     Stepping,
     Halted,
     Failure,
+}
+
+fn get_tick() -> u32 {
+    unsafe {
+        return xTaskGetTickCount() & (RTT_POLL_ROUNDUP - 1);
+    }
 }
 
 fn swindle_rtt_access_to_target() -> RttHalt {
@@ -164,6 +173,7 @@ impl RttControlBlock {
 */
 struct SeggerRTT {
     enabled: bool,
+    last_time: u32,
     write_room: [u32; 4],
 }
 static mut RTT_BUFFER: [u8; TRANSFER_BUFFER_SIZE + 4] = [0; TRANSFER_BUFFER_SIZE + 4];
@@ -173,6 +183,7 @@ fn get_transfer_buffer() -> *mut u8 {
 
 static mut segger_rtt: SeggerRTT = SeggerRTT {
     enabled: false,
+    last_time: 0,
     write_room: [0, 0, 0, 0],
 };
 //
@@ -436,8 +447,20 @@ pub extern "C" fn swindle_read_rtt_channel(
 impl SeggerRTT {
     fn process(&mut self) -> bool {
         if !self.enabled {
+            self.last_time = 0;
             return false;
         }
+        // prevent too quick probe 10 ms poll by default
+        let mut current_time = get_tick();
+        let last_time = self.last_time;
+        self.last_time = current_time;
+        if current_time < last_time {
+            current_time += RTT_POLL_ROUNDUP;
+        }
+        if (current_time - last_time) < RTT_POLLING_PERIOD {
+            return false;
+        }
+
         let adr = settings::get_or_default(RTT_SETTING_KEY, 0);
         if adr == 0 {
             return false;
