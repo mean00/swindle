@@ -328,5 +328,6 @@ extern "C" void usbCdc_Logger(int n, const char *data)
 extern "C" uint32_t usbCdc_write_available()
 {
     return serial->_usb->writeAvailable();
+}
 #endif
-    // EOF
+// EOF
