@@ -4,6 +4,7 @@
 use crate::bmp;
 use crate::commands::run::HaltState;
 use crate::gdb_print;
+use crate::rtt_consts::RTT_PERIOD_KEY;
 use crate::rtt_consts::RTT_SETTING_KEY;
 use crate::settings;
 use rust_esprit::rn_freertos_c::xTaskGetTickCount;
@@ -13,7 +14,7 @@ crate::setup_log!(false);
 const RTT_SIGNATURE: &[u8] = b"SEGGER RTT\0";
 const RTT_SIGNATURE_LEN: usize = 11;
 const TRANSFER_BUFFER_SIZE: usize = 512;
-const RTT_POLLING_PERIOD: u32 = 10;
+const RTT_POLLING_DEFAULT_PERIOD: u32 = 50;
 const RTT_POLL_ROUNDUP: u32 = 1 << 16; // wrap time every 64k ms 
 //
 unsafe extern "C" {
@@ -457,7 +458,9 @@ impl SeggerRTT {
         if current_time < last_time {
             current_time += RTT_POLL_ROUNDUP;
         }
-        if (current_time - last_time) < RTT_POLLING_PERIOD {
+        let period = settings::get_or_default(RTT_PERIOD_KEY, RTT_POLLING_DEFAULT_PERIOD);
+
+        if (current_time - last_time) < period {
             return false;
         }
 
