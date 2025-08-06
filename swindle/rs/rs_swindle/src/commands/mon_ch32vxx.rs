@@ -61,7 +61,7 @@ pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
             return false;
         }
         gdb_print!("OBR : {:x}\n", value[0]);
-        gdb_print!("\t Error      : 0x{:x}\n", (value[0] & (1 << 0)) >> 0);
+        gdb_print!("\t Error      : 0x{:x}\n", value[0] & (1 << 0));
         gdb_print!("\t ReadProt   : 0x{:x}\n", (value[0] & (1 << 1)) >> 1);
         gdb_print!("\t WDG enable : 0x{:x}\n", (value[0] & (1 << 2)) >> 2);
         gdb_print!("\t Stop Reset : 0x{:x}\n", (value[0] & (1 << 3)) >> 3);
@@ -82,7 +82,7 @@ pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
         return true;
     }
     // it is a write, get the value
-    let new_value = ascii_hex_or_dec_to_u32(&args[0]);
+    let new_value = ascii_hex_or_dec_to_u32(args[0]);
     if new_value == 0 {
         gdb_print!("The provided value does not seem valid (0x27c is valid)\n");
         return false;

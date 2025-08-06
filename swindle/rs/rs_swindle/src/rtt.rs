@@ -70,9 +70,7 @@ enum RttHalt {
 }
 
 fn get_tick() -> u32 {
-    unsafe {
-        return xTaskGetTickCount() & (RTT_POLL_ROUNDUP - 1);
-    }
+    unsafe { xTaskGetTickCount() & (RTT_POLL_ROUNDUP - 1) }
 }
 
 fn swindle_rtt_access_to_target() -> RttHalt {
