@@ -131,7 +131,8 @@ pub fn _vCont(command: &str, _args: &[&str]) -> bool {
             bmp::bmp_halt_resume(false);
             true
         }
-        b's' => {
+        b's' | b'S' => {
+            // also catch vCont;S0b:1;c
             set_running(true);
             bmp::bmp_halt_resume(true);
             true
