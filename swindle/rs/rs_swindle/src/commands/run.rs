@@ -19,11 +19,13 @@ pub enum HaltState {
     Watchpoint(u32),
     Fault,
 }
-
-pub fn target_halt() {
+fn set_running(r: bool) {
     unsafe {
-        running = false;
+        running = r;
     }
+}
+pub fn target_halt() {
+    set_running(false);
     bmp::bmp_target_halt();
     reply_2("T", 2);
 }
@@ -67,9 +69,7 @@ fn reply_wp(prefix: &str, num: u32, prefix2: &str, num2: u32) {
 extern "C" fn rngdbstub_poll() {
     // this is called regularily
     let check: bool;
-    unsafe {
-        check = bmp::bmp_attached() && running;
-    }
+    check = bmp::bmp_attached() && target_is_running();
     if check {
         match bmp::bmp_poll() {
             HaltState::Running => return,           // nothing to do !
@@ -81,9 +81,7 @@ extern "C" fn rngdbstub_poll() {
             HaltState::Breakpoint => reply_2("T", 5), // SIGTRAP
                                                      //          _ => panic!("unsupported halt state"),
         }
-        unsafe {
-            running = false;
-        }
+        set_running(false);
     }
 }
 
@@ -121,9 +119,7 @@ pub fn _vCont(command: &str, _args: &[&str]) -> bool {
     if command.len() < 7
     // naked vcond
     {
-        unsafe {
-            running = true;
-        }
+        set_running(true);
         bmp::bmp_halt_resume(false);
         //encoder::reply_ok();
         return true;
@@ -131,16 +127,12 @@ pub fn _vCont(command: &str, _args: &[&str]) -> bool {
     let command_bytes = command.as_bytes();
     match command_bytes[6] {
         b'c' => {
-            unsafe {
-                running = true;
-            }
+            set_running(true);
             bmp::bmp_halt_resume(false);
             true
         }
         b's' => {
-            unsafe {
-                running = true;
-            }
+            set_running(true);
             bmp::bmp_halt_resume(true);
             true
         }
