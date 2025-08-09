@@ -1933,6 +1933,12 @@
 		(color 0 0 0 0)
 		(uuid "8edd3c86-6a6f-4a7e-8152-c9010837fb97")
 	)
+	(junction
+		(at 110.49 64.77)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "d6eade57-0566-4e41-a0b7-620d08814190")
+	)
 	(wire
 		(pts
 			(xy 109.22 50.8) (xy 115.57 50.8)
@@ -1962,6 +1968,16 @@
 			(type default)
 		)
 		(uuid "09065722-a449-42f3-9a95-ae519fd6f0ee")
+	)
+	(wire
+		(pts
+			(xy 110.49 64.77) (xy 115.57 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0a1dfa78-254b-4182-99a3-027602d2cb2e")
 	)
 	(wire
 		(pts
@@ -2022,6 +2038,16 @@
 			(type default)
 		)
 		(uuid "458b32c2-3a52-4a15-ad2c-8f3a43366999")
+	)
+	(wire
+		(pts
+			(xy 110.49 73.66) (xy 120.65 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4982db5a-9698-4147-9251-1a6e9f0b7f51")
 	)
 	(wire
 		(pts
@@ -2185,6 +2211,16 @@
 	)
 	(wire
 		(pts
+			(xy 110.49 69.85) (xy 110.49 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d7da8837-ce3e-4429-85b4-2da2770dbc3f")
+	)
+	(wire
+		(pts
 			(xy 135.89 49.53) (xy 135.89 45.72)
 		)
 		(stroke
@@ -2205,7 +2241,7 @@
 	)
 	(wire
 		(pts
-			(xy 101.6 64.77) (xy 115.57 64.77)
+			(xy 101.6 64.77) (xy 110.49 64.77)
 		)
 		(stroke
 			(width 0)
@@ -2634,6 +2670,72 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/9ae6e029-7457-493b-8bae-ed725714055d"
 					(reference "D2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3.3V")
+		(at 120.65 73.66 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "37a7ef36-256a-40fb-ab11-4835a7f9df9d")
+		(property "Reference" "#PWR023"
+			(at 120.65 77.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 120.65 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 120.65 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 120.65 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 120.65 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "6c5ca299-7e52-4b8d-937f-e4c9d042c2eb")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/9ae6e029-7457-493b-8bae-ed725714055d"
+					(reference "#PWR023")
 					(unit 1)
 				)
 			)
@@ -3247,6 +3349,74 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/9ae6e029-7457-493b-8bae-ed725714055d"
 					(reference "#PWR09")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R_Small")
+		(at 110.49 67.31 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "e66a1594-d438-4dbd-81c1-35f96068a70c")
+		(property "Reference" "R10"
+			(at 112.522 69.342 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "1.2k"
+			(at 112.522 65.786 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 110.49 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 110.49 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 110.49 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e33f709c-cdb3-4b28-a552-1579ba486efc")
+		)
+		(pin "2"
+			(uuid "5be8b940-c8f8-4930-9ecc-0cef9abbee1e")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/9ae6e029-7457-493b-8bae-ed725714055d"
+					(reference "R10")
 					(unit 1)
 				)
 			)
