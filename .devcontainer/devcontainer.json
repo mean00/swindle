@@ -12,8 +12,6 @@
     */
     "mounts": [
         "source=extensionCache,target=/root/.vscode-server/extensions,type=volume",
-        "source=/arm,target=/arm,type=bind,consistency=cached",
-        "source=/riscv,target=/riscv,type=bind,consistency=cached",
         "source=/run/udev,target=/run/udev,type=bind,consistency=delegated",
     ],
     /* follow the commands of Dockerfile to create the container
