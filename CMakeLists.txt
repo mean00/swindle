@@ -12,6 +12,8 @@ OPTION(USE_GD32F3        "Target GD32F303 chip with 256 flash" OFF)
 OPTION(USE_CH32V3x       "Target USE_CH32V3x chip with 256 flash" OFF)
 OPTION(USE_RP_ZERO       "Change RGB LED to map RP2040 board" OFF)
 OPTION(USE_RP_CARRIER    "Use RP2040 carrier board" OFF)
+OPTION(USE_WS2812        "Use WS2812 RGB LED " OFF)
+
 
 #
 set(BMP_VERSION_BRANCH 1.10)
@@ -33,6 +35,12 @@ endif()
 #-------------
 IF(NOT USE_NO_DEFAULT)
   INCLUDE(./build_default.cmake)
+ENDIF()
+#----------------
+# Option loaded
+#----------------
+IF(USE_WS2812)
+  SET(EXTRA_WS2812 "_ws2812")
 ENDIF()
 
 IF(USE_CH32V3x)
@@ -120,11 +128,14 @@ ELSE()
     ENDIF()
     set(SOURCES src/swindle_rp2040${ZERO_FLAGS}.cpp ${CMAKE_BINARY_DIR}/ws.h)
   ELSE()
-    set(SOURCES src/swindle.cpp)
+    set(SOURCES src/swindle${EXTRA_WS2812}.cpp)
   ENDIF()
 ENDIF()
 
 IF(NOT LN_EXTERNAL_GENERATE)
+  IF(USE_WS2812)
+    USE_LIBRARY(WS2812B)
+  ENDIF()
   GENERATE_GD32_FIRMWARE(swindle ${SOURCES})
   HASH_GD32_FIRMWARE(swindle)
 ELSE()
@@ -157,11 +168,15 @@ IF(NOT LN_EXTERNAL_GENERATE)
 
 
   TUNE_NAME(TRUE ${MCU_SPEED_M}Mhz)
+  TUNE_NAME(USE_WS2812  WS2812)
   TUNE_NAME(USE_CLANG CLANG)
   #TUNE_NAME(USE_RP2040_PURE_RAM RAM)
 
 
   SET_TARGET_PROPERTIES(swindle PROPERTIES OUTPUT_NAME swindle${TGT_NAME})
+  IF(USE_WS2812)
+    MESSAGE(STATUS "   using WS2812B single led")
+  ENDIF()
 
   MESSAGE(STATUS "Final name extension <${TGT_NAME}>")
 
