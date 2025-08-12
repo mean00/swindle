@@ -9,6 +9,8 @@
 #include "ws.h"
 
 extern "C" void user_init();
+
+#ifdef USE_RP_ZERO
 #define PIN_TO_USE GPIO16 // GPIO16 for zero, GPIO23 for normal size RP2040
 #else
 #define PIN_TO_USE GPIO23 // GPIO16 for zero, GPIO23 for normal size RP2040
