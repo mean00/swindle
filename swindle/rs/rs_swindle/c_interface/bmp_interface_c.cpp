@@ -510,7 +510,7 @@ extern "C"
     /*
      *
      */
-    static bool reset_enabled=true;
+    static bool reset_enabled = true;
     extern "C" void bmp_enable_reset_pin_c(bool enabled)
     {
         reset_enabled = enabled;
@@ -523,7 +523,7 @@ extern "C"
     {
         if (!reset_enabled)
         {
-            *opt &= ~TOPT_INHIBIT_NRST;
+            *opt |= TOPT_INHIBIT_NRST;
         }
     }
     /*
