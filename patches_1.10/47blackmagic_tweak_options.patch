@@ -1,0 +1,30 @@
+diff --git a/src/target/target_probe.h b/src/target/target_probe.h
+index a68693de..80229c1b 100644
+--- a/src/target/target_probe.h
++++ b/src/target/target_probe.h
+@@ -23,14 +23,19 @@
+ #include "target.h"
+ #include "adiv5.h"
+ 
++/* -- MEANX -- */
++void bmp_tweak_options(uint32_t *opt);
++
+ #define STRINGIFY(x) #x
+ /* Probe launch macro used by the CPU-generic layers to then call CPU-specific routines safely */
+-#define PROBE(x)                                    \
+-	do {                                            \
+-		DEBUG_TARGET("Calling " STRINGIFY(x) "\n"); \
+-		if ((x)(target))                            \
+-			return true;                            \
+-		target_check_error(target);                 \
++#define PROBE(x)                                          \
++	do {                                                  \
++		DEBUG_TARGET("Calling " STRINGIFY(x) "\n");       \
++		if ((x)(target)) {                                \
++			bmp_tweak_options(&(target->target_options)); \
++			return true;                                  \
++		}                                                 \
++		target_check_error(target);                       \
+ 	} while (0)
+ 
+ /*

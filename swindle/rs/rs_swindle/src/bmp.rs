@@ -627,7 +627,14 @@ pub fn bmp_try() -> bool {
 pub fn bmp_catch() -> i32 {
     unsafe { rn_bmp_cmd_c::bmp_catch_c() }
 }
-
+/**
+*
+*/
+pub fn bmp_enable_reset_pin(enabled: bool) {
+    unsafe {
+        rn_bmp_cmd_c::bmp_enable_reset_pin_c(enabled as i32);
+    }
+}
 /*
  */
 // EOF

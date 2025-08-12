@@ -127,4 +127,5 @@ void bmp_rtt_set_info_c(rttField field, const rttInfo *info);
 void bmp_raise_exception_c();
 bool bmp_try_c();
 int bmp_catch_c();
+void bmp_enable_reset_pin_c(bool enabled);
 // EOF

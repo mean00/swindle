@@ -507,7 +507,25 @@ extern "C"
         innermost_exception = global_exception_frame.outer;
         return (global_exception_frame.type);
     }
-
+    /*
+     *
+     */
+    static bool reset_enabled=true;
+    extern "C" void bmp_enable_reset_pin_c(bool enabled)
+    {
+        reset_enabled = enabled;
+    }
+    /*
+     *
+     *
+     */
+    extern "C" void bmp_tweak_options(uint32_t *opt)
+    {
+        if (!reset_enabled)
+        {
+            *opt &= ~TOPT_INHIBIT_NRST;
+        }
+    }
     /*
 
     z1,addr,kind’ insert hw breakpoint

@@ -32,6 +32,7 @@ APPLY_PATCH_IF_NEEDED4(patched43 ${BMP_PATCH_FOLDER}/43dontdoubleassert.patch ${
 APPLY_PATCH_IF_NEEDED4(patched44 ${BMP_PATCH_FOLDER}/44blackmagic_gd32_crc32.patch ${LNBMP_TOP_FOLDER}   "stub CRC32 computation (GD32).")
 APPLY_PATCH_IF_NEEDED4(patched45 ${BMP_PATCH_FOLDER}/45blackmagic_disable_bmda_read_regs.patch ${LNBMP_TOP_FOLDER} "disable shortcut for read/write register in hosted mode.")
 APPLY_PATCH_IF_NEEDED4(patched46 ${BMP_PATCH_FOLDER}/46blackmagic_rp2040_crc32.patch ${LNBMP_TOP_FOLDER} "use RP2040 DMA to compute GDB CRC32")
+APPLY_PATCH_IF_NEEDED4(patched47 ${BMP_PATCH_FOLDER}/47blackmagic_tweak_options.patch  ${LNBMP_TOP_FOLDER} "patch option field after probe")
 
 
 string(JOIN " " pretty ${already_patched})

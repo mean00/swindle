@@ -36,7 +36,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 23] = [
+const mon_command_tree: [CommandTree; 25] = [
     CommandTree {
         command: "crash",
         min_args: 0,
@@ -62,14 +62,6 @@ const mon_command_tree: [CommandTree; 23] = [
         next_separator: " ",
     },
     CommandTree {
-        command: "enablereset",
-        min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_enable_reset),
-        start_separator: " ",
-        next_separator: " ",
-    }, //
-    CommandTree {
         command: "bmp",
         min_args: 0,
         require_connected: false,
@@ -82,6 +74,22 @@ const mon_command_tree: [CommandTree; 23] = [
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_boards),
+        start_separator: "",
+        next_separator: "",
+    }, //
+    CommandTree {
+        command: "delay",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(_delay),
+        start_separator: "",
+        next_separator: "",
+    }, //
+    CommandTree {
+        command: "enable_reset_pin",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(_enable_reset_pin),
         start_separator: "",
         next_separator: "",
     }, //
@@ -190,6 +198,14 @@ const mon_command_tree: [CommandTree; 23] = [
         next_separator: "",
     }, //
     CommandTree {
+        command: "set_reset_pin",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(_set_reset_pin),
+        start_separator: "",
+        next_separator: "",
+    }, //
+    CommandTree {
         command: "swdp_scan",
         min_args: 0,
         require_connected: false,
@@ -223,7 +239,7 @@ const mon_command_tree: [CommandTree; 23] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 21] = [
+const help_tree: [HelpTree; 24] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -243,6 +259,14 @@ const help_tree: [HelpTree; 21] = [
     HelpTree {
         command: "ch32v3_option_byte",
         help: "Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f.",
+    },
+    HelpTree {
+        command: "delay value",
+        help: "wait <value> ms.",
+    },
+    HelpTree {
+        command: "enable_reset_pin value",
+        help: "Enable reset through RSTn pin, default is enabled (1).",
     },
     HelpTree {
         command: "fq or frequency",
@@ -274,7 +298,7 @@ const help_tree: [HelpTree; 21] = [
     },
     HelpTree {
         command: "reset",
-        help: "Reset the target.",
+        help: "Reset the target by pulsing the reset pin.",
     },
     HelpTree {
         command: "rtt",
@@ -291,6 +315,10 @@ const help_tree: [HelpTree; 21] = [
     HelpTree {
         command: "unset key",
         help: "unset key",
+    },
+    HelpTree {
+        command: "set_reset_pin value",
+        help: "Set the reset pin value to <value>. 1 means pull to ground, 0 mean floating.",
     },
     HelpTree {
         command: "swdp_scan",
@@ -607,12 +635,7 @@ pub fn set_enable_reset(nw: u32) {
 pub fn get_enable_reset() -> u32 {
     unsafe { autoreset }
 }
-pub fn _enable_reset(_command: &str, args: &[&str]) -> bool {
-    if args.is_empty() {
-        gdb_print!("current enable_reset is {} \n", get_enable_reset());
-        encoder::reply_ok();
-        return true;
-    }
+pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool;
     let fq: u32;
     (ret, fq) = convert_param_to_integer(args[0]);
@@ -744,4 +767,39 @@ pub fn get_custom_target_command() -> Option<&'static [CommandTree]> {
 pub fn get_custom_target_help() -> Option<&'static [HelpTree]> {
     unsafe { targetHelpTree }
 }
+/*
+*
+*
+*/
+pub fn _delay(_command: &str, args: &[&str]) -> bool {
+    let ret: bool;
+    let val: u32;
+    (ret, val) = convert_param_to_integer(args[0]);
+    if !ret {
+        return false;
+    }
+    rust_esprit::os_helper::delay_ms(val);
+    encoder::reply_ok();
+    true
+}
+/*
+*
+*
+*/
+pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
+    if args.is_empty() {
+        gdb_print!("delay time_in_ms  \n");
+        return false;
+    }
+    let ret: bool;
+    let val: u32;
+    (ret, val) = convert_param_to_integer(args[0]);
+    if !ret {
+        return false;
+    }
+    bmp::bmp_platform_nrst_set_val(val != 0);
+    encoder::reply_ok();
+    true
+}
+
 //-- EOF --
