@@ -126,14 +126,6 @@ const mon_command_tree: [CommandTree; 25] = [
         next_separator: " ",
     }, //
     CommandTree {
-        command: "set",
-        min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_set),
-        start_separator: " ",
-        next_separator: " ",
-    }, //
-    CommandTree {
         command: "unset",
         min_args: 1,
         require_connected: false,
@@ -204,6 +196,14 @@ const mon_command_tree: [CommandTree; 25] = [
         cb: CallbackType::text(_set_reset_pin),
         start_separator: "",
         next_separator: "",
+    }, //
+    CommandTree {
+        command: "set", // that one begins like the one above, it must be after
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_set),
+        start_separator: " ",
+        next_separator: " ",
     }, //
     CommandTree {
         command: "swdp_scan",
@@ -786,17 +786,20 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 *
 *
 */
+#[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     if args.is_empty() {
-        gdb_print!("delay time_in_ms  \n");
+        gdb_print!("set_pin_reset [0|1]  \n");
         return false;
     }
     let ret: bool;
     let val: u32;
     (ret, val) = convert_param_to_integer(args[0]);
     if !ret {
+        gdb_print!("set_pin_reset bad parameter  \n");
         return false;
     }
+    gdb_print!("reset pin is now {} \n", val);
     bmp::bmp_platform_nrst_set_val(val != 0);
     encoder::reply_ok();
     true
