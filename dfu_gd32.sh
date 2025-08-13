@@ -1,1 +1,2 @@
-sudo  dfu-util -d 1d50:6030,1d50:6031  -s 0x08002000:leave -D swindle_GD32F3_96Mhz_*CLANG.elf.ck_bin
+sudo  dfu-util -d 1d50:6030,1d50:6031  -s 0x08002000:leave -D swindle_GD32F3_96Mhz_*CLANG*.elf.ck_bin
+

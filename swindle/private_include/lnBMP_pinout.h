@@ -26,10 +26,12 @@ enum lnBMPPins
 #include "lnBMP_pinout_rp2040.h"
 #endif
 #else
-#ifdef USE_GD32F303
-#include "lnBMP_pinout_ln_gd32f303.h"
+#ifdef USE_48PIN_PACKAGE
+#include "lnBMP_pinout_bp_48pins.h.h"
+#elif defined(USE_64PIN_PACKAGE)
+#include "lnBMP_pinout_bp_64pins.h"
 #else
-#include "lnBMP_pinout_ln_ch32v3xx.h"
+#error "Fatal error : select 48 pins or 64 pins package"
 #endif
 #endif
 #endif
