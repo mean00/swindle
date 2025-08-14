@@ -194,6 +194,6 @@ IF(NOT LN_EXTERNAL_GENERATE)
   #get_target_property(if swindle INTERFACE_LINK_LIBRARIES)
   #message(STATUS " *********** interface : <${if}>")
 
-  FILE(WRITE ${CMAKE_BINARY_DIR}/swindle_build_string_h "${BUILD_STRING}")
+  FILE(WRITE ${CMAKE_BINARY_DIR}/swindle_build_options.h "#define SWINDLE_BUILD_OPTIONS \"${BUILD_STRING}\"")
 
 ENDIF() #---
