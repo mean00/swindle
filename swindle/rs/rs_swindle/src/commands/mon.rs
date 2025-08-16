@@ -643,7 +643,7 @@ pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
         return false;
     }
     set_enable_reset(fq);
-    gdb_print!("enablereset is now {} \n", get_enable_reset());
+    gdb_print!("enable reset pin is now {} \n", get_enable_reset());
     encoder::reply_ok();
     true
 }
@@ -788,10 +788,6 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 */
 #[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
-    if args.is_empty() {
-        gdb_print!("set_pin_reset [0|1]  \n");
-        return false;
-    }
     let ret: bool;
     let val: u32;
     (ret, val) = convert_param_to_integer(args[0]);
@@ -799,8 +795,8 @@ pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
         gdb_print!("set_pin_reset bad parameter  \n");
         return false;
     }
-    gdb_print!("reset pin is now {} \n", val);
     bmp::bmp_platform_nrst_set_val(val != 0);
+    gdb_print!("reset pin is now {} \n", (val != 0) as bool);
     encoder::reply_ok();
     true
 }
