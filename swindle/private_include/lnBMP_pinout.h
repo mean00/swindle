@@ -27,7 +27,7 @@ enum lnBMPPins
 #endif
 #else
 #ifdef USE_48PIN_PACKAGE
-#include "lnBMP_pinout_bp_48pins.h.h"
+#include "lnBMP_pinout_bp_48pins.h"
 #elif defined(USE_64PIN_PACKAGE)
 #include "lnBMP_pinout_bp_64pins.h"
 #else
