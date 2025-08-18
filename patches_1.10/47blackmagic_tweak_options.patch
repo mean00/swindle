@@ -1,7 +1,5 @@
-diff --git a/src/target/target_probe.h b/src/target/target_probe.h
-index a68693de..80229c1b 100644
---- a/src/target/target_probe.h
-+++ b/src/target/target_probe.h
+--- ./src/target/target_probe.h.org	2025-08-18 06:49:50.305424926 +0200
++++ ./src/target/target_probe.h	2025-08-18 06:51:00.661215709 +0200
 @@ -23,14 +23,19 @@
  #include "target.h"
  #include "adiv5.h"
@@ -13,13 +11,13 @@ index a68693de..80229c1b 100644
  /* Probe launch macro used by the CPU-generic layers to then call CPU-specific routines safely */
 -#define PROBE(x)                                    \
 -	do {                                            \
--		DEBUG_TARGET("Calling " STRINGIFY(x) "\n"); \
+-		DEBUG_TARGET("Calling %s\n", STRINGIFY(x)); \
 -		if ((x)(target))                            \
 -			return true;                            \
 -		target_check_error(target);                 \
 +#define PROBE(x)                                          \
 +	do {                                                  \
-+		DEBUG_TARGET("Calling " STRINGIFY(x) "\n");       \
++		DEBUG_TARGET("Calling %s\n", STRINGIFY(x));       \
 +		if ((x)(target)) {                                \
 +			bmp_tweak_options(&(target->target_options)); \
 +			return true;                                  \
