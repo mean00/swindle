@@ -7,7 +7,7 @@ use crate::freertos::{enable_freertos, freertos_symbols, os_detach};
 #[cfg(not(feature = "hosted"))]
 use crate::parsing_util;
 use crate::parsing_util::{
-    ascii_hex_or_dec_to_u32, ascii_hex_string_to_u8s, ascii_string_decimal_to_u32, split_command,
+    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, split_command, u8_hex_string_to_u8s,
 };
 use crate::settings;
 use alloc::vec::Vec;
@@ -491,12 +491,7 @@ pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
     }
     // The command is hex encoded, decode it
     let mut out: [u8; MAX_RCMD_SIZE] = [0; MAX_RCMD_SIZE];
-    let rcmd = match ascii_hex_string_to_u8s(args[0], &mut out) {
-        Ok(x) => x,
-        Err(_y) => {
-            return false;
-        }
-    };
+    let rcmd = u8_hex_string_to_u8s(args[0].as_bytes(), &mut out);
     // split command and args
     let command: &[u8];
     let args: &[u8];

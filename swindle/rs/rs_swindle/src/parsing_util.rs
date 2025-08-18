@@ -5,25 +5,11 @@ use crate::bmplog;
 //
 //
 pub fn chomp(input: &str) -> &str {
-    let mut st: &str = input;
-    if st.starts_with(" ") {
-        st = &st[1..];
-    }
-    st
-}
-//
-//
-pub fn ascii_hex_string_to_u8s<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&'a [u8], i32> {
-    let datain = sin.as_bytes();
-
-    let s = datain.len() / 2;
-    for i in 0..s {
-        sout[i] = ascii_octet_to_hex(datain[i * 2], datain[i * 2 + 1]);
-    }
-    Ok(&sout[..s])
+    input.trim_start()
 }
 /*
- *
+ *  convert a single u32 received as hex
+ *   i.e. "12324" => 0x1234
  */
 pub fn ascii_hex_to_u32(sin: &str) -> u32 {
     let datain = sin.as_bytes();
@@ -33,19 +19,9 @@ pub fn ascii_hex_to_u32(sin: &str) -> u32 {
     }
     out
 }
-/*
- *
- */
-pub fn ascii_hex_string_to_str<'a>(sin: &'a str, sout: &'a mut [u8]) -> Result<&'a str, i32> {
-    let datain = sin.as_bytes();
-
-    let s = datain.len() / 2;
-    for i in 0..s {
-        sout[i] = ascii_octet_to_hex(datain[i * 2], datain[i * 2 + 1]);
-    }
-    unsafe { Ok(core::str::from_utf8_unchecked(&sout[..s])) }
-}
 //
+//  Convert a binary buffer received a a hex string
+//  i.e "00AABB" => [0x00,0xAA,0xBB]
 //
 pub fn u8_hex_string_to_u8s<'a>(sin: &'a [u8], sout: &'a mut [u8]) -> &'a [u8] {
     let s = sin.len() / 2;
@@ -66,17 +42,25 @@ fn _hex(digit: u8) -> u8 {
         _ => 0, // WTF ?
     }
 }
-//---
+/*
+*  "F8" => 0xF8, single byte
+*
+*/
 pub fn ascii_octet_to_hex(left: u8, right: u8) -> u8 {
     (_hex(left) << 4) + _hex(right)
 }
-//---
+/*
+*  convert a nibble to hex
+*  0xA => "A"
+*/
 pub fn _tohex(v: u8) -> u8 {
     if v >= 10 {
         return b'A' + v - 10;
     }
     b'0' + v
 }
+//
+// convert a string "123" or "0x1234" to u32
 //
 pub fn ascii_hex_or_dec_to_u32(input: &str) -> u32 {
     if input.starts_with("0x") || input.starts_with("0X") {
@@ -128,7 +112,10 @@ pub fn u8s_string_to_u32(datain: &[u8]) -> u32 {
     }
     val
 }
-
+//
+//
+//
+//
 pub fn u32_to_ascii_le_buffer(value: u32, out: &mut [u8]) {
     let mut value = value;
     for i in 0..4 {
@@ -138,18 +125,41 @@ pub fn u32_to_ascii_le_buffer(value: u32, out: &mut [u8]) {
         out[1 + i * 2] = ascii[1];
     }
 }
-
+//
+//
+//
+//
 pub fn u8_to_ascii(value: u8) -> [u8; 2] {
     let mut out: [u8; 2] = [0, 0];
     out[0] = _tohex(value >> 4);
     out[1] = _tohex(value & 0xf);
     out
 }
+//
+//
+//
+pub fn u8s_string_to_u32_le(datain: &[u8]) -> u32 {
+    let mut val: u32 = 0;
+    let mut shift = 0;
+    let number = datain.len();
+
+    for i in 0..number {
+        let lo: u32 = _hex(datain[i]) as u32;
+        val += lo << shift;
+        shift += 4;
+    }
+    val
+}
+//
+//
+//
 pub fn u8_to_ascii_to_buffer(value: u8, out: &mut [u8]) {
     out[0] = _tohex(value >> 4);
     out[1] = _tohex(value & 0xf);
 }
-
+//
+//
+//
 pub fn take_adress_length(xin: &str) -> Option<(u32, u32)> {
     let args: Vec<&str> = xin.split(',').collect();
     if args.len() != 2 {
@@ -160,7 +170,9 @@ pub fn take_adress_length(xin: &str) -> Option<(u32, u32)> {
     let len = ascii_string_hex_to_u32(args[1]);
     Some((address, len))
 }
-
+//
+//
+//
 pub fn split_command(incoming: &[u8]) -> Option<(&[u8], &[u8])> {
     let size = incoming.len();
     // look up for the first ':' if any
@@ -176,3 +188,4 @@ pub fn split_command(incoming: &[u8]) -> Option<(&[u8], &[u8])> {
     }
     Some((incoming, &incoming[0..0]))
 }
+//
