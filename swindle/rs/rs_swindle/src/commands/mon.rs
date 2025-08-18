@@ -778,6 +778,7 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
     if !ret {
         return false;
     }
+    #[cfg(not(feature = "hosted"))]
     rust_esprit::os_helper::delay_ms(val);
     encoder::reply_ok();
     true
@@ -796,7 +797,7 @@ pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
         return false;
     }
     bmp::bmp_platform_nrst_set_val(val != 0);
-    gdb_print!("reset pin is now {} \n", (val != 0) as bool);
+    gdb_print!("reset pin is now {} \n", (val != 0));
     encoder::reply_ok();
     true
 }

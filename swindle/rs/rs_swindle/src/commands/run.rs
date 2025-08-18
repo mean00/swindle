@@ -68,8 +68,7 @@ fn reply_wp(prefix: &str, num: u32, prefix2: &str, num2: u32) {
 #[unsafe(no_mangle)]
 extern "C" fn rngdbstub_poll() {
     // this is called regularily
-    let check: bool;
-    check = bmp::bmp_attached() && target_is_running();
+    let check: bool = bmp::bmp_attached() && target_is_running();
     if check {
         match bmp::bmp_poll() {
             HaltState::Running => return,           // nothing to do !

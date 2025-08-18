@@ -7,6 +7,7 @@ use crate::gdb_print;
 use crate::rtt_consts::RTT_PERIOD_KEY;
 use crate::rtt_consts::RTT_SETTING_KEY;
 use crate::settings;
+#[cfg(not(feature = "hosted"))]
 use rust_esprit::rn_freertos_c::xTaskGetTickCount;
 crate::gdb_print_init!();
 crate::setup_log!(false);
@@ -70,7 +71,12 @@ enum RttHalt {
 }
 
 fn get_tick() -> u32 {
-    unsafe { xTaskGetTickCount() & (RTT_POLL_ROUNDUP - 1) }
+    #[cfg(not(feature = "hosted"))]
+    unsafe {
+        xTaskGetTickCount() & (RTT_POLL_ROUNDUP - 1)
+    }
+    #[cfg(feature = "hosted")]
+    0
 }
 
 fn swindle_rtt_access_to_target() -> RttHalt {
