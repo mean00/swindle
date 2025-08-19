@@ -58,14 +58,16 @@ void bmp_io_end_session()
 }
 /**
  */
-extern "C" void platform_nrst_set_val(bool assert)
+extern "C" void platform_nrst_set_val_internal(bool assrt)
 {
-    if (assert) // force reset to low
+    if (assrt) // force reset to low
     {
+        Logger("Reset on\n");
         pReset.on();
     }
     else // release reset
     {
+        Logger("Reset off\n");
         pReset.off();
     }
 }

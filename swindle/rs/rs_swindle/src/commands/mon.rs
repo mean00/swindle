@@ -9,6 +9,7 @@ use crate::parsing_util;
 use crate::parsing_util::{
     ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, split_command, u8_hex_string_to_u8s,
 };
+use crate::setting_keys::*;
 use crate::settings;
 use alloc::vec::Vec;
 //
@@ -795,6 +796,36 @@ pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     gdb_print!("reset pin is now {} \n", (val != 0));
     encoder::reply_ok();
     true
+}
+unsafe extern "C" {
+    pub fn platform_nrst_set_val_internal(set: u32);
+}
+fn set_nrst(set: bool) {
+    let d: u32 = match set {
+        false => 0,
+        _ => 1,
+    };
+    unsafe { platform_nrst_set_val_internal(d) };
+}
+#[unsafe(no_mangle)]
+pub fn platform_nrst_set_val(set: u32) {
+    let delay: u32 = match set {
+        0 => {
+            // clear
+            let d = settings::get_or_default(RESET_HOLDOFF_DURATION, 10);
+            gdb_print!("reset off, holdoff  {} \n", d);
+            set_nrst(false);
+            d
+        }
+        _ => {
+            // set
+            let d = settings::get_or_default(RESET_PULSE_DURATION, 10);
+            gdb_print!("reset on, duration  {} \n", d);
+            set_nrst(true);
+            d
+        }
+    };
+    rust_esprit::os_helper::delay_ms(delay);
 }
 
 //-- EOF --

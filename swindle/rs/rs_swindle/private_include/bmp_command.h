@@ -81,7 +81,7 @@ int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_sel
 void swindleRedirectLog_c(bool onoff);
 
 // platform
-void platform_nrst_set_val(bool assert);
+void platform_nrst_set_val_internal(bool assert);
 bool platform_nrst_get_val();
 const unsigned char *platform_target_voltage(void);
 void platform_target_clk_output_enable(bool enable);

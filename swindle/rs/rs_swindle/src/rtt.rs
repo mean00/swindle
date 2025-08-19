@@ -4,8 +4,7 @@
 use crate::bmp;
 use crate::commands::run::HaltState;
 use crate::gdb_print;
-use crate::rtt_consts::RTT_PERIOD_KEY;
-use crate::rtt_consts::RTT_SETTING_KEY;
+use crate::setting_keys::{RTT_PERIOD_KEY, RTT_SETTING_KEY};
 use crate::settings;
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::rn_freertos_c::xTaskGetTickCount;

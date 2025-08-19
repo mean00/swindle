@@ -20,6 +20,7 @@ mod packet_symbols;
 mod parsing_util;
 mod rn_bmp_cmd_c;
 mod rtt_consts;
+mod setting_keys;
 mod settings;
 //mod rpc;
 pub mod rpc_common;

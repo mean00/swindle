@@ -138,21 +138,6 @@ pub fn u8_to_ascii(value: u8) -> [u8; 2] {
 //
 //
 //
-pub fn u8s_string_to_u32_le(datain: &[u8]) -> u32 {
-    let mut val: u32 = 0;
-    let mut shift = 0;
-    let number = datain.len();
-
-    for i in 0..number {
-        let lo: u32 = _hex(datain[i]) as u32;
-        val += lo << shift;
-        shift += 4;
-    }
-    val
-}
-//
-//
-//
 pub fn u8_to_ascii_to_buffer(value: u8, out: &mut [u8]) {
     out[0] = _tohex(value >> 4);
     out[1] = _tohex(value & 0xf);

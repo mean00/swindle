@@ -2,7 +2,7 @@ use crate::commands::mon::{MAX_SPACE, spacebar};
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
 use crate::parsing_util;
-use crate::rtt_consts::*;
+use crate::setting_keys::RTT_SETTING_KEY;
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
