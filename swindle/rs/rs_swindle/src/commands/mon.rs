@@ -476,8 +476,8 @@ fn _mon_help(_command: &str, _args: &[&str]) -> bool {
 }
 //
 use rust_esprit::rn_gpio::digitalWrite;
-use rust_esprit::rn_gpio::pinMode;
-use rust_esprit::rn_gpio::rnGpioMode::lnOUTPUT;
+//use rust_esprit::rn_gpio::pinMode;
+//use rust_esprit::rn_gpio::rnGpioMode::lnOUTPUT;
 use rust_esprit::rn_gpio::rnPin;
 fn _mon_test(_command: &str, _args: &[&str]) -> bool {
     //unsafe {
@@ -492,8 +492,8 @@ fn _mon_test(_command: &str, _args: &[&str]) -> bool {
         state = !state;
         rust_esprit::os_helper::delay_ms(2000);
     }
-    encoder::reply_ok();
-    true
+    //encoder::reply_ok();
+    //true
 }
 fn _mon_test2(_command: &str, _args: &[&str]) -> bool {
     unsafe {
