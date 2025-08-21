@@ -59,6 +59,13 @@ ELSE()
   SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp  ${B}/bmp_tap_gpio.cpp )
   #set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-Os")
 ENDIF()
+
+if(USE_INVERTED_NRST )
+  SET( EXTRA_SOURCE  ${EXTRA_SOURCE} ${B}/bmp_reset_inv.cpp)
+else()
+  SET( EXTRA_SOURCE  ${EXTRA_SOURCE} ${B}/bmp_reset.cpp)
+endif()
+
 # O0, 1, 2 works
 # OZ does not work
 # rvTap does not like -Oz
