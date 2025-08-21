@@ -1,6 +1,7 @@
 #pragma once
 
 #define BM_NB_PINS 7
+#define SWD_IO_SPEED 10 // 10mhz is more than enough (?)
 
 // Logical identifiers..
 enum lnBMPPins

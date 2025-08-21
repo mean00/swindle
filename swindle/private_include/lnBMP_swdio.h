@@ -1,6 +1,5 @@
 #pragma once
 
-#define SWD_IO_SPEED 10 // 10mhz is more than enough (?)
 extern uint32_t swd_delay_cnt;
 
 #define swait()                                                                                                        \
