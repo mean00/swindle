@@ -27,6 +27,11 @@ static mut targetHelpTree: Option<&[HelpTree]> = None;
 unsafe extern "C" {
     pub fn _Z17lnSoftSystemResetv();
 }
+unsafe extern "C" {
+    pub fn resetTest();
+    pub fn resetTest2();
+}
+
 /*
  *
  */
@@ -37,7 +42,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 25] = [
+const mon_command_tree: [CommandTree; 27] = [
     CommandTree {
         command: "crash",
         min_args: 0,
@@ -139,6 +144,22 @@ const mon_command_tree: [CommandTree; 25] = [
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_mon_help),
+        start_separator: " ",
+        next_separator: " ",
+    }, //
+    CommandTree {
+        command: "test",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_mon_test),
+        start_separator: " ",
+        next_separator: " ",
+    }, //
+    CommandTree {
+        command: "test2",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_mon_test2),
         start_separator: " ",
         next_separator: " ",
     }, //
@@ -450,6 +471,34 @@ fn _mon_help(_command: &str, _args: &[&str]) -> bool {
         }
     }
 
+    encoder::reply_ok();
+    true
+}
+//
+use rust_esprit::rn_gpio::digitalWrite;
+use rust_esprit::rn_gpio::pinMode;
+use rust_esprit::rn_gpio::rnGpioMode::lnOUTPUT;
+use rust_esprit::rn_gpio::rnPin;
+fn _mon_test(_command: &str, _args: &[&str]) -> bool {
+    //unsafe {
+    //resetTest();
+    //}
+    let pin: rnPin = rnPin::PB6;
+    let mut state: bool = false;
+    gdb_print!("starting test\n");
+    //pinMode(pin, lnOUTPUT);
+    loop {
+        digitalWrite(pin, state);
+        state = !state;
+        rust_esprit::os_helper::delay_ms(2000);
+    }
+    encoder::reply_ok();
+    true
+}
+fn _mon_test2(_command: &str, _args: &[&str]) -> bool {
+    unsafe {
+        resetTest2();
+    }
     encoder::reply_ok();
     true
 }

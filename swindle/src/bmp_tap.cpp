@@ -21,6 +21,7 @@ void bmp_gpio_init_once()
     rDirection = new SwdPin(TDIRECTION_PIN);
     rSWDIO = new SwdDirectionPin(TSWDIO_PIN);
     rSWCLK = new SwdWaitPin(TSWDCK_PIN); // automatically add delay after toggle
+    pReset.setup();
     rSWDIO->hiZ();
     rSWDIO->hiZ();
     rSWCLK->hiZ();
@@ -71,6 +72,22 @@ extern "C" void platform_nrst_set_val_internal(bool assrt)
         pReset.off();
     }
 }
+
+extern "C" void resetTest2(void)
+{
+  lnPinMode(PB6,lnOUTPUT);
+}
+extern "C" void resetTest(void)
+{
+  for(int i=0;i<5;i++)
+    {
+              pReset.off();
+        lnDelayMs(2000);
+        pReset.on();
+        lnDelayMs(2000);
+   }
+}
+
 /**
  */
 extern "C" bool platform_nrst_get_val(void)
