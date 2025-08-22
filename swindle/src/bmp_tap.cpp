@@ -75,17 +75,17 @@ extern "C" void platform_nrst_set_val_internal(bool assrt)
 
 extern "C" void resetTest2(void)
 {
-  lnPinMode(PB6,lnOUTPUT);
+    // lnPinMode(PB6,lnOUTPUT);
 }
 extern "C" void resetTest(void)
 {
-  for(int i=0;i<5;i++)
+    for (int i = 0; i < 5; i++)
     {
-              pReset.off();
+        pReset.off();
         lnDelayMs(2000);
         pReset.on();
         lnDelayMs(2000);
-   }
+    }
 }
 
 /**
