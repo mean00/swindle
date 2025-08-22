@@ -380,7 +380,7 @@ fn _target_reset(_command: &str, _args: &[&str]) -> bool {
     bmp::bmp_platform_nrst_set_val(true);
     // in hosted mode, assume the transport stream will introduce enough delay
     #[cfg(not(feature = "hosted"))]
-    rust_esprit::os_helper::delay_ms(20);
+    rust_esprit::delay_ms(20);
     bmp::bmp_platform_nrst_set_val(false);
     encoder::reply_ok();
     true
@@ -490,7 +490,7 @@ fn _mon_test(_command: &str, _args: &[&str]) -> bool {
     loop {
         digitalWrite(pin, state);
         state = !state;
-        rust_esprit::os_helper::delay_ms(2000);
+        rust_esprit::delay_ms(2000);
     }
     //encoder::reply_ok();
     //true
@@ -824,7 +824,7 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
         return false;
     }
     #[cfg(not(feature = "hosted"))]
-    rust_esprit::os_helper::delay_ms(val);
+    rust_esprit::delay_ms(val);
     encoder::reply_ok();
     true
 }
@@ -874,7 +874,7 @@ pub fn platform_nrst_set_val(set: u32) {
             d
         }
     };
-    rust_esprit::os_helper::delay_ms(delay);
+    rust_esprit::delay_ms(delay);
 }
 
 //-- EOF --
