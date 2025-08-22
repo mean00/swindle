@@ -457,8 +457,7 @@ impl SeggerRTT {
         // prevent too quick probe 10 ms poll by default
         let mut current_time = get_tick();
         let last_time = self.last_time;
-        self.last_time = current_time;
-        if current_time < last_time {
+        while current_time < last_time {
             current_time += RTT_POLL_ROUNDUP;
         }
         let period = settings::get_or_default(RTT_PERIOD_KEY, RTT_POLLING_DEFAULT_PERIOD);
@@ -466,6 +465,7 @@ impl SeggerRTT {
         if (current_time - last_time) < period {
             return false;
         }
+        self.last_time = current_time;
 
         let adr = settings::get_or_default(RTT_SETTING_KEY, 0);
         if adr == 0 {
