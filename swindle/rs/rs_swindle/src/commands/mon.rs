@@ -7,7 +7,8 @@ use crate::freertos::{enable_freertos, freertos_symbols, os_detach};
 #[cfg(not(feature = "hosted"))]
 use crate::parsing_util;
 use crate::parsing_util::{
-    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, split_command, u8_hex_string_to_u8s,
+    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, split_command, string_to_bool,
+    u8_hex_string_to_u8s,
 };
 use crate::setting_keys::*;
 use crate::settings;
@@ -681,13 +682,8 @@ pub fn get_enable_reset() -> u32 {
     unsafe { autoreset }
 }
 pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
-    let ret: bool;
-    let fq: u32;
-    (ret, fq) = convert_param_to_integer(args[0]);
-    if !ret {
-        return false;
-    }
-    set_enable_reset(fq);
+    let ret: bool = string_to_bool(args[0]);
+    set_enable_reset(ret as u32);
     gdb_print!("enable reset pin is now {} \n", get_enable_reset());
     encoder::reply_ok();
     true
@@ -834,15 +830,9 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 */
 #[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
-    let ret: bool;
-    let val: u32;
-    (ret, val) = convert_param_to_integer(args[0]);
-    if !ret {
-        gdb_print!("set_pin_reset bad parameter  \n");
-        return false;
-    }
-    bmp::bmp_platform_nrst_set_val(val != 0);
-    gdb_print!("reset pin is now {} \n", (val != 0));
+    let ret: bool = string_to_bool(args[0]);
+    bmp::bmp_platform_nrst_set_val(ret);
+    gdb_print!("reset pin is now {} \n", ret);
     encoder::reply_ok();
     true
 }

@@ -69,6 +69,16 @@ pub fn ascii_hex_or_dec_to_u32(input: &str) -> u32 {
         ascii_string_decimal_to_u32(input)
     }
 }
+//
+pub fn string_to_bool(input: &str) -> bool {
+    if input.to_lowercase() == "on" {
+        return true;
+    }
+    if input.to_lowercase() == "off" {
+        return false;
+    }
+    ascii_hex_or_dec_to_u32(input) != 0
+}
 //---
 pub fn ascii_string_hex_to_u32_le(s: &str) -> u32 {
     let datain = s.as_bytes();
