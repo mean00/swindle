@@ -62,13 +62,13 @@ ENV PATH="/home/${USERNAME}/.cargo/bin:${PATH}"
 RUN rustc --version && cargo --version
 RUN echo ".  \$HOME/.cargo/env" >> /home/$USERNAME/.bashrc
 RUN export PATH=$PATH:\$HOME/.local/bin &&  mkdir -p /home/$USERNAME/.local/bin \
-            && rustup target add --toolchain stable-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf nightly-x86_64-unknown-linux-gnu thumbv8m.main-none-eabi \
             && rustup default nightly \
             && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf  \
             && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imafc-unknown-none-elf \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7m-none-eabi  \
             && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv6m-none-eabi  \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7em-none-eabihf 
+            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7m-none-eabi  \
+            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7em-none-eabihf  \
+            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi 
 
 # Install riscv toolchain (llvm)
 RUN  wget -O - https://github.com/mean00/LLVM-embedded-toolchain-for-rv32/releases/download/19.1.5/LLVM_RV32_Linux_ubuntu_19.1.5.tar.gz | tar -xz -C /riscv && mv /riscv/LLVM_RV32_Linux_ubuntu_19.1.5 /riscv/llvm_19.1 
