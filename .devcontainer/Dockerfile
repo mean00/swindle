@@ -62,7 +62,7 @@ ENV PATH="/home/${USERNAME}/.cargo/bin:${PATH}"
 RUN rustc --version && cargo --version
 RUN echo ".  \$HOME/.cargo/env" >> /home/$USERNAME/.bashrc
 RUN export PATH=$PATH:\$HOME/.local/bin &&  mkdir -p /home/$USERNAME/.local/bin \
-            && rustup target add --toolchain stable-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf \
+            && rustup target add --toolchain stable-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf nightly-x86_64-unknown-linux-gnu thumbv8m.main-none-eabi \
             && rustup default nightly \
             && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf  \
             && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imafc-unknown-none-elf \
