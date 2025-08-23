@@ -1,6 +1,6 @@
 #!/usr/bin/bash 
 export COMMON="-DUSE_NO_DEFAULT=TRUE  -DUSE_CLANG=True   " 
-export PATH=/home/jenkins/.cargo/bin:/home/jenkins/.local/bin:$PATH
+export PATH=/home/${USER}/.cargo/bin:/home/${USER}/.local/bin:$PATH
 export PICO_SDK=/opt/pico/pico-sdk
 export ROOT=$PWD
 
