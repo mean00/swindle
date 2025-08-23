@@ -52,7 +52,7 @@ RUN : \
 #  Reuse Arm & Riscv toolchains
 #
 RUN mkdir /arm && mkdir /riscv && mkdir /opt/pico && chown ubuntu /opt/pico && chown $USERNAME /riscv /arm
-
+RUN chmod a+rwx /root
 
 CMD [ "/bin/bash" ]
 
