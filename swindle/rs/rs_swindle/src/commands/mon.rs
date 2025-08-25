@@ -684,8 +684,8 @@ pub fn get_enable_reset() -> u32 {
 pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
     set_enable_reset(ret as u32);
-    gdb_print!("enable reset pin is now {} \n", get_enable_reset());
     encoder::reply_ok();
+    gdb_print!("enable reset pin is now {} \n", get_enable_reset());
     true
 }
 /*
@@ -832,8 +832,8 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
     bmp::bmp_platform_nrst_set_val(ret);
-    gdb_print!("reset pin is now {} \n", ret);
     encoder::reply_ok();
+    gdb_print!("reset pin is now {} \n", ret);
     true
 }
 unsafe extern "C" {
@@ -852,14 +852,14 @@ pub fn platform_nrst_set_val(set: u32) {
         0 => {
             // clear
             let d = settings::get_or_default(RESET_HOLDOFF_DURATION, 10);
-            gdb_print!("reset off, holdoff  {} \n", d);
+            //       gdb_print!("reset off, holdoff  {} \n", d);
             set_nrst(false);
             d
         }
         _ => {
             // set
             let d = settings::get_or_default(RESET_PULSE_DURATION, 10);
-            gdb_print!("reset on, duration  {} \n", d);
+            //gdb_print!("reset on, duration  {} \n", d);
             set_nrst(true);
             d
         }

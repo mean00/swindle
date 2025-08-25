@@ -71,10 +71,10 @@ pub fn ascii_hex_or_dec_to_u32(input: &str) -> u32 {
 }
 //
 pub fn string_to_bool(input: &str) -> bool {
-    if input.to_lowercase() == "on" {
+    if input == "on" || input == "ON" || input == "On" {
         return true;
     }
-    if input.to_lowercase() == "off" {
+    if input == "off" || input == "OFF" || input == "Off" {
         return false;
     }
     ascii_hex_or_dec_to_u32(input) != 0
