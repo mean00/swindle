@@ -3467,6 +3467,16 @@
 	)
 	(wire
 		(pts
+			(xy 48.26 72.39) (xy 50.8 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6d6cf4b7-8bd0-46a0-9c8e-211ed4dde348")
+	)
+	(wire
+		(pts
 			(xy 50.8 43.18) (xy 57.15 43.18)
 		)
 		(stroke
@@ -4830,6 +4840,75 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R_Small")
+		(at 48.26 74.93 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "01d04bb0-ab78-41d0-8965-300fd8e7466e")
+		(property "Reference" "R11"
+			(at 42.926 71.882 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1k"
+			(at 43.18 73.914 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 48.26 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 48.26 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 48.26 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e4bb7489-8855-48c0-a49d-de124ccdc3e9")
+		)
+		(pin "2"
+			(uuid "8fd18f25-d7fb-40f6-9051-8e016fc5c078")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "R11")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C_Small")
 		(at 113.03 26.67 0)
 		(unit 1)
@@ -5257,7 +5336,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "282b2163-7e81-4928-9f5c-c18542497166")
-		(property "Reference" "Q1-A2SHB"
+		(property "Reference" "Q1-A2SHB1"
 			(at 186.69 86.3599 0)
 			(effects
 				(font
@@ -5317,7 +5396,7 @@
 		(instances
 			(project ""
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
-					(reference "Q1-A2SHB")
+					(reference "Q1-A2SHB1")
 					(unit 1)
 				)
 			)
@@ -6385,6 +6464,72 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 48.26 77.47 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8bd8197b-f5db-42b1-bb9f-5bf37d4f2f21")
+		(property "Reference" "#PWR024"
+			(at 48.26 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 48.26 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 48.26 77.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 48.26 77.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 48.26 77.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "c353a545-5d7c-44c1-9ae0-81752213cf69")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "#PWR024")
 					(unit 1)
 				)
 			)
