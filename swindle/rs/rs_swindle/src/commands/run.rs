@@ -107,7 +107,7 @@ pub fn _s(_command: &str, args: &[&str]) -> bool {
     _vCont("vCont;s", args)
 }
 
-pub fn _vCont(command: &str, _args: &[&str]) -> bool {
+pub fn _vCont(command: &str, args: &[&str]) -> bool {
     if command.starts_with("vCont?") {
         let mut e = encoder::new();
         e.begin();
@@ -115,7 +115,7 @@ pub fn _vCont(command: &str, _args: &[&str]) -> bool {
         e.end();
         return true;
     }
-    if command.len() < 7
+    if args.len() == 0
     // naked vcond
     {
         set_running(true);
@@ -123,8 +123,11 @@ pub fn _vCont(command: &str, _args: &[&str]) -> bool {
         //encoder::reply_ok();
         return true;
     }
-    let command_bytes = command.as_bytes();
-    match command_bytes[6] {
+    let last: &str = args[args.len() - 1];
+    if last.len() == 0 {
+        return false;
+    }
+    match last.as_bytes()[0] {
         b'c' => {
             set_running(true);
             bmp::bmp_halt_resume(false);

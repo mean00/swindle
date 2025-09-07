@@ -194,7 +194,7 @@ class BMPSerial : public lnTask
                 return false;
             }
             int available = (int)(_serial2usb._limit - _serial2usb._dex);
-            xAssert(available < LN_BMP_BUFFER_SIZE);
+            xAssert(available <= LN_BMP_BUFFER_SIZE);
             uint8_t *ptr = _serial2usb._buffer + _serial2usb._dex;
             uint32_t consumed = _usb->writeNoBlock(ptr, available);
             XXD("<S2U:Avail:%d, wr:%d\n", available, consumed);

@@ -98,8 +98,8 @@ const main_command_tree: [CommandTree; 22] = [
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_vCont),
-        start_separator: "",
-        next_separator: "",
+        start_separator: ";",
+        next_separator: ";",
     },
     CommandTree {
         command: "vFlash",

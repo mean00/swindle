@@ -378,11 +378,10 @@ fn _redirect(_command: &str, args: &[&str]) -> bool {
  *
  */
 fn _target_reset(_command: &str, _args: &[&str]) -> bool {
-    bmp::bmp_platform_nrst_set_val(true);
-    // in hosted mode, assume the transport stream will introduce enough delay
-    #[cfg(not(feature = "hosted"))]
-    rust_esprit::delay_ms(20);
-    bmp::bmp_platform_nrst_set_val(false);
+    let d = settings::get_or_default(RESET_PULSE_DURATION, 10);
+    set_nrst(true);
+    rust_esprit::delay_ms(d);
+    set_nrst(false);
     encoder::reply_ok();
     true
 }
@@ -819,7 +818,6 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
     if !ret {
         return false;
     }
-    #[cfg(not(feature = "hosted"))]
     rust_esprit::delay_ms(val);
     encoder::reply_ok();
     true
