@@ -378,10 +378,8 @@ fn _redirect(_command: &str, args: &[&str]) -> bool {
  *
  */
 fn _target_reset(_command: &str, _args: &[&str]) -> bool {
-    let d = settings::get_or_default(RESET_PULSE_DURATION, 10);
-    set_nrst(true);
-    rust_esprit::delay_ms(d);
-    set_nrst(false);
+    swindle_nrst_set_val(1);
+    swindle_nrst_set_val(0);
     encoder::reply_ok();
     true
 }
@@ -829,7 +827,7 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 #[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
-    bmp::bmp_platform_nrst_set_val(ret);
+    unsafe { platform_nrst_set_val_internal(ret as u32) };
     encoder::reply_ok();
     gdb_print!("reset pin is now {} \n", ret);
     true
@@ -846,7 +844,14 @@ fn set_nrst(set: bool) {
 }
 #[unsafe(no_mangle)]
 pub fn platform_nrst_set_val(set: u32) {
-    let delay: u32 = match set {
+if get_enable_reset()==0   {
+    return;
+}
+    swindle_nrst_set_val(set);
+}
+#[unsafe(no_mangle)]
+pub fn swindle_nrst_set_val(set : u32) {
+let delay: u32 = match set {
         0 => {
             // clear
             let d = settings::get_or_default(RESET_HOLDOFF_DURATION, 10);

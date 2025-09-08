@@ -115,7 +115,7 @@ pub fn _vCont(command: &str, args: &[&str]) -> bool {
         e.end();
         return true;
     }
-    if args.len() == 0
+    if args.is_empty()
     // naked vcond
     {
         set_running(true);
@@ -124,7 +124,7 @@ pub fn _vCont(command: &str, args: &[&str]) -> bool {
         return true;
     }
     let last: &str = args[args.len() - 1];
-    if last.len() == 0 {
+    if last.is_empty() {
         return false;
     }
     match last.as_bytes()[0] {
