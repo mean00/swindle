@@ -107,6 +107,7 @@ pub fn _s(_command: &str, args: &[&str]) -> bool {
     _vCont("vCont;s", args)
 }
 
+//#[unsafe(no_mangle)]
 pub fn _vCont(command: &str, args: &[&str]) -> bool {
     if command.starts_with("vCont?") {
         let mut e = encoder::new();
@@ -123,11 +124,13 @@ pub fn _vCont(command: &str, args: &[&str]) -> bool {
         //encoder::reply_ok();
         return true;
     }
-    let last: &str = args[args.len() - 1];
+    let last: &str = args[0];
     if last.is_empty() {
         return false;
     }
-    match last.as_bytes()[0] {
+    // vCont[;action[:thread-id]]…’
+    let cmd = last.as_bytes()[0];
+    match cmd {
         b'c' => {
             set_running(true);
             bmp::bmp_halt_resume(false);
