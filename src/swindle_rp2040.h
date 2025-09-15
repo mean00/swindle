@@ -16,17 +16,17 @@
 #define ws_wrap 9
 
 static const uint16_t ws_program_instructions[] = {
-            //     .wrap_target
-    0x80a0, //  0: pull   block                      
-    0xe057, //  1: set    y, 23                      
-    0xe000, //  2: set    pins, 0                    
-    0x6028, //  3: out    x, 8                       
-    0xe001, //  4: set    pins, 1                    
-    0x6021, //  5: out    x, 1                       
-    0xa101, //  6: mov    pins, x                [1] 
-    0xe000, //  7: set    pins, 0                    
-    0x0084, //  8: jmp    y--, 4                     
-    0xe001, //  9: set    pins, 1                    
+    //     .wrap_target
+    0x80a0, //  0: pull   block
+    0xe057, //  1: set    y, 23
+    0xe000, //  2: set    pins, 0
+    0x6028, //  3: out    x, 8
+    0xe001, //  4: set    pins, 1
+    0x6021, //  5: out    x, 1
+    0xa101, //  6: mov    pins, x                [1]
+    0xe000, //  7: set    pins, 0
+    0x0084, //  8: jmp    y--, 4
+    0xe001, //  9: set    pins, 1
             //     .wrap
 };
 
@@ -37,10 +37,10 @@ static const struct pio_program ws_program = {
     .origin = -1,
 };
 
-static inline pio_sm_config ws_program_get_default_config(uint offset) {
+static inline pio_sm_config ws_program_get_default_config(uint offset)
+{
     pio_sm_config c = pio_get_default_sm_config();
     sm_config_set_wrap(&c, offset + ws_wrap_target, offset + ws_wrap);
     return c;
 }
 #endif
-

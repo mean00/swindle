@@ -5,8 +5,8 @@
 static const lnPin ledPins[] = {LN_SYSTEM_LED, PA8, PB13};
 #define NB_LEDS (sizeof(ledPins) / sizeof(lnPin))
 
-#include "xsin_table.h"
 #include "lnWS2812B_timer.h"
+#include "xsin_table.h"
 
 #define PIN_WS2812 PB4
 

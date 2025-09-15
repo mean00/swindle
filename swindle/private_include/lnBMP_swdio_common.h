@@ -1,7 +1,7 @@
 
 #include "esprit.h"
-#include "lnGPIO.h"
 #include "lnBMP_reset.h"
+#include "lnGPIO.h"
 /**
  */
 class SwdWaitPin : public SwdPin
