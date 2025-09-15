@@ -35,42 +35,44 @@
 #include "general.h"
 #include "jep106.h"
 #include "riscv_debug.h"
-#include "target_probe.h"
 #include "target.h"
+#include "target_probe.h"
 #include "wchlink.h"
 
 void riscv_dtm_wchlink_init(riscv_dm_s *dtm);
 
 static bool riscv_dtm_wchlink_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
-	(void)dmi;
-	return wchlink_riscv_dmi_read( address, value);
+    (void)dmi;
+    return wchlink_riscv_dmi_read(address, value);
 }
 
 static bool riscv_dtm_wchlink_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
 {
-	(void)dmi;
-	return wchlink_riscv_dmi_write(address, value);
+    (void)dmi;
+    return wchlink_riscv_dmi_write(address, value);
 }
 
 uint8_t riscv_dtm_wchlink_handler()
 {
-	riscv_dmi_s *dmi_bus = calloc(1, sizeof(*dmi_bus));
-	if (!dmi_bus) {
-		DEBUG_WARN("calloc: failed in %s\n", __func__);
-		return 0;
-	}
-	dmi_bus->read = riscv_dtm_wchlink_dmi_read;
-	dmi_bus->write = riscv_dtm_wchlink_dmi_write;
-	dmi_bus->version = RISCV_DEBUG_0_13;
-	dmi_bus->designer_code =
-		NOT_JEP106_MANUFACTURER_WCH; /* fixme: WCHLINK deosn't seem to have a jep106 code assigned this is a dummy code */
+    riscv_dmi_s *dmi_bus = calloc(1, sizeof(*dmi_bus));
+    if (!dmi_bus)
+    {
+        DEBUG_WARN("calloc: failed in %s\n", __func__);
+        return 0;
+    }
+    dmi_bus->read = riscv_dtm_wchlink_dmi_read;
+    dmi_bus->write = riscv_dtm_wchlink_dmi_write;
+    dmi_bus->version = RISCV_DEBUG_0_13;
+    dmi_bus->designer_code = NOT_JEP106_MANUFACTURER_WCH; /* fixme: WCHLINK deosn't seem to have a jep106 code assigned
+                                                             this is a dummy code */
 
-	/* Call higher level code to discover the DMI bus */
-	riscv_dmi_init(dmi_bus);
-	uint8_t c = dmi_bus->ref_count;
-	if (!dmi_bus->ref_count) {
-		free(dmi_bus);
-	}
-	return c;
+    /* Call higher level code to discover the DMI bus */
+    riscv_dmi_init(dmi_bus);
+    uint8_t c = dmi_bus->ref_count;
+    if (!dmi_bus->ref_count)
+    {
+        free(dmi_bus);
+    }
+    return c;
 }

@@ -1,8 +1,8 @@
 // Cheap stdstring using heap
 
 #include "bmp_string.h"
-#include "inttypes.h"
 #include "esprit.h"
+#include "inttypes.h"
 #include "stdint.h"
 extern "C"
 {

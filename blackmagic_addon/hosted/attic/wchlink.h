@@ -33,48 +33,48 @@
 #ifndef PLATFORMS_HOSTED_WCHLINK_H
 #define PLATFORMS_HOSTED_WCHLINK_H
 
-#include <stdbool.h>
 #include "bmp_hosted.h"
+#include <stdbool.h>
 
 #if HOSTED_BMP_ONLY == 1
 bool wchlink_init()
 {
-	return false;
+    return false;
 }
 
 const char *wchlink_target_voltage()
 {
-	
-	return "ERROR";
+
+    return "ERROR";
 }
 
 void wchlink_nrst_set_val(bool assert)
 {
-	(void)assert;
+    (void)assert;
 }
 
 bool wchlink_nrst_get_val()
 {
-	return true;
+    return true;
 }
 
 uint32_t wchlink_rvswd_scan()
-{	
-	return 0;
+{
+    return 0;
 }
 
 bool wchlink_riscv_dmi_read(uint32_t address, uint32_t *value)
 {
-	(void)address;
-	(void)value;
-	return false;
+    (void)address;
+    (void)value;
+    return false;
 }
 
-bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value)
+bool wchlink_riscv_dmi_write(uint32_t address, uint32_t value)
 {
-	(void)address;
-	(void)value;
-	return false;
+    (void)address;
+    (void)value;
+    return false;
 }
 
 #else
@@ -83,10 +83,10 @@ const char *wchlink_target_voltage();
 void wchlink_nrst_set_val(bool assert);
 bool wchlink_nrst_get_val();
 uint32_t wchlink_rvswd_scan();
-bool wchlink_riscv_dmi_read( uint32_t address, uint32_t *value);
-bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value);
-bool wchlink_riscv_dmi_read( uint32_t address, uint32_t *value);
-bool wchlink_riscv_dmi_write( uint32_t address, uint32_t value);
+bool wchlink_riscv_dmi_read(uint32_t address, uint32_t *value);
+bool wchlink_riscv_dmi_write(uint32_t address, uint32_t value);
+bool wchlink_riscv_dmi_read(uint32_t address, uint32_t *value);
+bool wchlink_riscv_dmi_write(uint32_t address, uint32_t value);
 #endif
 
 #endif /* PLATFORMS_HOSTED_WCHLINK_H */

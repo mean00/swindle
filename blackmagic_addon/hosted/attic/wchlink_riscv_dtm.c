@@ -39,53 +39,54 @@ static void wchlink_riscv_dtm_init(riscv_dmi_s *dmi);
 static bool wchlink_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
 static bool wchlink_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value);
 
-uint8_t  wchlink_riscv_dtm_handler(void)
+uint8_t wchlink_riscv_dtm_handler(void)
 {
-	riscv_dmi_s *dmi = calloc(1, sizeof(*dmi));
-	if (!dmi) { /* calloc failed: heap exhaustion */
-		DEBUG_WARN("calloc: failed in %s\n", __func__);
-		return -1;
-	}
+    riscv_dmi_s *dmi = calloc(1, sizeof(*dmi));
+    if (!dmi)
+    { /* calloc failed: heap exhaustion */
+        DEBUG_WARN("calloc: failed in %s\n", __func__);
+        return -1;
+    }
 
-	wchlink_riscv_dtm_init(dmi);
-	/* If we failed to find any DMs or Harts, free the structure */
-	if (!dmi->ref_count)
-		free(dmi);
-	return 0;
+    wchlink_riscv_dtm_init(dmi);
+    /* If we failed to find any DMs or Harts, free the structure */
+    if (!dmi->ref_count)
+        free(dmi);
+    return 0;
 }
 
 static void wchlink_riscv_dtm_init(riscv_dmi_s *const dmi)
 {
-	/* WCH-Link doesn't have any mechanism to identify the DTM manufacturer, so we'll just assume it's WCH */
-	dmi->designer_code = NOT_JEP106_MANUFACTURER_WCH;
+    /* WCH-Link doesn't have any mechanism to identify the DTM manufacturer, so we'll just assume it's WCH */
+    dmi->designer_code = NOT_JEP106_MANUFACTURER_WCH;
 
-	dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
+    dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
 
-	/* WCH-Link has a fixed address width of 8 bits, limited by the USB protocol (is RVSWD also fixed?) */
-	dmi->address_width = 8U;
+    /* WCH-Link has a fixed address width of 8 bits, limited by the USB protocol (is RVSWD also fixed?) */
+    dmi->address_width = 8U;
 
-	dmi->read = wchlink_riscv_dmi_read;
-	dmi->write = wchlink_riscv_dmi_write;
+    dmi->read = wchlink_riscv_dmi_read;
+    dmi->write = wchlink_riscv_dmi_write;
 
-	riscv_dmi_init(dmi);
+    riscv_dmi_init(dmi);
 }
 
 static bool wchlink_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
-	uint8_t status = 0;
-	const bool result = wchlink_transfer_dmi(RV_DMI_READ, address, 0, value, &status);
+    uint8_t status = 0;
+    const bool result = wchlink_transfer_dmi(RV_DMI_READ, address, 0, value, &status);
 
-	/* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
-	dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
-	return dmi->fault == RV_DMI_SUCCESS;
+    /* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
+    dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
+    return dmi->fault == RV_DMI_SUCCESS;
 }
 
 static bool wchlink_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
 {
-	uint8_t status = 0;
-	const bool result = wchlink_transfer_dmi(RV_DMI_WRITE, address, value, NULL, &status);
+    uint8_t status = 0;
+    const bool result = wchlink_transfer_dmi(RV_DMI_WRITE, address, value, NULL, &status);
 
-	/* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
-	dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
-	return dmi->fault == RV_DMI_SUCCESS;
+    /* Translate error 1 into RV_DMI_FAILURE per the spec, also write RV_DMI_FAILURE if the transfer failed */
+    dmi->fault = !result || status == 1U ? RV_DMI_FAILURE : status;
+    return dmi->fault == RV_DMI_SUCCESS;
 }

@@ -21,9 +21,9 @@
 #ifndef PLATFORMS_HOSTED_WCHLINK_PROTOCOL_H
 #define PLATFORMS_HOSTED_WCHLINK_PROTOCOL_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /*
  * This file contains the definitions for the WCH-Link USB Protocol, no public documentation is available
@@ -66,50 +66,50 @@
  */
 
 /* USB protocol */
-#define WCH_USB_MODE_RV_CMD_EPT_ADDR  0x1U
-#define WCH_USB_MODE_RV_RAW_EPT_ADDR  0x2U
+#define WCH_USB_MODE_RV_CMD_EPT_ADDR 0x1U
+#define WCH_USB_MODE_RV_RAW_EPT_ADDR 0x2U
 #define WCH_USB_MODE_DAP_OUT_EPT_ADDR 0x2U
-#define WCH_USB_MODE_DAP_IN_EPT_ADDR  0x3U
+#define WCH_USB_MODE_DAP_IN_EPT_ADDR 0x3U
 
 #define WCH_USB_TIMEOUT 5000U
 
 #define WCH_USB_INTERFACE_SUBCLASS 0x80U
 
 /* Command packet */
-#define WCH_CMD_PACKET_HEADER_OFFSET    0U
-#define WCH_CMD_PACKET_HEADER_OUT       0x81U
-#define WCH_CMD_PACKET_HEADER_IN        0x82U
+#define WCH_CMD_PACKET_HEADER_OFFSET 0U
+#define WCH_CMD_PACKET_HEADER_OUT 0x81U
+#define WCH_CMD_PACKET_HEADER_IN 0x82U
 #define WCH_CMD_PACKET_CMD_ERROR_OFFSET 1U
-#define WCH_CMD_PACKET_SIZE_OFFSET      2U
-#define WCH_CMD_PACKET_PAYLOAD_OFFSET   3U
+#define WCH_CMD_PACKET_SIZE_OFFSET 2U
+#define WCH_CMD_PACKET_PAYLOAD_OFFSET 3U
 
 /* Error */
 #define WCH_ERR_ATTACH 0x55U /* Failed to attach to target */
 
 /* RISC-V targets AKA "riscvchip" */
 #define WCH_RISCVCHIP_CH32V103 0x01U /* CH32V103 RISC-V3A series */
-#define WCH_RISCVCHIP_CH57X    0x02U /* CH571/CH573 RISC-V3A BLE 4.2 series */
-#define WCH_RISCVCHIP_CH56X    0x03U /* CH565/CH569 RISC-V3A series */
+#define WCH_RISCVCHIP_CH57X 0x02U    /* CH571/CH573 RISC-V3A BLE 4.2 series */
+#define WCH_RISCVCHIP_CH56X 0x03U    /* CH565/CH569 RISC-V3A series */
 #define WCH_RISCVCHIP_CH32V20X 0x05U /* CH32V20X RISC-V4B/V4C series */
 #define WCH_RISCVCHIP_CH32V30X 0x06U /* CH32V30X RISC-V4C/V4F series */
-#define WCH_RISCVCHIP_CH58X    0x07U /* CH581/CH582/CH583 RISC-V4A BLE 5.3 series */
+#define WCH_RISCVCHIP_CH58X 0x07U    /* CH581/CH582/CH583 RISC-V4A BLE 5.3 series */
 #define WCH_RISCVCHIP_CH32V003 0x09U /* CH32V003 RISC-V2A series */
-#define WCH_RISCVCHIP_CH59X    0x0bU /* CH59x RISC-V4C BLE 5.4 series */
+#define WCH_RISCVCHIP_CH59X 0x0bU    /* CH59x RISC-V4C BLE 5.4 series */
 #define WCH_RISCVCHIP_CH32X035 0x0dU /* CH32X035 RISC-V4C series */
 
 /* Commands */
-#define WCH_CMD_ADDR_N_SIZE   0x01U /* Set address and size command */
-#define WCH_CMD_FLASH         0x02U /* Flash command */
-#define WCH_CMD_READ_MEM      0x03U /* Memory read command */
-#define WCH_CMD_PROTECT       0x06U /* Flash potection command */
-#define WCH_CMD_DMI           0x08U /* DMI transfer command */
-#define WCH_CMD_RESET         0x0bU /* Reset command */
+#define WCH_CMD_ADDR_N_SIZE 0x01U   /* Set address and size command */
+#define WCH_CMD_FLASH 0x02U         /* Flash command */
+#define WCH_CMD_READ_MEM 0x03U      /* Memory read command */
+#define WCH_CMD_PROTECT 0x06U       /* Flash potection command */
+#define WCH_CMD_DMI 0x08U           /* DMI transfer command */
+#define WCH_CMD_RESET 0x0bU         /* Reset command */
 #define WCH_CMD_PROBE_CONTROL 0x0cU /* Probe control command */
-#define WCH_CMD_CONTROL       0x0dU /* Control command */
-#define WCH_CMD_RV_DIS_DBG    0x0eU /* RV disable debug command */
-#define WCH_CMD_VERIFY        0x0fU /* Verify command */
-#define WCH_CMD_UID           0x11U /* Chip UID command */
-#define WCH_CMD_MODDE_SWITCH  0xffU /* Switch probe mode command */
+#define WCH_CMD_CONTROL 0x0dU       /* Control command */
+#define WCH_CMD_RV_DIS_DBG 0x0eU    /* RV disable debug command */
+#define WCH_CMD_VERIFY 0x0fU        /* Verify command */
+#define WCH_CMD_UID 0x11U           /* Chip UID command */
+#define WCH_CMD_MODDE_SWITCH 0xffU  /* Switch probe mode command */
 
 /*
  * Set address and size command - WCH_CMD_ADDR_N_SIZE
@@ -125,17 +125,17 @@
  */
 
 /* Flash command - WCH_CMD_FLASH */
-#define WCH_FLASH_SUBCMD_CHIPERASE         0x01U /* Chip erase */
+#define WCH_FLASH_SUBCMD_CHIPERASE 0x01U         /* Chip erase */
 #define WCH_FLASH_SUBCMD_BEGIN_WRITE_FLASH 0x02U /* Begin write flash - ?? */
-#define WCH_FLASH_SUBCMD_EXEC_RAM          0x03U /* Execute ram - ?? */
-#define WCH_FLASH_SUBCMD_BEGIN_WRITE_MEM   0x05U /* Begin transfer - ?? */
-#define WCH_FLASH_SUBCMD_PREPARE           0x06U /* ?? */
-#define WCH_FLASH_SUBCMD_EXEC_MEM          0x07U /* ?? */
-#define WCH_FLASH_SUBCMD_TERMINATE         0x08U /* ?? */
-#define WCH_FLASH_SUBCMD_READY_WRITE       0x09U /* End transfer - ?? */
-#define WCH_FLASH_SUBCMD_VERIFY2           0x0aU /* Verify - ?? */
-#define WCH_FLASH_SUBCMD_RV_VERIFY         0x0bU /* Verify - ?? */
-#define WCH_FLASH_SUBCMD_BEGIN_READ_MEM    0x0cU /* ?? */
+#define WCH_FLASH_SUBCMD_EXEC_RAM 0x03U          /* Execute ram - ?? */
+#define WCH_FLASH_SUBCMD_BEGIN_WRITE_MEM 0x05U   /* Begin transfer - ?? */
+#define WCH_FLASH_SUBCMD_PREPARE 0x06U           /* ?? */
+#define WCH_FLASH_SUBCMD_EXEC_MEM 0x07U          /* ?? */
+#define WCH_FLASH_SUBCMD_TERMINATE 0x08U         /* ?? */
+#define WCH_FLASH_SUBCMD_READY_WRITE 0x09U       /* End transfer - ?? */
+#define WCH_FLASH_SUBCMD_VERIFY2 0x0aU           /* Verify - ?? */
+#define WCH_FLASH_SUBCMD_RV_VERIFY 0x0bU         /* Verify - ?? */
+#define WCH_FLASH_SUBCMD_BEGIN_READ_MEM 0x0cU    /* ?? */
 
 /*
  * Memory read commands - WCH_CMD_READ_MEM
@@ -160,17 +160,17 @@
  * - 0x06: CH32V30X
  * - 0x0d: CH32X035
  */
-#define WCH_PROTECT_SUBCMD_CHECK           0x01U /* Check if flash is read-protected */
+#define WCH_PROTECT_SUBCMD_CHECK 0x01U           /* Check if flash is read-protected */
 #define WCH_PROTECT_SUBCMD_FLASH_UNPROTECT 0x02U /* Set flash read unprotected */
-#define WCH_PROTECT_SUBCMD_FLASH_PROTECT   0x03U /* Set flash read protected */
-#define WCH_PROTECT_SUBCMD_CHECK_V2        0x04U /* Check if flash is read-protected - Firmware >= v2.9 */
+#define WCH_PROTECT_SUBCMD_FLASH_PROTECT 0x03U   /* Set flash read protected */
+#define WCH_PROTECT_SUBCMD_CHECK_V2 0x04U        /* Check if flash is read-protected - Firmware >= v2.9 */
 /* PROTECT_V2 and UNPROTECT_V2 require `0xbf ff ff ff ff ff ff` as payload */
 #define WCH_PROTECT_SUBCMD_FLASH_UNPROTECT_V2 0xf2U /* Set flash read unprotected - Firmware >= v2.9 */
-#define WCH_PROTECT_SUBCMD_FLASH_PROTECT_V2   0xf3U /* Set flash read protected - Firmware >= v2.9 */
+#define WCH_PROTECT_SUBCMD_FLASH_PROTECT_V2 0xf3U   /* Set flash read protected - Firmware >= v2.9 */
 
-#define WCH_PROTECTED      0x01U /* Protected, memory read returns random data */
-#define WCH_UNPROTECTED    0x02U /* Unprotected */
-#define WCH_PROTECTED_V2   0x01U /* Protected, memory read returns random data */
+#define WCH_PROTECTED 0x01U      /* Protected, memory read returns random data */
+#define WCH_UNPROTECTED 0x02U    /* Unprotected */
+#define WCH_PROTECTED_V2 0x01U   /* Protected, memory read returns random data */
 #define WCH_UNPROTECTED_V2 0x00U /* Unprotected */
 
 /*
@@ -195,19 +195,19 @@
  *
  * Operation and Status correspond to the same values
  * found in the JTAG implementation of RISC-V DMI:
- * 
+ *
  * Operation:
  * - 0x00: no-op
  * - 0x01: read
  * - 0x02: write
- * 
+ *
  * Status:
  * - 0x00: success
  * - 0x01: error
  * - 0x03: busy
  */
-#define WCH_DMI_ADDR_OFFSET      0U
-#define WCH_DMI_DATA_OFFSET      1U
+#define WCH_DMI_ADDR_OFFSET 0U
+#define WCH_DMI_DATA_OFFSET 1U
 #define WCH_DMI_OP_STATUS_OFFSET 5U
 
 /* Reset command - WCH_CMD_RESET */
@@ -220,7 +220,7 @@
  * - 0x07: CH58X
  * - 0x0b: CH59X
  */
-#define WCH_RESET_SUBCMD_ASSERT  0x03U /* Reset */
+#define WCH_RESET_SUBCMD_ASSERT 0x03U  /* Reset */
 #define WCH_RESET_SUBCMD_ASSERT2 0x02U /* Reset */
 
 /*
@@ -237,16 +237,16 @@
  *
  * Response is one byte, 0x01 meaning success
  */
-#define WCH_SPEED_LOW      0x03U
-#define WCH_SPEED_MEDIUM   0x02U
-#define WCH_SPEED_HIGH     0x01U
+#define WCH_SPEED_LOW 0x03U
+#define WCH_SPEED_MEDIUM 0x02U
+#define WCH_SPEED_HIGH 0x01U
 #define WCH_SPEED_VERYHIGH 0x00U
 
 #define WCH_PROBE_CONTROL_OK 0x01U /* Success response */
 
 /* Control command - WCH_CMD_CONTROL */
 #define WCH_CONTROL_SUBCMD_GET_PROBE_INFO 0x01U /* Firmware version and hardware type */
-#define WCH_CONTROL_SUBCMD_ATTACH         0x02U /* Attach to target */
+#define WCH_CONTROL_SUBCMD_ATTACH 0x02U         /* Attach to target */
 /*
  * On some riscvchip targets, a _SUBCMD_UNKNOWN is issued after attach
  *
@@ -265,23 +265,23 @@
  * - 0x06: CH32V30X
  */
 #define WCH_CONTROL_SUBCMD_GET_MEMORY_INFO 0x04U /* RAM size, flash size and addr */
-#define WCH_CONTROL_SUBCMD_CLOSE           0xffU /* Terminate connection (unsure what this entails) */
+#define WCH_CONTROL_SUBCMD_CLOSE 0xffU           /* Terminate connection (unsure what this entails) */
 
 /* Probe info subcommand - WCH_SYS_SUBCMD_GET_PROBE_INFO */
 #define WCH_VERSION_MAJOR_OFFSET 0U /* 8 bit */
 #define WCH_VERSION_MINOR_OFFSET 1U /* 8 bit */
 
-#define WCH_HARDWARE_TYPE_OFFSET    2U
-#define WCH_HARDWARE_TYPE_WCHLINK   1U  /* WCH-Link (CH549) *does not support SDIO (single wire debug) */
-#define WCH_HARDWARE_TYPE_WCHLINKE  2U  /* WCH-LinkE (CH32V305) */
-#define WCH_HARDWARE_TYPE_WCHLINKS  3U  /* WCH-LinkS (CH32V203) */
-#define WCH_HARDWARE_TYPE_WCHLINKB  4U  /* WCH-LinkB */
-#define WCH_HARDWARE_TYPE_WCHLINKW  5U  /* WCH-LinkW (CH32V208) *wireless */
+#define WCH_HARDWARE_TYPE_OFFSET 2U
+#define WCH_HARDWARE_TYPE_WCHLINK 1U    /* WCH-Link (CH549) *does not support SDIO (single wire debug) */
+#define WCH_HARDWARE_TYPE_WCHLINKE 2U   /* WCH-LinkE (CH32V305) */
+#define WCH_HARDWARE_TYPE_WCHLINKS 3U   /* WCH-LinkS (CH32V203) */
+#define WCH_HARDWARE_TYPE_WCHLINKB 4U   /* WCH-LinkB */
+#define WCH_HARDWARE_TYPE_WCHLINKW 5U   /* WCH-LinkW (CH32V208) *wireless */
 #define WCH_HARDWARE_TYPE_WCHLINKE2 18U /* WCH-LinkE (CH32V305) - ?? */
 
 /* Attach to target subcommand - WCH_CONTROL_SUBCMD_ATTACH */
 #define WCH_RISCVCHIP_OFFSET 0U /* 8 bit */
-#define WCH_IDCODDE_OFFSET   1U /* 32 bit */
+#define WCH_IDCODDE_OFFSET 1U   /* 32 bit */
 
 /*
  * RV disable debug command - WCH_CMD_RV_DIS_DBG
@@ -308,7 +308,7 @@
  * Corresponding UID: 0xcdabb4ae45bcc616
  * Unknown value: e339e339e339e339 -> inital value for erased flash
  */
-#define WCH_UID_SUBCMD_GET    0x09U /* Get chip UID */
+#define WCH_UID_SUBCMD_GET 0x09U    /* Get chip UID */
 #define WCH_UID_SUBCMD_GET_V2 0x06U /* Get chip UID - Firmware >= v2.9 */
 
 /* Switch probe mode command - WCH_CMD_MODDE_SWITCH */
@@ -316,7 +316,7 @@
 #define WCH_MODDE_SWITCH_SUBCMD_DAP_TO_RV 0x52U /* Switch to RV mode - ?? */
 
 bool wchlink_command_send_recv(uint8_t command, uint8_t subcommand, const void *payload, size_t payload_length,
-	void *response, size_t response_length);
+                               void *response, size_t response_length);
 bool wchlink_transfer_dmi(uint8_t operation, uint32_t address, uint32_t data_in, uint32_t *data_out, uint8_t *status);
 
 bool wchlink_attach(void);

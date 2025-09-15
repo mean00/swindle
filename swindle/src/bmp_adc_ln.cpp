@@ -1,6 +1,6 @@
 
-#include "lnADC.h"
 #include "esprit.h"
+#include "lnADC.h"
 #include "lnBMP_pinout.h"
 static lnSimpleADC *adc = NULL;
 /**

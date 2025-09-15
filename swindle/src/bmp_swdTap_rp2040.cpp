@@ -49,8 +49,8 @@ extern "C"
 #include "bmp_pio_swd.h"
 #include "platform_support.h"
 }
-#include "lnbmp_parity.h"
 #include "ln_rp_clocks.h"
+#include "lnbmp_parity.h"
 extern void gmp_gpio_init_adc();
 extern rpPIO *swdpio;
 extern rpPIO_SM *xsm;

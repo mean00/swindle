@@ -37,9 +37,9 @@
 #include "target_internal.h"
 
 #include "exception.h"
+#include "flashstub/ch32v3x_crc32.stub"
 #include "flashstub/ch32v3x_erase.stub"
 #include "flashstub/ch32v3x_write.stub"
-#include "flashstub/ch32v3x_crc32.stub"
 #include "riscv_debug.h"
 // tmp
 #include "gdb_packet.h"

@@ -1,5 +1,5 @@
-#include "stdint.h"
 #include "riscv32_flashstub.h"
+#include "stdint.h"
 #define CH32_CRC32_ADDR 0x40023000
 #define CH32_CRC32_CONTROL_RESET 1
 #define AHBPCENR (*(uint32_t *)0x40021014UL)

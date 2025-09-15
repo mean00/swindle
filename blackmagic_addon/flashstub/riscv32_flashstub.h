@@ -21,14 +21,13 @@
 #ifndef TARGET_RISCV_FLASHSTUB_STUB_H
 #define TARGET_RISCV_FLASHSTUB_STUB_H
 
-
 /*
  * exit stub, 0  means OK, else error code
  */
 static inline void __attribute__((always_inline)) riscv_stub_exit(const int code)
 {
-	__asm__("li a0, %0 \n"
-			"ebreak" ::"i"(code));
+    __asm__("li a0, %0 \n"
+            "ebreak" ::"i"(code));
 }
 
 #endif
