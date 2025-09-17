@@ -13,7 +13,19 @@ use crate::parsing_util::{
 use crate::setting_keys::*;
 use crate::settings;
 use alloc::vec::Vec;
+//#[cfg(feature = "hosted")]
+
+#[cfg(not(feature = "hosted"))]
+use rust_esprit::rn_gpio::rnPin;
+
 //
+#[cfg(not(feature = "hosted"))]
+use rust_esprit::delay_ms;
+#[cfg(not(feature = "hosted"))]
+use rust_esprit::rn_gpio::digital_write;
+#[cfg(feature = "hosted")]
+fn delay_ms(_a: u32) {}
+
 //
 crate::setup_log!(false);
 crate::gdb_print_init!();
@@ -473,10 +485,11 @@ fn _mon_help(_command: &str, _args: &[&str]) -> bool {
     true
 }
 //
-use rust_esprit::rn_gpio::digitalWrite;
-//use rust_esprit::rn_gpio::pinMode;
-//use rust_esprit::rn_gpio::rnGpioMode::lnOUTPUT;
-use rust_esprit::rn_gpio::rnPin;
+#[cfg(feature = "hosted")]
+fn _mon_test(_command: &str, _args: &[&str]) -> bool {
+    true
+}
+#[cfg(not(feature = "hosted"))]
 fn _mon_test(_command: &str, _args: &[&str]) -> bool {
     //unsafe {
     //resetTest();
@@ -486,13 +499,18 @@ fn _mon_test(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("starting test\n");
     //pinMode(pin, lnOUTPUT);
     loop {
-        digitalWrite(pin, state);
+        digital_write(pin, state);
         state = !state;
-        rust_esprit::delay_ms(2000);
+        delay_ms(2000);
     }
     //encoder::reply_ok();
     //true
 }
+#[cfg(feature = "hosted")]
+fn _mon_test2(_command: &str, _args: &[&str]) -> bool {
+    true
+}
+#[cfg(not(feature = "hosted"))]
 fn _mon_test2(_command: &str, _args: &[&str]) -> bool {
     unsafe {
         resetTest2();
@@ -816,7 +834,7 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
     if !ret {
         return false;
     }
-    rust_esprit::delay_ms(val);
+    delay_ms(val);
     encoder::reply_ok();
     true
 }
@@ -843,15 +861,16 @@ fn set_nrst(set: bool) {
     unsafe { platform_nrst_set_val_internal(d) };
 }
 #[unsafe(no_mangle)]
+#[cfg(not(feature = "hosted"))]
 pub fn platform_nrst_set_val(set: u32) {
-if get_enable_reset()==0   {
-    return;
-}
+    if get_enable_reset() == 0 {
+        return;
+    }
     swindle_nrst_set_val(set);
 }
 #[unsafe(no_mangle)]
-pub fn swindle_nrst_set_val(set : u32) {
-let delay: u32 = match set {
+pub fn swindle_nrst_set_val(set: u32) {
+    let delay: u32 = match set {
         0 => {
             // clear
             let d = settings::get_or_default(RESET_HOLDOFF_DURATION, 10);
@@ -867,7 +886,7 @@ let delay: u32 = match set {
             d
         }
     };
-    rust_esprit::delay_ms(delay);
+    delay_ms(delay);
 }
 
 //-- EOF --
