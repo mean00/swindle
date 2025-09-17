@@ -21,6 +21,20 @@ void xAssert(int a)
     printf("******* FAILURE *********\n");
     exit(0);
 }
+extern "C" void swindle_rtt_send_data_to_host(uint32_t index, uint32_t len, const uint8_t *data)
+{
+}
+extern "C" uint32_t swindle_rtt_room_available_to_host(uint32_t index)
+{
+    return 0;
+}
+
+/*
+ *
+ */
+extern "C" void platform_nrst_set_val_internal(bool assert)
+{
+}
 
 extern "C" bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
