@@ -50,6 +50,7 @@ pub enum RESULT_AUTOMATON {
 
 //
 pub struct gdb_stream<const INPUT_BUFFER_SIZE: usize> {
+    available: bool,
     automaton: PARSER_AUTOMATON,
     input_buffer: [u8; INPUT_BUFFER_SIZE],
     indx: usize,
@@ -59,12 +60,19 @@ pub struct gdb_stream<const INPUT_BUFFER_SIZE: usize> {
 impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
     pub fn new() -> Self {
         gdb_stream {
+            available: false,
             automaton: PARSER_AUTOMATON::Idle,
             input_buffer: [0; INPUT_BUFFER_SIZE],
             indx: 0,
             checksum: 0,               // only 1 byte is actually used
             checksum_received: [0, 0], // 2 Hex digits
         }
+    }
+    pub fn set_available(&mut self, state: bool) {
+        self.available = state;
+    }
+    pub fn get_available(&mut self) -> bool {
+        self.available
     }
     /*
      *

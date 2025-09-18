@@ -34,6 +34,7 @@ mod util;
 
 use crate::commands::run;
 use crate::decoder::gdb_stream;
+use core::mem::MaybeUninit;
 use decoder::RESULT_AUTOMATON;
 use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 crate::gdb_print_init!();
@@ -41,23 +42,22 @@ crate::gdb_print_init!();
 crate::setup_log!(false);
 //use crate::{bmplog,bmpwarning};
 
-static mut autoauto: Option<gdb_stream<INPUT_BUFFER_SIZE>> = None;
+static mut autoauto: MaybeUninit<gdb_stream<INPUT_BUFFER_SIZE>> = MaybeUninit::uninit();
 /*
  *
  */
-fn get_autoauto() -> &'static mut Option<gdb_stream<INPUT_BUFFER_SIZE>> {
-    unsafe { &mut autoauto }
+fn get_autoauto() -> &'static mut gdb_stream<INPUT_BUFFER_SIZE> {
+    unsafe { autoauto.assume_init_mut() }
 }
 fn clear_autoauto() {
-    unsafe {
-        autoauto = None;
-    }
+    get_autoauto().set_available(false);
 }
 #[unsafe(no_mangle)]
 extern "C" fn rngdbstub_init() {
     settings::init_settings();
     unsafe {
-        autoauto = Some(gdb_stream::<INPUT_BUFFER_SIZE>::new());
+        autoauto.write(gdb_stream::<INPUT_BUFFER_SIZE>::new());
+        get_autoauto().set_available(true);
     }
 }
 #[unsafe(no_mangle)]
@@ -116,9 +116,11 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     }
     // the target is stopped
     // we can parse the incoming commands
-    match get_autoauto() {
-        Some(x) => {
+    let available = get_autoauto().get_available();
+    match available {
+        true => {
             while !data_as_slice.is_empty() {
+                let x = get_autoauto();
                 let consumed: usize;
                 let state: RESULT_AUTOMATON;
                 bmplog!("Parsing..\n");
@@ -173,7 +175,7 @@ extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                 data_as_slice = &data_as_slice[consumed..];
             }
         }
-        None => panic!("noauto"),
+        false => panic!("noauto"),
     };
 }
 
