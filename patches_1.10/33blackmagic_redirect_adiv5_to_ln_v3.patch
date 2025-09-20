@@ -26,7 +26,7 @@ index 9e00f2c4..6994bd58 100644
  		dp->error(dp, true);
  		response = dp->low_access(dp, rnw, addr, value);
 diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
-index 5034b3df..fda12fe2 100644
+index 61752f16..38cc7089 100644
 --- a/src/target/adiv5_swd.c
 +++ b/src/target/adiv5_swd.c
 @@ -54,6 +54,7 @@ uint8_t make_packet_request(const uint8_t rnw, const uint16_t addr)
@@ -120,7 +120,7 @@ index 5034b3df..fda12fe2 100644
  {
  	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
  	swd_proc.seq_out(request, 8U);
-@@ -155,6 +169,18 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
+@@ -155,6 +169,19 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
  	return res == SWD_ACK_OK ? data : 0;
  }
  
@@ -136,10 +136,11 @@ index 5034b3df..fda12fe2 100644
 +extern uint32_t remote_adiv5_swd_raw_access(
 +	adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value);
 +#endif
- bool adiv5_swd_scan(const uint32_t targetid)
++
+ bool adiv5_swd_scan(void)
  {
- 	/* Free the device list if any */
-@@ -165,17 +191,21 @@ bool adiv5_swd_scan(const uint32_t targetid)
+ 	return adiv5_swd_scan_targetid(0);
+@@ -170,17 +197,21 @@ bool adiv5_swd_scan_targetid(const uint32_t targetid)
  		DEBUG_ERROR("calloc: failed in %s\n", __func__);
  		return false;
  	}
@@ -167,7 +168,7 @@ index 5034b3df..fda12fe2 100644
  	if (!bmda_swd_dp_init(dp)) {
  		free(dp);
  		return false;
-@@ -398,7 +428,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
+@@ -403,7 +434,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
  			ADIV5_DP_CTRLSTAT_WDATAERR);
  }
  

@@ -1,109 +1,22 @@
-diff --git a/src/command.c b/src/command.c
-index 52a60c6c..2a497098 100644
---- a/src/command.c
-+++ b/src/command.c
-@@ -51,6 +51,7 @@
- #include "usb.h"
- #endif
- 
-+/*static  */ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
- static bool cmd_version(target_s *target, int argc, const char **argv);
- static bool cmd_help(target_s *target, int argc, const char **argv);
- 
-@@ -94,6 +95,7 @@ const command_s cmd_list[] = {
- 	{"jtag_scan", cmd_jtag_scan, "Scan JTAG chain for devices"},
- 	{"swd_scan", cmd_swd_scan, "Scan SWD interface for devices: [TARGET_ID]"},
- 	{"swdp_scan", cmd_swd_scan, "Deprecated: use swd_scan instead"},
-+	{"rvswdp_scan", cmd_rvswd_scan, "Scan RVSWD (WCH Risc-V) for devices"},
- 	{"auto_scan", cmd_auto_scan, "Automatically scan all chain types for devices"},
- 	{"frequency", cmd_frequency, "set minimum high and low times: [FREQ]"},
- 	{"targets", cmd_targets, "Display list of available targets"},
-@@ -778,3 +780,50 @@ static bool cmd_heapinfo(target_s *target, int argc, const char **argv)
- 		gdb_outf("%s\n", "Set semihosting heapinfo: HEAP_BASE HEAP_LIMIT STACK_BASE STACK_LIMIT");
- 	return true;
- }
-+
-+
-+ 
-+ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv)
-+ {
-+ 	(void)target;
-+ 	(void)argc;
-+ 	(void)argv;
-+ 
-+ 	if (platform_target_voltage())
-+ 		gdb_outf("Target voltage: %s\n", platform_target_voltage());
-+ 
-+ 	if (connect_assert_nrst)
-+ 		platform_nrst_set_val(true); /* will be deasserted after attach */
-+ 
-+ 	bool scan_result = false;
-+ 	volatile exception_s e;
-+ 	TRY(EXCEPTION_ALL) {
-+ #if PC_HOSTED == 1
-+ 		scan_result = bmda_rvswd_scan();
-+ #else
-+ 		scan_result = rvswd_scan();
-+ #endif
-+ 	}
-+ 	CATCH () {
-+ 	case EXCEPTION_TIMEOUT:
-+ 		gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
-+ 		break;
-+ 	case EXCEPTION_ERROR:
-+ 		gdb_outf("Exception: %s\n", e.msg);
-+ 		break;
-+ 	}
-+ 
-+ 	if (!scan_result) {
-+ 		platform_target_clk_output_enable(false);
-+ 		platform_nrst_set_val(false);
-+ 		gdb_out("RVSWD scan failed!\n");
-+ 		return false;
-+ 	}
-+ 
-+ 	cmd_targets(NULL, 0, NULL);
-+ 	platform_target_clk_output_enable(false);
-+ 	morse(NULL, false);
-+ 	return true;
-+ }
-+ 
-+
-diff --git a/src/include/target.h b/src/include/target.h
-index 1d12469c..b66fb802 100644
---- a/src/include/target.h
-+++ b/src/include/target.h
-@@ -45,6 +45,9 @@ typedef struct target_controller target_controller_s;
- #if CONFIG_BMDA == 1
- bool bmda_swd_scan(uint32_t targetid);
- bool bmda_jtag_scan(void);
-+bool bmda_rvswd_scan(void);
-+#else 
-+bool rvswd_scan(void);  
- #endif
- bool adiv5_swd_scan(uint32_t targetid);
- bool jtag_scan(void);
 diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index 57e9472c..467b3796 100644
+index 251530d0..18b84694 100644
 --- a/src/target/riscv32.c
 +++ b/src/target/riscv32.c
-@@ -101,6 +101,11 @@ bool riscv32_probe(target_s *const target)
+@@ -99,7 +99,8 @@ bool riscv32_probe(target_s *const target)
  		break;
- 	default:
- 		break;
-+	case JEP106_MANUFACTURER_WCH:
+ 	case JEP106_MANUFACTURER_WCH:
+ 		PROBE(ch32v003x_probe);
+-		PROBE(ch32vx_probe);
++		//PROBE(ch32vx_probe);
 +		PROBE(ch32v3xx_probe);
-+		/*PROBE(ch32v003x_probe);
-+		PROBE(ch32vx_probe);*/
-+		break;
+ 		break;
  	}
  
- #if CONFIG_BMDA == 0
 diff --git a/src/target/target_probe.h b/src/target/target_probe.h
-index 19d58024..6a998ba7 100644
+index 955ea5c2..67f721a2 100644
 --- a/src/target/target_probe.h
 +++ b/src/target/target_probe.h
-@@ -103,5 +103,6 @@ bool stm32wb0_probe(target_s *target);
+@@ -115,5 +115,6 @@ bool stm32wb0_probe(target_s *target);
  bool zynq7_probe(target_s *target);
  
  void lpc55_dp_prepare(adiv5_debug_port_s *dp);

@@ -1,21 +1,22 @@
 diff --git a/src/command.c b/src/command.c
-index 52a60c6c..8bc57960 100644
+index c86dedb3..83233e33 100644
 --- a/src/command.c
 +++ b/src/command.c
-@@ -54,9 +54,9 @@
+@@ -59,10 +59,10 @@ typedef struct scan_command {
  static bool cmd_version(target_s *target, int argc, const char **argv);
  static bool cmd_help(target_s *target, int argc, const char **argv);
  
 -static bool cmd_jtag_scan(target_s *target, int argc, const char **argv);
 -static bool cmd_swd_scan(target_s *target, int argc, const char **argv);
--static bool cmd_auto_scan(target_s *target, int argc, const char **argv);
-+/* static  */bool cmd_jtag_scan(target_s *target, int argc, const char **argv);
-+/* static  */bool cmd_swd_scan(target_s *target, int argc, const char **argv);
-+/* static  */bool cmd_auto_scan(target_s *target, int argc, const char **argv);
- static bool cmd_frequency(target_s *target, int argc, const char **argv);
- static bool cmd_targets(target_s *target, int argc, const char **argv);
- static bool cmd_morse(target_s *target, int argc, const char **argv);
-@@ -230,7 +230,7 @@ bool cmd_help(target_s *target, int argc, const char **argv)
++/*static*/ bool cmd_jtag_scan(target_s *target, int argc, const char **argv);
++/*static*/ bool cmd_swd_scan(target_s *target, int argc, const char **argv);
+ #if defined(CONFIG_RVSWD) && defined(PLATFORM_HAS_RVSWD)
+-static bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
++/*static*/ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv);
+ #endif
+ static bool cmd_onboard_flash_scan(target_s *target, int argc, const char **argv);
+ static bool cmd_auto_scan(target_s *target, int argc, const char **argv);
+@@ -249,7 +249,7 @@ bool cmd_help(target_s *target, int argc, const char **argv)
  	return true;
  }
  

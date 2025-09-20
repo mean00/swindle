@@ -1,28 +1,37 @@
 diff --git a/src/target/cortex.h b/src/target/cortex.h
-index 58312329..ebe1c9da 100644
+index 8f116683..d92be2f1 100644
 --- a/src/target/cortex.h
 +++ b/src/target/cortex.h
-@@ -76,12 +76,15 @@
+@@ -77,13 +77,22 @@
  #define CORTEX_CPUID_REVISION_MASK 0x00f00000U
  #define CORTEX_CPUID_PATCH_MASK    0x0000000fU
  
+-#define CORTEX_FLOAT_REG_COUNT          33U
+-#define CORTEX_DOUBLE_REG_COUNT         17U
+-#define CORTEXM_GENERAL_REG_COUNT       20U /* General purpose register count for Cortex-M cores */
+-#define CORTEXM_TRUSTZONE_REG_COUNT     4U  /* TrustZone register count for Cortex-M cores */
+-#define CORTEXAR_GENERAL_REG_COUNT      17U /* General purpose register count for Cortex-A/R cores */
++#define CORTEX_FLOAT_REG_COUNT  33U
++#define CORTEX_DOUBLE_REG_COUNT 17U
++// meanx #define CORTEXM_GENERAL_REG_COUNT       20U /* General purpose register count for Cortex-M cores */
++// meanx #define CORTEXM_TRUSTZONE_REG_COUNT     4U  /* TrustZone register count for Cortex-M cores */
++// meanx #define CORTEXAR_GENERAL_REG_COUNT      17U /* General purpose register count for Cortex-A/R cores */
+ #define CORTEXA_ARMV8_GENERAL_REG_COUNT 31U /* General purpose register count for Cortex-A/R cores in AArch64 mode */
+ 
++// meanx
 +#define CORTEXM_GP_REG_COUNT        13U /* General purpose register count for Cortex-M cores r0 to r12 */
 +#define CORTEXM_SP_REG_COUNT        04U /* sp lr pc xpsr */
 +#define CORTEXM_SYS_REG_COUNT       03U /* Sys section : MSP/PSP/state */
 +#define CORTEXM_TRUSTZONE_REG_COUNT 10U /* TrustZone register count for Cortex-M cores msp psp msplim psplim state x2 */
- #define CORTEX_FLOAT_REG_COUNT      33U
- #define CORTEX_DOUBLE_REG_COUNT     17U
--#define CORTEXM_GENERAL_REG_COUNT   20U /* General purpose register count for Cortex-M cores */
--#define CORTEXM_TRUSTZONE_REG_COUNT 4U  /* TrustZone register count for Cortex-M cores */
--#define CORTEXAR_GENERAL_REG_COUNT  17U /* General purpose register count for Cortex-A/R cores */
- 
 +// obsolete, for compatibility with older lpc code
 +#define CORTEXM_GENERAL_REG_COUNT 20U
++// / meanx
++
  adiv5_access_port_s *cortex_ap(target_s *target);
  
  #endif /* TARGET_CORTEX_H */
 diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index a6445de5..aec2a53b 100644
+index 76936948..962f8b19 100644
 --- a/src/target/cortexm.c
 +++ b/src/target/cortexm.c
 @@ -48,8 +48,12 @@
@@ -213,10 +222,21 @@ index a6445de5..aec2a53b 100644
  );
  
  // clang-format on
-@@ -613,9 +657,17 @@ enum {
+@@ -613,9 +657,28 @@ enum {
  	DB_DEMCR
  };
  
++// MEANX
++static void cortexm_write_reg_sequence(adiv5_debug_port_s *dp, size_t count, const uint8_t *map, const uint32_t *values)
++{
++	for (size_t i = 0U; i < count; ++i) {
++		adiv5_dp_write(dp, ADIV5_AP_DB(DB_DCRDR), values[i]);
++		adiv5_dp_write(dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | map[i]);
++	}
++}
++
++// /MEANX
++
 +static void cortexm_read_reg_sequence(adiv5_debug_port_s *dp, size_t count, const uint8_t *map, uint32_t *values)
 +{
 +	for (size_t i = 0U; i < count; ++i) { // r0..r12
@@ -230,9 +250,9 @@ index a6445de5..aec2a53b 100644
 -	uint32_t *const regs = data;
 +	uint32_t *regs = data;
  	adiv5_access_port_s *const ap = cortex_ap(target);
- #if CONFIG_BMDA == 1
+ #if DISABLED_CONFIG_BMDA == 1
  	if (ap->dp->ap_regs_read && ap->dp->ap_reg_read) {
-@@ -640,34 +692,39 @@ static void cortexm_regs_read(target_s *const target, void *const data)
+@@ -640,25 +703,27 @@ static void cortexm_regs_read(target_s *const target, void *const data)
  		adi_ap_banked_access_setup(ap);
  
  		/* Walk the regnum_cortex_m array, reading the registers it specifies */
@@ -241,13 +261,14 @@ index a6445de5..aec2a53b 100644
 -			regs[i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
 -		}
 -		size_t offset = CORTEXM_GENERAL_REG_COUNT;
++		// MEANX
 +		cortexm_read_reg_sequence(ap->dp, CORTEXM_GP_REG_COUNT, regnum_cortex_m_gp, regs);
 +		regs += CORTEXM_GP_REG_COUNT;
 +		cortexm_read_reg_sequence(ap->dp, CORTEXM_SP_REG_COUNT, regnum_cortex_m_sp, regs);
 +		regs += CORTEXM_SP_REG_COUNT;
 +		cortexm_read_reg_sequence(ap->dp, CORTEXM_SYS_REG_COUNT, regnum_cortex_m_sys, regs);
 +		regs += CORTEXM_SYS_REG_COUNT;
-+
++		// /MEANX
  		/* If the core implements TrustZone, pull out the extra stack pointers */
  		if (target->target_options & CORTEXM_TOPT_TRUSTZONE) {
 -			for (size_t i = 0U; i < CORTEXM_TRUSTZONE_REG_COUNT; ++i) {
@@ -255,8 +276,10 @@ index a6445de5..aec2a53b 100644
 -				regs[offset + i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
 -			}
 -			offset += CORTEXM_TRUSTZONE_REG_COUNT;
++			// MEANX
 +			cortexm_read_reg_sequence(ap->dp, CORTEXM_TRUSTZONE_REG_COUNT, regnum_cortex_m_trustzone, regs);
 +			regs += CORTEXM_TRUSTZONE_REG_COUNT;
++			// MEANX
  		}
  		/* If the core has a FPU, also walk the regnum_cortex_mf array */
  		if (target->target_options & CORTEXM_TOPT_FLAVOUR_FLOAT) {
@@ -264,30 +287,23 @@ index a6445de5..aec2a53b 100644
 -				adiv5_dp_write(ap->dp, ADIV5_AP_DB(DB_DCRSR), regnum_cortex_mf[i]);
 -				regs[offset + i] = adiv5_dp_read(ap->dp, ADIV5_AP_DB(DB_DCRDR));
 -			}
++			// MEANX
 +			cortexm_read_reg_sequence(ap->dp, CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf, regs);
 +			regs += CORTEX_FLOAT_REG_COUNT;
++			// /MEANX
  		}
- #if CONFIG_BMDA == 1
+ #if DISABLED_CONFIG_BMDA == 1
  	}
- #endif
- }
+@@ -667,7 +732,7 @@ static void cortexm_regs_read(target_s *const target, void *const data)
  
-+static void cortexm_write_reg_sequence(adiv5_debug_port_s *dp, size_t count, const uint8_t *map, const uint32_t *values)
-+{
-+	for (size_t i = 0U; i < count; ++i) {
-+		adiv5_dp_write(dp, ADIV5_AP_DB(DB_DCRDR), values[i]);
-+		adiv5_dp_write(dp, ADIV5_AP_DB(DB_DCRSR), CORTEXM_DCRSR_REG_WRITE | map[i]);
-+	}
-+}
-+
  static void cortexm_regs_write(target_s *const target, const void *const data)
  {
 -	const uint32_t *const regs = data;
-+	const uint32_t *regs = data;
++	const uint32_t *regs = data; // meanx
  	adiv5_access_port_s *const ap = cortex_ap(target);
- #if CONFIG_BMDA == 1
+ #if DISABLED_CONFIG_BMDA == 1
  	if (ap->dp->ap_reg_write) {
-@@ -690,25 +747,21 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
+@@ -690,25 +755,21 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
  		adi_ap_banked_access_setup(ap);
  
  		/* Walk the regnum_cortex_m array, writing the registers it specifies */
@@ -321,9 +337,9 @@ index a6445de5..aec2a53b 100644
 +			cortexm_write_reg_sequence(ap->dp, CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf, regs);
 +			regs += CORTEX_FLOAT_REG_COUNT;
  		}
- #if CONFIG_BMDA == 1
+ #if DISABLED_CONFIG_BMDA == 1
  	}
-@@ -724,17 +777,26 @@ int cortexm_mem_write_aligned(target_s *target, target_addr_t dest, const void *
+@@ -724,17 +785,26 @@ int cortexm_mem_write_aligned(target_s *target, target_addr_t dest, const void *
  
  static int dcrsr_regnum(target_s *target, uint32_t reg)
  {
@@ -358,7 +374,7 @@ index a6445de5..aec2a53b 100644
  	}
  	return -1;
  }
-@@ -743,9 +805,12 @@ static size_t cortexm_reg_read(target_s *target, uint32_t reg, void *data, size_
+@@ -743,9 +813,12 @@ static size_t cortexm_reg_read(target_s *target, uint32_t reg, void *data, size_
  {
  	if (max < 4U)
  		return 0;
@@ -374,7 +390,7 @@ index a6445de5..aec2a53b 100644
  	return 4U;
  }
  
-@@ -753,9 +818,12 @@ static size_t cortexm_reg_write(target_s *target, uint32_t reg, const void *data
+@@ -753,9 +826,12 @@ static size_t cortexm_reg_write(target_s *target, uint32_t reg, const void *data
  {
  	if (max < 4U)
  		return 0;
@@ -390,7 +406,7 @@ index a6445de5..aec2a53b 100644
  	return 4U;
  }
  
-@@ -1347,8 +1415,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
+@@ -1356,8 +1432,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
   *      <reg name="psp_ns" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="msp_s" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="psp_s" bitsize="32" save-restore="no" type="data_ptr"/>
@@ -405,7 +421,7 @@ index a6445de5..aec2a53b 100644
  static size_t cortexm_build_target_secext_description(char *const buffer, const size_t max_length)
  {
  	size_t offset = 0U;
-@@ -1359,19 +1433,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
+@@ -1368,19 +1450,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
  
  	/* Loop through first the non-secure and then the secure registers */
  	for (uint8_t mode = 0U; mode <= 1U; ++mode) {
@@ -432,7 +448,7 @@ index a6445de5..aec2a53b 100644
  		}
  	}
  
-@@ -1466,30 +1541,45 @@ static size_t cortexm_build_target_description(
+@@ -1475,30 +1558,45 @@ static size_t cortexm_build_target_description(
  	 * We'll use the 'associative arrays' defined for those values.
  	 * NOTE: unlike the other loops, this loop uses a size_t for its counter, as it's used to index into arrays.
  	 */

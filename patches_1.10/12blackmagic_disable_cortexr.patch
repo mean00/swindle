@@ -1,8 +1,8 @@
 diff --git a/src/target/adi.c b/src/target/adi.c
-index 8ddbfacd..2448ed4b 100644
+index 054ac516..469dec7a 100644
 --- a/src/target/adi.c
 +++ b/src/target/adi.c
-@@ -866,14 +866,14 @@ void adi_ap_component_probe(
+@@ -874,22 +874,22 @@ void adi_ap_component_probe(
  			DEBUG_INFO("%s-> cortexm_probe\n", indent + 1);
  			cortexm_probe(ap);
  			break;
@@ -14,14 +14,30 @@ index 8ddbfacd..2448ed4b 100644
 -			DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
 -			cortexr_probe(ap, base_address);
 -			break;
-+		// meanx case aa_cortexa:
-+		// meanx DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
-+		// meanx cortexa_probe(ap, base_address);
-+		// meanx break;
-+		// meanx case aa_cortexr:
-+		// meanx DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
-+		// meanx cortexr_probe(ap, base_address);
-+		// meanx break;
+-		case aa_cortexa_armv8:
+-			DEBUG_INFO("%s-> cortexa_armv8_dc_probe\n", indent + 1);
+-			cortexa_armv8_dc_probe(ap, base_address);
+-			break;
+-		case aa_cti_armv8:
+-			DEBUG_INFO("%s-> cortexa_armv8_cti_probe\n", indent + 1);
+-			cortexa_armv8_cti_probe(ap, base_address);
+-			break;
++			// MEANX 		case aa_cortexa:
++			// MEANX DEBUG_INFO("%s-> cortexa_probe\n", indent + 1);
++			// MEANX cortexa_probe(ap, base_address);
++			// MEANX break;
++			// MEANX case aa_cortexr:
++			// MEANX DEBUG_INFO("%s-> cortexr_probe\n", indent + 1);
++			// MEANX cortexr_probe(ap, base_address);
++			// MEANX break;
++			// MEANX case aa_cortexa_armv8:
++			// MEANX DEBUG_INFO("%s-> cortexa_armv8_dc_probe\n", indent + 1);
++			// MEANX cortexa_armv8_dc_probe(ap, base_address);
++			// MEANX break;
++			// MEANX case aa_cti_armv8:
++			// MEANX DEBUG_INFO("%s-> cortexa_armv8_cti_probe\n", indent + 1);
++			// MEANX cortexa_armv8_cti_probe(ap, base_address);
++			// MEANX break;
  		/* Handle when the component is a CoreSight component ROM table */
  		case aa_rom_table:
  			if (pidr & PIDR_SIZE_MASK)

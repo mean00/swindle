@@ -30,7 +30,7 @@ APPLY_PATCH_IF_NEEDED4(patched40 ${BMP_PATCH_FOLDER}/40blackmagic_custom_crc.pat
 APPLY_PATCH_IF_NEEDED4(patched42 ${BMP_PATCH_FOLDER}/42blackmagic_psplim_msplim.patch ${LNBMP_TOP_FOLDER}   "add psplim and msplim.")
 APPLY_PATCH_IF_NEEDED4(patched43 ${BMP_PATCH_FOLDER}/43dontdoubleassert.patch ${LNBMP_TOP_FOLDER}   "Try to manage double assert better.")
 APPLY_PATCH_IF_NEEDED4(patched44 ${BMP_PATCH_FOLDER}/44blackmagic_gd32_crc32.patch ${LNBMP_TOP_FOLDER}   "stub CRC32 computation (GD32).")
-APPLY_PATCH_IF_NEEDED4(patched45 ${BMP_PATCH_FOLDER}/45blackmagic_disable_bmda_read_regs.patch ${LNBMP_TOP_FOLDER} "disable shortcut for read/write register in hosted mode.")
+# MERGED WITH 42 APPLY_PATCH_IF_NEEDED4(patched45 ${BMP_PATCH_FOLDER}/45blackmagic_disable_bmda_read_regs.patch ${LNBMP_TOP_FOLDER} "disable shortcut for read/write register in hosted mode.")
 APPLY_PATCH_IF_NEEDED4(patched46 ${BMP_PATCH_FOLDER}/46blackmagic_rp2040_crc32.patch ${LNBMP_TOP_FOLDER} "use RP2040 DMA to compute GDB CRC32")
 APPLY_PATCH_IF_NEEDED4(patched47 ${BMP_PATCH_FOLDER}/47blackmagic_tweak_options.patch  ${LNBMP_TOP_FOLDER} "patch option field after probe")
 
