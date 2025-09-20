@@ -10,6 +10,7 @@
 //use core::ptr::addr_of_mut;
 
 use alloc::vec::Vec;
+use core::mem::MaybeUninit;
 
 crate::setup_log!(false);
 use crate::bmp;
@@ -25,13 +26,13 @@ struct address_old_opcode {
 //
 //
 //
-struct list_of_sw_breakpoints {
+struct list_of_breakpoints {
     breakpoint: Vec<address_old_opcode>, // address, old opcode
 }
 //
 //
 //
-impl list_of_sw_breakpoints {
+impl list_of_breakpoints {
     //
     //
     //
@@ -63,13 +64,20 @@ impl list_of_sw_breakpoints {
 //
 //
 //
-static mut lsw: list_of_sw_breakpoints = list_of_sw_breakpoints {
+static mut lsw: list_of_breakpoints = list_of_breakpoints {
     breakpoint: Vec::new(),
 };
+const MAX_SECTOR_SIZE: u32 = 256;
+static mut temp_buffer: MaybeUninit<[u8; MAX_SECTOR_SIZE as usize]> = MaybeUninit::uninit();
+
+fn get_temp_buffer() -> &'static mut [u8; MAX_SECTOR_SIZE as usize] {
+    unsafe { temp_buffer.assume_init_mut() }
+}
+
 //
 //
 //
-fn get_list_ref() -> &'static mut list_of_sw_breakpoints {
+fn get_list_ref() -> &'static mut list_of_breakpoints {
     unsafe { &mut lsw }
 }
 /*
@@ -77,6 +85,20 @@ fn get_list_ref() -> &'static mut list_of_sw_breakpoints {
 */
 pub fn clear_sw_breakpoint() {
     get_list_ref().breakpoint.clear();
+}
+/*
+ *
+ *
+ */
+fn patch_code(offset: u32, code: &mut [u8]) {
+    let offset: usize = offset as usize;
+    if !bmp::bmp_is_riscv() {
+        code[offset] = ARM_BREAKPOINT_OPCODE[0];
+        code[offset + 1] = ARM_BREAKPOINT_OPCODE[1];
+    } else {
+        code[offset] = RISCV_BREAKPOINT_OPCODE[0];
+        code[offset + 1] = RISCV_BREAKPOINT_OPCODE[1];
+    }
 }
 
 /*
@@ -101,13 +123,7 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     // put new opcode
     let mut new_opcode: [u8; 4] = breakpoint.old_opcode;
     let offset: usize = (address & 2) as usize;
-    if !bmp::bmp_is_riscv() {
-        new_opcode[offset] = ARM_BREAKPOINT_OPCODE[0];
-        new_opcode[offset + 1] = ARM_BREAKPOINT_OPCODE[1];
-    } else {
-        new_opcode[offset] = RISCV_BREAKPOINT_OPCODE[0];
-        new_opcode[offset + 1] = RISCV_BREAKPOINT_OPCODE[1];
-    }
+    patch_code(offset as u32, &mut new_opcode);
     if !bmp::bmp_mem_write(aligned_address, &new_opcode) {
         bmplog!("cant write new sw value\n");
         return false;
@@ -116,6 +132,9 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
     get_list_ref().breakpoint.push(breakpoint);
     true
 }
+/*
+ *
+ */
 /*
  *
  */
@@ -136,4 +155,67 @@ pub fn remove_sw_breakpoint(address: u32, _len: u32) -> bool {
         };
     }
 }
+/*
+ *
+ */
+pub fn add_mw_breakpoint(address: u32, _len: u32) -> bool {
+    if get_list_ref().is_present(address) {
+        // already done
+        return true;
+    }
+    // Read old opcode
+    let mut breakpoint = address_old_opcode {
+        address,
+        old_opcode: [0, 0, 0, 0],
+    };
+    // store breakpoint
+    let aligned_address: u32 = address & !MAX_SECTOR_SIZE;
+    let offset: u32 = address - aligned_address;
+    let offset_u: usize = offset as usize;
+    let bf = get_temp_buffer();
+    if !(bmp::bmp_read_mem(aligned_address, bf)) {
+        bmplog!("cant read old sw value\n");
+        return false;
+    }
+    // put new opcode
+    breakpoint.old_opcode[0] = bf[offset_u];
+    breakpoint.old_opcode[1] = bf[offset_u + 1];
+    patch_code(offset, bf);
+    if !bmp::bmp_mem_write(aligned_address, bf) {
+        bmplog!("cant write new sw value\n");
+        return false;
+    }
+    // add to list
+    get_list_ref().breakpoint.push(breakpoint);
+    true
+}
+/*
+ *
+ */
+pub fn remove_mw_breakpoint(address: u32, _len: u32) -> bool {
+    let index = match get_list_ref().lookup_index(address) {
+        None => return true, // all done
+        Some(index) => index,
+    };
+    // put back the old code
+    let aligned_address: u32 = address & !MAX_SECTOR_SIZE;
+    let offset = address - aligned_address;
+    let offset_u: usize = offset as usize;
+    let bf = get_temp_buffer();
+    if !(bmp::bmp_read_mem(aligned_address, bf)) {
+        bmplog!("cant read old mw value\n");
+        return false;
+    }
+    let bk = get_list_ref().at(index);
+
+    bf[offset_u] = bk.old_opcode[0];
+    bf[offset_u + 1] = bk.old_opcode[1];
+    if !bmp::bmp_mem_write(aligned_address, bf) {
+        bmplog!("cant restore old sw value\n");
+    }
+    // remove X from list
+    get_list_ref().breakpoint.remove(index);
+    true
+}
+
 // EOF
