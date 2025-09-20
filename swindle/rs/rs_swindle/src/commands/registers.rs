@@ -34,7 +34,7 @@ pub extern "C" fn _g2() -> bool {
     let mut e = encoder::new();
 
     if regs.is_empty() {
-        encoder::simple_send("0000");
+        encoder::simple_send("00000000");
         return true;
     }
     e.begin();
