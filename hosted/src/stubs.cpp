@@ -21,6 +21,24 @@ void xAssert(int a)
     printf("******* FAILURE *********\n");
     exit(0);
 }
+extern "C" bool remote_v3_spi_init(const spi_bus_e bus)
+{
+    return false;
+}
+
+extern "C" bool remote_v3_spi_deinit(const spi_bus_e bus)
+{
+    return false;
+}
+extern "C" bool remote_v3_spi_chip_select(uint8_t device_select)
+{
+    return false;
+}
+extern "C" uint8_t remote_v3_spi_xfer(spi_bus_e bus, uint8_t value)
+{
+    return 0;
+}
+
 extern "C" void swindle_rtt_send_data_to_host(uint32_t index, uint32_t len, const uint8_t *data)
 {
 }

@@ -1,47 +1,49 @@
---- a/src/target/cortexm.c.org	2025-04-27 09:52:50.861324640 +0200
-+++ b/src/target/cortexm.c	2025-04-27 09:53:26.555236053 +0200
-@@ -547,7 +547,7 @@
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+index c4a80558..34d51379 100644
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -547,7 +547,7 @@ bool cortexm_probe(adiv5_access_port_s *ap)
  		PROBE(lpc11xx_probe); /* LPC1343 */
  		break;
  	}
 -#if CONFIG_BMDA == 0
-+#if DISABLED_CONFIG_BMDA == 0
++#if NOT_USED_HERE_CONFIG_BMDA == 0
  	gdb_outf("Please report unknown device with Designer 0x%x Part ID 0x%x\n", target->designer_code, target->part_id);
  #else
  	DEBUG_WARN(
-@@ -669,7 +669,7 @@
+@@ -680,7 +680,7 @@ static void cortexm_regs_read(target_s *const target, void *const data)
  {
  	uint32_t *regs = data;
  	adiv5_access_port_s *const ap = cortex_ap(target);
 -#if CONFIG_BMDA == 1
-+#if DISABLED_CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	if (ap->dp->ap_regs_read && ap->dp->ap_reg_read) {
  		uint32_t core_regs[21U];
  		ap->dp->ap_regs_read(ap, core_regs);
-@@ -709,7 +709,7 @@
- 			cortexm_read_reg_sequence(ap->dp, CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf, regs);
+@@ -725,7 +725,7 @@ static void cortexm_regs_read(target_s *const target, void *const data)
  			regs += CORTEX_FLOAT_REG_COUNT;
+ 			// /MEANX
  		}
 -#if CONFIG_BMDA == 1
-+#if DISABLED_CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	}
  #endif
  }
-@@ -726,7 +726,7 @@
+@@ -734,7 +734,7 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
  {
- 	const uint32_t *regs = data;
+ 	const uint32_t *regs = data; // meanx
  	adiv5_access_port_s *const ap = cortex_ap(target);
 -#if CONFIG_BMDA == 1
-+#if DISABLED_CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	if (ap->dp->ap_reg_write) {
  		for (size_t i = 0; i < CORTEXM_GENERAL_REG_COUNT; ++i)
  			ap->dp->ap_reg_write(ap, regnum_cortex_m[i], regs[i]);
-@@ -763,7 +763,7 @@
+@@ -771,7 +771,7 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
  			cortexm_write_reg_sequence(ap->dp, CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf, regs);
  			regs += CORTEX_FLOAT_REG_COUNT;
  		}
 -#if CONFIG_BMDA == 1
-+#if DISABLED_CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	}
  #endif
  }

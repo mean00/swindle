@@ -31,5 +31,13 @@ extern "C"
     void morse(const char *const msg, const bool repeat)
     {
     }
+    bool onboard_flash_scan(void)
+    {
+        return false;
+    }
+    bool ch32v003x_probe(target_s *const target)
+    {
+        return false;
+    }
 }
 // EOF
