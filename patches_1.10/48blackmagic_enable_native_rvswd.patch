@@ -1,0 +1,22 @@
+diff --git a/src/command.c b/src/command.c
+index 83233e33..b437c5ff 100644
+--- a/src/command.c
++++ b/src/command.c
+@@ -96,6 +96,8 @@ static bool cmd_debug_bmp(target_s *target, int argc, const char **argv);
+ static bool cmd_shutdown_bmda(target_s *target, int argc, const char **argv);
+ #endif
+ 
++extern bool rvswd_scan();
++
+ #ifdef _MSC_VER
+ #define strtok_r strtok_s
+ #endif
+@@ -370,7 +372,7 @@ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv)
+ #if CONFIG_BMDA == 1
+ 		scan_result = bmda_rvswd_scan();
+ #else
+-		scan_result = false;
++		scan_result = rvswd_scan();
+ #endif
+ 	}
+ 	CATCH () {
