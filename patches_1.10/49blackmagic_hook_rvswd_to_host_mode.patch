@@ -1,0 +1,25 @@
+diff --git a/src/platforms/hosted/platform.c b/src/platforms/hosted/platform.c
+index 1b5dfa5d..0307a0fe 100644
+--- a/src/platforms/hosted/platform.c
++++ b/src/platforms/hosted/platform.c
+@@ -69,6 +69,7 @@ swd_proc_s swd_proc;
+ static uint32_t max_frequency = 4000000U;
+ 
+ static bmda_cli_options_s cl_opts;
++extern bool bmda_rvswd_scan2(void);
+ 
+ void bmda_display_probe(void)
+ {
+@@ -323,9 +324,12 @@ bool bmda_jtag_init(void)
+ bool bmda_rvswd_scan(void)
+ {
+ 	bmda_probe_info.is_jtag = false;
++	return bmda_rvswd_scan2();
+ 
+ 	switch (bmda_probe_info.type) {
+ #if HOSTED_BMP_ONLY == 0
++	case PROBE_TYPE_BMP:
++		return bmda_rvswd_scan2();
+ 	case PROBE_TYPE_WCHLINK:
+ 		return wchlink_rvswd_scan();
+ #endif

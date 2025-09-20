@@ -39,7 +39,8 @@ APPLY_PATCH_IF_NEEDED5(patched44 44blackmagic_gd32_crc32.patch                  
 APPLY_PATCH_IF_NEEDED5(patched45 45blackmagic_disable_bmda_read_regs.patch       "disable shortcut for read/write register in hosted mode.")
 APPLY_PATCH_IF_NEEDED5(patched46 46blackmagic_rp2040_crc32.patch                 "use RP2040 DMA to compute GDB CRC32")
 APPLY_PATCH_IF_NEEDED5(patched47 47blackmagic_tweak_options.patch                "patch option field after probe")
-APPLY_PATCH_IF_NEEDED5(patched48 48blackmagic_enable_native_rvswd.patch          "enable rvswd for natice mode")
+APPLY_PATCH_IF_NEEDED5(patched48 48blackmagic_enable_native_rvswd.patch          "enable rvswd for native mode")
+APPLY_PATCH_IF_NEEDED5(patched49 49blackmagic_hook_rvswd_to_host_mode.patch      "enable rvswd for hosted mode")
 
 
 string(JOIN " " pretty ${already_patched})

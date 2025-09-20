@@ -139,7 +139,7 @@ bool bmda_rv_dm_probe(uint32_t *chip_id)
  * @return true
  * @return false
  */
-bool bmda_rvswd_scan()
+bool bmda_rvswd_scan2()
 {
 
     target_list_free();
