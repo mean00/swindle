@@ -1,7 +1,8 @@
 
+#include "stdbool.h"
 #include "stdint.h"
 typedef void target_s;
-typedef int bool;
+// typedef int bool;
 
 bool bmp_custom_crc32_c(uint32_t adr, uint32_t size_in_bytes, uint32_t *crc);
 const unsigned char *bmp_get_driver_name_c();
@@ -131,4 +132,5 @@ bool bmp_try_c();
 int bmp_catch_c();
 void bmp_enable_reset_pin_c(bool enabled);
 void bmp_breakpoint_watchpoint_count_c(uint32_t *brk, uint32_t *wtch);
+bool bmp_has_hw_breakpoint_c();
 // EOF

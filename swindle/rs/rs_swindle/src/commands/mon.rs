@@ -857,20 +857,20 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 #[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
-    unsafe { platform_nrst_set_val_internal(ret as u32) };
+    unsafe { platform_nrst_set_val_internal(ret) };
     encoder::reply_ok();
     gdb_print!("reset pin is now {} \n", ret);
     true
 }
 unsafe extern "C" {
-    pub fn platform_nrst_set_val_internal(set: u32);
+    pub fn platform_nrst_set_val_internal(set: bool);
 }
 fn set_nrst(set: bool) {
     let d: u32 = match set {
         false => 0,
         _ => 1,
     };
-    unsafe { platform_nrst_set_val_internal(d) };
+    unsafe { platform_nrst_set_val_internal(d != 0) };
 }
 #[unsafe(no_mangle)]
 #[cfg(not(feature = "hosted"))]

@@ -93,6 +93,9 @@ pub const __int_fast16_t_defined: u32 = 1;
 pub const __int_fast32_t_defined: u32 = 1;
 pub const __int_fast64_t_defined: u32 = 1;
 pub const WINT_MIN: u32 = 0;
+pub const __bool_true_false_are_defined: u32 = 1;
+pub const true_: u32 = 1;
+pub const false_: u32 = 0;
 pub type __int8_t = cty::c_schar;
 pub type __uint8_t = cty::c_uchar;
 pub type __int16_t = cty::c_short;
@@ -132,19 +135,18 @@ pub type uint_fast32_t = cty::c_uint;
 pub type int_fast64_t = cty::c_longlong;
 pub type uint_fast64_t = cty::c_ulonglong;
 pub type target_s = cty::c_void;
-pub type bool_ = cty::c_int;
 unsafe extern "C" {
     pub fn bmp_custom_crc32_c(
         adr: cty::c_uint,
         size_in_bytes: cty::c_uint,
         crc: *mut cty::c_uint,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_get_driver_name_c() -> *const cty::c_uchar;
 }
 unsafe extern "C" {
-    pub fn bmp_ch32v3xx_write_user_option_byte_c(memory_conf: u8) -> bool_;
+    pub fn bmp_ch32v3xx_write_user_option_byte_c(memory_conf: u8) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_ch32v3xx_read_user_option_byte_c() -> u8;
@@ -166,14 +168,14 @@ unsafe extern "C" {
         t: *const target_s,
         argc: cty::c_int,
         argv: *mut *const cty::c_uchar,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
     pub fn cmd_rvswd_scan(
         t: *const target_s,
         argc: cty::c_int,
         argv: *mut *const cty::c_uchar,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
     pub fn target_breakpoint_watchpoint_count(
@@ -183,16 +185,16 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn bmp_attach_c(target: cty::c_uint) -> bool_;
+    pub fn bmp_attach_c(target: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_detach_c(target: cty::c_uint) -> bool_;
+    pub fn bmp_detach_c(target: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_attached_c() -> bool_;
+    pub fn bmp_attached_c() -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_is_riscv_c() -> bool_;
+    pub fn bmp_is_riscv_c() -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_map_count_c(kind: cty::c_uint) -> cty::c_int;
@@ -204,22 +206,22 @@ unsafe extern "C" {
         start: *mut cty::c_uint,
         size: *mut cty::c_uint,
         blockSize: *mut cty::c_uint,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_registers_count_c() -> cty::c_uint;
 }
 unsafe extern "C" {
-    pub fn bmp_read_register_c(reg: cty::c_uint, val: *mut cty::c_uint) -> bool_;
+    pub fn bmp_read_register_c(reg: cty::c_uint, val: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_read_registers_c(val: *mut cty::c_uint) -> bool_;
+    pub fn bmp_read_registers_c(val: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_read_all_registers_c(regs: *mut cty::c_uint) -> bool_;
+    pub fn bmp_read_all_registers_c(regs: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_write_all_registers_c(regs: *const cty::c_uint) -> bool_;
+    pub fn bmp_write_all_registers_c(regs: *const cty::c_uint) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_target_description_c() -> *const cty::c_uchar;
@@ -228,51 +230,48 @@ unsafe extern "C" {
     pub fn bmp_target_description_clear_c();
 }
 unsafe extern "C" {
-    pub fn bmp_write_reg_c(reg: cty::c_uint, value: cty::c_uint) -> bool_;
+    pub fn bmp_write_reg_c(reg: cty::c_uint, value: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_read_reg_c(reg: cty::c_uint, value: *mut cty::c_uint) -> bool_;
+    pub fn bmp_read_reg_c(reg: cty::c_uint, value: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_get_cpuid_c() -> cty::c_uint;
 }
 unsafe extern "C" {
-    pub fn bmp_flash_erase_c(addr: cty::c_uint, length: cty::c_uint) -> bool_;
+    pub fn bmp_flash_erase_c(addr: cty::c_uint, length: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_flash_write_c(addr: cty::c_uint, length: cty::c_uint, data: *const u8) -> bool_;
+    pub fn bmp_flash_write_c(addr: cty::c_uint, length: cty::c_uint, data: *const u8) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_flash_complete_c() -> bool_;
+    pub fn bmp_flash_complete_c() -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_get_target_voltage_c() -> f32;
 }
 unsafe extern "C" {
-    pub fn bmp_mem_read_c(addr: cty::c_uint, length: cty::c_uint, data: *mut u8) -> bool_;
+    pub fn bmp_mem_read_c(addr: cty::c_uint, length: cty::c_uint, data: *mut u8) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_crc32_c(address: cty::c_uint, length: cty::c_uint, crc: *mut cty::c_uint) -> bool_;
+    pub fn bmp_crc32_c(address: cty::c_uint, length: cty::c_uint, crc: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_reset_target_c() -> bool_;
+    pub fn bmp_reset_target_c() -> bool;
 }
 unsafe extern "C" {
     pub fn rv_dm_start_c();
 }
 unsafe extern "C" {
-    pub fn bmp_add_breakpoint_c(
-        type_: cty::c_uint,
-        address: cty::c_uint,
-        len: cty::c_uint,
-    ) -> bool_;
+    pub fn bmp_add_breakpoint_c(type_: cty::c_uint, address: cty::c_uint, len: cty::c_uint)
+        -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_remove_breakpoint_c(
         type_: cty::c_uint,
         address: cty::c_uint,
         len: cty::c_uint,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
     pub fn riscv_list_csr(
@@ -282,35 +281,35 @@ unsafe extern "C" {
     ) -> cty::c_uint;
 }
 unsafe extern "C" {
-    pub fn bmp_target_halt_resume_c(step: bool_) -> bool_;
+    pub fn bmp_target_halt_resume_c(step: bool) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_target_halt_c() -> bool_;
+    pub fn bmp_target_halt_c() -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_poll_target_c(watchpoint: *mut cty::c_uint) -> cty::c_uint;
 }
 unsafe extern "C" {
-    pub fn bmp_rpc_init_swd_c() -> bool_;
+    pub fn bmp_rpc_init_swd_c() -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_rpc_swd_in_c(value: *mut cty::c_uint, nb_bits: cty::c_uint) -> bool_;
+    pub fn bmp_rpc_swd_in_c(value: *mut cty::c_uint, nb_bits: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_rpc_swd_in_par_c(
         value: *mut cty::c_uint,
-        par: *mut bool_,
+        par: *mut bool,
         nb_bits: cty::c_uint,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_rpc_swd_out_c(value: cty::c_uint, nb_bits: cty::c_uint) -> bool_;
+    pub fn bmp_rpc_swd_out_c(value: cty::c_uint, nb_bits: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_rpc_swd_out_par_c(value: cty::c_uint, nb_bits: cty::c_uint) -> bool_;
+    pub fn bmp_rpc_swd_out_par_c(value: cty::c_uint, nb_bits: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_mem_write_c(address: cty::c_uint, len: cty::c_uint, data: *const u8) -> bool_;
+    pub fn bmp_mem_write_c(address: cty::c_uint, len: cty::c_uint, data: *const u8) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_adiv5_full_dp_read_c(
@@ -319,7 +318,7 @@ unsafe extern "C" {
         address: u16,
         err: *mut i32,
         value: *mut cty::c_uint,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_adiv5_full_dp_low_level_c(
@@ -329,7 +328,7 @@ unsafe extern "C" {
         value: cty::c_uint,
         err: *mut i32,
         outvalue: *mut cty::c_uint,
-    ) -> bool_;
+    ) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_adiv5_ap_read_c(
@@ -368,22 +367,22 @@ unsafe extern "C" {
     ) -> i32;
 }
 unsafe extern "C" {
-    pub fn swindleRedirectLog_c(onoff: bool_);
+    pub fn swindleRedirectLog_c(onoff: bool);
 }
 unsafe extern "C" {
-    pub fn platform_nrst_set_val_internal(assert: bool_);
+    pub fn platform_nrst_set_val_internal(assert: bool);
 }
 unsafe extern "C" {
-    pub fn platform_nrst_set_val(assert: bool_);
+    pub fn platform_nrst_set_val(assert: bool);
 }
 unsafe extern "C" {
-    pub fn platform_nrst_get_val() -> bool_;
+    pub fn platform_nrst_get_val() -> bool;
 }
 unsafe extern "C" {
     pub fn platform_target_voltage() -> *const cty::c_uchar;
 }
 unsafe extern "C" {
-    pub fn platform_target_clk_output_enable(enable: bool_);
+    pub fn platform_target_clk_output_enable(enable: bool);
 }
 unsafe extern "C" {
     pub fn Logger2(n: cty::c_int, fmt: *const cty::c_uchar);
@@ -407,7 +406,7 @@ unsafe extern "C" {
     pub fn bmp_get_version_string() -> *const cty::c_uchar;
 }
 unsafe extern "C" {
-    pub fn bmp_mon_c(str_: *const cty::c_uchar) -> bool_;
+    pub fn bmp_mon_c(str_: *const cty::c_uchar) -> bool;
 }
 unsafe extern "C" {
     pub fn free_heap_c() -> cty::c_uint;
@@ -416,16 +415,16 @@ unsafe extern "C" {
     pub fn min_free_heap_c() -> cty::c_uint;
 }
 unsafe extern "C" {
-    pub fn bmp_rv_dm_read_c(adr: u8, value: *mut cty::c_uint) -> bool_;
+    pub fn bmp_rv_dm_read_c(adr: u8, value: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_rv_dm_write_c(adr: u8, value: cty::c_uint) -> bool_;
+    pub fn bmp_rv_dm_write_c(adr: u8, value: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_rv_dm_reset_c() -> bool_;
+    pub fn bmp_rv_dm_reset_c() -> bool;
 }
 unsafe extern "C" {
-    pub fn bmp_rv_rvswd_probe_c(id: *mut cty::c_uint) -> bool_;
+    pub fn bmp_rv_rvswd_probe_c(id: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
     pub fn platform_buffer_read(data: *mut u8, maxsize: cty::c_int) -> cty::c_int;
@@ -443,7 +442,7 @@ unsafe extern "C" {
     pub fn bmp_clear_dp_fault_c();
 }
 unsafe extern "C" {
-    pub fn bmp_adiv5_swd_write_no_check_c(addr: u16, data: cty::c_uint) -> bool_;
+    pub fn bmp_adiv5_swd_write_no_check_c(addr: u16, data: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_adiv5_swd_read_no_check_c(addr: u16) -> cty::c_uint;
@@ -485,14 +484,17 @@ unsafe extern "C" {
     pub fn bmp_raise_exception_c();
 }
 unsafe extern "C" {
-    pub fn bmp_try_c() -> bool_;
+    pub fn bmp_try_c() -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_catch_c() -> cty::c_int;
 }
 unsafe extern "C" {
-    pub fn bmp_enable_reset_pin_c(enabled: bool_);
+    pub fn bmp_enable_reset_pin_c(enabled: bool);
 }
 unsafe extern "C" {
     pub fn bmp_breakpoint_watchpoint_count_c(brk: *mut cty::c_uint, wtch: *mut cty::c_uint);
+}
+unsafe extern "C" {
+    pub fn bmp_has_hw_breakpoint_c() -> bool;
 }

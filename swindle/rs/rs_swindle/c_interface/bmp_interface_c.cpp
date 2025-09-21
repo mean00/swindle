@@ -536,6 +536,12 @@ extern "C"
         *brk = 0;
         *wtch = 0;
     }
+    extern "C" bool bmp_has_hw_breakpoint_c()
+    {
+        if (!cur_target)
+            return true;
+        return target_has_hw_breakpoint(cur_target);
+    }
 
     /*
 
