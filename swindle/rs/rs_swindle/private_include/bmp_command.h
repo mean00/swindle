@@ -16,6 +16,7 @@ unsigned int bmp_get_frequency_c();        // this is used to set the clock on S
 
 bool cmd_swd_scan(const target_s *t, int argc, const unsigned char **argv);
 bool cmd_rvswd_scan(const target_s *t, int argc, const unsigned char **argv);
+void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
 
 bool bmp_attach_c(uint32_t target);
 bool bmp_detach_c(uint32_t target);
@@ -82,6 +83,7 @@ void swindleRedirectLog_c(bool onoff);
 
 // platform
 void platform_nrst_set_val_internal(bool assert);
+void platform_nrst_set_val(bool assert);
 bool platform_nrst_get_val();
 const unsigned char *platform_target_voltage(void);
 void platform_target_clk_output_enable(bool enable);
@@ -128,4 +130,5 @@ void bmp_raise_exception_c();
 bool bmp_try_c();
 int bmp_catch_c();
 void bmp_enable_reset_pin_c(bool enabled);
+void bmp_breakpoint_watchpoint_count_c(uint32_t *brk, uint32_t *wtch);
 // EOF

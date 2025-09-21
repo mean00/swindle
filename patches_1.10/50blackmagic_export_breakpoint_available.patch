@@ -1,0 +1,131 @@
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+index 34d51379..61c14c90 100644
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -78,6 +78,7 @@ static int cortexm_fault_unwind(target_s *target);
+ static int cortexm_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
+ static int cortexm_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
+ static target_addr_t cortexm_check_watch(target_s *target);
++static void cortexm_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ 
+ static bool cortexm_hostio_request(target_s *target);
+ 
+@@ -331,6 +332,7 @@ bool cortexm_probe(adiv5_access_port_s *ap)
+ 	target->check_error = cortex_check_error;
+ 	target->mem_read = cortexm_mem_read;
+ 	target->mem_write = cortexm_mem_write;
++	target->breakpoint_watchpoint_count = cortexm_breakpoint_watchpoint_count;
+ 
+ 	target->driver = "ARM Cortex-M";
+ 
+@@ -1190,6 +1192,13 @@ static uint32_t cortexm_dwtv2_func(target_breakwatch_e type, size_t len)
+ 	return value;
+ }
+ 
++void cortexm_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch)
++{
++	cortexm_priv_s *const priv = target->priv;
++	*brk = priv->base.breakpoints_available;
++	*wtch = priv->base.watchpoints_available;
++}
++
+ static int cortexm_breakpoint_set(target_s *const target, breakwatch_s *const breakwatch)
+ {
+ 	cortexm_priv_s *const priv = target->priv;
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 18b84694..58d3f4b4 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -70,6 +70,7 @@ static void riscv32_regs_write(target_s *target, const void *data);
+ 
+ static int riscv32_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
+ static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
++static void riscv32_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ 
+ bool riscv32_probe(target_s *const target)
+ {
+@@ -84,6 +85,7 @@ bool riscv32_probe(target_s *const target)
+ 	target->reg_read = riscv32_reg_read;
+ 	target->mem_read = riscv32_mem_read;
+ 	target->mem_write = riscv32_mem_write;
++	target->breakpoint_watchpoint_count = riscv32_breakpoint_watchpoint_count;
+ 
+ 	target->breakwatch_set = riscv32_breakwatch_set;
+ 	target->breakwatch_clear = riscv32_breakwatch_clear;
+@@ -762,3 +764,10 @@ bool riscv32_run_stub(
+ 	target->reg_write(target, RISCV_REG_PC, &pc, 4);
+ 	return ret;
+ }
++
++void riscv32_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch)
++{
++	riscv_hart_s *const hart = (riscv_hart_s *const)target->priv;
++	*brk = hart->triggers; // this is incorrect, triggers = watchpoint + breakpoint potentially
++	*wtch = 0;
++}
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 57dc3c44..0f686b5c 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -968,6 +968,10 @@ static void riscv_hart_discover_triggers(riscv_hart_s *const hart)
+ 		/* Now info's bottom 16 bits contain the supported trigger modes, so write this info to the slot in the hart */
+ 		hart->trigger_uses[trigger] = info;
+ 		DEBUG_TARGET("Hart trigger slot %" PRIu32 " modes: %04" PRIx32 "\n", trigger, info);
++		/* WCH use case, we have a debug unit but zero trigger, for example QingKe v4V found in CH32v20x */
++		if (hart->triggers == 1 && hart->trigger_uses[0] == 0) {
++			hart->triggers = 0;
++		}
+ 	}
+ }
+ 
+diff --git a/src/target/target.c b/src/target/target.c
+index ac37788c..d2cc88b1 100644
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -633,7 +633,7 @@ bool target_mem32_write8(target_s *target, target_addr32_t addr, uint8_t value)
+ void target_command_help(target_s *target)
+ {
+ 	for (const target_command_s *target_commands = target->commands; target_commands;
+-		 target_commands = target_commands->next) {
++		target_commands = target_commands->next) {
+ 		tc_printf(target, "%s specific commands:\n", target_commands->specific_name);
+ 		for (const command_s *command = target_commands->cmds; command->cmd; command++)
+ 			tc_printf(target, "\t%s -- %s\n", command->cmd, command->help);
+@@ -643,7 +643,7 @@ void target_command_help(target_s *target)
+ int target_command(target_s *target, int argc, const char *argv[])
+ {
+ 	for (const target_command_s *target_commands = target->commands; target_commands;
+-		 target_commands = target_commands->next) {
++		target_commands = target_commands->next) {
+ 		for (const command_s *command = target_commands->cmds; command->cmd; command++) {
+ 			if (!strncmp(argv[0], command->cmd, strlen(argv[0])))
+ 				return command->handler(target, argc, argv) ? 0 : 1;
+@@ -663,3 +663,13 @@ void tc_printf(target_s *target, const char *fmt, ...)
+ 	// MEANX fflush(stdout);
+ 	va_end(ap);
+ }
++
++void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch)
++{
++	if (target->breakpoint_watchpoint_count) {
++		target->breakpoint_watchpoint_count(target, brk, wtch);
++		return;
++	}
++	*brk = 0;
++	*wtch = 0;
++}
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+index 3b4a0095..61c6467b 100644
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -200,8 +200,10 @@ struct target {
+ 	 * fallback to AP partno
+ 	 */
+ 	uint16_t part_id;
++	void (*breakpoint_watchpoint_count)(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ };
+ 
++void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ void target_print_progress(platform_timeout_s *timeout);
+ void target_ram_map_free(target_s *target);
+ void target_flash_map_free(target_s *target);

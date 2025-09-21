@@ -176,6 +176,13 @@ unsafe extern "C" {
     ) -> bool_;
 }
 unsafe extern "C" {
+    pub fn target_breakpoint_watchpoint_count(
+        target: *mut target_s,
+        brk: *mut cty::c_uint,
+        wtch: *mut cty::c_uint,
+    );
+}
+unsafe extern "C" {
     pub fn bmp_attach_c(target: cty::c_uint) -> bool_;
 }
 unsafe extern "C" {
@@ -364,6 +371,9 @@ unsafe extern "C" {
     pub fn swindleRedirectLog_c(onoff: bool_);
 }
 unsafe extern "C" {
+    pub fn platform_nrst_set_val_internal(assert: bool_);
+}
+unsafe extern "C" {
     pub fn platform_nrst_set_val(assert: bool_);
 }
 unsafe extern "C" {
@@ -482,4 +492,7 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn bmp_enable_reset_pin_c(enabled: bool_);
+}
+unsafe extern "C" {
+    pub fn bmp_breakpoint_watchpoint_count_c(brk: *mut cty::c_uint, wtch: *mut cty::c_uint);
 }

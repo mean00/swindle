@@ -635,6 +635,14 @@ pub fn bmp_enable_reset_pin(enabled: bool) {
         rn_bmp_cmd_c::bmp_enable_reset_pin_c(enabled as i32);
     }
 }
+pub fn bmp_watchpoint_breakpoint_count() -> (u32, u32) {
+    unsafe {
+        let mut brk: u32 = 0;
+        let mut wtch: u32 = 0;
+        rn_bmp_cmd_c::bmp_breakpoint_watchpoint_count_c(&mut brk, &mut wtch);
+        (brk, wtch)
+    }
+}
 /*
  */
 // EOF

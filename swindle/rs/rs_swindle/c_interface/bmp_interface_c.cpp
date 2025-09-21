@@ -526,6 +526,17 @@ extern "C"
             *opt |= TOPT_INHIBIT_NRST;
         }
     }
+    extern "C" void bmp_breakpoint_watchpoint_count_c(uint32_t *brk, uint32_t *wtch)
+    {
+        if (cur_target)
+        {
+            target_breakpoint_watchpoint_count(cur_target, brk, wtch);
+            return;
+        }
+        *brk = 0;
+        *wtch = 0;
+    }
+
     /*
 
     z1,addr,kind’ insert hw breakpoint

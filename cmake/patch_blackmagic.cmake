@@ -41,6 +41,7 @@ APPLY_PATCH_IF_NEEDED5(patched46 46blackmagic_rp2040_crc32.patch                
 APPLY_PATCH_IF_NEEDED5(patched47 47blackmagic_tweak_options.patch                "patch option field after probe")
 APPLY_PATCH_IF_NEEDED5(patched48 48blackmagic_enable_native_rvswd.patch          "enable rvswd for native mode")
 APPLY_PATCH_IF_NEEDED5(patched49 49blackmagic_hook_rvswd_to_host_mode.patch      "enable rvswd for hosted mode")
+APPLY_PATCH_IF_NEEDED5(patched50 50blackmagic_export_breakpoint_available.patch  "export a helper function to query the # of hw breakoint/watchpoint")
 
 
 string(JOIN " " pretty ${already_patched})
