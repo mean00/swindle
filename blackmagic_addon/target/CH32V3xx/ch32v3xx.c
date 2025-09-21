@@ -114,6 +114,14 @@ static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash);
 static bool ch32v3x_flash_done_flashstub(target_flash_s *flash);
 static bool ch32v3xx_crc32(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32);
 
+static uint32_t small_ch32v3x_page_size(target_s *t);
+static bool small_ch32v3x_erase_page(target_s *target, uint32_t addr);
+static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, uint8_t *src, uint32_t page_size);
+
+static const sw_breakpoint_helpers ch32_sw_breakpoint_heper = {.page_size = small_ch32v3x_page_size,
+                                                               .page_erase = small_ch32v3x_erase_page,
+                                                               .write_page = small_ch32v3x_write_page};
+
 /*
  */
 static bool ch32v3x_fast_unlock(target_s *target)
@@ -342,6 +350,9 @@ bool ch32v3xx_probe(target_s *target)
         }
     }
     DEBUG_WARN("Finally, using CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
+    target->sw_breakpoint_helpers = &ch32_sw_breakpoint_heper;
+    target->no_hw_breakpoint = true;
+
     target_mem_map_free(target);
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
     ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size);
