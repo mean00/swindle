@@ -602,6 +602,12 @@ pub fn bmp_watchpoint_breakpoint_count() -> (u32, u32) {
 pub fn bmp_has_hw_breakpoint() -> bool {
     unsafe { rn_bmp_cmd_c::bmp_has_hw_breakpoint_c() }
 }
+pub fn bmp_has_mw_helpers() -> bool {
+    unsafe { rn_bmp_cmd_c::target_has_mw_helpers() }
+}
+pub fn bmp_overwrite_flash(address: u32, data: &[u8]) -> bool {
+    unsafe { rn_bmp_cmd_c::bmp_overwrite_flash_c(address, data.as_ptr(), data.len() as u32) }
+}
 /*
  */
 // EOF

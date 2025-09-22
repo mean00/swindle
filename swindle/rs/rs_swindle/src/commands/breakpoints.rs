@@ -8,6 +8,7 @@ use crate::parsing_util::ascii_string_hex_to_u32;
 
 crate::setup_log!(false);
 use crate::bmplog;
+use crate::sw_breakpoints::{add_mw_breakpoint, remove_mw_breakpoint};
 use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};
 
 /*
@@ -58,6 +59,21 @@ fn common_z(set: bool, args: &[&str]) -> bool {
     let address: u32 = ascii_string_hex_to_u32(args[1]);
     // ignore "kind"
     let len: u32 = 4;
+
+    if !bmp::bmp_has_hw_breakpoint() {
+        if !bmp::bmp_has_mw_helpers() {
+            encoder::reply_e01();
+            return true;
+        }
+
+        // mw breakpoint
+        if set {
+            encoder::reply_bool(add_mw_breakpoint(address));
+        } else {
+            encoder::reply_bool(remove_mw_breakpoint(address));
+        }
+        return true;
+    }
 
     if set
     // add

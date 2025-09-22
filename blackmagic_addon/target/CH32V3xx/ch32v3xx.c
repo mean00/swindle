@@ -116,11 +116,11 @@ static bool ch32v3xx_crc32(target_s *target, target_addr32_t start_adress, size_
 
 static uint32_t small_ch32v3x_page_size(target_s *t);
 static bool small_ch32v3x_erase_page(target_s *target, uint32_t addr);
-static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, uint8_t *src, uint32_t page_size);
+static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size);
 
 static const sw_breakpoint_helpers ch32_sw_breakpoint_heper = {.page_size = small_ch32v3x_page_size,
                                                                .page_erase = small_ch32v3x_erase_page,
-                                                               .write_page = small_ch32v3x_write_page};
+                                                               .page_write = small_ch32v3x_write_page};
 
 /*
  */
@@ -477,14 +477,24 @@ static uint32_t small_ch32v3x_page_size(target_s *t)
 /*
  *
  */
+static void small_set_ctl(target_s *target, uint32_t flag)
+{
+    uint32_t ctl = READ_FLASH_REG(target, CTLR);
+    ctl |= flag;
+    WRITE_FLASH_REG(target, CTLR, ctl);
+}
+/*
+ *
+ */
 static bool small_ch32v3x_erase_page(target_s *target, uint32_t addr)
 {
     //(void);
+    addr |= FLASH_OFFSET;
     ch32v3x_fast_unlock(target);
     uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    WRITE_FLASH_REG(target, CTLR, ctl + CH32V3XX_FMC_CTL_CH32_FASTERASE);
+    small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTERASE);
     WRITE_FLASH_REG(target, ADDR, addr);
-    WRITE_FLASH_REG(target, CTLR, ctl + CH32V3XX_FMC_CTL_CH32_FASTERASE + CH32V3XX_FMC_CTL_START);
+    small_set_ctl(target, CH32V3XX_FMC_CTL_START);
     bool r = small_ch32v3x_wait_not_busy(target);
     WRITE_FLASH_REG(target, CTLR, ctl);
     return r;
@@ -492,26 +502,29 @@ static bool small_ch32v3x_erase_page(target_s *target, uint32_t addr)
 /*
  *
  */
-static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, uint8_t *src, uint32_t page_size)
+static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size)
 {
+    addr |= FLASH_OFFSET;
     if (page_size != 256)
         return false;
     //
+    bool r = true;
     ch32v3x_fast_unlock(target);
     uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    WRITE_FLASH_REG(target, CTLR, ctl + CH32V3XX_FMC_CTL_CH32_FASTPROGRAM);
-
+    uint32_t origin_ctl = ctl;
+    small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTPROGRAM);
+    small_ch32v3x_wait_not_busy(target);
     // prefill write cache, we write 256 bytes at a time
     for (int i = 0; i < 64; i++)
     {
         uint32_t data32 = (src[0]) + (src[1] << 8) + (src[2] << 16) + (src[3] << 24);
         target_mem32_write32(target, addr, data32);
         addr += 4;
+        src += 4;
         small_ch32v3x_wait_not_wr_busy(target);
     }
     // and flush
-    WRITE_FLASH_REG(target, CTLR,
-                    ctl + CH32V3XX_FMC_CTL_CH32_FASTPROGRAM + CH32V3XX_FMC_CTL_CH32_FASTSTART); // and go
+    small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTSTART);
     small_ch32v3x_wait_not_busy(target);
     ctl = READ_FLASH_REG(target, CTLR);
     ctl &= ~CH32V3XX_FMC_CTL_PG;
@@ -520,13 +533,17 @@ static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, uint8_t *s
     uint32_t stat = READ_FLASH_REG(target, STATR);
     if (stat & (CH32V3XX_FMC_STAT_PG_ERR + CH32V3XX_FMC_STAT_WP_ERR))
     {
+        r = false;
         WRITE_FLASH_REG(target, STATR,
                         stat | (CH32V3XX_FMC_STAT_PG_ERR + CH32V3XX_FMC_STAT_WP_ERR)); // clear error
     }
-    WRITE_FLASH_REG(target, STATR,
-                    stat | CH32V3XX_FMC_STAT_WP_ENDF); // done tODO TODO
-    WRITE_FLASH_REG(target, CTLR, ctl);
-    return true;
+    else
+    {
+        WRITE_FLASH_REG(target, STATR,
+                        stat | CH32V3XX_FMC_STAT_WP_ENDF); // done tODO TODO
+    }
+    WRITE_FLASH_REG(target, CTLR, origin_ctl);
+    return r;
 }
 
 // EOF

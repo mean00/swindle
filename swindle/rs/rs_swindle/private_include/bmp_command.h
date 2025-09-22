@@ -133,4 +133,7 @@ int bmp_catch_c();
 void bmp_enable_reset_pin_c(bool enabled);
 void bmp_breakpoint_watchpoint_count_c(uint32_t *brk, uint32_t *wtch);
 bool bmp_has_hw_breakpoint_c();
+bool target_has_mw_helpers(void);
+bool bmp_overwrite_flash_c(uint32_t address, const uint8_t *data, uint32_t len);
+
 // EOF
