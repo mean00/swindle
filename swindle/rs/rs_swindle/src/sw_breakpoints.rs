@@ -184,10 +184,10 @@ pub fn add_mw_breakpoint(address: u32) -> bool {
         old_opcode: [0, 0, 0, 0],
     };
     // store breakpoint
-    let aligned_address: u32 = address & !(MAX_SECTOR_SIZE - 1);
+    let page_size = bmp::bmp_get_mw_page_size();
+    let aligned_address: u32 = address & !(page_size - 1);
     let offset: u32 = address - aligned_address;
     let offset_u: usize = offset as usize;
-    let page_size = 256;
     let bf = get_temp_buffer(page_size);
     if !(bmp::bmp_read_mem(aligned_address, bf)) {
         bmplog!("cant read old sw value\n");
@@ -214,10 +214,10 @@ pub fn remove_mw_breakpoint(address: u32) -> bool {
         Some(index) => index,
     };
     // put back the old code
-    let aligned_address: u32 = address & !(MAX_SECTOR_SIZE - 1);
+    let page_size = bmp::bmp_get_mw_page_size();
+    let aligned_address: u32 = address & !(page_size - 1);
     let offset = address - aligned_address;
     let offset_u: usize = offset as usize;
-    let page_size = 256;
     let bf = get_temp_buffer(page_size);
     if !(bmp::bmp_read_mem(aligned_address, bf)) {
         bmplog!("cant read old mw value\n");

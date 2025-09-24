@@ -504,3 +504,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn bmp_overwrite_flash_c(address: cty::c_uint, data: *const u8, len: cty::c_uint) -> bool;
 }
+unsafe extern "C" {
+    pub fn target_mw_page_size() -> cty::c_uint;
+}

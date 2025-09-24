@@ -620,5 +620,23 @@ extern "C" bool target_has_mw_helpers(void)
     }
     return target_get_mw_helpers(cur_target) != NULL;
 }
+/*
+ *
+ */
+extern "C" uint32_t target_mw_page_size(void)
+{
+    if (!cur_target)
+    {
+        Logger("No target \n");
+        return 0;
+    }
+    const sw_breakpoint_helpers *helpers = target_get_mw_helpers(cur_target);
+    if (!helpers)
+    {
+        Logger("No helper \n");
+        return 0;
+    }
+    return helpers->page_size(cur_target);
+}
 
 // EOF

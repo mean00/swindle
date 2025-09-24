@@ -608,6 +608,11 @@ pub fn bmp_has_mw_helpers() -> bool {
 pub fn bmp_overwrite_flash(address: u32, data: &[u8]) -> bool {
     unsafe { rn_bmp_cmd_c::bmp_overwrite_flash_c(address, data.as_ptr(), data.len() as u32) }
 }
+//
+pub fn bmp_get_mw_page_size() -> u32 {
+    unsafe { rn_bmp_cmd_c::target_mw_page_size() }
+}
+
 /*
  */
 // EOF
