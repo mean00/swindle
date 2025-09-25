@@ -1,0 +1,74 @@
+diff --git a/src/target/target.c b/src/target/target.c
+index d2cc88b1..ffca4e9d 100644
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -673,3 +673,15 @@ void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, u
+ 	*brk = 0;
+ 	*wtch = 0;
+ }
++
++bool target_has_hw_breakpoint(target_s *const target)
++{
++	return !target->no_hw_breakpoint;
++}
++
++const sw_breakpoint_helpers *target_get_mw_helpers(target_s *const target)
++{
++	return target->sw_breakpoint_helpers;
++}
++
++// EOF
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+index 61c6467b..8565af4a 100644
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -121,6 +121,23 @@ struct breakwatch {
+ 
+ typedef void (*priv_free_func)(void *flash);
+ 
++/* 
++ * These option functions are meant to be used by software breakpoint.
++ * In particular they should aim at miminal write size (page) and
++ * they must not disturb too much the target. NO FLASHSTUB 
++ */
++struct sw_breakpoint_helpers_s {
++	uint32_t (*page_size)(target_s *t);
++	bool (*page_erase)(target_s *target, uint32_t addr);
++	bool (*page_write)(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size);
++};
++
++typedef struct sw_breakpoint_helpers_s sw_breakpoint_helpers;
++
++/*
++ *
++ */
++
+ struct target {
+ 	target_controller_s *tc;
+ 
+@@ -160,8 +177,11 @@ struct target {
+ 	bool (*enter_flash_mode)(target_s *target);
+ 	bool (*exit_flash_mode)(target_s *target);
+ 
+-	/* CRC32 function */
++	/* MEANX BLOCK CRC32 function */
+ 	bool (*crc32)(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32);
++	const sw_breakpoint_helpers *sw_breakpoint_helpers;
++	bool no_hw_breakpoint;
++	void (*breakpoint_watchpoint_count)(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ 
+ 	/* Target-defined options */
+ 	uint32_t target_options;
+@@ -200,10 +220,11 @@ struct target {
+ 	 * fallback to AP partno
+ 	 */
+ 	uint16_t part_id;
+-	void (*breakpoint_watchpoint_count)(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ };
+ 
++const sw_breakpoint_helpers *target_get_mw_helpers(target_s *const target);
+ void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
++bool target_has_hw_breakpoint(target_s *const target);
+ void target_print_progress(platform_timeout_s *timeout);
+ void target_ram_map_free(target_s *target);
+ void target_flash_map_free(target_s *target);
