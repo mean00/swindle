@@ -74,7 +74,10 @@ endif()
 #
 # ===========================================================================================
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
-ADD_SUBDIRECTORY( rs )
+IF(LN_EXTERNAL_RUST)
+ELSE()
+  ADD_SUBDIRECTORY( rs )
+ENDIF()
 # ===========================================================================================
 
 ADD_LIBRARY(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE} )
