@@ -18,13 +18,15 @@ SET(BRIDGE_SRCS
                 ${B}/bmp_tap.cpp
                 CACHE INTERNAL ""
                 )
-IF(NOT LN_SWINDLE_AS_EXTERNAL)
-  LIST( APPEND BRIDGE_SRCS ${B}/bmp_serial.cpp
+IF(SWINDLE_USE_USB)
+  IF(NOT LN_SWINDLE_AS_EXTERNAL)
+    LIST( APPEND BRIDGE_SRCS ${B}/bmp_serial.cpp
                 ${B}/bmp_adc${EXTRA}.cpp
                 ${B}/bmp_rs_gdb.cpp
   )
-  IF("${LN_USB_NB_CDC}" STREQUAL "3")
-    SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
+    IF("${LN_USB_NB_CDC}" STREQUAL "3")
+      SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
+    ENDIF()
   ENDIF()
 ENDIF()
 # #
