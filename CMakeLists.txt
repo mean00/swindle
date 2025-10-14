@@ -16,6 +16,8 @@ OPTION(USE_WS2812        "Use WS2812 RGB LED " OFF)
 OPTION(USE_INVERTED_NRST    "Inverted Reset signal (with a mosfet)" OFF)
 OPTION(USE_48PIN_PACKAGE "Use bluepill chip in 48 pins package (GD3/CH32)" OFF)
 OPTION(USE_64PIN_PACKAGE "Use bluepill chip in 64 pins package (GD3/CH32)" OFF)
+OPTION(SWINDLE_USE_USB "Use USB interface" ON)
+OPTION(SWINDLE_USE_NETWORK "Use tcp/ip interface" OFF)
 #
 set(BMP_VERSION_BRANCH 1.10)
 set(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
@@ -43,24 +45,29 @@ ENDIF()
 IF(USE_WS2812)
   SET(EXTRA_WS2812 "_ws2812")
 ENDIF()
+# USB..
+IF(SWINDLE_USE_USB)
+  IF(USE_CH32V3x)
+    set(USE_CH32v3x_USB_OTG True CACHE INTERNAL "")
+  ENDIF()
+  #___________________________________________________
+  IF(NOT LN_EXTERNAL_TUSBD)
+    set(LN_ENABLE_USBD  TRUE  CACHE INTERNAL "")
+  ENDIF()
+  # tiny USB configuration
+  set(LN_USB_NB_HID 0) # No HID
+  set(LN_USB_DFU_RUNTIME 1 CACHE INTERNAL "")
 
-IF(USE_CH32V3x)
-  set(USE_CH32v3x_USB_OTG True CACHE INTERNAL "")
+  set(LN_USB_BUFFER_SIZE 256 CACHE INTERNAL "") # increase usb cdc buffer size
+ELSE()
+  set(LN_ENABLE_USBD  FALSE  CACHE INTERNAL "")
 ENDIF()
-#___________________________________________________
-IF(NOT LN_EXTERNAL_TUSBD)
-  set(LN_ENABLE_USBD  TRUE  CACHE INTERNAL "")
-ENDIF()
+# /USB..
 set(LN_ENABLE_I2C   FALSE CACHE INTERNAL "")
 set(LN_ENABLE_SPI   FALSE CACHE INTERNAL "")
 set(LN_ENABLE_UART  TRUE  CACHE INTERNAL "")
 set(LN_ENABLE_RUST  TRUE  CACHE INTERNAL "")
 
-# tiny USB configuration
-set(LN_USB_NB_HID 0) # No HID
-set(LN_USB_DFU_RUNTIME 1 CACHE INTERNAL "")
-
-set(LN_USB_BUFFER_SIZE 256 CACHE INTERNAL "") # increase usb cdc buffer size
 #___________________________________________________
 
 #set(USE_RP2040_PURE_RAM True CACHE INTERNAL "")
@@ -104,9 +111,11 @@ ADD_SUBDIRECTORY(${ESPRIT_ROOT})
 
 INCLUDE(${ESPRIT_ROOT}/setup.cmake)
 
-IF(NOT LN_EXTERNAL_TUSBD)
-  USE_LIBRARY(tinyUsb)
-  INCLUDE(${ESPRIT_ROOT}/libraries/tinyUsb/tiny.cmake)
+IF(SWINDLE_USE_USB)
+  IF(NOT LN_EXTERNAL_TUSBD)
+    USE_LIBRARY(tinyUsb)
+    INCLUDE(${ESPRIT_ROOT}/libraries/tinyUsb/tiny.cmake)
+  ENDIF()
 ENDIF()
 #__________________________________________________________________
 #

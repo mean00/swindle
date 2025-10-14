@@ -12,7 +12,8 @@ hosted = []
 
 [dependencies]
 cty = "0.2.2"
-rust_esprit = { path = "../../../esprit/rust/rust_esprit", features = ["cdc"] , optional = true}
+#rust_esprit = { path = "../../../esprit/rust/rust_esprit", features = ["cdc"] , optional = true}
+rust_esprit = { path = "../../../esprit/rust/rust_esprit", optional = true }
 ufmt = "*"
 heapless = { version = "*", features = ["ufmt-impl"] }
 numtoa = {version = "0.3.0"}
