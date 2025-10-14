@@ -39,6 +39,13 @@ endif()
 IF(NOT USE_NO_DEFAULT)
   INCLUDE(./build_default.cmake)
 ENDIF()
+# Consistency check
+if(SWINDLE_USE_USB AND SWINDLE_USE_NETWORK)
+  MESSAGE(FATAL_ERROR "Please Select usb or network")
+endif()
+if(NOT SWINDLE_USE_USB AND NOT SWINDLE_USE_NETWORK)
+  MESSAGE(FATAL_ERROR "Please Select usb or network")
+endif()
 #----------------
 # Option loaded
 #----------------
@@ -190,6 +197,10 @@ IF(NOT LN_EXTERNAL_GENERATE)
   TUNE_NAME(USE_CLANG CLANG)
   TUNE_NAME(USE_64PIN_PACKAGE 64pins)
   TUNE_NAME(USE_48PIN_PACKAGE 48pins)
+
+  TUNE_NAME(SWINDLE_USE_USB  usb)
+  TUNE_NAME(SWINDLE_USE_NETWORK  network)
+
   #TUNE_NAME(USE_RP2040_PURE_RAM RAM)
 
 
