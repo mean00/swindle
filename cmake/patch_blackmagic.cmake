@@ -43,7 +43,7 @@ APPLY_PATCH_IF_NEEDED5(patched48 48blackmagic_enable_native_rvswd.patch         
 APPLY_PATCH_IF_NEEDED5(patched49 49blackmagic_hook_rvswd_to_host_mode.patch      "enable rvswd for hosted mode")
 APPLY_PATCH_IF_NEEDED5(patched50 50blackmagic_export_breakpoint_available.patch  "export a helper function to query the # of hw breakoint/watchpoint")
 APPLY_PATCH_IF_NEEDED5(patched51 51blackmagic_add_sw_breakpoint_framework.patch  "hook in the data needed to attach sw breakpoints to target")
-
+APPLY_PATCH_IF_NEEDED5(patched52 52blackmagic_abort_on_flash_error.patch         "abort buffered flash write as soon as there is one error")
 
 string(JOIN " " pretty ${already_patched})
 MESSAGE(STATUS "Patch already applied ${pretty} already done")
