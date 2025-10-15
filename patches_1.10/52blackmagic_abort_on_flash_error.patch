@@ -1,0 +1,15 @@
+--- ./src/target/target_flash.c.old	2025-10-15 07:40:27.883632552 +0200
++++ ./src/target/target_flash.c	2025-10-15 07:41:35.064513181 +0200
+@@ -278,8 +278,11 @@
+ 		const uint8_t *src = flash->buf + (aligned_addr - flash->buf_addr_base);
+ 		const uint32_t length = flash->buf_addr_high - aligned_addr;
+ 
+-		for (size_t offset = 0; offset < length; offset += flash->writesize)
++		for (size_t offset = 0; offset < length; offset += flash->writesize) {
+ 			result &= flash->write(flash, aligned_addr + offset, src + offset, flash->writesize);
++			if (!result)
++				return false;
++		}
+ 
+ 		flash->buf_addr_base = UINT32_MAX;
+ 		flash->buf_addr_low = UINT32_MAX;
