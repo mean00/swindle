@@ -290,6 +290,10 @@ bool ch32v3xx_probe(target_s *target)
         detect_size = false;
         target->driver = "CH32V203";
         break;
+    case 0x208U:
+        detect_size = false;
+        target->driver = "CH32V208";
+        break;
     case 0x303U:
         detect_size = true;
         target->driver = "CH32V303";
@@ -343,6 +347,7 @@ bool ch32v3xx_probe(target_s *target)
         ram_size = z;                                                                                                  \
         break;
             CH32_HARDCODED(0x20310500, 64, 20)
+            CH32_HARDCODED(0x2080053c,480, 64) // CH32V208 Line, 128 k fash "flash" and 480k-128 "slow" flash
         default:
             flash_size = 64; // ?
             ram_size = 20;
