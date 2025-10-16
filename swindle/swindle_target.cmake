@@ -22,13 +22,22 @@ IF(SWINDLE_USE_USB)
   IF(NOT LN_SWINDLE_AS_EXTERNAL)
     LIST( APPEND BRIDGE_SRCS ${B}/bmp_serial.cpp
                 ${B}/bmp_adc${EXTRA}.cpp
-                ${B}/bmp_rs_gdb.cpp
+                ${B}/bmp_usb.cpp
   )
     IF("${LN_USB_NB_CDC}" STREQUAL "3")
       SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
     ENDIF()
   ENDIF()
 ENDIF()
+IF(SWINDLE_USE_NETWORK)
+  LIST( APPEND BRIDGE_SRCS    ${B}/bmp_net.cpp)
+ENDIF()
+
+IF(NOT LN_SWINDLE_AS_EXTERNAL)
+  LIST( APPEND BRIDGE_SRCS ${B}/bmp_adc${EXTRA}.cpp)
+ENDIF()
+
+
 # #
 include(./swindle_common.cmake)
 # ===========================================================================================
