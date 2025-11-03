@@ -24,7 +24,49 @@ use numtoa::NumToA;
 crate::setup_log!(false);
 use crate::bmplog;
 
-const q_command_tree: [CommandTree; 13] = [
+const q_command_tree: [CommandTree; 18] = [
+    // lldb specific
+    CommandTree {
+        command: "qLaunchGDBServer",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_qLaunchGDBServer),
+        start_separator: ":",
+        next_separator: ":",
+    },
+    CommandTree {
+        command: "qHostInfo",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_qHostInfo),
+        start_separator: "",
+        next_separator: "",
+    },
+    CommandTree {
+        command: "qQueryGDBServer",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_qQueryGDBServer),
+        start_separator: "",
+        next_separator: "",
+    },
+    CommandTree {
+        command: "qGetWorkingDir",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_qGetWorkingDir),
+        start_separator: "",
+        next_separator: "",
+    },
+    CommandTree {
+        command: "qRegisterInfo",
+        min_args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_qRegisterInfo),
+        start_separator: "#",
+        next_separator: "",
+    },
+    //
     CommandTree {
         command: "qSymbol",
         min_args: 0,
@@ -135,6 +177,7 @@ const q_command_tree: [CommandTree; 13] = [
 //
 //
 
+#[unsafe(no_mangle)]
 pub fn _q(command: &str, args: &[u8]) -> bool {
     exec_one(&q_command_tree, command, args)
 }
@@ -295,6 +338,49 @@ fn _qTStatus(_command: &str, _args: &[&str]) -> bool {
 //
 fn _qAttached(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("1");
+    true
+}
+/*
+ *  ARM64  : 16777228    0x100000c
+ *  ARM    : 12          0x0c
+ *          CPU_SUBTYPE_ARM_V6M     14  0xe
+ *          CPU_SUBTYPE_ARM_V7M     15  0xf
+ *          CPU_SUBTYPE_ARM_V7EM    16  0x10
+ *          CPU_SUBTYPE_ARM_V8M     17  0x11
+ *  RV32   : 24          0x18
+ *          CPU_SUBTYPE_RISCV_IM    3  0x03
+ *  RV64   : 16777240    0x1000018
+ *
+ *
+ */
+#[unsafe(no_mangle)]
+fn _qHostInfo(_command: &str, _args: &[&str]) -> bool {
+    let mut e = encoder::new();
+    e.begin();
+    e.add("cputype:12;");
+    e.add("cpusubtype:15;");
+    e.add("ostype:none;");
+    e.add("vendor:unknown;");
+    e.add("endian:little;ptrsize:4;");
+    e.end();
+    true
+}
+fn _qLaunchGDBServer(_command: &str, _args: &[&str]) -> bool {
+    encoder::simple_send("pid:1;port:2001");
+    true
+}
+fn _qGetWorkingDir(_command: &str, _args: &[&str]) -> bool {
+    encoder::simple_send("");
+    true
+}
+fn _qRegisterInfo(_command: &str, _args: &[&str]) -> bool {
+    encoder::simple_send(
+        "name:r0;bitsize:32;offset:0;encoding:uint;format:hex;set:General Purpose;generic:arg1;",
+    );
+    true
+}
+fn _qQueryGDBServer(_command: &str, _args: &[&str]) -> bool {
+    encoder::simple_send("");
     true
 }
 
