@@ -60,7 +60,15 @@ pub struct HelpTree {
     help: &'static str,
 }
 //
-const main_command_tree: [CommandTree; 22] = [
+const main_command_tree: [CommandTree; 23] = [
+    CommandTree {
+        command: "QStartNoAckMode",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_qStartNoAckMode),
+        start_separator: "",
+        next_separator: "",
+    },
     CommandTree {
         command: "!",
         min_args: 0,
@@ -239,7 +247,7 @@ const main_command_tree: [CommandTree; 22] = [
         next_separator: "",
     },
 ];
-
+#[unsafe(no_mangle)]
 pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
     let connected: bool = bmp::bmp_attached();
     //bmplog!(command);
@@ -311,6 +319,7 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
     false
 }
 
+#[unsafe(no_mangle)]
 pub fn exec(command: &str) {
     let args: &[u8] = &[];
     if !exec_one(&main_command_tree, command, args) {
@@ -347,6 +356,11 @@ fn _D(_command: &str, _args: &[&str]) -> bool {
 fn _mark(_command: &str, _args: &[&str]) -> bool {
     //NOTARGET
     encoder::simple_send("W00");
+    true
+}
+// used by lldb
+fn _qStartNoAckMode(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_ok();
     true
 }
 // EOF
