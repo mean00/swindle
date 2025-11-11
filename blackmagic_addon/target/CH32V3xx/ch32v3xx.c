@@ -56,21 +56,27 @@
 #define STUB_DATA_LOCATION (RAM_ADDRESS + 6 * 1024)
 #define LN_CH32VXX_CRC_STUB_ADDR RAM_ADDRESS
 #define LN_CH32VXX_CRC_STUB_LEN ch32v3x_crc32_bin_len
-
+extern int Logger_C(const char *fmt, ...);
+#if 0
+#define DEBUGME Logger_C
+#else
+#define DEBUGME(...)                                                           \
+  {                                                                            \
+  }
+#endif
 // #define VERIFY 1
 
-typedef struct
-{
-    uint32_t WS;       // 0
-    uint32_t KEYR;     // 4 aka fpec
-    uint32_t OBKEYR;   // 8
-    uint32_t STATR;    // C
-    uint32_t CTLR;     // 10
-    uint32_t ADDR;     // 14
-    uint32_t filler;   // 18
-    uint32_t OBR;      // 1C
-    uint32_t WPR;      // 20
-    uint32_t MODEKEYR; // 24
+typedef struct {
+  uint32_t WS;       // 0
+  uint32_t KEYR;     // 4 aka fpec
+  uint32_t OBKEYR;   // 8
+  uint32_t STATR;    // C
+  uint32_t CTLR;     // 10
+  uint32_t ADDR;     // 14
+  uint32_t filler;   // 18
+  uint32_t OBR;      // 1C
+  uint32_t WPR;      // 20
+  uint32_t MODEKEYR; // 24
 } ch32_flash_s;
 
 #define CH32V3XX_OPTION_ADDRESS 0x1ffff800
@@ -101,44 +107,88 @@ typedef struct
 #define CH32VX_CHIPID_FAMILY_OFFSET 20U
 #define CH32VX_CHIPID_FAMILY_MASK (0xfffU << CH32VX_CHIPID_FAMILY_OFFSET)
 
-#define READ_FLASH_REG(target, reg)                                                                                    \
-    target_mem32_read32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, reg))
-#define WRITE_FLASH_REG(target, reg, value)                                                                            \
-    target_mem32_write32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, reg), value)
+#define READ_FLASH_REG(target, reg)                                            \
+  target_mem32_read32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS +              \
+                                  offsetof(ch32_flash_s, reg))
+#define WRITE_FLASH_REG(target, reg, value)                                    \
+  target_mem32_write32(                                                        \
+      target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, reg), \
+      value)
 
 const command_s ch32v3x_cmd_list[] = {{"", NULL, ""}};
 
-static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t addr, size_t len);
-static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
+static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash,
+                                          target_addr_t addr, size_t len);
+static bool ch32v3x_flash_write_flashstub(target_flash_s *flash,
+                                          target_addr_t dest, const void *src,
+                                          size_t len);
 static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash);
 static bool ch32v3x_flash_done_flashstub(target_flash_s *flash);
-static bool ch32v3xx_crc32(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32);
+static bool ch32v3xx_crc32(target_s *target, target_addr32_t start_adress,
+                           size_t size, uint32_t *crc32);
 
 static uint32_t small_ch32v3x_page_size(target_s *t);
 static bool small_ch32v3x_erase_page(target_s *target, uint32_t addr);
-static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size);
+static bool small_ch32v3x_write_page(target_s *target, uint32_t addr,
+                                     const uint8_t *src, uint32_t page_size);
 
-static const sw_breakpoint_helpers ch32_sw_breakpoint_heper = {.page_size = small_ch32v3x_page_size,
-                                                               .page_erase = small_ch32v3x_erase_page,
-                                                               .page_write = small_ch32v3x_write_page};
+static const sw_breakpoint_helpers ch32_sw_breakpoint_heper = {
+    .page_size = small_ch32v3x_page_size,
+    .page_erase = small_ch32v3x_erase_page,
+    .page_write = small_ch32v3x_write_page};
 
 /*
  */
-static bool ch32v3x_fast_unlock(target_s *target)
-{
-    uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    if (!(ctl & CH32V3XX_FMC_CTL_LK)) // already unlocked
-        return true;
-    // send unlock sequence
-    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY1);
-    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY2);
+static bool ch32v3x_fast_unlock(target_s *target) {
+  uint32_t ctl = READ_FLASH_REG(target, CTLR);
+  if (!(ctl & CH32V3XX_FMC_CTL_LK)) // already unlocked
+    return true;
+  // send unlock sequence
+  WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY1);
+  WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY2);
 
-    // send fast unlock sequence
-    WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY1);
-    WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY2);
+  // send fast unlock sequence
+  WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY1);
+  WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY2);
 
-    uint32_t v = READ_FLASH_REG(target, CTLR);
-    return !(v & CH32V3XX_FMC_CTL_CH32_FASTUNLOCK);
+  uint32_t v = READ_FLASH_REG(target, CTLR);
+  return !(v & CH32V3XX_FMC_CTL_CH32_FASTUNLOCK);
+}
+
+/*----------------------------------------------------------------------------
+ * The following part is only used for software breakpoint
+ * ----------------------------------------------------------------------------
+ */
+static bool small_ch32v3x_wait_not_busy(target_s *target) { // todo add timeout
+  while (1) {
+    uint32_t stat = READ_FLASH_REG(target, STATR);
+    if (!(stat & CH32V3XX_FMC_STAT_BUSY))
+      break;
+  }
+  return true;
+}
+/*
+ *
+ */
+static bool
+small_ch32v3x_wait_not_wr_busy(target_s *target) { // todo add timeout
+  while (1) {
+    uint32_t stat = READ_FLASH_REG(target, STATR);
+    if (!(stat & CH32V3XX_FMC_STAT_WR_BUSY))
+      break;
+  }
+  return true;
+}
+/*
+ */
+static uint32_t small_ch32v3x_page_size(target_s *t) { return 256; }
+/*
+ *
+ */
+static void small_set_ctl(target_s *target, uint32_t flag) {
+  uint32_t ctl = READ_FLASH_REG(target, CTLR);
+  ctl |= flag;
+  WRITE_FLASH_REG(target, CTLR, ctl);
 }
 
 /**
@@ -150,405 +200,404 @@ static bool ch32v3x_fast_unlock(target_s *target)
  * @return true
  * @return false
  */
-static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t addr, size_t len)
-{
-    addr |= FLASH_OFFSET;
-    while (len)
-    {
-        uint32_t chunk = len;
-        if (chunk > 1024)
-            chunk = 1024;
-        if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_ERASE, addr, chunk, 0, STUB_STACKEND_LOCATION))
-            return false;
-        addr += chunk;
-        len -= chunk;
+static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash,
+                                          target_addr_t addr, size_t len) {
+  addr |= FLASH_OFFSET;
+  DEBUGME("CH32 Erasing at 0x%x\n", addr);
+  while (len) {
+    uint32_t chunk = len;
+    if (chunk > 1024)
+      chunk = 1024;
+    if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_ERASE, addr, chunk, 0,
+                          STUB_STACKEND_LOCATION)) {
+      DEBUGME("CH32 Erase Error at 0x%x\n", addr);
+      return false;
     }
-    return true;
+    addr += chunk;
+    len -= chunk;
+  }
+  DEBUGME("CH32 Erasing OK\n");
+  return true;
 }
 
 /*
     download the 2 flash stub once in ram so we can execute them later on
  */
-static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
-{
-    target_mem32_write(flash->t, STUB_CODE_LOCATION_ERASE, ch32v3x_erase_bin, sizeof(ch32v3x_erase_bin));
-    target_mem32_write(flash->t, STUB_CODE_LOCATION_WRITE, ch32v3x_write_bin, sizeof(ch32v3x_write_bin));
-    ch32v3x_fast_unlock(flash->t);
-    return true;
+static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash) {
+  DEBUGME("CH32 Preparing flashstub\n");
+  target_mem32_write(flash->t, STUB_CODE_LOCATION_ERASE, ch32v3x_erase_bin,
+                     sizeof(ch32v3x_erase_bin));
+  target_mem32_write(flash->t, STUB_CODE_LOCATION_WRITE, ch32v3x_write_bin,
+                     sizeof(ch32v3x_write_bin));
+  ch32v3x_fast_unlock(flash->t);
+  return true;
 }
 
 /*
     Make sure the cpu is stopped
  */
-static bool ch32v3x_flash_done_flashstub(target_flash_s *flash)
-{
-    flash->t->halt_request(flash->t);
-    return true;
+static bool ch32v3x_flash_done_flashstub(target_flash_s *flash) {
+  DEBUGME("CH32 Closing flashstub\n");
+  flash->t->halt_request(flash->t);
+  return true;
+}
+/*
+ *
+ */
+static bool small_ch32v3x_write_few_bytes(target_s *target, uint32_t addr,
+                                          const uint8_t *src, uint32_t len) {
+  addr |= FLASH_OFFSET;
+  DEBUGME("CH32 Small Writting at 0x%x\n", addr);
+  ch32v3x_fast_unlock(target);
+  uint32_t ctl = READ_FLASH_REG(target, CTLR);
+  uint32_t origin_ctl = ctl;
+  small_set_ctl(target, CH32V3XX_FMC_CTL_PG);
+
+  small_ch32v3x_wait_not_busy(target);
+  // prefill write cache, we write 256 bytes at a time
+  for (int i = 0; i < len / 2; i++) {
+    uint16_t data16 = (src[0]) + (src[1] << 8);
+    target_mem32_write16(target, addr, data16);
+    addr += 2;
+    src += 2;
+    small_ch32v3x_wait_not_busy(target);
+  }
+  small_set_ctl(target, ctl);
+  // and flush
+  return true;
 }
 
 /**
     write a chunk of code in flash/rram through flashstub
  */
-static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t dest, const void *srcx, size_t len)
-{
-    dest |= FLASH_OFFSET;
-    uint32_t addr = dest;
-    while (len)
-    {
-        uint32_t chunk = len;
-        if (chunk > 1024)
-            chunk = 1024;
-        target_mem32_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
-        if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_WRITE, addr, STUB_DATA_LOCATION, chunk,
-                              STUB_STACKEND_LOCATION))
-            return false;
-        addr += chunk;
-        len -= chunk;
-        srcx += chunk;
+static bool ch32v3x_flash_write_flashstub(target_flash_s *flash,
+                                          target_addr_t dest, const void *srcx,
+                                          size_t len) {
+  dest |= FLASH_OFFSET;
+  DEBUGME("CH32 Writting at 0x%x\n", dest);
+  uint32_t addr = dest;
+  while (len) {
+    uint32_t chunk = len;
+    if (chunk > 1024)
+      chunk = 1024;
+    if (chunk < 256) {
+      return small_ch32v3x_write_few_bytes(flash->t, addr, srcx, chunk);
     }
-    return true;
+    target_mem32_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
+    if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_WRITE, addr,
+                          STUB_DATA_LOCATION, chunk, STUB_STACKEND_LOCATION)) {
+      DEBUGME("CH32 Write Error at 0x%x\n", addr);
+      return false;
+    }
+    addr += chunk;
+    len -= chunk;
+    srcx += chunk;
+  }
+  return true;
 }
 
 /*
  */
-static void ch32v3x_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize, size_t writesize)
-{
-    target_flash_s *flash = calloc(1, sizeof(*flash));
-    if (!flash)
-    { /* calloc failed: heap exhaustion */
-        DEBUG_ERROR("calloc: failed in %s\n", __func__);
-        return;
-    }
-    flash->start = addr;
-    flash->length = length;
-    flash->blocksize = erasesize;
-    flash->writesize = writesize;
-    flash->erase = ch32v3x_flash_erase_flashstub;
-    flash->write = ch32v3x_flash_write_flashstub;
-    flash->prepare = ch32v3x_flash_prepare_flashstub;
-    flash->done = ch32v3x_flash_done_flashstub;
-    flash->erased = 0xff;
-    target_add_flash(target, flash);
+static void ch32v3x_add_flash(target_s *target, uint32_t addr, size_t length,
+                              size_t erasesize, size_t writesize) {
+  target_flash_s *flash = calloc(1, sizeof(*flash));
+  if (!flash) { /* calloc failed: heap exhaustion */
+    DEBUG_ERROR("calloc: failed in %s\n", __func__);
+    return;
+  }
+  flash->start = addr;
+  flash->length = length;
+  flash->blocksize = erasesize;
+  flash->writesize = writesize;
+  flash->erase = ch32v3x_flash_erase_flashstub;
+  flash->write = ch32v3x_flash_write_flashstub;
+  flash->prepare = ch32v3x_flash_prepare_flashstub;
+  flash->done = ch32v3x_flash_done_flashstub;
+  flash->erased = 0xff;
+  target_add_flash(target, flash);
 }
-#define MET_MEMORY(f, r)                                                                                               \
-    {                                                                                                                  \
-        *flash = f;                                                                                                    \
-        *ram = r;                                                                                                      \
-    }
+#define MET_MEMORY(f, r)                                                       \
+  {                                                                            \
+    *flash = f;                                                                \
+    *ram = r;                                                                  \
+  }
 /**
  *
  */
-static void decode_memory_layout(uint32_t layout, uint32_t *flash, uint32_t *ram)
-{
-    switch (layout)
-    {
-    case 0:
-    case 1:
-        MET_MEMORY(192, 128);
-        break;
-    case 2:
-    case 3:
-        MET_MEMORY(224, 96);
-        break;
-    case 4:
-    case 5:
-        MET_MEMORY(256, 64);
-        break;
-    case 6:
-        // that one does not exist with older chip only when
-        //  the penultimate sixth digit of the lot number is not zero.
-        // SET_MEMORY(128, 192); assume older chip
-        // break;
-        DEBUG_WARN("WARNING NEWER MEMORY LAYOUT, ASSUMING 228k flash 32k ram \n");
-    case 7:
-        MET_MEMORY(228, 32);
-        break;
-    default:
-        DEBUG_WARN("\t???\n");
-        *flash = 128; // ?
-        *ram = 32;
-        break;
-    }
+static void decode_memory_layout(uint32_t layout, uint32_t *flash,
+                                 uint32_t *ram) {
+  switch (layout) {
+  case 0:
+  case 1:
+    MET_MEMORY(192, 128);
+    break;
+  case 2:
+  case 3:
+    MET_MEMORY(224, 96);
+    break;
+  case 4:
+  case 5:
+    MET_MEMORY(256, 64);
+    break;
+  case 6:
+    // that one does not exist with older chip only when
+    //  the penultimate sixth digit of the lot number is not zero.
+    // SET_MEMORY(128, 192); assume older chip
+    // break;
+    DEBUG_WARN("WARNING NEWER MEMORY LAYOUT, ASSUMING 228k flash 32k ram \n");
+  case 7:
+    MET_MEMORY(228, 32);
+    break;
+  default:
+    DEBUG_WARN("\t???\n");
+    *flash = 128; // ?
+    *ram = 32;
+    break;
+  }
 }
 /*
     Identify ch32vxx
 */
-bool ch32v3xx_probe(target_s *target)
-{
-    uint32_t flash_size = 0;
-    uint32_t ram_size = 0;
-    size_t erase_size = 256;
-    size_t write_size = 256;
+bool ch32v3xx_probe(target_s *target) {
+  uint32_t flash_size = 0;
+  uint32_t ram_size = 0;
+  size_t erase_size = 256;
+  size_t write_size = 256;
 
-    const uint32_t chipid = target_mem32_read32(target, CH32VX_CHIPID);
+  const uint32_t chipid = target_mem32_read32(target, CH32VX_CHIPID);
 
-    const uint16_t family = (chipid & CH32VX_CHIPID_FAMILY_MASK) >> CH32VX_CHIPID_FAMILY_OFFSET;
-    bool detect_size = false;
-    switch (family)
-    {
-    case 0x203U:
-        detect_size = false;
-        target->driver = "CH32V203";
-        break;
-    case 0x208U:
-        detect_size = false;
-        target->driver = "CH32V208";
-        break;
-    case 0x303U:
-        detect_size = true;
-        target->driver = "CH32V303";
-        break;
-    case 0x305U:
-        detect_size = true;
-        target->driver = "CH32V305";
-        break;
-    case 0x307U:
-        detect_size = true;
-        target->driver = "CH32V307";
-        break;
+  const uint16_t family =
+      (chipid & CH32VX_CHIPID_FAMILY_MASK) >> CH32VX_CHIPID_FAMILY_OFFSET;
+  bool detect_size = false;
+  switch (family) {
+  case 0x203U:
+    detect_size = false;
+    target->driver = "CH32V203";
+    break;
+  case 0x208U:
+    detect_size = false;
+    target->driver = "CH32V208";
+    break;
+  case 0x303U:
+    detect_size = true;
+    target->driver = "CH32V303";
+    break;
+  case 0x305U:
+    detect_size = true;
+    target->driver = "CH32V305";
+    break;
+  case 0x307U:
+    detect_size = true;
+    target->driver = "CH32V307";
+    break;
+  default:
+    DEBUG_WARN("Unknown CH32V family 0x%x\n", family);
+    return false;
+    break;
+  }
+  DEBUG_WARN("CH32V family %s\n", target->driver);
+
+  target->part_id = chipid;
+  target->crc32 = ch32v3xx_crc32;
+
+  if (detect_size) {
+    // this is the user option byte
+    // there are 2 variants of that, depending on the chip Identity.
+    // for now we use the "old" one
+    uint32_t user_ram_size, user_flash_size;
+    uint32_t user = target_mem32_read32(target, 0x1ffff800);
+    DEBUG_WARN("CH32V User option byte 0x%x, up=0x%x\n", user, user >> 16);
+    uint32_t layout = (user >> (16 + 5)) & 0x7;
+    DEBUG_WARN("CH32V User memory layout 0x%x\n User byte ", layout);
+    decode_memory_layout(layout, &user_flash_size, &user_ram_size);
+    DEBUG_WARN("CH32V User memory  %d k flash, %d k ram\n", user_flash_size,
+               user_ram_size);
+
+    uint32_t obr = READ_FLASH_REG(target, OBR); // offset 01xc 32.4.6
+    DEBUG_WARN("CH32V OBR Register 0x%x\n", obr);
+    obr = (obr >> 7) &
+          7; // SRAM_CODE_MODE, the doc is incorrect i think, it says >>8
+    DEBUG_WARN("CH32V OBR Memory Layout 0x%x\n", obr);
+    decode_memory_layout(layout, &flash_size, &ram_size);
+    DEBUG_WARN("CH32V OBR %d k flash, %d k ram\n", flash_size, ram_size);
+    gdb_outf("\tDetected %x chip with %d k flash, %d k ram\n", family,
+             flash_size, ram_size);
+  } else // only deal with 203 for the moment
+  {
+    switch (chipid) {
+#define CH32_HARDCODED(x, y, z)                                                \
+  case x:                                                                      \
+    flash_size = y;                                                            \
+    ram_size = z;                                                              \
+    break;
+      CH32_HARDCODED(0x20310500, 64, 20)
+      CH32_HARDCODED(
+          0x2080053c, 480,
+          64) // CH32V208 Line, 128 k fash "flash" and 480k-128 "slow" flash
     default:
-        DEBUG_WARN("Unknown CH32V family 0x%x\n", family);
-        return false;
-        break;
+      flash_size = 64; // ?
+      ram_size = 20;
+      break;
     }
-    DEBUG_WARN("CH32V family %s\n", target->driver);
+  }
+  DEBUG_WARN("Finally, using CH32V flash %d kB, ram %d kB\n", flash_size,
+             ram_size);
+  target->sw_breakpoint_helpers = &ch32_sw_breakpoint_heper;
+  target->no_hw_breakpoint = true;
 
-    target->part_id = chipid;
-    target->crc32 = ch32v3xx_crc32;
-
-    if (detect_size)
-    {
-        // this is the user option byte
-        // there are 2 variants of that, depending on the chip Identity.
-        // for now we use the "old" one
-        uint32_t user_ram_size, user_flash_size;
-        uint32_t user = target_mem32_read32(target, 0x1ffff800);
-        DEBUG_WARN("CH32V User option byte 0x%x, up=0x%x\n", user, user >> 16);
-        uint32_t layout = (user >> (16 + 5)) & 0x7;
-        DEBUG_WARN("CH32V User memory layout 0x%x\n User byte ", layout);
-        decode_memory_layout(layout, &user_flash_size, &user_ram_size);
-        DEBUG_WARN("CH32V User memory  %d k flash, %d k ram\n", user_flash_size, user_ram_size);
-
-        uint32_t obr = READ_FLASH_REG(target, OBR); // offset 01xc 32.4.6
-        DEBUG_WARN("CH32V OBR Register 0x%x\n", obr);
-        obr = (obr >> 7) & 7; // SRAM_CODE_MODE, the doc is incorrect i think, it says >>8
-        DEBUG_WARN("CH32V OBR Memory Layout 0x%x\n", obr);
-        decode_memory_layout(layout, &flash_size, &ram_size);
-        DEBUG_WARN("CH32V OBR %d k flash, %d k ram\n", flash_size, ram_size);
-        gdb_outf("\tDetected %x chip with %d k flash, %d k ram\n", family, flash_size, ram_size);
-    }
-    else // only deal with 203 for the moment
-    {
-        switch (chipid)
-        {
-#define CH32_HARDCODED(x, y, z)                                                                                        \
-    case x:                                                                                                            \
-        flash_size = y;                                                                                                \
-        ram_size = z;                                                                                                  \
-        break;
-            CH32_HARDCODED(0x20310500, 64, 20)
-            CH32_HARDCODED(0x2080053c,480, 64) // CH32V208 Line, 128 k fash "flash" and 480k-128 "slow" flash
-        default:
-            flash_size = 64; // ?
-            ram_size = 20;
-            break;
-        }
-    }
-    DEBUG_WARN("Finally, using CH32V flash %d kB, ram %d kB\n", flash_size, ram_size);
-    target->sw_breakpoint_helpers = &ch32_sw_breakpoint_heper;
-    target->no_hw_breakpoint = true;
-
-    target_mem_map_free(target);
-    target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
-    ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size);
-    target_add_commands(target, ch32v3x_cmd_list, target->driver);
-    return true;
+  target_mem_map_free(target);
+  target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
+  ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size,
+                    write_size);
+  target_add_commands(target, ch32v3x_cmd_list, target->driver);
+  return true;
 }
 /**
  * \briegf unlock option bytes
  */
-static bool ch32v3xx_unlock_option_bytes(target_s *target)
-{
-    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY1);
-    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY2);
-    // now unlock OB
-    WRITE_FLASH_REG(target, OBKEYR, CH32V3XX_KEY1);
-    WRITE_FLASH_REG(target, OBKEYR, CH32V3XX_KEY2);
+static bool ch32v3xx_unlock_option_bytes(target_s *target) {
+  WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY1);
+  WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY2);
+  // now unlock OB
+  WRITE_FLASH_REG(target, OBKEYR, CH32V3XX_KEY1);
+  WRITE_FLASH_REG(target, OBKEYR, CH32V3XX_KEY2);
 
-    return true;
+  return true;
 }
 /**
  *
  *
  */
-bool ch32v3xx_write_user_byte(target_s *target, uint8_t user)
-{
-    ch32v3xx_unlock_option_bytes(target);
+bool ch32v3xx_write_user_byte(target_s *target, uint8_t user) {
+  ch32v3xx_unlock_option_bytes(target);
 
-    uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    WRITE_FLASH_REG(target, CTLR, ctl | CH32V3XX_FMC_CTL_CH32_OBPG);
-    // 16 bits write only!
-    // hw will put the correct inverted value
-    uint16_t user16 = (uint16_t)user | ((uint16_t)user << 8);
-    target_mem32_write(target, CH32V3XX_OPTION_ADDRESS + 2, &user16, 2);
-    while (1)
-    {
-        uint32_t stat = READ_FLASH_REG(target, STATR);
-        if (!(stat & CH32V3XX_FMC_STAT_BUSY))
-            break;
-    }
-    // and done
-    WRITE_FLASH_REG(target, CTLR, ctl);
-    return true;
+  uint32_t ctl = READ_FLASH_REG(target, CTLR);
+  WRITE_FLASH_REG(target, CTLR, ctl | CH32V3XX_FMC_CTL_CH32_OBPG);
+  // 16 bits write only!
+  // hw will put the correct inverted value
+  uint16_t user16 = (uint16_t)user | ((uint16_t)user << 8);
+  target_mem32_write(target, CH32V3XX_OPTION_ADDRESS + 2, &user16, 2);
+  while (1) {
+    uint32_t stat = READ_FLASH_REG(target, STATR);
+    if (!(stat & CH32V3XX_FMC_STAT_BUSY))
+      break;
+  }
+  // and done
+  WRITE_FLASH_REG(target, CTLR, ctl);
+  return true;
 }
 /**
  *
  */
 uint8_t ch32v3xx_read_user_byte(target_s *target) // eof
 {
-    uint32_t user32 = target_mem32_read32(target, CH32V3XX_OPTION_ADDRESS);
-    user32 >>= 16; // start at offset 2
-    user32 &= 0xff;
-    return (uint8_t)user32;
+  uint32_t user32 = target_mem32_read32(target, CH32V3XX_OPTION_ADDRESS);
+  user32 >>= 16; // start at offset 2
+  user32 &= 0xff;
+  return (uint8_t)user32;
 }
 /*
  *
  */
 void *bmp_get_temporary_buffer(uint32_t asked);
-bool ch32v3xx_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32)
-{
-    bool ret = false;
-    uint8_t *temp_buffer = bmp_get_temporary_buffer(LN_CH32VXX_CRC_STUB_LEN); // around 100 bytes
-    // is the area we are CRCing collides with the stub ?
-    if ((start_address >= LN_CH32VXX_CRC_STUB_ADDR) &&
-        (start_address < LN_CH32VXX_CRC_STUB_LEN + LN_CH32VXX_CRC_STUB_ADDR))
-        return false;
-    if ((start_address <= LN_CH32VXX_CRC_STUB_ADDR) && (start_address + size) > LN_CH32VXX_CRC_STUB_ADDR)
-        return false;
-    // not aligned
-    if (start_address & 3)
-        return false;
-    if (size & 3) // TODO FIXME we can deal with that
-        return false;
-    // Step1 : copy the ram to a temp buffer
-    target_mem32_read(target, temp_buffer, LN_CH32VXX_CRC_STUB_ADDR, LN_CH32VXX_CRC_STUB_LEN);
-    // step2 : Upload the stub
-    target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, ch32v3x_crc32_bin, LN_CH32VXX_CRC_STUB_LEN);
-    // step3 : run the stub
-    if (riscv32_run_stub(target, LN_CH32VXX_CRC_STUB_ADDR, start_address, size >> 2, 0, 0))
-    {
-        target->reg_read(target, RISCV_REG_A2, crc32, 4);
-        ret = true;
-    }
-    // step4 : replace the ram
-    target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, temp_buffer, LN_CH32VXX_CRC_STUB_LEN);
+bool ch32v3xx_crc32(target_s *target, target_addr32_t start_address,
+                    size_t size, uint32_t *crc32) {
+  DEBUGME("CH32 CRC32 0x%0x\n", start_address);
+  bool ret = false;
+  uint8_t *temp_buffer =
+      bmp_get_temporary_buffer(LN_CH32VXX_CRC_STUB_LEN); // around 100 bytes
+  // is the area we are CRCing collides with the stub ?
+  if ((start_address >= LN_CH32VXX_CRC_STUB_ADDR) &&
+      (start_address < LN_CH32VXX_CRC_STUB_LEN + LN_CH32VXX_CRC_STUB_ADDR))
+    return false;
+  if ((start_address <= LN_CH32VXX_CRC_STUB_ADDR) &&
+      (start_address + size) > LN_CH32VXX_CRC_STUB_ADDR)
+    return false;
+  // not aligned
+  if (start_address & 3)
+    return false;
+  if (size & 3) // TODO FIXME we can deal with that
+    return false;
+  // Step1 : copy the ram to a temp buffer
+  target_mem32_read(target, temp_buffer, LN_CH32VXX_CRC_STUB_ADDR,
+                    LN_CH32VXX_CRC_STUB_LEN);
+  // step2 : Upload the stub
+  target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, ch32v3x_crc32_bin,
+                     LN_CH32VXX_CRC_STUB_LEN);
+  // step3 : run the stub
+  if (riscv32_run_stub(target, LN_CH32VXX_CRC_STUB_ADDR, start_address,
+                       size >> 2, 0, 0)) {
+    target->reg_read(target, RISCV_REG_A2, crc32, 4);
+    ret = true;
+  }
+  // step4 : replace the ram
+  target_mem32_write(target, LN_CH32VXX_CRC_STUB_ADDR, temp_buffer,
+                     LN_CH32VXX_CRC_STUB_LEN);
 done_and_done:
-    return ret;
+  return ret;
+}
+/*
+ *
+ */
+static bool small_ch32v3x_erase_page(target_s *target, uint32_t addr) {
+  //(void);
+  addr |= FLASH_OFFSET;
+  DEBUGME("CH32 small erase 0x%0x\n", addr);
+  ch32v3x_fast_unlock(target);
+  uint32_t ctl = READ_FLASH_REG(target, CTLR);
+  small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTERASE);
+  WRITE_FLASH_REG(target, ADDR, addr);
+  small_set_ctl(target, CH32V3XX_FMC_CTL_START);
+  bool r = small_ch32v3x_wait_not_busy(target);
+  WRITE_FLASH_REG(target, CTLR, ctl);
+  return r;
 }
 
-/*----------------------------------------------------------------------------
- * The following part is only used for software breakpoint
- * ----------------------------------------------------------------------------
- */
-static bool small_ch32v3x_wait_not_busy(target_s *target)
-{ // todo add timeout
-    while (1)
-    {
-        uint32_t stat = READ_FLASH_REG(target, STATR);
-        if (!(stat & CH32V3XX_FMC_STAT_BUSY))
-            break;
-    }
-    return true;
-}
 /*
  *
  */
-static bool small_ch32v3x_wait_not_wr_busy(target_s *target)
-{ // todo add timeout
-    while (1)
-    {
-        uint32_t stat = READ_FLASH_REG(target, STATR);
-        if (!(stat & CH32V3XX_FMC_STAT_WR_BUSY))
-            break;
-    }
-    return true;
-}
-/*
- */
-static uint32_t small_ch32v3x_page_size(target_s *t)
-{
-    return 256;
-}
-/*
- *
- */
-static void small_set_ctl(target_s *target, uint32_t flag)
-{
-    uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    ctl |= flag;
-    WRITE_FLASH_REG(target, CTLR, ctl);
-}
-/*
- *
- */
-static bool small_ch32v3x_erase_page(target_s *target, uint32_t addr)
-{
-    //(void);
-    addr |= FLASH_OFFSET;
-    ch32v3x_fast_unlock(target);
-    uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTERASE);
-    WRITE_FLASH_REG(target, ADDR, addr);
-    small_set_ctl(target, CH32V3XX_FMC_CTL_START);
-    bool r = small_ch32v3x_wait_not_busy(target);
-    WRITE_FLASH_REG(target, CTLR, ctl);
-    return r;
-}
-/*
- *
- */
-static bool small_ch32v3x_write_page(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size)
-{
-    addr |= FLASH_OFFSET;
-    if (page_size != 256)
-        return false;
-    //
-    bool r = true;
-    ch32v3x_fast_unlock(target);
-    uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    uint32_t origin_ctl = ctl;
-    small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTPROGRAM);
-    small_ch32v3x_wait_not_busy(target);
-    // prefill write cache, we write 256 bytes at a time
-    for (int i = 0; i < 64; i++)
-    {
-        uint32_t data32 = (src[0]) + (src[1] << 8) + (src[2] << 16) + (src[3] << 24);
-        target_mem32_write32(target, addr, data32);
-        addr += 4;
-        src += 4;
-        small_ch32v3x_wait_not_wr_busy(target);
-    }
-    // and flush
-    small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTSTART);
-    small_ch32v3x_wait_not_busy(target);
-    ctl = READ_FLASH_REG(target, CTLR);
-    ctl &= ~CH32V3XX_FMC_CTL_PG;
-    WRITE_FLASH_REG(target, CTLR, ctl);
+static bool small_ch32v3x_write_page(target_s *target, uint32_t addr,
+                                     const uint8_t *src, uint32_t page_size) {
+  addr |= FLASH_OFFSET;
+  DEBUGME("CH32 small write 0x%0x\n", addr);
+  if (page_size != 256) {
+    DEBUGME("CH32 small invalid size\n");
+    return false;
+  }
+  //
+  bool r = true;
+  ch32v3x_fast_unlock(target);
+  uint32_t ctl = READ_FLASH_REG(target, CTLR);
+  uint32_t origin_ctl = ctl;
+  small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTPROGRAM);
+  small_ch32v3x_wait_not_busy(target);
+  // prefill write cache, we write 256 bytes at a time
+  for (int i = 0; i < 64; i++) {
+    uint32_t data32 =
+        (src[0]) + (src[1] << 8) + (src[2] << 16) + (src[3] << 24);
+    target_mem32_write32(target, addr, data32);
+    addr += 4;
+    src += 4;
+    small_ch32v3x_wait_not_wr_busy(target);
+  }
+  // and flush
+  small_set_ctl(target, CH32V3XX_FMC_CTL_CH32_FASTSTART);
+  small_ch32v3x_wait_not_busy(target);
+  ctl = READ_FLASH_REG(target, CTLR);
+  ctl &= ~CH32V3XX_FMC_CTL_PG;
+  WRITE_FLASH_REG(target, CTLR, ctl);
 
-    uint32_t stat = READ_FLASH_REG(target, STATR);
-    if (stat & (CH32V3XX_FMC_STAT_PG_ERR + CH32V3XX_FMC_STAT_WP_ERR))
-    {
-        r = false;
-        WRITE_FLASH_REG(target, STATR,
-                        stat | (CH32V3XX_FMC_STAT_PG_ERR + CH32V3XX_FMC_STAT_WP_ERR)); // clear error
-    }
-    else
-    {
-        WRITE_FLASH_REG(target, STATR,
-                        stat | CH32V3XX_FMC_STAT_WP_ENDF); // done tODO TODO
-    }
-    WRITE_FLASH_REG(target, CTLR, origin_ctl);
-    return r;
+  uint32_t stat = READ_FLASH_REG(target, STATR);
+  if (stat & (CH32V3XX_FMC_STAT_PG_ERR + CH32V3XX_FMC_STAT_WP_ERR)) {
+    r = false;
+    WRITE_FLASH_REG(target, STATR,
+                    stat | (CH32V3XX_FMC_STAT_PG_ERR +
+                            CH32V3XX_FMC_STAT_WP_ERR)); // clear error
+  } else {
+    WRITE_FLASH_REG(target, STATR,
+                    stat | CH32V3XX_FMC_STAT_WP_ENDF); // done tODO TODO
+  }
+  WRITE_FLASH_REG(target, CTLR, origin_ctl);
+  return r;
 }
-
 // EOF
