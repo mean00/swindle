@@ -6,11 +6,13 @@ OBJDUMP=${TOOLCHAIN}/llvm-objdump
 GCC=/riscv/xpack-14.2.0-2/bin/riscv-none-elf-gcc
 LLD=${TOOLCHAIN}/ld.lld
 SYS=${TOOLCHAIN}/../lib/clang-runtimes/riscv32-unknown-elf/rv32imac-zicsr-zifencei_soft_nofp/include
+FS=${PWD}/../../../flashstub
+BMP=${PWD}/../../../../blackmagic
 build_stub() {
   rm -f $1.o
   set -x
-  $CC $1.c -g -O2 -o $1.o -nostdlib -I ../../blackmagic/src/target -I ../../blackmagic/src/include -I ${SYS} -I$PWD
-  $GCC $1.c -o $1.elf -nostdlib -T ch32.ld -I ../../blackmagic/src/target -I ../../blackmagic/src/include -I ${SYS} -I$PWD
+  $CC $1.c -g -O2 -o $1.o -nostdlib -I ${BMP}/src/target -I ${BMP}/src/include -I ${SYS} -I$PWD -I${FS}
+  $GCC $1.c -o $1.elf -nostdlib -T ch32.ld -I ${BMP}/src/target -I ${BMP}/src/include -I ${SYS} -I$PWD -I${FS}
   $OBJCOPY -Obinary $1.o $1.bin
   $OBJDUMP -S $1.o >$1.asm
   xxd -i $1.bin >$1.tmp
