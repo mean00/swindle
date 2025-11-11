@@ -72,7 +72,7 @@ fn _vFlashWrite(command: &str, _args: &[u8]) -> bool {
     let block: &[u8] = &command.as_bytes()[12..];
     let len = block.len();
 
-    if len < 9 {
+    if len < 4 {
         bmplog!("flashWrite: invalid arg1 \n");
         encoder::reply_e01();
         return true;
