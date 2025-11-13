@@ -442,8 +442,6 @@ bool ch32v3xx_probe(target_s *target) {
   }
   DEBUG_WARN("Finally, using CH32V flash %d kB, ram %d kB\n", flash_size,
              ram_size);
-  target->sw_breakpoint_helpers = &ch32_sw_breakpoint_heper;
-  target->no_hw_breakpoint = true;
 
   target_mem_map_free(target);
   target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
@@ -451,6 +449,13 @@ bool ch32v3xx_probe(target_s *target) {
                     write_size);
   target_add_commands(target, ch32v3x_cmd_list, target->driver);
   return true;
+
+  target->sw_breakpoint_helpers = &ch32_sw_breakpoint_heper;
+
+  uint32_t brk_count = 0, watch_count = 0;
+  if (target->breakpoint_watchpoint_count)
+    target->breakpoint_watchpoint_count(target, &brk_count, &watch_count);
+  target->no_hw_breakpoint = !brk_count;
 }
 /**
  * \briegf unlock option bytes
