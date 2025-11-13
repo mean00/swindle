@@ -170,7 +170,7 @@ const main_command_tree: [CommandTree; 23] = [
         min_args: 1,
         require_connected: true,
         cb: CallbackType::text(_p),
-        start_separator: " ",
+        start_separator: "",
         next_separator: "",
     }, // read register
     CommandTree {
