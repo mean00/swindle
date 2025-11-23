@@ -106,7 +106,17 @@ ADD_SUBDIRECTORY(../swindle lnswindle)
 #corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 
 SET(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
-SET(SRC ${H}/main.cpp ${H}/lnDebug.cpp ${H}/stubs.cpp ${H}/dm_decoder.cpp ${H}/bmp_qtnetwork.h ${H}/bmp_qtserial.cpp ${H}/bmp_qtnetwork.cpp)
+SET(SRC   ${H}/main.cpp
+          ${H}/lnDebug.cpp
+          ${H}/stubs.cpp
+          ${H}/dm_decoder.cpp
+          ${H}/bmp_qtserial.cpp
+          #${H}/bmp_qtnetwork.h
+          #${H}/bmp_qtnetwork.cpp
+          ${H}/esp_qtnetwork.cpp
+          ${H}/esp_qtnetwork.h
+          ${H}/esp_bridge.cpp
+)
 #${H}/bmp_remote_rv.cpp)
 
 ADD_EXECUTABLE(swindle_hosted ${SRC})
