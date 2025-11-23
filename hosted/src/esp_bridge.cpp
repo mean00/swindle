@@ -33,8 +33,11 @@ bool lnLWIP::start(lnLwIpSysCallback cb, void *arg)
 lnSocket *lnSocket::create(uint16_t port, lnSocketCb cb, void *arg)
 {
     lnSocketQt *q = new lnSocketQt(port, NULL, NULL);
-    if (q->_server->startServer(port))
+    if (!q->_server->startServer(port))
+    {
+        printf("!! Cannot start server\n");
         return NULL;
+    }
     return q;
 }
 /**
@@ -44,6 +47,7 @@ lnSocket *lnSocket::create(uint16_t port, lnSocketCb cb, void *arg)
  */
 lnSocket::status lnSocketQt::accept()
 {
+    qInfo() << "Waiting for connection on port " << _port;
     if (!_server->waitForClient())
     {
         qDebug("Cannot listen\n");
@@ -75,6 +79,11 @@ lnSocket::status lnSocketQt::write(uint32_t n, const uint8_t *data, uint32_t &do
  */
 lnSocket::status lnSocketQt::read(uint32_t n, uint8_t *data, uint32_t &done)
 {
+    int o = 0;
+    QByteArray bytes = _server->readBytes(n);
+    memcpy(data, bytes.data(), bytes.size());
+    done = bytes.size();
+    return lnSocket::Ok;
 }
 /**
  * @brief [TODO:description]

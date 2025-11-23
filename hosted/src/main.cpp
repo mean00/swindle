@@ -72,16 +72,17 @@ void exit_from_bmp()
 }
 
 extern "C" void rngdbstub_poll();
-
 void trampoline()
 {
     rngdbstub_poll();
     // printf("Pending : %d\n",server->hasPendingConnections());
 }
-
+extern lnSocket *current_connection;
 int main(int argc, char **argv)
 {
-    qInfo() << "Qt BMP started";
+    qInfo() << "======================";
+    qInfo() << "* Qt Swindle Hosted  *";
+    qInfo() << "======================";
     QCoreApplication a(argc, argv);
     qInstallMessageHandler(customHandler);
     platform_init(argc, argv);
@@ -90,8 +91,19 @@ int main(int argc, char **argv)
     QTimer mytimer;
     QObject::connect(&mytimer, &QTimer::timeout, trampoline);
     mytimer.start(100);
-
-    QCoreApplication::exec();
+    // go!
+    rngdbstub_init();
+    uint8_t buffer[2048];
+    // QCoreApplication::exec();
+    current_connection->accept();
+    while (1)
+    {
+        uint32_t n = 0;
+        if (lnSocket::Ok == current_connection->read(512, buffer, n))
+        {
+            rngdbstub_run(n, buffer);
+        }
+    }
     // should never get here
     return 0;
 }
