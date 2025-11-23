@@ -21,12 +21,14 @@
 /* Provides main entry point.  Initialise subsystems and enter GDB
  * protocol loop.
  */
-#include "bmp_qtnetwork.h"
 #include <QCoreApplication>
+#include <QDebug>
 #include <QObject>
 #include <QTimer>
 #include <QtGlobal>
-
+//
+#include "lnLWIP.h"
+//
 extern "C"
 {
 #include "exception.h"
@@ -49,6 +51,7 @@ extern "C"
 //-----
 
 bool running = true;
+extern void initTcpLayer();
 //
 //
 
@@ -70,7 +73,6 @@ void exit_from_bmp()
 
 extern "C" void rngdbstub_poll();
 
-BmpTcpServer *server = NULL;
 void trampoline()
 {
     rngdbstub_poll();
@@ -83,17 +85,14 @@ int main(int argc, char **argv)
     QCoreApplication a(argc, argv);
     qInstallMessageHandler(customHandler);
     platform_init(argc, argv);
-    server = new BmpTcpServer;
+    initTcpLayer();
 
     QTimer mytimer;
     QObject::connect(&mytimer, &QTimer::timeout, trampoline);
     mytimer.start(100);
 
     QCoreApplication::exec();
-
-    delete server;
-    server = NULL;
-    /* Should never get here */
+    // should never get here
     return 0;
 }
 extern "C" void rv_test(void);
