@@ -294,7 +294,19 @@ extern "C" bool find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
                     info->type = PROBE_TYPE_BMP;
                     // this is ugly, dont check anything just copy hoping it fits
                     strcpy(info->manufacturer, portInfo.systemLocation().toLatin1().constData());
-                    printf("Found LNBMP\n");
+                    printf("Found LNBMP %x:%x\n", 0x1d50, pid);
+                    switch (pid)
+                    {
+                    case 0x6030:
+                        printf("\t (GD32/WCH32)\n");
+                        break;
+                    case 0x6050:
+                        printf("\t (Pico)\n");
+                        break;
+                    default:
+                        printf("\t (Unknown)\n");
+                        break;
+                    }
                     return true;
                 }
             }
