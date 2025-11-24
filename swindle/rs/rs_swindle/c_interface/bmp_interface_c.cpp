@@ -495,6 +495,12 @@ extern "C" uint32_t min_free_heap_c()
 /*
  *
  */
+#if 1 // FIXME TODO
+extern "C" void swindleRedirectLog_c(int32_t toggle)
+{
+}
+#else
+
 extern "C" void usbCdc_Logger(int n, const char *data);
 extern "C" void swindleRedirectLog_c(int32_t toggle)
 {
@@ -506,6 +512,7 @@ extern "C" void swindleRedirectLog_c(int32_t toggle)
     Logger("Setting redirect to usb to %d\n", toggle);
     Logger("cant redirect logger \n");
 }
+#endif
 /*
  *
  */

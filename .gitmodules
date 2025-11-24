@@ -4,3 +4,6 @@
 [submodule "esprit"]
 	path = esprit
 	url = ../esprit.git
+[submodule "lwip"]
+	path = lwip
+	url = https://github.com/lwip-tcpip/lwip.git

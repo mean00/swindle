@@ -140,6 +140,7 @@ BufferGdb *usbGdb = NULL;
  */
 extern "C" int gdb_if_init(void)
 {
+    return 0;
 }
 /**
  */
