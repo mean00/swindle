@@ -12,7 +12,7 @@ extern "C"
 #include "target.h"
 #include "version.h"
 }
-
+#include "lnLWIP.h"
 extern "C" void pins_init();
 extern void serialInit();
 extern void bmp_io_begin_session();
@@ -136,19 +136,59 @@ class BufferGdb
 //
 BufferGdb *usbGdb = NULL;
 #endif
+lnSocket *current_connection = NULL;
+bool connected = false;
+
+void netCb(lnLwipEvent evt, void *arg)
+{
+    switch (evt)
+    {
+    case LwipReady:
+        Logger("DHCP up\n");
+        connected = true;
+        break;
+    default:
+        Logger(" ????? event \n");
+        break;
+    }
+}
 /**
+ *
+ * @param evt [TODO:parameter]
+ * @param arg [TODO:parameter]
+ */
+void sockCb(lnSocketEvent evt, void *arg)
+{
+    printf(" Socket callback , event = 0x%x\n", evt);
+}
+/**
+ * @brief [TODO:description]
+ *
+ * @return [TODO:return]
  */
 extern "C" int gdb_if_init(void)
 {
+    Logger("Starting Network\n");
+    lnLWIP::start(netCb, NULL);
+    while (!connected)
+    {
+        lnDelayMs(20);
+    }
+    current_connection = lnSocket::create(2000, sockCb, NULL);
+    // usbGdb = new BufferGdb(0);
+
     return 0;
 }
 /**
+ * @brief [TODO:description]
  */
 void initFreeRTOS()
 {
 }
-
-/*
+/**
+ * @brief [TODO:description]
+ *
+ * @param parameters [TODO:parameter]
  */
 void gdb_task(void *parameters)
 {
@@ -161,33 +201,70 @@ void gdb_task(void *parameters)
     //
     swindle_init_rtt();
     rngdbstub_init();
-    rngdbstub_run(0, NULL);
+    while (!connected)
+    {
+        lnDelayMs(10);
+    }
+    lnDelayMs(10);
+    uint8_t tmp[256];
     while (1)
     {
-        rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
+    again:
+        if (current_connection->accept() == lnSocket::Ok)
+        {
+            while (1)
+            {
+                uint32_t nb;
+                if (current_connection->read(256, tmp, nb) == lnSocket::Ok)
+                {
+                    rngdbstub_run(nb, tmp);
+                    rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
+                }
+                else
+                {
+                    current_connection->close();
+                    goto again;
+                }
+            }
+        }
     }
 }
-
-//
-//
-//
+/**
+ * @brief [TODO:description]
+ *
+ * @param data [TODO:parameter]
+ * @param len [TODO:parameter]
+ */
 void debug_serial_send_stdout(const uint8_t *const data, const size_t len)
 {
     Logger("%s", data); // ???
 }
-//
-//
-//
-extern "C"
+/**
+ * @brief [TODO:description]
+ *
+ * @param sz [TODO:parameter]
+ * @param ptr [TODO:parameter]
+ */
+extern "C" void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
 {
-    //
-    //
-    void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
+    uint32_t o;
+    while (sz)
     {
-    }
-    //
-    //
-    void rngdb_output_flush_c()
-    {
+        if (lnSocket::Ok != current_connection->write(sz, ptr, o))
+        {
+            // TODO disconenct
+            Logger("Write error\n");
+            return;
+        }
+        sz -= o;
+        ptr += o;
     }
 }
+/**
+ * @brief [TODO:description]
+ */
+extern "C" void rngdb_output_flush_c()
+{
+    current_connection->flush();
+}
+// EOF
