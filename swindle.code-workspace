@@ -1,0 +1,13 @@
+{
+    "folders": [
+        {
+            "Name" : "Swindle",
+            "path": "."
+        },
+        {
+            "Name" : "Hosted",
+            "path": "hosted"
+        }
+    ],
+    "settings": {}
+}
