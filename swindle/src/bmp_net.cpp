@@ -59,7 +59,6 @@ extern "C"
 /**
  *
  */
-#define NET_GDB_BUFFER_SIZE 1500
 
 #if 0
 #define DEBUGME Logger
@@ -71,23 +70,62 @@ extern "C"
 
 class socketRunnerGdb : public socketRunner
 {
+  public:
+    socketRunnerGdb()
+    {
+        _connected = false;
+    }
+
+  protected:
+    bool _connected;
+    virtual void hook_connected()
+    {
+        swindle_reinit_rtt();
+        rngdbstub_init();
+        bmp_io_begin_session();
+        _connected = true;
+    }
+    virtual void hook_disconnected()
+    {
+        _connected = false;
+        rngdbstub_shutdown();
+        bmp_io_end_session();
+    }
+    virtual void hook_poll()
+    {
+        if (_connected) // connected to a debugger
+        {
+            rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
+            if (cur_target)   // and we are connected to a target...
+            {
+                if (swindle_rtt_enabled())
+                {
+                    swindle_run_rtt();
+                }
+                else
+                {
+                    swindle_purge_rtt();
+                }
+            }
+        }
+    }
+
   protected:
     void process_incoming_data()
     {
         uint32_t lp = 0;
+
         while (1)
         {
             uint32_t rd = 0;
-            DEBUGME("r?\n");
-            if (readData(NET_GDB_BUFFER_SIZE, _buffer, rd))
+            uint8_t *data;
+            if (readData(rd, &data))
             {
-                if (!rd) // no more data available
+                if (!rd)
                     return;
-                DEBUGME("r!%d\n", rd);
-                rngdbstub_run(rd, _buffer);
-                rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
-                DEBUGME("d%d\n", lp++);
-                // DEBUGME("Write done\n");
+                rngdbstub_run(rd, data);
+                releaseData();
+                DEBUGME("\td%d\n", lp++);
             }
         }
     xit:
@@ -95,7 +133,6 @@ class socketRunnerGdb : public socketRunner
     }
 
   protected:
-    uint8_t _buffer[NET_GDB_BUFFER_SIZE];
 };
 socketRunnerGdb *runnerGdb = NULL;
 
@@ -135,7 +172,7 @@ void gdb_task(void *parameters)
     swindle_init_rtt();
     rngdbstub_init();
 
-    runnerGdb = new socketRunnerGdb;
+    runnerGdb = new socketRunnerGdb();
     runnerGdb->run();
 }
 /**
