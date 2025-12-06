@@ -9,16 +9,17 @@ IF("${LN_ARCH}" STREQUAL "RISCV") # RISCV
       SET(PLATFORM_TOOLCHAIN_PATH todo_todo) # Use /c/foo or c:\foo depending if you use mingw cmake or win32 cmake
     ELSE()
       #--- GCC ---------
-      SET(PLATFORM_TOOLCHAIN_PATH "/riscv/tools5/bin" CACHE INTERNAL "")
+        SET(GCC_OPTIM "-msave-restore")
+      SET(PLATFORM_TOOLCHAIN_PATH "/riscv/xpack-14.2.0-2/bin" CACHE INTERNAL "")
       IF(USE_HW_FPU)
-        SET(PLATFORM_C_FLAGS "-march=rv32imafc -mabi=ilp32f " CACHE INTERNAL "")
+        SET(PLATFORM_C_FLAGS "-march=rv32imafc_zicsr -mabi=ilp32f ${GCC_OPTIM} " CACHE INTERNAL "")
       ELSE()
-        SET(PLATFORM_C_FLAGS "-march=rv32imac -mabi=ilp32 " CACHE INTERNAL "")
+        SET(PLATFORM_C_FLAGS "-march=rv32imac_zicsr -mabi=ilp32  ${GCC_OPTIM}  "CACHE INTERNAL "")
       ENDIF()
-      SET(PLATFORM_PREFIX "riscv32-unknown-elf-" CACHE INTERNAL "")
+      SET(PLATFORM_PREFIX "riscv-none-elf-" CACHE INTERNAL "")
       # FOR CLANG
 
-      SET(PLATFORM_TOOLCHAIN_TRIPLET "riscv32-unknown-elf-" CACHE INTERNAL "")
+      SET(PLATFORM_TOOLCHAIN_TRIPLET "riscv-none-elf-" CACHE INTERNAL "")
       #-- CLANG --
       # No FPU
       #SET(PLATFORM_CLANG_PATH  "/riscv/tools_llvm/bin" CACHE INTERNAL "")
