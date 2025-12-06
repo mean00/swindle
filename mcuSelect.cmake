@@ -17,11 +17,11 @@ IF(NOT DEFINED LN_ARCH)
     SET(LN_MCU_RAM_SIZE       64          CACHE INTERNAL "")
     SET(LN_MCU_FLASH_SIZE     300         CACHE INTERNAL "")
     IF(LN_ENABLE_ETH)
-      SET(LN_MCU_STATIC_RAM     41         CACHE INTERNAL "")
+      SET(LN_MCU_STATIC_RAM     42         CACHE INTERNAL "")
       SET(LN_BOOTLOADER_SIZE    0          CACHE INTERNAL "")
     ELSE()
       SET(LN_MCU_STATIC_RAM     13          CACHE INTERNAL "")
-      SET(LN_BOOTLOADER_SIZE    16          CACHE INTERNAL "") # 16
+      SET(LN_BOOTLOADER_SIZE    0          CACHE INTERNAL "") # 16
     ENDIF()
     SET(LN_SPEC               "picolibc"  CACHE INTERNAL "") # if not set we use nano
     SET(LN_USB_NB_CDC         3           CACHE INTERNAL "") # 2 CDC interfaces
