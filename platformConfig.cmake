@@ -9,7 +9,7 @@ IF("${LN_ARCH}" STREQUAL "RISCV") # RISCV
       SET(PLATFORM_TOOLCHAIN_PATH todo_todo) # Use /c/foo or c:\foo depending if you use mingw cmake or win32 cmake
     ELSE()
       #--- GCC ---------
-        SET(GCC_OPTIM "-msave-restore")
+      SET(GCC_OPTIM "-msave-restore")
       SET(PLATFORM_TOOLCHAIN_PATH "/riscv/xpack-14.2.0-2/bin" CACHE INTERNAL "")
       IF(USE_HW_FPU)
         SET(PLATFORM_C_FLAGS "-march=rv32imafc_zicsr -mabi=ilp32f ${GCC_OPTIM} " CACHE INTERNAL "")
@@ -23,16 +23,21 @@ IF("${LN_ARCH}" STREQUAL "RISCV") # RISCV
       #-- CLANG --
       # No FPU
       #SET(PLATFORM_CLANG_PATH  "/riscv/tools_llvm/bin" CACHE INTERNAL "")
-      SET(PLATFORM_CLANG_PATH  "/riscv/llvm_19.1/bin" CACHE INTERNAL "")
-      SET(PLATFORM_CLANG_VERSION "-19")
+      if(TRUE)
+        SET(PLATFORM_CLANG_PATH  "/riscv/llvm_19.1/bin" CACHE INTERNAL "")
+        SET(PLATFORM_CLANG_VERSION "-19")
+      else()
+        SET(PLATFORM_CLANG_PATH  "/riscv/21/bin" CACHE INTERNAL "")
+        SET(PLATFORM_CLANG_VERSION "-21")
+      endif()
       IF(USE_HW_FPU)
         #SET(PLATFORM_CLANG_SYSROOT "${PLATFORM_CLANG_PATH}/../lib/clang-runtimes/riscv32-none-eabi/riscv32_hard_fp/" CACHE INTERNAL "")
-        SET(PLATFORM_CLANG_SYSROOT "${PLATFORM_CLANG_PATH}/../lib/clang-runtimes/riscv32-unknown-elf/rv32imafc-zicsr-zifencei_hard_fp/" CACHE INTERNAL "")
-        SET(PLATFORM_CLANG_C_FLAGS "--target=riscv32 -march=rv32imafc -mabi=ilp32f  " CACHE INTERNAL "")
+        SET(PLATFORM_CLANG_SYSROOT "${PLATFORM_CLANG_PATH}/../lib/clang-runtimes/riscv32-unknown-elf/riscv32_hard_fp/" CACHE INTERNAL "")
+        SET(PLATFORM_CLANG_C_FLAGS "--target=riscv32 -march=rv32imafc_zicsr -mabi=ilp32f -I${PLATFORM_CLANG_PATH}/../include " CACHE INTERNAL "")
       ELSE()
         #SET(PLATFORM_CLANG_SYSROOT "${PLATFORM_CLANG_PATH}/../lib/clang-runtimes/riscv32-none-eabi/riscv32_soft_nofp/" CACHE INTERNAL "")
-        SET(PLATFORM_CLANG_SYSROOT "${PLATFORM_CLANG_PATH}/../lib/clang-runtimes/riscv32-unknown-elf/rv32imac-zicsr-zifencei_soft_nofp/" CACHE INTERNAL "")
-        SET(PLATFORM_CLANG_C_FLAGS "--target=riscv32 -march=rv32imac -mabi=ilp32  " CACHE INTERNAL "")
+        SET(PLATFORM_CLANG_SYSROOT "${PLATFORM_CLANG_PATH}/../lib/clang-runtimes/riscv32-unknown-elf/riscv32_soft_nofp/" CACHE INTERNAL "")
+        SET(PLATFORM_CLANG_C_FLAGS "--target=riscv32 -march=rv32imac_zicsr -mabi=ilp32  -I${PLATFORM_CLANG_PATH}/../include" CACHE INTERNAL "")
 
       ENDIF()
     ENDIF()
