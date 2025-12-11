@@ -15,8 +15,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+#set(CMAKE_AUTORCC ON)
+#set(CMAKE_AUTOUIC ON)
 
 
 #find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
@@ -116,10 +116,14 @@ SET(SRC   ${H}/main.cpp
           ${H}/esp_qtnetwork.cpp
           ${H}/esp_qtnetwork.h
           ${H}/esp_bridge.cpp
+          ${H}/esp_eventgroup.cpp
+          ../../esprit/src/lnSocketRunner.cpp
 )
 #${H}/bmp_remote_rv.cpp)
 
 ADD_EXECUTABLE(swindle_hosted ${SRC})
+
+target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
 target_link_libraries(swindle_hosted PRIVATE rsbmp)
 target_link_libraries(swindle_hosted PRIVATE esprit_dev)
 target_link_libraries(swindle_hosted PRIVATE swindle_interface)
@@ -127,4 +131,4 @@ target_link_libraries(swindle_hosted PRIVATE libswindle  )
 target_link_libraries(swindle_hosted PRIVATE swindle_interface)
 target_link_libraries(swindle_hosted PRIVATE libswindle  )
 target_link_libraries(swindle_hosted PRIVATE embeddedPrintf usb-1.0 )
-target_link_libraries(swindle_hosted PRIVATE Qt6::Network Qt6::SerialPort)
+target_link_libraries(swindle_hosted PRIVATE Qt6::Core Qt6::Network Qt6::SerialPort)
