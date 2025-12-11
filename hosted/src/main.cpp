@@ -25,6 +25,7 @@
 #include <QDebug>
 #include <QObject>
 #include <QTimer>
+#include <QThread>
 #include <QtGlobal>
 //
 #include "lnLWIP.h"
@@ -40,7 +41,7 @@ extern "C"
 #include "target.h"
 }
 //--
-#define  LN_ARCH  LN_ARCH_ARM
+#define LN_ARCH LN_ARCH_ARM
 #include "lnSocketRunner.h"
 // Rust part
 extern "C"
@@ -79,7 +80,6 @@ void trampoline()
     // printf("Pending : %d\n",server->hasPendingConnections());
 }
 
-
 class socketRunnerGdb : public socketRunner
 {
   public:
@@ -92,23 +92,26 @@ class socketRunnerGdb : public socketRunner
     bool _connected;
     virtual void hook_connected()
     {
-       // swindle_reinit_rtt();
-        rngdbstub_init();
-       // bmp_io_begin_session();
-        _connected = true;
+        // swindle_reinit_rtt();
+        if (!_connected)
+        {
+            rngdbstub_init();
+            // bmp_io_begin_session();
+            _connected = true;
+        } // ???????
     }
     virtual void hook_disconnected()
     {
         _connected = false;
         rngdbstub_shutdown();
-        //bmp_io_end_session();
+        // bmp_io_end_session();
     }
     virtual void hook_poll()
     {
         if (_connected) // connected to a debugger
         {
             rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
-            #if 0
+#if 0
             if (cur_target)   // and we are connected to a target...
             {
                 if (swindle_rtt_enabled())
@@ -120,7 +123,7 @@ class socketRunnerGdb : public socketRunner
                     swindle_purge_rtt();
                 }
             }
-            #endif
+#endif
         }
     }
 
@@ -137,6 +140,7 @@ class socketRunnerGdb : public socketRunner
             {
                 if (!rd)
                     return;
+                DEBUGME("Processing %d bytes in gdb\n", rd);
                 rngdbstub_run(rd, data);
                 releaseData();
                 DEBUGME("\td%d\n", lp++);
@@ -150,31 +154,66 @@ class socketRunnerGdb : public socketRunner
 };
 socketRunnerGdb *runnerGdb = NULL;
 
+/**
+ * @brief [TODO:description]
+ *
+ * @param sz [TODO:parameter]
+ * @param ptr [TODO:parameter]
+ */
+/**
+ * @brief [TODO:description]
+ */
+
+extern "C" void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
+{
+    runnerGdb->writeData(sz, ptr);
+}
+extern "C" void rngdb_output_flush_c()
+{
+    runnerGdb->flushWrite();
+}
+
+/*
+ *
+ */
+void sys_network(lnLwipEvent evt, void *arg)
+{
+    printf("Got sys event %x\n,evt");
+}
+
+class gdbThread : public QThread
+{
+  protected:
+    void run() override
+    {
+        // QTimer mytimer;
+        // QObject::connect(&mytimer, &QTimer::timeout, trampoline);
+        // mytimer.start(100);
+        // qInfo() << "Running in thread:" << QThread::currentThread();
+        runnerGdb = new socketRunnerGdb();
+        runnerGdb->sendEvent(socketRunner::Up);
+        runnerGdb->run();
+        qWarning() << "Thread work done";
+    }
+};
 
 int main(int argc, char **argv)
 {
-    qInfo() << "======================";
-    qInfo() << "* Qt Swindle Hosted  *";
-    qInfo() << "======================";
+    qWarning() << "======================";
+    qWarning() << "* Qt Swindle Hosted  *";
+    qWarning() << "======================";
     QCoreApplication a(argc, argv);
     qInstallMessageHandler(customHandler);
     platform_init(argc, argv);
     initTcpLayer();
 
-    QTimer mytimer;
-    QObject::connect(&mytimer, &QTimer::timeout, trampoline);
-    mytimer.start(100);
+    lnLWIP::start(sys_network, NULL);
+
     // go!
     rngdbstub_init();
-    uint8_t buffer[2048];
-    // QCoreApplication::exec();
-    socketRunnerGdb *runner=new socketRunnerGdb();
-
-    runner->run();
-
-
-    
-  
+    gdbThread *t = new gdbThread;
+    t->start();
+    a.exec();
     return 0;
 }
 extern "C" void rv_test(void);

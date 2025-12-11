@@ -15,8 +15,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+#set(CMAKE_AUTORCC ON)
+#set(CMAKE_AUTOUIC ON)
 
 
 #find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
@@ -131,4 +131,4 @@ target_link_libraries(swindle_hosted PRIVATE libswindle  )
 target_link_libraries(swindle_hosted PRIVATE swindle_interface)
 target_link_libraries(swindle_hosted PRIVATE libswindle  )
 target_link_libraries(swindle_hosted PRIVATE embeddedPrintf usb-1.0 )
-target_link_libraries(swindle_hosted PRIVATE Qt6::Network Qt6::SerialPort)
+target_link_libraries(swindle_hosted PRIVATE Qt6::Core Qt6::Network Qt6::SerialPort)
