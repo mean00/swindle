@@ -28,16 +28,23 @@ class SyncSocketServer : public QObject
     QTcpServer *server;
     QTcpSocket *clientSocket;
 };
+/*
+
+*/
 class lnSocketQt : public lnSocket
 {
   public:
     virtual ~lnSocketQt() {};
-    virtual lnSocket::status write(uint32_t n, const uint8_t *data, uint32_t &done);
-    virtual lnSocket::status read(uint32_t n, uint8_t *data, uint32_t &done);
-    virtual lnSocket::status flush();
-    virtual lnSocket::status close();
-    virtual lnSocket::status accept();
-
+    virtual status write(uint32_t n, const uint8_t *data, uint32_t &done);
+    virtual status read(uint32_t &n, uint8_t **data);
+    virtual status invoke(lnSocketEvent evt);
+    virtual status flush() ;
+    virtual status disconnectClient() ;
+    virtual status asyncMode() ;
+    virtual status accept() ;
+    virtual status freeReadData() ;
+   
+   
     lnSocketQt(uint16_t port, lnSocketCb cb, void *arg)
     {
         _port = port;

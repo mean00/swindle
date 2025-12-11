@@ -2,6 +2,9 @@
 #include "esp_qtnetwork.h"
 #include <QDebug>
 
+
+//----------------------
+
 SyncSocketServer::SyncSocketServer(QObject *parent)
     : QObject(parent), server(new QTcpServer(this)), clientSocket(nullptr)
 {
@@ -74,3 +77,4 @@ bool SyncSocketServer::writeBytes(const QByteArray &data, int &ow)
     ow = (int)written;
     return true;
 }
+

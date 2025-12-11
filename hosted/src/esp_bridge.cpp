@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief [TODO:description]
+ *
  */
 
 #include "bmp_logger.h"
@@ -10,13 +11,89 @@
 #include <QTimer>
 #include <QtGlobal>
 //
-#include "esp_qtnetwork.h"
 #include "lnLWIP.h"
+//
+#include "esp_qtnetwork.h"
 
+#include "lnFreeRTOS_pp.h"
+#define xxAssert(c)                                                                                                    \
+    if (!(c))                                                                                                          \
+    {                                                                                                                  \
+        printf("** %s fail! at line %d file %s\n", #c, __LINE__, __FILE__);                                            \
+        exit(-1);                                                                                                      \
+    }
+/**
+ */
+lnSocket *lnSocket::create(uint16_t port, lnSocketCb cb, void *arg)
+{
+    xAssert(0);
+    return NULL;
+}
 bool lnLWIP::start(lnLwIpSysCallback cb, void *arg)
 {
     return true;
 };
+
+lnSocket::status lnSocketQt::read(uint32_t &n, uint8_t **data)
+{
+    return lnSocket::Error;
+}
+/**
+ */
+lnSocket::status lnSocketQt::invoke(lnSocketEvent evt)
+{
+    return lnSocket::Error;
+}
+/**
+ */
+lnSocket::status lnSocketQt::flush()
+{
+    return lnSocket::Error;
+}
+/**
+ */
+lnSocket::status lnSocketQt::disconnectClient()
+{
+    return lnSocket::Error;
+}
+/**
+ */
+lnSocket::status lnSocketQt::asyncMode()
+{
+    return lnSocket::Error;
+}
+/**
+ */
+lnSocket::status lnSocketQt::accept()
+{
+    return lnSocket::Error;
+}
+/**
+ */
+lnSocket::status lnSocketQt::freeReadData()
+{
+    return lnSocket::Error;
+}
+/**
+ */
+lnSocket::status lnSocketQt::write(uint32_t n, const uint8_t *data, uint32_t &done)
+{
+    return lnSocket::Error;
+}
+/**
+
+lnSocket:: status lnSocketQt::read(uint32_t n, uint8_t *data, uint32_t &done) {
+    return lnSocket::Error;
+}
+
+lnSocket::status lnSocketQt::close() {
+    return lnSocket::Error;
+}
+*
+
+*/
+#if 0
+
 /**
  * @class lnSocketQt
  * @brief [TODO:description]
@@ -189,5 +266,15 @@ extern "C" void rngdb_output_flush_c()
     }
     QBMPLOG("\n");
 }
+#endif
 
+extern "C" void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
+{
+}
+extern "C" void rngdb_output_flush_c()
+{
+}
+void initTcpLayer()
+{
+}
 //

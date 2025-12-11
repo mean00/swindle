@@ -40,7 +40,8 @@ extern "C"
 #include "target.h"
 }
 //--
-
+#define  LN_ARCH  LN_ARCH_ARM
+#include "lnSocketRunner.h"
 // Rust part
 extern "C"
 {
@@ -60,7 +61,7 @@ void customHandler(QtMsgType type, const QMessageLogContext &context, const QStr
     QByteArray localMsg = msg.toLocal8Bit();
     fprintf(stderr, "%s", localMsg.constData());
 }
-
+#define DEBUGME printf
 //
 //
 //
@@ -77,7 +78,79 @@ void trampoline()
     rngdbstub_poll();
     // printf("Pending : %d\n",server->hasPendingConnections());
 }
-extern lnSocket *current_connection;
+
+
+class socketRunnerGdb : public socketRunner
+{
+  public:
+    socketRunnerGdb()
+    {
+        _connected = false;
+    }
+
+  protected:
+    bool _connected;
+    virtual void hook_connected()
+    {
+       // swindle_reinit_rtt();
+        rngdbstub_init();
+       // bmp_io_begin_session();
+        _connected = true;
+    }
+    virtual void hook_disconnected()
+    {
+        _connected = false;
+        rngdbstub_shutdown();
+        //bmp_io_end_session();
+    }
+    virtual void hook_poll()
+    {
+        if (_connected) // connected to a debugger
+        {
+            rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
+            #if 0
+            if (cur_target)   // and we are connected to a target...
+            {
+                if (swindle_rtt_enabled())
+                {
+                    swindle_run_rtt();
+                }
+                else
+                {
+                    swindle_purge_rtt();
+                }
+            }
+            #endif
+        }
+    }
+
+  protected:
+    void process_incoming_data()
+    {
+        uint32_t lp = 0;
+
+        while (1)
+        {
+            uint32_t rd = 0;
+            uint8_t *data;
+            if (readData(rd, &data))
+            {
+                if (!rd)
+                    return;
+                rngdbstub_run(rd, data);
+                releaseData();
+                DEBUGME("\td%d\n", lp++);
+            }
+        }
+    xit:
+        flushWrite();
+    }
+
+  protected:
+};
+socketRunnerGdb *runnerGdb = NULL;
+
+
 int main(int argc, char **argv)
 {
     qInfo() << "======================";
@@ -95,16 +168,13 @@ int main(int argc, char **argv)
     rngdbstub_init();
     uint8_t buffer[2048];
     // QCoreApplication::exec();
-    current_connection->accept();
-    while (1)
-    {
-        uint32_t n = 0;
-        if (lnSocket::Ok == current_connection->read(512, buffer, n))
-        {
-            rngdbstub_run(n, buffer);
-        }
-    }
-    // should never get here
+    socketRunnerGdb *runner=new socketRunnerGdb();
+
+    runner->run();
+
+
+    
+  
     return 0;
 }
 extern "C" void rv_test(void);

@@ -116,10 +116,14 @@ SET(SRC   ${H}/main.cpp
           ${H}/esp_qtnetwork.cpp
           ${H}/esp_qtnetwork.h
           ${H}/esp_bridge.cpp
+          ${H}/esp_eventgroup.cpp
+          ../../esprit/src/lnSocketRunner.cpp
 )
 #${H}/bmp_remote_rv.cpp)
 
 ADD_EXECUTABLE(swindle_hosted ${SRC})
+
+target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
 target_link_libraries(swindle_hosted PRIVATE rsbmp)
 target_link_libraries(swindle_hosted PRIVATE esprit_dev)
 target_link_libraries(swindle_hosted PRIVATE swindle_interface)
