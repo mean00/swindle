@@ -190,6 +190,12 @@ class gdbThread : public QThread
         // QObject::connect(&mytimer, &QTimer::timeout, trampoline);
         // mytimer.start(100);
         // qInfo() << "Running in thread:" << QThread::currentThread();
+        //
+        char *argv[2] = {"", ""};
+        platform_init((int)0, argv);
+        initTcpLayer();
+        lnLWIP::start(sys_network, NULL);
+        rngdbstub_init();
         runnerGdb = new socketRunnerGdb();
         runnerGdb->sendEvent(socketRunner::Up);
         runnerGdb->run();
@@ -204,13 +210,8 @@ int main(int argc, char **argv)
     qWarning() << "======================";
     QCoreApplication a(argc, argv);
     qInstallMessageHandler(customHandler);
-    platform_init(argc, argv);
-    initTcpLayer();
-
-    lnLWIP::start(sys_network, NULL);
 
     // go!
-    rngdbstub_init();
     gdbThread *t = new gdbThread;
     t->start();
     a.exec();

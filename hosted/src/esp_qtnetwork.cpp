@@ -42,6 +42,8 @@ void SyncSocketServer::onNewConnection()
     {
         qWarning("Accepted ..\n");
         // connect(socket, &QTcpSocket::readyRead,    this, &EchoClient::onReadyRead);
+        clientSocket->setParent(NULL);
+        clientSocket->moveToThread(QThread::currentThread());
         clientSocket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
         QObject::connect(clientSocket, &QTcpSocket::readyRead, this, &SyncSocketServer::dataAvailable);
         _parent->onNewConnection();

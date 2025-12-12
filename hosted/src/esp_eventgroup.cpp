@@ -38,37 +38,33 @@ class qlnFastEventGroup
     // Wait for bits (similar to xEventGroupWaitBits)
     quint32 waitBits(quint32 bitsToWaitFor, bool waitForAll = true, bool clearOnExit = false, int timeoutMs = -1)
     {
-
         QDeadlineTimer deadline(timeoutMs);
+        QDeadlineTimer oneMS(1);
 
+        bool r;
+        quint32 result;
         while (true)
         {
+            m_mutex.lock();
+            result = m_bits & bitsToWaitFor;
+            if (result != 0)
             {
-                QMutexLocker locker(&m_mutex);
-                bool conditionMet =
-                    waitForAll ? ((m_bits & bitsToWaitFor) == bitsToWaitFor) : ((m_bits & bitsToWaitFor) != 0);
-
-                if (conditionMet)
-                {
-                    quint32 result = m_bits & bitsToWaitFor;
-                    if (clearOnExit)
-                    {
-                        m_bits &= ~bitsToWaitFor;
-                    }
-                    return result;
-                }
+                m_bits &= ~result;
+                m_mutex.unlock();
+                return result;
             }
-            bool r;
-            {
-                QMutexLocker locker(&m_mutex);
-                r = m_cond.wait(&m_mutex, deadline);
-            }
+            r = m_cond.wait(&m_mutex, oneMS);
+            m_mutex.unlock();
             QCoreApplication::processEvents();
-            if (!r)
+            m_mutex.lock();
+            result = m_bits & bitsToWaitFor;
+            if (result != 0 || deadline.hasExpired())
             {
-                // Timeout
-                return m_bits & bitsToWaitFor;
+                m_bits &= ~result;
+                m_mutex.unlock();
+                return result;
             }
+            m_mutex.unlock();
         }
     }
 
