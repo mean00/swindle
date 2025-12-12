@@ -28,7 +28,6 @@ extern "C" void swindle_init_rtt();
 extern "C" void swindle_run_rtt();
 extern "C" void swindle_purge_rtt();
 extern "C" bool swindle_rtt_enabled();
-extern "C" void usbCdc_Logger(int n, const char *data);
 // device -> host
 extern "C" uint32_t usbCdc_write_available();
 extern "C" bool swindle_write_rtt_channel(uint32_t channel, uint32_t size, const uint8_t *data);

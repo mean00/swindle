@@ -15,7 +15,7 @@ ADD_LIBRARY(swindle_interface STATIC ${SRC})
 target_link_libraries( swindle_interface PRIVATE esprit_dev)
 target_include_directories( swindle_interface PRIVATE ../../../include)
 
-if(SWINDLE_USER_NETWORK)
+if(SWINDLE_USE_NETWORK)
   target_sources(swindle_interface PRIVATE bmp_interface_net.cpp)
 else()
   target_sources(swindle_interface PRIVATE bmp_interface_usb.cpp)
