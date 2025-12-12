@@ -1,0 +1,27 @@
+diff --git a/src/target/target_flash.c b/src/target/target_flash.c
+index ee2f8bf0..83832777 100644
+--- a/src/target/target_flash.c
++++ b/src/target/target_flash.c
+@@ -278,8 +278,11 @@ static bool flash_buffered_flush(target_flash_s *flash)
+ 		const uint8_t *src = flash->buf + (aligned_addr - flash->buf_addr_base);
+ 		const uint32_t length = flash->buf_addr_high - aligned_addr;
+ 
+-		for (size_t offset = 0; offset < length; offset += flash->writesize)
++		for (size_t offset = 0; offset < length; offset += flash->writesize) {
+ 			result &= flash->write(flash, aligned_addr + offset, src + offset, flash->writesize);
++			if (!result)
++				return false;
++		}
+ 
+ 		flash->buf_addr_base = UINT32_MAX;
+ 		flash->buf_addr_low = UINT32_MAX;
+@@ -298,7 +301,8 @@ static bool flash_buffered_write(target_flash_s *flash, target_addr_t dest, cons
+ 		/* Check for base address change */
+ 		if (base_addr != flash->buf_addr_base) {
+ 			result &= flash_buffered_flush(flash);
+-
++			if (!result)
++				return false; // MEANX
+ 			/* Setup buffer */
+ 			flash->buf_addr_base = base_addr;
+ 			memset(flash->buf, flash->erased, flash->writebufsize);

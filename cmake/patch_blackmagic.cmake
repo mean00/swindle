@@ -43,10 +43,12 @@ APPLY_PATCH_IF_NEEDED5(patched48 48blackmagic_enable_native_rvswd.patch         
 APPLY_PATCH_IF_NEEDED5(patched49 49blackmagic_hook_rvswd_to_host_mode.patch      "enable rvswd for hosted mode")
 APPLY_PATCH_IF_NEEDED5(patched50 50blackmagic_export_breakpoint_available.patch  "export a helper function to query the # of hw breakoint/watchpoint")
 APPLY_PATCH_IF_NEEDED5(patched51 51blackmagic_add_sw_breakpoint_framework.patch  "hook in the data needed to attach sw breakpoints to target")
-APPLY_PATCH_IF_NEEDED5(patched52 52blackmagic_abort_on_flash_error.patch         "abort buffered flash write as soon as there is one error")
+APPLY_PATCH_IF_NEEDED5(patched53 53blackmagic_abort_on_flash_error.patch         "abort buffered flash write as soon as there is one error")
+APPLY_PATCH_IF_NEEDED5(patched54 54blackmagic_dont_doubly_define_rvswd.patch     "avoid doubly definit have_rvswd in hosted mode")
 
 string(JOIN " " pretty ${already_patched})
 MESSAGE(STATUS "Patch already applied ${pretty} already done")
+#APPLY_PATCH_IF_NEEDED5(patched52 52blackmagic_abort_on_flash_error.patch         "abort buffered flash write as soon as there is one error")
 #APPLY_PATCH_IF_NEEDED3(patched80 ${BMP_PATCH_FOLDER}/80blackmagic_support_watchpoint_on_cm33.patch ${LNBMP_TOP_FOLDER}   "fix cortemx v8m watchpoint .")
 #>>APPLY_PATCH_IF_NEEDED3(patched25 ${BMP_PATCH_FOLDER}/25blackmagic_riscv_disable_interrupt_during_step.patch ${LNBMP_TOP_FOLDER}   "disable interrupt during single step")
 # Obsoleted by newer version
