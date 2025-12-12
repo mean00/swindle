@@ -172,6 +172,7 @@ extern "C" void rngdb_output_flush_c()
 {
     runnerGdb->flushWrite();
 }
+extern "C" void platform_init(int argc, char **argv);
 
 /*
  *
@@ -191,8 +192,8 @@ class gdbThread : public QThread
         // mytimer.start(100);
         // qInfo() << "Running in thread:" << QThread::currentThread();
         //
-        char *argv[2] = {"", ""};
-        platform_init((int)0, argv);
+        const char *argv[2] = {"", NULL};
+        platform_init((int)0, (char **)argv);
         initTcpLayer();
         lnLWIP::start(sys_network, NULL);
         rngdbstub_init();
