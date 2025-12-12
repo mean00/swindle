@@ -2,6 +2,7 @@
 #include "esp_qtnetwork.h"
 #include <QDebug>
 #include <QDateTime>
+#include <QThread>
 
 #define DEBUGME(...)                                                                                                   \
     {                                                                                                                  \
@@ -23,6 +24,15 @@ void hexDump(bool wr, int n, const char *x)
     }
     printf("]\n");
 }
+
+#define CHECK_THR()                                                                                                    \
+    {                                                                                                                  \
+        if (!(QThread::currentThread() == clientSocket->thread()))                                                     \
+        {                                                                                                              \
+            printf("** wrong thread**\n");                                                                             \
+            exit(-1);                                                                                                  \
+        }                                                                                                              \
+    }
 
 void SyncSocketServer::onNewConnection()
 {
@@ -83,6 +93,7 @@ QByteArray SyncSocketServer::readBytes(int maxSize)
     if (!clientSocket)
         return QByteArray();
 
+    CHECK_THR();
     QByteArray array = clientSocket->readAll();
     hexDump(false, array.size(), array.data());
     return array;
@@ -90,6 +101,7 @@ QByteArray SyncSocketServer::readBytes(int maxSize)
 
 bool SyncSocketServer::writeBytes(const QByteArray &data, int &ow)
 {
+    CHECK_THR();
     if (!clientSocket)
         return false;
     // qWarning() << QDateTime::currentDateTime().toString("mm:ss:ms") << "Writing " << data.size() << "\n ";
