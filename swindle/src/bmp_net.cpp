@@ -70,7 +70,7 @@ extern "C"
 class socketRunnerGdb : public socketRunner
 {
   public:
-    socketRunnerGdb()
+    socketRunnerGdb(lnFastEventGroup &eventGroup, uint32_t shift) : socketRunner(eventGroup, shift)
     {
         _connected = false;
     }
@@ -158,7 +158,35 @@ void gdb_if_init()
  *
  * @param parameters [TODO:parameter]
  */
+#define MAIN_GDB_SLOT 0
 
+lnFastEventGroup network_eventGroup;
+
+/**
+ *
+ * @param evt [TODO:parameter]
+ * @param arg [TODO:parameter]
+ */
+static void NetCb_c(lnLwipEvent evt, void *arg)
+{
+    socketRunner::RunnerEvent revt;
+    switch (evt)
+    {
+    case LwipDown:
+        revt = socketRunner::Down;
+        break;
+    case LwipReady:
+        revt = socketRunner::Up;
+        break;
+    default:
+        xAssert(0);
+        break;
+    }
+    network_eventGroup.setEvents(revt);
+}
+/**
+ *
+ */
 void gdb_task(void *parameters)
 {
     (void)parameters;
@@ -166,14 +194,32 @@ void gdb_task(void *parameters)
     platform_init();
     pins_init();
     gdb_if_init();
+    lnLWIP::start(NetCb_c, NULL);
     initFreeRTOS();
     //
     swindle_init_rtt();
     rngdbstub_init();
+    network_eventGroup.takeOwnership();
+    runnerGdb = new socketRunnerGdb(network_eventGroup, MAIN_GDB_SLOT); // 5 first slots
+    uint32_t mask = (0xffffffffUL);
+    mask &= ~(socketRunner::CanWrite << 0);
+    const uint32_t global_mask = (socketRunner::Up | socketRunner::Down);
+    while (1)
+    {
+        uint32_t events = network_eventGroup.waitEvents(mask, 20);
+        uint32_t global_events = events & global_mask;
+        uint32_t local_events = events & (~global_mask);
+        local_events >>= MAIN_GDB_SLOT;
+        local_events &= socketRunner::Mask;
 
-    runnerGdb = new socketRunnerGdb();
-    runnerGdb->run();
+        if (events)
+        {
+            // Logger("Events ::~~ => 0x%x\n", events);
+        }
+        runnerGdb->process_events(local_events | global_events);
+    }
 }
+
 /**
  * @brief [TODO:description]
  *
