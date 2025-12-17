@@ -119,7 +119,6 @@ void gdb_task(void *parameters)
     lnLWIP::start(NetCb_c, NULL);
     initFreeRTOS();
     //
-    rngdbstub_init();
     network_eventGroup.takeOwnership();
     runnerGdb = new socketRunnerGdb(network_eventGroup, MAIN_GDB_SLOT);
     runnerRtt = new socketRunnerRtt(network_eventGroup, MAIN_RTT_SLOT);
