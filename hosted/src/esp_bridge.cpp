@@ -106,6 +106,11 @@ lnSocket::status lnSocketQt::write(uint32_t n, const uint8_t *data, uint32_t &do
     done = o;
     return lnSocket::Ok;
 }
+lnSocket::status lnSocketQt::writeBufferAvailable(uint32_t &n)
+{
+    n = 2048; // assume we can buffer a lot and blocking is not a problem
+    return lnSocket::Ok;
+}
 void initTcpLayer()
 {
 }

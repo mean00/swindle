@@ -46,9 +46,16 @@ void SyncSocketServer::onNewConnection()
         clientSocket->moveToThread(QThread::currentThread());
         clientSocket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
         QObject::connect(clientSocket, &QTcpSocket::readyRead, this, &SyncSocketServer::dataAvailable);
+        QObject::connect(clientSocket, &QTcpSocket::disconnected, this, &SyncSocketServer::onDisconnect);
         _parent->onNewConnection();
         qWarning("Accepted !\n");
     }
+}
+
+void SyncSocketServer::onDisconnect()
+{
+    qWarning("Disconnected signal \n");
+    _parent->onDisconnect();
 }
 void SyncSocketServer::dataAvailable()
 {
