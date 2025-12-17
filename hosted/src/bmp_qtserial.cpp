@@ -357,7 +357,7 @@ extern "C" void libusb_exit_function(bmda_probe_s *info)
  */
 extern "C" void bmp_ident(bmda_probe_s *info)
 {
-    QBMPLOG("Probing : %s\n", info->manufacturer);
+    QBMPERROR("Probing : <%s>\n", info->manufacturer);
 
     QString port(info->manufacturer);
     qserial = new QSerialPort(port);

@@ -72,6 +72,8 @@ class lnSocketQt : public lnSocket
     virtual status asyncMode();
     virtual status accept();
     virtual status freeReadData();
+    // return # of bytes that can be written without blocking. This is not atomic!
+    virtual status writeBufferAvailable(uint32_t &n);
 
     lnSocketQt(uint16_t port, lnSocketCb cb, void *arg)
     {

@@ -83,7 +83,7 @@ void trampoline()
 class socketRunnerGdb : public socketRunner
 {
   public:
-    socketRunnerGdb()
+    socketRunnerGdb(lnFastEventGroup &eventGroup, uint32_t shift) : socketRunner(2000, eventGroup, shift)
     {
         _connected = false;
     }
@@ -182,6 +182,13 @@ void sys_network(lnLwipEvent evt, void *arg)
     printf("Got sys event %x\n,evt");
 }
 
+lnFastEventGroup network_eventGroup;
+static void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
+{
+    uint32_t limited = (locl >> runner->shift()) & socketRunner::Mask;
+    runner->process_events(limited | global);
+}
+
 class gdbThread : public QThread
 {
   protected:
@@ -196,11 +203,19 @@ class gdbThread : public QThread
         platform_init((int)0, (char **)argv);
         initTcpLayer();
         lnLWIP::start(sys_network, NULL);
-        rngdbstub_init();
-        runnerGdb = new socketRunnerGdb();
+        network_eventGroup.takeOwnership();
+        runnerGdb = new socketRunnerGdb(network_eventGroup, 0);
         runnerGdb->sendEvent(socketRunner::Up);
-        runnerGdb->run();
-        qWarning() << "Thread work done";
+        uint32_t mask = (0xffffffffUL);
+        mask &= ~(socketRunner::CanWrite << 0);
+        const uint32_t global_mask = (socketRunner::Up | socketRunner::Down);
+        while (1)
+        {
+            uint32_t events = network_eventGroup.waitEvents(mask, 20);
+            uint32_t global_events = events & global_mask;
+            uint32_t local_events = events & (~global_mask);
+            process_sockets(runnerGdb, global_events, local_events);
+        }
     }
 };
 
