@@ -42,6 +42,7 @@ class SyncSocketServer : public QObject
     lnSocketQt *_parent;
   private slots:
     void onNewConnection();
+    void onDisconnect();
     void dataAvailable();
 };
 /*
@@ -62,6 +63,10 @@ class lnSocketQt : public lnSocket
     {
         // printf("Data!\n");
         _cb(SocketDataAvailable, _arg);
+    };
+    void onDisconnect()
+    {
+        _cb(SocketDisconnect, _arg);
     };
     void onNewConnection()
     {
