@@ -12,9 +12,9 @@ IF("${LN_ARCH}" STREQUAL "RISCV") # RISCV
       SET(GCC_OPTIM "-msave-restore")
       SET(PLATFORM_TOOLCHAIN_PATH "/riscv/xpack-14.2.0-2/bin" CACHE INTERNAL "")
       IF(USE_HW_FPU)
-        SET(PLATFORM_C_FLAGS "-march=rv32imafc_zicsr -mabi=ilp32f" ${GCC_OPTIM} " CACHE INTERNAL "")
+        SET(PLATFORM_C_FLAGS "-march=rv32imafc_zicsr -mabi=ilp32f ${GCC_OPTIM}" CACHE INTERNAL "")
       ELSE()
-        SET(PLATFORM_C_FLAGS "-march=rv32imac_zicsr -mabi=ilp32"  ${GCC_OPTIM}  "CACHE INTERNAL "")
+        SET(PLATFORM_C_FLAGS "-march=rv32imac_zicsr -mabi=ilp32  ${GCC_OPTIM}" CACHE INTERNAL "")
       ENDIF()
       SET(PLATFORM_PREFIX "riscv-none-elf-" CACHE INTERNAL "")
       # FOR CLANG
