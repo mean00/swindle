@@ -57,7 +57,7 @@ RUN chmod a+rwx /root
 CMD [ "/bin/bash" ]
 
 USER ${USERNAME}
-RUN /usr/bin/curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+RUN /usr/bin/curl -s --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/home/${USERNAME}/.cargo/bin:${PATH}"
 RUN rustc --version && cargo --version
 RUN echo ".  \$HOME/.cargo/env" >> /home/$USERNAME/.bashrc
@@ -71,9 +71,10 @@ RUN export PATH=$PATH:\$HOME/.local/bin &&  mkdir -p /home/$USERNAME/.local/bin 
             && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi 
 
 # Install riscv toolchain (llvm)
-RUN  wget -O - https://github.com/mean00/LLVM-embedded-toolchain-for-rv32/releases/download/19.1.5/LLVM_RV32_Linux_ubuntu_19.1.5.tar.gz | tar -xz -C /riscv && mv /riscv/LLVM_RV32_Linux_ubuntu_19.1.5 /riscv/llvm_19.1 
+RUN  wget -nv -O - https://github.com/mean00/LLVM-embedded-toolchain-for-rv32/releases/download/21.1.8/LLVM-ET-RV32-21.1.8-Ubuntu_24.04_x86_64.tar.gz | tar -xz -C /riscv  \
+              && mv /riscv/LLVM-ET-RV32-21.1.8-Linux-x86_64  /riscv/llvm_21.1.8  && cd /riscv/llvm_21.1.8/bin && ln -s clang++ clang++-21 
 # Install arm toolchain (llvm)
-RUN  wget -O - https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-19.1.5/LLVM-ET-Arm-19.1.5-Linux-x86_64.tar.xz | xz -d -c  | tar -x -C /arm && mv /arm/LLVM-ET-Arm-19.1.5-Linux-x86_64  /arm/llvm_19.1 \
+RUN  wget -nv -O - https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-19.1.5/LLVM-ET-Arm-19.1.5-Linux-x86_64.tar.xz | xz -d -c  | tar -x -C /arm && mv /arm/LLVM-ET-Arm-19.1.5-Linux-x86_64  /arm/llvm_19.1 \
               && cd /arm/llvm_19.1/bin && ln -s clang++ clang++-19
 # RP PICO SDK
 RUN            cd /opt/pico && git clone https://github.com/raspberrypi/pico-sdk.git \
