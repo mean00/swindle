@@ -320,12 +320,12 @@ extern "C" bool rvswd_scan()
     }
     Logger("WCH : found 0x%x device\n", id);
     riscv_dmi_s *dmi = new riscv_dmi_s;
-    memset(dmi, 0, sizeof(*dmi));
     if (!dmi)
     { /* calloc failed: heap exhaustion */
         Logger("calloc: failed in %s\n", __func__);
         return false;
     }
+    memset(dmi, 0, sizeof(*dmi));
     dmi->designer_code = JEP106_MANUFACTURER_WCH;
     dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
     dmi->address_width = 8U;
