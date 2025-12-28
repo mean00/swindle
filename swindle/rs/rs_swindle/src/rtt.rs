@@ -180,7 +180,7 @@ struct SeggerRTT {
     last_time: u32,
     write_room: [u32; 4],
 }
-static mut RTT_BUFFER: [u8; TRANSFER_BUFFER_SIZE + 4] = [0; TRANSFER_BUFFER_SIZE + 4];
+static mut RTT_BUFFER: [u32; TRANSFER_BUFFER_SIZE / 4 + 1] = [0; TRANSFER_BUFFER_SIZE / 4 + 1];
 fn get_transfer_buffer() -> *mut u8 {
     unsafe { &mut RTT_BUFFER as *mut _ as *mut u8 }
 }
@@ -257,13 +257,7 @@ pub fn swindle_rtt_print_info() {
     }
     gdb_print!("Checking control block at  address 0x{:x}\n", adr);
 
-    let halted = swindle_rtt_access_to_target();
-    if halted == RttHalt::Failure {
-        gdb_print!("Failed to access target for Control Block  reading!\n");
-        return;
-    }
     let cb = RttControlBlock::read(adr);
-    swindle_rtt_release_target(halted);
 
     if cb.max_num_up_buffers == 0 || cb.max_num_up_buffers > 4 {
         gdb_print!("Invalid number of up buffers {}\n", cb.max_num_up_buffers);
@@ -438,11 +432,8 @@ pub extern "C" fn swindle_read_rtt_channel(
     // do something with it
     let offset: usize = extra as usize;
     unsafe {
-        swindle_rtt_send_data_to_host(
-            index as u32,
-            chunk,
-            RTT_BUFFER[offset..(offset + 1)].as_ptr(),
-        );
+        let ptr = get_transfer_buffer();
+        swindle_rtt_send_data_to_host(index as u32, chunk, ptr.add(offset));
     }
     // the usable part is RTT_BUFFER[ extra, (extra+chunk)]
     // TODO
@@ -498,11 +489,12 @@ impl SeggerRTT {
         for index in 0..top {
             let mut available: u32 = 0;
             if Self::read_buffer(adr_buf, &mut buffer) {
-                if buffer.write_offset >= buffer.read_offset {
-                    available = buffer.size - (buffer.write_offset - buffer.read_offset);
+                let used = if buffer.write_offset >= buffer.read_offset {
+                    buffer.write_offset - buffer.read_offset
                 } else {
-                    available = buffer.read_offset - buffer.write_offset - 1;
-                }
+                    buffer.size - (buffer.read_offset - buffer.write_offset)
+                };
+                available = buffer.size.saturating_sub(used).saturating_sub(1);
             }
             swindle_get_rtt().write_room[index as usize] = available;
             adr_buf += BUFFER_SIZE;
