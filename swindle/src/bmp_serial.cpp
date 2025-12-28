@@ -113,6 +113,7 @@ class BMPSerial : public lnTask
      */
     bool runUsbToSerial(uint32_t ev)
     {
+    rerun:
         int nb = 0;
         switch ((int)_usb2serial._txing)
         {
@@ -121,16 +122,18 @@ class BMPSerial : public lnTask
             if ((ev & USB_EVENT_READ) == 0) // no event
                 return false;
             nb = _usb->read(_usb2serial._buffer, LN_BMP_BUFFER_SIZE);
+            xAssert(nb <= LN_BMP_BUFFER_SIZE);
             if (nb == 0)
                 return false;          // nothing to do
             _usb2serial._txing = true; // prepare for txing, will happen at next round
             _usb2serial._limit = nb;
             _usb2serial._dex = 0;
-            return true;
+            goto rerun;
         }
         break;
         case 1: {
-            int avail = (int)(_usb2serial._limit - _usb2serial._dex);
+            xAssert(_usb2serial._limit >= _usb2serial._dex);
+            uint32_t avail = _usb2serial._limit - _usb2serial._dex;
             uint8_t *ptr = _usb2serial._buffer + _usb2serial._dex;
             XXD("<U2s:>");
             XXD_C(avail, (const char *)(ptr));
@@ -139,7 +142,9 @@ class BMPSerial : public lnTask
                 return false; // will wait for the tx done event
 
             _usb2serial._dex += txed;
-            if (_usb2serial._limit == _usb2serial._dex) // all done
+            xAssert(_usb2serial._limit >= _usb2serial._dex);
+            // all done ?
+            if (_usb2serial._dex >= _usb2serial._limit)
             {
                 _usb2serial._txing = false;
                 _evGroup->setEvents(USB_EVENTS); // for re-evaluation at next loop
