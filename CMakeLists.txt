@@ -178,7 +178,7 @@ TARGET_LINK_LIBRARIES(swindle PUBLIC swindle_interface)
 TARGET_LINK_LIBRARIES(swindle PUBLIC rsbmp)
 #FIXME TODO this should be automatic
 if(SWINDLE_USE_NETWORK)
-  TARGET_LINK_LIBRARIES(swindle PUBLIC lwipcore lnEthCh32V3xx)
+  TARGET_LINK_LIBRARIES(swindle PUBLIC lwipcore lnEth_wch)
 endif()
 #
 TUNE_NAME(USE_CH32V3x CH32V3x)
