@@ -1,4 +1,5 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), no_main)]
 #![allow(static_mut_refs)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
