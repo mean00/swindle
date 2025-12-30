@@ -53,7 +53,7 @@ fn clear_autoauto() {
     get_autoauto().set_available(false);
 }
 #[unsafe(no_mangle)]
-extern "C" fn rngdbstub_init() {
+pub extern "C" fn rngdbstub_init() {
     settings::init_settings();
     unsafe {
         autoauto.write(gdb_stream::<INPUT_BUFFER_SIZE>::new());
@@ -61,7 +61,7 @@ extern "C" fn rngdbstub_init() {
     }
 }
 #[unsafe(no_mangle)]
-extern "C" fn rngdbstub_shutdown() {
+pub extern "C" fn rngdbstub_shutdown() {
     bmp::bmp_detach();
     clear_autoauto();
 }

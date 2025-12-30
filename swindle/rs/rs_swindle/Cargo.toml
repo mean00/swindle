@@ -26,7 +26,7 @@ strum_macros = { version = "0.27.1", default-features = false, features = []}
 [lib]
 name = "rsbmp"
 path = "src/lib.rs"
-crate-type = ["staticlib"] # Creates static lib
+crate-type = ["rlib","staticlib"] # Creates static lib
 
 [profile.dev]
 debug = true
