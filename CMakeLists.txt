@@ -18,6 +18,7 @@ OPTION(USE_48PIN_PACKAGE "Use bluepill chip in 48 pins package (GD3/CH32)" OFF)
 OPTION(USE_64PIN_PACKAGE "Use bluepill chip in 64 pins package (GD3/CH32)" OFF)
 OPTION(SWINDLE_USE_USB "Use USB interface" ON)
 OPTION(SWINDLE_USE_NETWORK "Use tcp/ip interface" OFF)
+OPTION(LN_EXTERNAL_GENERATE "Build swindle as a subproject" OFF)
 #
 set(BMP_VERSION_BRANCH 1.10)
 set(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
@@ -40,16 +41,18 @@ IF(NOT USE_NO_DEFAULT)
   INCLUDE(./build_default.cmake)
 ENDIF()
 # Consistency check
-if(SWINDLE_USE_USB AND SWINDLE_USE_NETWORK)
-  MESSAGE(FATAL_ERROR "Please Select usb or network")
-endif()
-if(NOT SWINDLE_USE_USB AND NOT SWINDLE_USE_NETWORK)
-  MESSAGE(FATAL_ERROR "Please Select usb or network")
-endif()
-if(SWINDLE_USE_NETWORK)
-  set(LWIP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lwip CACHE INTERNAL "")
-  SET(LN_ENABLE_ETH TRUE CACHE INTERNAL "")
-endif()
+IF(NOT LN_EXTERNAL_GENERATE)
+  if(SWINDLE_USE_USB AND SWINDLE_USE_NETWORK)
+    MESSAGE(FATAL_ERROR "Please Select usb or network")
+  endif()
+  if(NOT SWINDLE_USE_USB AND NOT SWINDLE_USE_NETWORK)
+    MESSAGE(FATAL_ERROR "Please Select usb or network")
+  endif()
+  if(SWINDLE_USE_NETWORK)
+    set(LWIP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lwip CACHE INTERNAL "")
+    set(LN_ENABLE_ETH TRUE CACHE INTERNAL "")
+  endif()
+ENDIF()
 #----------------
 # Option loaded
 #----------------
@@ -76,8 +79,10 @@ ENDIF()
 # /USB..
 set(LN_ENABLE_I2C   FALSE CACHE INTERNAL "")
 set(LN_ENABLE_SPI   FALSE CACHE INTERNAL "")
-set(LN_ENABLE_UART  TRUE  CACHE INTERNAL "")
-set(LN_ENABLE_RUST  TRUE  CACHE INTERNAL "")
+IF(NOT LN_EXTERNAL_GENERATE)
+  set(LN_ENABLE_UART  TRUE  CACHE INTERNAL "")
+  set(LN_ENABLE_RUST  TRUE  CACHE INTERNAL "")
+ENDIF()
 
 #___________________________________________________
 
@@ -217,7 +222,9 @@ IF(NOT LN_EXTERNAL_GENERATE)
 
   #TUNE_NAME(USE_RP2040_PURE_RAM RAM)
 
-  SET_TARGET_PROPERTIES(swindle PROPERTIES OUTPUT_NAME swindle${TGT_NAME})
+  IF(NOT LN_EXTERNAL_GENERATE)
+    SET_TARGET_PROPERTIES(swindle PROPERTIES OUTPUT_NAME swindle${TGT_NAME})
+  ENDIF()
   IF(USE_WS2812)
     MESSAGE(STATUS "   using WS2812B single led")
   ENDIF()
@@ -227,6 +234,6 @@ IF(NOT LN_EXTERNAL_GENERATE)
   #get_target_property(if swindle INTERFACE_LINK_LIBRARIES)
   #message(STATUS " *********** interface : <${if}>")
 
-  FILE(WRITE ${CMAKE_BINARY_DIR}/swindle_build_options.h "#define SWINDLE_BUILD_OPTIONS \"${BUILD_STRING}\"")
-
 ENDIF() #---
+FILE(WRITE ${CMAKE_BINARY_DIR}/swindle_build_options.h "#define SWINDLE_BUILD_OPTIONS \"${BUILD_STRING}\"")
+
