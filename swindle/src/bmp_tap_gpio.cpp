@@ -27,11 +27,11 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
     }
     switch (lnCpuID::vendor())
     {
-    case lnCpuID::LN_MCU_GD32: // assume this is a GD32F303 at 96 Mhz
+    case lnCpuID::LN_VENDOR_GD: // assume this is a GD32F303 at 96 Mhz
         alpha = 7.681 * 1000000.;
         beta = 4.5;
         break;
-    case lnCpuID::LN_MCU_CH32: // assume this is a CH32V3 at 140 Mhz
+    case lnCpuID::LN_VENDOR_WCH: // assume this is a CH32V3 at 140 Mhz
         alpha = 16.668 * 1000000.;
         beta = 5.0;
         break;

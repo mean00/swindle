@@ -99,7 +99,7 @@ fn rngdb_send_data_u8(data: &[u8]) {
  *
  */
 #[unsafe(no_mangle)]
-extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
+pub extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     let mut data_as_slice: &[u8];
     unsafe {
         data_as_slice = core::slice::from_raw_parts(d, l);
