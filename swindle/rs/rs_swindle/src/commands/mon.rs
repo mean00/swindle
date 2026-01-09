@@ -506,17 +506,17 @@ fn _mon_test(_command: &str, _args: &[&str]) -> bool {
     //unsafe {
     //resetTest();
     //}
-    let pin: rnPin = rnPin::PB6;
-    let mut state: bool = false;
-    gdb_print!("starting test\n");
+    //let pin: rnPin = rnPin::PB6;
+    //let mut state: bool = false;
+    //gdb_print!("starting test\n");
     //pinMode(pin, lnOUTPUT);
-    loop {
-        digital_write(pin, state);
-        state = !state;
-        delay_ms(2000);
-    }
+    //loop {
+    //digital_write(pin, state);
+    //state = !state;
+    //delay_ms(2000);
+    //}
     //encoder::reply_ok();
-    //true
+    true
 }
 #[cfg(feature = "hosted")]
 fn _mon_test2(_command: &str, _args: &[&str]) -> bool {

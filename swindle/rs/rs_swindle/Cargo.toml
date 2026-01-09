@@ -11,6 +11,11 @@ std = []
 native = ["rust_esprit"]
 hosted = []
 
+
+rp2040 = ["rust_esprit/rp2040"]
+esp32 = ["rust_esprit/esp32"]
+
+
 [dependencies]
 cty = "0.2.2"
 #rust_esprit = { path = "../../../esprit/rust/rust_esprit", features = ["cdc"] , optional = true}
