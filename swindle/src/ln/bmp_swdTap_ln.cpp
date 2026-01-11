@@ -29,7 +29,7 @@ Original license header
 
  */
 #include "esprit.h"
-#include "lnBMP_pinout.h"
+#include "bmp_pinout.h"
 extern "C"
 {
 #include "adiv5.h"
@@ -37,118 +37,15 @@ extern "C"
 #include "timing.h"
 }
 #include "bmp_pinmode.h"
-#include "lnBMP_pinout.h"
-#include "lnBMP_swdio.h"
+#include "bmp_pinout.h"
+#include "bmp_swdio_ln.h"
 extern void gmp_gpio_init_adc();
 
-#include "lnBMP_tap.h"
+#include "bmp_tap_ln.h"
 #if PC_HOSTED == 0
-#include "lnBMP_pinout.h"
+#include "bmp_pinout.h"
 #endif
 #include "lnbmp_parity.h"
-
-static uint32_t SwdRead(size_t ticks);
-static bool SwdRead_parity(uint32_t *ret, size_t ticks);
-static void SwdWrite(uint32_t MS, size_t ticks);
-static void SwdWrite_parity(uint32_t MS, size_t ticks);
-
-void swdioSetAsOutput(bool output);
-/**
- */
-static uint32_t SwdRead(size_t len)
-{
-    xAssert(0);
-    uint32_t index = 1;
-    uint32_t ret = 0;
-    int bit;
-
-    swdioSetAsOutput(false);
-    for (int i = 0; i < len; i++)
-    {
-        rSWCLK->clockOff();
-        bit = rSWDIO->read();
-        if (bit)
-            ret |= index;
-        rSWCLK->clockOn();
-        index <<= 1;
-    }
-    rSWCLK->clockOff();
-    return ret;
-}
-/**
- */
-static bool SwdRead_parity(uint32_t *ret, size_t len)
-{
-    xAssert(0);
-    uint32_t res = 0;
-    res = SwdRead(len);
-    bool currentParity = __builtin_parity(res);
-    bool parityBit = (rSWDIO->read() == 1);
-    rSWCLK->clockOn();
-    *ret = res;
-    swdioSetAsOutput(true);
-    return currentParity == parityBit; // should be equal
-}
-/**
-
-*/
-static void SwdWrite(uint32_t MS, size_t ticks)
-{
-    xAssert(0);
-    // int cnt;
-    swdioSetAsOutput(true);
-    for (int i = 0; i < ticks; i++)
-    {
-        rSWCLK->clockOff();
-        rSWDIO->set(MS & 1);
-        rSWCLK->clockOn();
-        MS >>= 1;
-    }
-    rSWCLK->clockOff();
-}
-/**
- */
-static void SwdWrite_parity(uint32_t MS, size_t ticks)
-{
-    xAssert(0);
-    bool parity = __builtin_parity(MS);
-    SwdWrite(MS, ticks);
-    rSWDIO->set(parity);
-    rSWCLK->clockOn();
-    rSWCLK->clockOff();
-}
-
-/**
-    properly invert SWDIO direction if needed
-*/
-void LN_FAST_CODE swdioSetAsOutput(bool output)
-{
-    if (output == rSWDIO->dir())
-        return;
-
-    switch ((int)output)
-    {
-    case false: // in
-    {
-        rSWDIO->dir_input();
-        rSWCLK->wait();
-        rSWCLK->clockOn();
-        break;
-    }
-    break;
-    case true: // out
-    {
-        rSWCLK->clockOff();
-        rSWCLK->clockOn();
-        rSWCLK->clockOff();
-        rSWDIO->dir_output();
-        break;
-    }
-    default:
-        break;
-    }
-}
-swd_proc_s swd_proc;
 
 #define LN_READ_BIT(value)                                                                                             \
     rSWCLK->pulseClock();                                                                                              \
@@ -161,16 +58,11 @@ swd_proc_s swd_proc;
     rSWDIO->set(value & 1);                                                                                            \
     rSWCLK->pulseClock();
 
-/**
-
-*/
 extern "C" void swdptap_init()
 {
-    swd_proc.seq_in = SwdRead;
-    swd_proc.seq_in_parity = SwdRead_parity;
-    swd_proc.seq_out = SwdWrite;
-    swd_proc.seq_out_parity = SwdWrite_parity;
+    swdptap_init_stubs();
 }
+
 /**
  */
 static void zwrite(uint32_t nbTicks, uint32_t val)
@@ -195,13 +87,6 @@ static uint32_t zread(uint32_t nbTicks)
     }
     return val;
 }
-/**
- *
- */
-void disableFq()
-{
-}
-
 /**
     \fn ln_adiv5_swd_write_no_check
  */
@@ -351,17 +236,18 @@ extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
     rSWDIO->dir_output();
     zwrite(tick, value);
 }
-/**
+/*
+ *
  *
  */
-void bmp_extraSetWaitState()
-{
-}
-void bmp_gpio_init_extra()
-{
-}
 void bmp_gpio_pinmode(bmp_pin_mode pioMode)
 {
 }
-
+extern "C" void ln_raw_swd_reset(uint32_t pulses)
+{
+    rSWDIO->set(1);
+    rSWDIO->output();
+    for (int i = 0; i < pulses; i++)
+        rSWCLK->pulseClock();
+}
 // EOF

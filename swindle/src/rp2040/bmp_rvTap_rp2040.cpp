@@ -10,7 +10,6 @@
  *
  */
 #include "esprit.h"
-#include "lnBMP_pinout.h"
 
 extern "C"
 {
@@ -21,9 +20,7 @@ extern "C"
 #include "bmp_pinmode.h"
 #include "bmp_rvTap.h"
 #include "esprit.h"
-#include "lnBMP_pinout.h"
-#include "lnBMP_swdio.h"
-#include "lnBMP_tap.h"
+#include "bmp_pinout.h"
 #include "lnRP2040_pio.h"
 #include "ln_rp_pio.h"
 #include "lnbmp_parity.h"

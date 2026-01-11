@@ -1,10 +1,20 @@
+/*
+ *
+ */
 #include "esprit.h"
-#include "lnBMP_pinout.h"
-#include "lnBMP_swdio.h"
+#include "bmp_pinout.h"
+#include "bmp_swdio_esp.h"
 #include "lnCpuID.h"
 #include "math.h"
-extern uint32_t swd_delay_cnt;
-extern uint32_t swd_frequency;
+#include "bmp_tap_esp.h"
+
+extern void gmp_gpio_init_adc();
+
+uint32_t swd_delay_cnt = 10;
+uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
+SwdDirectionPin *rSWDIO;
+SwdWaitPin *rSWCLK;
+SwdReset *pReset;
 /**
  *
  */
@@ -58,5 +68,41 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
 extern "C" uint32_t bmp_get_wait_state_c()
 {
     return swd_delay_cnt;
+}
+/**
+
+*/
+void bmp_gpio_init_once()
+{
+    rSWDIO = new SwdDirectionPin(TSWDIO_PIN);
+    rSWCLK = new SwdWaitPin(TSWDCK_PIN); // automatically add delay after toggle
+    pReset = new SwdReset(TRESET_PIN);   // automatically add delay after toggle
+    pReset->setup();
+    rSWDIO->hiZ();
+    pReset->off(); // hi-z by default
+
+    gmp_gpio_init_adc();
+}
+/**
+ * @brief
+ *
+ */
+void bmp_io_begin_session()
+{
+    rSWDIO->on();
+    rSWDIO->output();
+    rSWCLK->clockOn();
+
+    pReset->off(); // hi-z by default
+}
+/**
+ * @brief
+ *
+ */
+void bmp_io_end_session()
+{
+    rSWDIO->hiZ();
+    rSWDIO->hiZ();
+    pReset->off(); // hi-z by default
 }
 //

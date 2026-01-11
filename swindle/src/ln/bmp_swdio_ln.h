@@ -1,7 +1,17 @@
 #pragma once
-#include "lnBMP_swdio.h"
 /**
  */
+#include "lnBMP_reset.h"
+
+// clang-format on
+static void __inline__ tapOutput();
+static void __inline__ tapInput();
+//
+// #include "lnBMP_swdio_ln.h"
+// #include "lnBMP_swdio_common.h"
+//
+
+// extern const lnPin _mapping[9];
 class SwdPin
 {
   public:
@@ -35,7 +45,7 @@ class SwdPin
         lnOpenDrainClose(_me, false);
         lnPinMode(_me, lnOUTPUT_OPEN_DRAIN, 1);
     }
-    void set(bool x)
+    LN_ALWAYS_INLINE void set(bool x)
     {
         if (x)
             on();
@@ -85,4 +95,48 @@ class SwdDirectionPin : public SwdPin
     }
     bool currentDrive;
 };
+extern SwdPin *rDirection;
+
+// clang-format on
+void __inline__ tapOutput()
+{
+    rDirection->on();
+}
+void __inline__ tapInput()
+{
+    rDirection->off(); // off();
+}
+/**
+ *
+ */
+class SwdWaitPin : public SwdPin
+{
+  public:
+    SwdWaitPin(lnBMPPins no) : SwdPin(no)
+    {
+    }
+    LN_ALWAYS_INLINE void clockOn()
+    {
+        on();
+        if (_wait)
+            swait();
+    }
+    LN_ALWAYS_INLINE void clockOff()
+    {
+        off();
+        if (_wait)
+            swait();
+    }
+    LN_ALWAYS_INLINE void wait()
+    {
+        if (_wait)
+            swait();
+    }
+    LN_ALWAYS_INLINE void pulseClock()
+    {
+        clockOn();
+        clockOff();
+    }
+};
+
 /**/

@@ -29,7 +29,6 @@ Original license header
 
  */
 #include "esprit.h"
-#include "lnBMP_pinout.h"
 extern "C"
 {
 #include "adiv5.h"
@@ -37,8 +36,8 @@ extern "C"
 #include "timing.h"
 }
 
-#include "lnBMP_pinout.h"
-#include "lnBMP_tap.h"
+#include "lnBMP_pins.h"
+#include "bmp_pinout.h"
 #include "ln_rp_pio.h"
 // clang-format on
 #include "bmp_pinmode.h"
@@ -49,12 +48,17 @@ extern "C"
 }
 #include "bmp_pio_rvswd.h"
 #include "bmp_pio_swd.h"
+#include "lnBMP_reset.h"
 #include "platform_support.h"
 
+extern  void gmp_gpio_init_adc();
+
+
 static bmp_pin_mode currentPioMode;
-extern uint32_t swd_frequency;
+uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
 rpPIO *swdpio = NULL;
 rpPIO_SM *xsm = NULL;
+SwdReset *pReset;
 /**
  */
 static void rp2040_swd_pio_change_clock(uint32_t fq)
@@ -76,11 +80,14 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
  *
  *
  */
-void bmp_gpio_init_extra()
+void bmp_gpio_init_once()
 {
+    pReset = new SwdReset(TRESET_PIN); // automatically add delay after toggle
+    pReset->setup();
     swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
     xsm = swdpio->getSm(0);
     currentPioMode = BMP_PINMODE_NONE;
+    gmp_gpio_init_adc();
 }
 /**
  *
@@ -171,4 +178,19 @@ extern "C" uint32_t bmp_get_wait_state_c()
     Logger("Unsupported call in PIO mode\n");
     return 0;
 }
-// EOF
+/*
+ *
+ *
+ */
+void bmp_io_begin_session()
+{
+    pReset->off(); // hi-z by default
+}
+/**
+ * @brief
+ *
+ */
+void bmp_io_end_session()
+{
+    pReset->off(); // hi-z by default
+}// EOF

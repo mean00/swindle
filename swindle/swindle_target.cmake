@@ -21,7 +21,6 @@ SET(BRIDGE_SRCS
 IF(SWINDLE_USE_USB)
   IF(NOT LN_SWINDLE_AS_EXTERNAL)
     LIST( APPEND BRIDGE_SRCS ${B}/bmp_serial.cpp
-                ${B}/bmp_adc${EXTRA}.cpp
                 ${B}/bmp_usb.cpp
   )
     IF("${LN_USB_NB_CDC}" STREQUAL "3")
@@ -33,44 +32,22 @@ IF(SWINDLE_USE_NETWORK)
   LIST( APPEND BRIDGE_SRCS    ${B}/bmp_net.cpp)
 ENDIF()
 
-IF(NOT LN_SWINDLE_AS_EXTERNAL)
-  LIST( APPEND BRIDGE_SRCS ${B}/bmp_adc${EXTRA}.cpp)
-ENDIF()
 
 
 # #
 include(./swindle_common.cmake)
-# ===========================================================================================
+# ==========================================================================
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories( ${BMP}/src)
 include_directories( ${BMP}/src/include)
 include_directories( ${BMP}/src/target)
-# ===========================================================================================
+# ==========================================================================
 ADD_DEFINITIONS("-DENABLE_DEBUG=1")
 ADD_DEFINITIONS("-DPLATFORM_IDENT=\"lnBMP\"")
 ADD_DEFINITIONS("-DPC_HOSTED=0")
 ADD_DEFINITIONS("-include miniplatform.h")
 ADD_DEFINITIONS("-DBMD_IS_STDC=1")
-# ===========================================================================================
-#  add swindle target code and host connection stuff
-IF(USE_RP2040 OR USE_RP2350)
-  IF(TRUE)
-    RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/swd.pio ${CMAKE_BINARY_DIR}/bmp_pio_swd.h)
-    RP_PIO_GENERATE( ${CMAKE_CURRENT_SOURCE_DIR}/src/rvswd.pio ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h)
-    SET( EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h ${B}/bmp_rvTap${EXTRA}.cpp   ${B}/bmp_swdTap${EXTRA}.cpp ${B}/bmp_tap_rp2040.cpp  )
-  ELSE()
-    SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp  ${B}/bmp_tap_gpio.cpp )
-  ENDIF()
-  IF(USE_RP_CARRIER)
-    MESSAGE(STATUS "RP2040 using carrier board layout")
-    ADD_DEFINITIONS("-DUSE_RP_CARRIER")
-  ENDIF()
-
-ELSE()
-  SET( EXTRA_SOURCE  ${B}/bmp_rvTap.cpp   ${B}/bmp_swdTap.cpp  ${B}/bmp_tap_gpio.cpp )
-  #set_property(SOURCE src/bmp_rvTap.cpp  PROPERTY COMPILE_OPTIONS "-Os")
-ENDIF()
-
+# ==========================================================================
 if(USE_INVERTED_NRST )
   SET( EXTRA_SOURCE  ${EXTRA_SOURCE} ${B}/bmp_reset_inv.cpp)
 else()
@@ -97,6 +74,21 @@ TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${S}/include ${B}/include ${T} ${
 TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${myB}/private_include)
 TARGET_INCLUDE_DIRECTORIES( libswindle PUBLIC  ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
 TARGET_LINK_LIBRARIES( libswindle PUBLIC esprit_dev )
+#
+#
+#
+IF(USE_RP2040 OR USE_RP2350)
+  include_directories(src/rp2040)
+  add_subdirectory(src/rp2040)
+ELSEIF("${LN_MCU}" STREQUAL "ESP32")
+  include_directories(src/esp32_gpio)
+  add_subdirectory(src/esp32_gpio)
+ELSE()
+  include_directories(src/ln)
+  add_subdirectory(src/ln)
+ENDIF()
+
+TARGET_LINK_LIBRARIES( libswindle PUBLIC swindleio_impl )
 IF(USE_GD32F3)
   TARGET_COMPILE_DEFINITIONS( libswindle PUBLIC  USE_GD32F303)
 ENDIF()

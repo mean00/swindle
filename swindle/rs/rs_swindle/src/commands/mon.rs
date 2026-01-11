@@ -15,14 +15,14 @@ use crate::settings;
 use alloc::vec::Vec;
 //#[cfg(feature = "hosted")]
 
-#[cfg(not(feature = "hosted"))]
-use rust_esprit::rn_gpio::rnPin;
+//#[cfg(not(feature = "hosted"))]
+//use rust_esprit::rn_gpio::rnPin;
 
 //
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::delay_ms;
-#[cfg(not(feature = "hosted"))]
-use rust_esprit::rn_gpio::digital_write;
+//#[cfg(not(feature = "hosted"))]
+//use rust_esprit::rn_gpio::digital_write;
 #[cfg(feature = "hosted")]
 fn delay_ms(_a: u32) {}
 

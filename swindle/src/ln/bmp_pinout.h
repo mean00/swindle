@@ -1,4 +1,15 @@
 #pragma once
+#define SWD_IO_SPEED 10 // programmed max speed of the gpio, 10 Mhz is  more than enough
+#include "lnBMP_pins.h"
+#ifdef USE_48PIN_PACKAGE
+  #include "bmp_pinout_48pins.h"
+#else
+ #ifdef USE_64PIN_PACKAGE
+  #include "bmp_pinout_64pins.h"
+ #else
+  #error Select 48 or 64 pins package.
+ #endif
+#endif
 
 extern uint32_t swd_delay_cnt;
 
@@ -8,22 +19,5 @@ extern uint32_t swd_delay_cnt;
             __asm__("nop");                                                                                            \
     }
 
-// clang-format on
-static void __inline__ tapOutput();
-static void __inline__ tapInput();
-//
-#include "lnBMP_swdio_ln.h"
-#include "lnBMP_swdio_common.h"
-//
-extern SwdPin *rDirection;
 
-// clang-format on
-void __inline__ tapOutput()
-{
-    rDirection->on();
-}
-void __inline__ tapInput()
-{
-    rDirection->off(); // off();
-}
-//
+// EOF

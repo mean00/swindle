@@ -1,5 +1,5 @@
 /*
-  lnBMP: Gpio driver for Rvswd
+  lnBMP: Gpio driver for SWD
   This code is derived from the blackmagic one but has been modified
   to aim at simplicity at the expense of performances (does not matter much though)
   (The compiler may mitigate that by inlining)
@@ -25,36 +25,44 @@ Original license header
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
- This file implements the WCH DMI/Serial interface.
-
-CLK **HIGH**
-        IO --___  START
-        IO __---  STOP
-
-IO is sampled when clock goes ___---
+ This file implements the SW-DP interface.
 
  */
 #include "esprit.h"
-#pragma once
+extern "C"
+{
+#include "adiv5.h"
+#include "general.h"
+#include "timing.h"
+}
 
+static uint32_t SwdRead(size_t len)
+{
+    xAssert(0);
+    return 0;
+}
+static bool SwdRead_parity(uint32_t *ret, size_t len)
+{
+    xAssert(0);
+    return true;
+}
+static void SwdWrite(uint32_t MS, size_t ticks)
+{
+    xAssert(0);
+}
+static void SwdWrite_parity(uint32_t MS, size_t ticks)
+{
+    xAssert(0);
+}
 /**
- * @brief
- *
- * @param adr
- * @param val
- * @return true
- * @return false
- */
-bool rv_dm_write(uint32_t adr, uint32_t val);
-/**
- * @brief
- *
- * @param adr
- * @param output
- * @return true
- * @return false
- */
-bool rv_dm_read(uint32_t adr, uint32_t *output);
 
-// bool rv_dm_reset();
-//  EOF
+*/
+swd_proc_s swd_proc;
+extern "C" void swdptap_init_stubs()
+{
+    swd_proc.seq_in = SwdRead;
+    swd_proc.seq_in_parity = SwdRead_parity;
+    swd_proc.seq_out = SwdWrite;
+    swd_proc.seq_out_parity = SwdWrite_parity;
+}
+// EOF

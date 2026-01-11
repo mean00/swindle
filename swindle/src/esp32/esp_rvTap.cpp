@@ -34,27 +34,71 @@ CLK **HIGH**
 IO is sampled when clock goes ___---
 
  */
+/**
+ * This is similar to the non rp2040 except we switch to bit banging dynamically
+ *
+ */
 #include "esprit.h"
-#pragma once
+#include "lnBMP_pinout.h"
 
+extern "C"
+{
+#include "jep106.h"
+#include "riscv_debug.h"
+}
+
+#ifndef __clang__
+#pragma GCC optimize("Ofast")
+#endif
+#include "bmp_rvTap.h"
+#include "esprit.h"
+#include "lnBMP_pinout.h"
+#include "lnBMP_swdio.h"
+#include "lnBMP_tap.h"
+#include "lnbmp_parity.h"
+//--
+extern void bmp_gpio_init();
+
+/**
+ *
+ */
+static void rv_write_nbits(int n, uint32_t value)
+{
+    xAssert(0);
+}
+/**
+ * do a falling edge on SWDIO with CLK high (assumed) => start bit
+ */
+static void rv_start_bit()
+{
+    xAssert(0);
+}
+/**
+ *
+ * do a rising edge on SWDIO with CLK high (assumed) => stop bit
+ */
+static void rv_stop_bit()
+{
+    xAssert(0);
+}
+/**
+ *
+ */
+static uint32_t rv_read_nbits(int n)
+{
+    xAssert(0);
+    return false;
+}
 /**
  * @brief
  *
- * @param adr
- * @param val
  * @return true
  * @return false
  */
-bool rv_dm_write(uint32_t adr, uint32_t val);
-/**
- * @brief
- *
- * @param adr
- * @param output
- * @return true
- * @return false
- */
-bool rv_dm_read(uint32_t adr, uint32_t *output);
-
-// bool rv_dm_reset();
-//  EOF
+bool rv_dm_reset()
+{
+    xAssert(0);
+    return false;
+}
+#include "bmp_rvTap_common.h"
+// EOF

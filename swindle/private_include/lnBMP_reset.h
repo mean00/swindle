@@ -1,6 +1,7 @@
 
 #include "esprit.h"
 #include "lnGPIO.h"
+#include "lnBMP_pins.h"
 #pragma once
 class SwdReset
 {

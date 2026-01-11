@@ -1,6 +1,7 @@
 #include "esprit.h"
-#include "lnBMP_pinout.h"
+#include "lnBMP_pins.h"
 #include "lnBMP_reset.h"
+#include "bmp_pinout.h"
 // clang-format on
 //
 SwdReset::SwdReset(lnBMPPins no)
@@ -12,7 +13,7 @@ void SwdReset::setup()
 {
     _state = false;
     lnDigitalWrite(_me, 0);
-    lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED);
+    lnPinMode(_me, lnOUTPUT );
 }
 
 void SwdReset::on()

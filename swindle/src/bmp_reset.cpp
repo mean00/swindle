@@ -1,6 +1,7 @@
 #include "esprit.h"
-#include "lnBMP_pinout.h"
-#include "lnBMP_swdio.h"
+#include "lnBMP_pins.h"
+#include "lnBMP_reset.h"
+#include "bmp_pinout.h"
 // clang-format on
 //
 //
@@ -17,7 +18,7 @@ void SwdReset::setup()
     // 1: Hi Z
     // 0: GND
     lnOpenDrainClose(_me, false);
-    lnPinMode(_me, lnOUTPUT_OPEN_DRAIN, SWD_IO_SPEED);
+    lnPinMode(_me, lnOUTPUT_OPEN_DRAIN );
 }
 
 void SwdReset::on()

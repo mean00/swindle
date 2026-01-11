@@ -25,10 +25,9 @@ Original license header
 
  */
 #include "esprit.h"
-#include "lnBMP_pinout.h"
+//#include "lnBMP_pinout.h"
 extern "C"
 {
-
 #include "adiv5.h"
 #include "exception.h"
 #include "general.h"
@@ -64,4 +63,9 @@ extern "C"
     void jtag_add_device(const uint32_t dev_index, const jtag_dev_s *jtag_dev)
     {
     }
+}
+
+extern "C" void resetTest2()
+{
+
 }

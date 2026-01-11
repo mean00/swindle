@@ -29,7 +29,7 @@ Original license header
 
  */
 #include "esprit.h"
-#include "lnBMP_pinout.h"
+#include "bmp_pinout.h"
 #include "lnGPIO.h"
 extern "C"
 {

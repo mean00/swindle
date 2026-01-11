@@ -39,7 +39,6 @@ IO is sampled when clock goes ___---
  *
  */
 #include "esprit.h"
-#include "lnBMP_pinout.h"
 
 extern "C"
 {
@@ -52,9 +51,10 @@ extern "C"
 #endif
 #include "bmp_rvTap.h"
 #include "esprit.h"
-#include "lnBMP_pinout.h"
-#include "lnBMP_swdio.h"
-#include "lnBMP_tap.h"
+#include "lnBMP_reset.h"
+#include "bmp_pinout.h"
+#include "bmp_swdio_esp.h"
+#include "bmp_tap_esp.h"
 #include "lnbmp_parity.h"
 //--
 extern void bmp_gpio_init();
