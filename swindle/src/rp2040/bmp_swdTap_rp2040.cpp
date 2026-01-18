@@ -68,7 +68,6 @@ extern "C" void swdptap_init()
 static void zwrite(uint32_t size, uint32_t value)
 {
     uint32_t zsize = ((size - 1) << 1) | 1;
-    xsm->waitTxEmpty();
     xsm->write(1, &zsize);
     xsm->write(1, &value);
 }
@@ -79,7 +78,6 @@ static uint32_t zread(uint32_t size)
 {
     uint32_t zsize = ((size - 1) << 1) | 0;
     uint32_t value = 0;
-    xsm->waitTxEmpty();
     xsm->write(1, &zsize);
     xsm->waitRxReady();
     xsm->read(1, &value);
@@ -92,11 +90,13 @@ static uint32_t zread(uint32_t size)
 extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
     uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
+    xsm->waitTxEmpty();
     zwrite(8, request);
     uint32_t ack = zread(3);
     bool parity = lnOddParity(data);
     zwrite(2, 0x03);
     zwrite(32, data);
+    xsm->waitTxEmpty();
     zwrite(1, parity);
     zwrite(8, 0);
     return ack != SWD_ACK_OK;
@@ -109,6 +109,7 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
 extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
     uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
+    xsm->waitTxEmpty();
     zwrite(8, request);
     uint32_t ack = zread(3);
     uint32_t data = zread(32);
@@ -134,6 +135,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
     while (1)
     {
 
+        xsm->waitTxEmpty();
         zwrite(8, request);
         uint32_t ack = zread(3);
         bool expired = platform_timeout_is_expired(&timeout);
@@ -207,6 +209,7 @@ done:
     bool parity = lnOddParity(value);
     zwrite(2, 0x03);
     zwrite(32, value);
+    xsm->waitTxEmpty();
     zwrite(1, parity);
     zwrite(8, 0);
     return 0;
