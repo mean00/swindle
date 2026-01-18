@@ -15,17 +15,28 @@ extern "C"
 #include "lnBMP_version.h"
 #include "swindle_build_options.h"
 
+#ifndef CONFIG_IDF_TARGET
 extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
 extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
 extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
                                             const uint32_t value);
+#endif
 
 adiv5_debug_port_s remote_dp = {
+#ifdef CONFIG_IDF_TARGET
+    .write_no_check = NULL,
+    .read_no_check = NULL,
+#else
     .write_no_check = ln_adiv5_swd_write_no_check,
     .read_no_check = ln_adiv5_swd_read_no_check,
+#endif
     .dp_read = adiv5_swd_read,
     .error = adiv5_swd_clear_error,
+#ifdef CONFIG_IDF_TARGET
+    .low_access = NULL,
+#else
     .low_access = ln_adiv5_swd_raw_access,
+#endif
     .abort = adiv5_swd_abort,
     .ap_read = adiv5_ap_reg_read,
     .ap_write = adiv5_ap_reg_write,
@@ -79,9 +90,13 @@ extern "C" uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t
 {
     TRY(EXCEPTION_ALL)
     {
+#ifdef CONFIG_IDF_TARGET
+        xAssert(0);
+#else
         uint32_t ret = ln_adiv5_swd_raw_access(&remote_dp, rnw, addr, value);
         *fault = remote_dp.fault;
         return ret;
+#endif
     }
     CATCH()
     {
@@ -94,16 +109,29 @@ extern "C" uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t
 //--
 extern "C" bool bmp_adiv5_swd_write_no_check_c(const uint16_t addr, const uint32_t data)
 {
+#ifdef CONFIG_IDF_TARGET
+    xAssert(0);
+    return false;
+#else
     return ln_adiv5_swd_write_no_check(addr, data);
+#endif
 }
 //---
 extern "C" uint32_t bmp_adiv5_swd_read_no_check_c(const uint16_t addr)
 {
+#ifdef CONFIG_IDF_TARGET
+    xAssert(0);
+    return false;
+#else
     return ln_adiv5_swd_read_no_check(addr);
+#endif
 }
 //---
 extern "C" void bmp_raw_swd_write_c(uint32_t tick, uint32_t value)
 {
+#ifdef CONFIG_IDF_TARGET
+    xAssert(0);
+#endif
     ln_raw_swd_write(tick, value);
 }
 //----

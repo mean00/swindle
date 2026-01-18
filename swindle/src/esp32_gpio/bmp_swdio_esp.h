@@ -63,38 +63,49 @@ class SwdDirectionPin
     virtual ~SwdDirectionPin()
     {
     }
+    LN_ALWAYS_INLINE
     bool read()
     {
-        return gpio_get_level(_me);
+        return gpio_get_level((gpio_num_t)_me);
     }
+    LN_ALWAYS_INLINE
     void on()
     {
         gpio_set_level(_me, 1); // on = let the pullup do its job
     }
+    LN_ALWAYS_INLINE
     void off()
     {
         gpio_set_level(_me, 0); //  gnd
     }
+    LN_ALWAYS_INLINE
     void set(uint32_t value)
     {
         gpio_set_level(_me, value); // on = let the pullup do its job
     }
+    LN_ALWAYS_INLINE
     bool dir()
     {
         return currentDrive;
     }
+    LN_ALWAYS_INLINE
     void hiZ()
     {
         input(); // let the pullup work
     }
+    LN_ALWAYS_INLINE
     void output()
     {
         currentDrive = true;
+        // gpio_set_direction((gpio_num_t)_me, GPIO_MODE_OUTPUT);
     }
+    LN_ALWAYS_INLINE
     void input()
     {
-        gpio_set_level(_me, 1); // pullup = float
         currentDrive = false;
+        gpio_set_level(_me, 1); // on = let the pullup do its job
+        // gpio_set_direction((gpio_num_t)_me, GPIO_MODE_INPUT);
+        // gpio_set_pull_mode((gpio_num_t)_me, GPIO_FLOATING);
     }
     void dir_input()
     {
@@ -108,45 +119,62 @@ class SwdDirectionPin
     gpio_num_t _me;
 };
 
-/**
+/*
  *
  */
-class SwdWaitPin : public SwdOutputPin
+class SwdWaitPin
 {
   public:
-    SwdWaitPin(lnBMPPins no) : SwdOutputPin(no)
+    SwdWaitPin(lnBMPPins no)
     {
-        _wait = true;
-    }
-    LN_ALWAYS_INLINE void clockOn()
-    {
-        if (_wait)
-            swait();
+        _me = (gpio_num_t)_mapping[no];
+        gpio_reset_pin(_me);
+        gpio_set_direction(_me, GPIO_MODE_OUTPUT);
         on();
     }
-    LN_ALWAYS_INLINE void clockOff()
+    LN_ALWAYS_INLINE void on()
     {
-        if (_wait)
-            swait();
+        gpio_set_level(_me, 1);
+        __asm__("" ::: "memory");
+    }
+    LN_ALWAYS_INLINE void off()
+    {
+        gpio_set_level(_me, 0);
+        __asm__("" ::: "memory");
+    }
+    LN_ALWAYS_INLINE void invClockOn()
+    {
+        swait();
+        on();
+        __asm__("" ::: "memory");
+    }
+    LN_ALWAYS_INLINE void invClockOff()
+    {
+        swait();
         off();
+        __asm__("" ::: "memory");
     }
     LN_ALWAYS_INLINE void wait()
     {
-        if (_wait)
-            swait();
+        swait();
     }
-    LN_ALWAYS_INLINE void pulseClock()
+    LN_ALWAYS_INLINE void invPulseClock()
     {
-        if (_wait)
-            swait();
+        swait();
         on();
-        if (_wait)
-            swait();
+        swait();
         off();
+    }
+    void clockOn()
+    {
+        xAssert(0);
+    }
+    void clockOff()
+    {
+        xAssert(0);
     }
 
   protected:
-    bool _wait;
+    gpio_num_t _me;
 };
-
 /**/

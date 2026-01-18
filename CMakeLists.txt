@@ -19,6 +19,7 @@ OPTION(USE_64PIN_PACKAGE "Use bluepill chip in 64 pins package (GD3/CH32)" OFF)
 OPTION(SWINDLE_USE_USB "Use USB interface" ON)
 OPTION(SWINDLE_USE_NETWORK "Use tcp/ip interface" OFF)
 OPTION(LN_EXTERNAL_GENERATE "Build swindle as a subproject" OFF)
+OPTION(LN_DISABLE_SWINDLE_LNIO "Disable optimized IO path and revert to BMP ones" OFF)
 #
 set(BMP_VERSION_BRANCH 1.10)
 set(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
