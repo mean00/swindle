@@ -121,6 +121,16 @@ class SwdWaitPin : public SwdPin
         if (_wait)
             swait();
     }
+    LN_ALWAYS_INLINE void invClockOn()
+    {
+        swait();
+        on();
+    }
+    LN_ALWAYS_INLINE void invClockOff()
+    {
+        swait();
+        off();
+    }
     LN_ALWAYS_INLINE void clockOff()
     {
         off();
@@ -136,6 +146,13 @@ class SwdWaitPin : public SwdPin
     {
         clockOn();
         clockOff();
+    }
+    LN_ALWAYS_INLINE void invPulseClock()
+    {
+        swait();
+        on();
+        swait();
+        off();
     }
 };
 

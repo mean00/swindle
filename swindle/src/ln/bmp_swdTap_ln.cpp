@@ -1,32 +1,6 @@
 /*
-  lnBMP: Gpio driver for SWD
-  This code is derived from the blackmagic one but has been modified
-  to aim at simplicity at the expense of performances (does not matter much though)
-  (The compiler may mitigate that by inlining)
-
-Original license header
-
- * This file is part of the Black Magic Debug project.
- *
- * Copyright (C) 2011  Black Sphere Technologies Ltd.
- * Written by Gareth McMullin <gareth@blacksphere.co.nz>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
- This file implements the SW-DP interface.
-
+ * Implement the low level SWD I/O on top of esprit.
+ * Strongly derived from the code (C) Blackmagic Sphere
  */
 #include "esprit.h"
 #include "bmp_pinout.h"
@@ -37,53 +11,48 @@ extern "C"
 #include "timing.h"
 }
 #include "bmp_pinmode.h"
-#include "bmp_pinout.h"
 #include "bmp_swdio_ln.h"
-extern void gmp_gpio_init_adc();
 
 #include "bmp_tap_ln.h"
-#if PC_HOSTED == 0
-#include "bmp_pinout.h"
-#endif
 #include "lnbmp_parity.h"
 
-#define LN_READ_BIT(value)                                                                                             \
-    rSWCLK->pulseClock();                                                                                              \
-    uint32_t bit = rSWDIO->read();                                                                                     \
-    if (bit)                                                                                                           \
-        value |= index;                                                                                                \
-    index <<= 1;
-
-#define LN_WRITE_BIT(value)                                                                                            \
-    rSWDIO->set(value & 1);                                                                                            \
-    rSWCLK->pulseClock();
-
+extern void gmp_gpio_init_adc();
+extern "C" void swdptap_init_stubs();
+/*
+ *
+ */
 extern "C" void swdptap_init()
 {
     swdptap_init_stubs();
 }
 
-/**
+/*
  */
 static void zwrite(uint32_t nbTicks, uint32_t val)
 {
     xAssert(rSWDIO->dir());
     for (int i = 0; i < nbTicks; i++)
     {
-        LN_WRITE_BIT(val);
+        rSWDIO->set(val & 1);
+        rSWCLK->invPulseClock();
         val >>= 1;
     }
 }
-/**
+/*
  */
 static uint32_t zread(uint32_t nbTicks)
 {
     xAssert(!rSWDIO->dir());
     uint32_t index = 1;
     uint32_t val = 0;
+    rSWCLK->wait();
     for (int i = 0; i < nbTicks; i++)
     {
-        LN_READ_BIT(val);
+        uint32_t bit = rSWDIO->read();
+        rSWCLK->invPulseClock();
+        if (bit)
+            val |= index;
+        index <<= 1;
     }
     return val;
 }
@@ -96,16 +65,18 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
     xAssert(rSWDIO->dir());
     zwrite(8, request);
     rSWDIO->dir_input();
+    rSWCLK->invPulseClock(); // turnaround
+                             // data + parity
     uint32_t ack = zread(3);
     bool parity = lnOddParity(data);
+    //
+    rSWCLK->invPulseClock(); // turnaround
     rSWDIO->dir_output();
-    zwrite(2, 0x03);
     zwrite(32, data);
     zwrite(1, parity);
     zwrite(8, 0);
     return ack != SWD_ACK_OK;
 }
-
 /**
         \fn ln_adiv5_swd_read_no_check
 
@@ -118,10 +89,12 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
     xAssert(rSWDIO->dir());
     zwrite(8, request);
     rSWDIO->dir_input();
-    rSWCLK->wait();
+    rSWCLK->invPulseClock(); // turnaround
     uint32_t ack = zread(3);
+    // No turnaround
     uint32_t data = zread(32);
     bool parity = zread(1);
+    rSWCLK->invPulseClock(); // turnaround
     rSWDIO->dir_output();
     zwrite(8, 0);
     return ack == SWD_ACK_OK ? data : 0;
@@ -146,6 +119,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         xAssert(rSWDIO->dir());
         zwrite(8, request);
         rSWDIO->dir_input();
+        rSWCLK->invPulseClock(); // turnaround
         uint32_t ack = zread(3);
         bool expired = platform_timeout_is_expired(&timeout);
         if (ack == SWD_ACK_OK)
@@ -154,8 +128,8 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         }
         // if we get here, we are retrying
         // switch back to output
+        rSWCLK->invPulseClock(); // turnaround
         rSWDIO->dir_output();
-        zwrite(2, 0x03);
 
         switch (ack)
         {
@@ -205,8 +179,9 @@ done:
     {
         uint32_t index = 1;
         uint32_t response = zread(32);
-        bool parityBit = zread(3) & 1;
+        bool parityBit = zread(1);
         bool currentParity = lnOddParity(response);
+        rSWCLK->invPulseClock(); // turnaround
         rSWDIO->dir_output();
         zwrite(8, 0);
         if (currentParity != parityBit)
@@ -219,9 +194,9 @@ done:
     }
     // write
     xAssert(!rSWDIO->dir());
+    rSWCLK->invPulseClock(); // turnaround
     rSWDIO->dir_output();
     bool parity = lnOddParity(value);
-    zwrite(2, 0x03);
     zwrite(32, value);
     zwrite(1, parity);
     zwrite(8, 0);
@@ -229,7 +204,7 @@ done:
     //--
 }
 
-/**
+/*
  */
 extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
 {
@@ -237,7 +212,6 @@ extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
     zwrite(tick, value);
 }
 /*
- *
  *
  */
 void bmp_gpio_pinmode(bmp_pin_mode pioMode)
