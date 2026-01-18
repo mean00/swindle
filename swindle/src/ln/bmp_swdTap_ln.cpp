@@ -45,7 +45,6 @@ static uint32_t zread(uint32_t nbTicks)
     xAssert(!rSWDIO->dir());
     uint32_t index = 1;
     uint32_t val = 0;
-    rSWCLK->wait();
     for (int i = 0; i < nbTicks; i++)
     {
         uint32_t bit = rSWDIO->read();
