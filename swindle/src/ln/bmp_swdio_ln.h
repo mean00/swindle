@@ -18,8 +18,6 @@ class SwdPin
     SwdPin(lnBMPPins no) : _fast(_mapping[no])
     {
         _me = _mapping[no];
-        _output = false;
-        _wait = true;
         on();
         output();
     }
@@ -31,10 +29,6 @@ class SwdPin
     LN_ALWAYS_INLINE void off()
     {
         _fast.off();
-    }
-    LN_ALWAYS_INLINE void input()
-    {
-        lnPinMode(_me, lnINPUT_FLOATING);
     }
     LN_ALWAYS_INLINE void output()
     {
@@ -60,40 +54,75 @@ class SwdPin
 
   protected:
     lnPin _me;
-    bool _output;
-    bool _wait;
     lnFastIO _fast;
 };
 /**
  *
  *
  */
-class SwdDirectionPin : public SwdPin
+class SwdDirectionPin
 {
   public:
-    SwdDirectionPin(lnBMPPins no) : SwdPin(no)
+    SwdDirectionPin(lnBMPPins no) : _fast(_mapping[no])
     {
+        _me = _mapping[no];
         dir_output();
     }
-
+    bool dir()
+    {
+        return currentDrive;
+    }
+    LN_ALWAYS_INLINE
     void dir_input()
     {
         lnPinMode(_me, lnINPUT_FLOATING);
         tapInput();
         currentDrive = false;
     }
-    bool dir()
-    {
-        return currentDrive;
-    }
-
+    LN_ALWAYS_INLINE
     void dir_output()
     {
         lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED); // 10 Mhz
         tapOutput();
         currentDrive = true;
     }
+    LN_ALWAYS_INLINE void input()
+    {
+        dir_input();
+    }
+    LN_ALWAYS_INLINE void output()
+    {
+        dir_output();
+    }
+
+    LN_ALWAYS_INLINE void on()
+    {
+        _fast.on();
+    }
+    LN_ALWAYS_INLINE void off()
+    {
+        _fast.off();
+    }
+    LN_ALWAYS_INLINE void set(const bool val)
+    {
+        if (val)
+            _fast.on();
+        else
+            _fast.off();
+    }
+    LN_ALWAYS_INLINE int read()
+    {
+        return lnDigitalRead(_me);
+    }
+    void hiZ()
+    {
+        lnOpenDrainClose(_me, false);
+        lnPinMode(_me, lnOUTPUT_OPEN_DRAIN, 1);
+        currentDrive = false;
+    }
     bool currentDrive;
+    lnFastIO _fast;
+    lnPin _me;
 };
 extern SwdPin *rDirection;
 
@@ -118,8 +147,7 @@ class SwdWaitPin : public SwdPin
     LN_ALWAYS_INLINE void clockOn()
     {
         on();
-        if (_wait)
-            swait();
+        swait();
     }
     LN_ALWAYS_INLINE void invClockOn()
     {
@@ -134,13 +162,11 @@ class SwdWaitPin : public SwdPin
     LN_ALWAYS_INLINE void clockOff()
     {
         off();
-        if (_wait)
-            swait();
+        swait();
     }
     LN_ALWAYS_INLINE void wait()
     {
-        if (_wait)
-            swait();
+        swait();
     }
     LN_ALWAYS_INLINE void pulseClock()
     {

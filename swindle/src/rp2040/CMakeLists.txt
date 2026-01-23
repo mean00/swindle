@@ -10,6 +10,11 @@ bmp_swdTap_rp2040.cpp bmp_tap_rp2040.cpp ${EXTRA_SOURCE}
 IF(USE_RP_CARRIER)
   MESSAGE(STATUS "RP2040 using carrier board layout")
   target_compile_definitions( swindleio_impl PUBLIC USE_RP_CARRIER)
+  target_compile_definitions( swindleio_impl PUBLIC LN_UART_RX=GPIO9)
+  target_compile_definitions( swindleio_impl PUBLIC LN_UART_TX=GPIO4)
+ELSE()
+  target_compile_definitions( swindleio_impl PUBLIC LN_UART_RX=GPIO5)
+  target_compile_definitions( swindleio_impl PUBLIC LN_UART_TX=GPIO4)
 ENDIF()
 
 target_include_directories(swindleio_impl PRIVATE ..)

@@ -5,10 +5,11 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
 {
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     zwrite(8, request);
-    rSWDIO->input();
-    const uint8_t res = zread(4) >> 1; // turn +  reply
-    zread(1);                          // turn
-    rSWDIO->output();
+    DIR_INPUT();
+    const uint8_t res = (zread(4) >> 1) & 7; // turn +  reply
+    SWD_WAIT_PERIOD();
+    // zread(1);                          // turn
+    DIR_OUTPUT();
     const bool parity = lnOddParity(data);
     zwrite(32, data);
     zwrite(9, parity);
@@ -19,7 +20,7 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
     const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
     zwrite(8, request);
-    rSWDIO->input();
+    DIR_INPUT();
     const uint8_t res = zread(4) >> 1; // turn + reply
     uint32_t data = zread(32);
     bool parity = lnOddParity(data);
@@ -28,7 +29,7 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
     {
         Logger("swd_read: wrong parity\n");
     }
-    rSWDIO->output();
+    DIR_OUTPUT();
     zwrite(8, 0); // idle
     return res == SWD_ACK_OK ? data : 0;
 }
@@ -41,8 +42,8 @@ static bool sendHeader(const uint8_t request, adiv5_debug_port_s *dp)
     do
     {
         zwrite(8, request);
-        rSWDIO->input();
-        ack = zread(4) >> 1; // turn +  reply
+        DIR_INPUT();
+        ack = (zread(4) >> 1) & 7; // turn +  reply
         if (ack == SWD_ACK_OK)
             return true;
         if (ack == SWD_ACK_FAULT)
@@ -52,7 +53,7 @@ static bool sendHeader(const uint8_t request, adiv5_debug_port_s *dp)
             /* Yes, this is self-recursive.. no, we can't think of a better option */
             //        swdptap_turnaround(SWDIO_STATUS_DRIVE);
             zread(1); // turn
-            rSWDIO->output();
+            DIR_OUTPUT();
             //        switch_to_output();
             adiv5_dp_write(dp, ADIV5_DP_ABORT,
                            ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
@@ -60,7 +61,7 @@ static bool sendHeader(const uint8_t request, adiv5_debug_port_s *dp)
         }
         // something is wrong, retry
         zread(1); // turn
-        rSWDIO->output();
+        DIR_OUTPUT();
         zwrite(8, 0);
     } while ((ack == SWD_ACK_WAIT || ack == SWD_ACK_FAULT) && !platform_timeout_is_expired(&timeout));
 
@@ -101,18 +102,18 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         return 0;
 
     const uint8_t request = make_packet_request(rnw, addr);
-    if (!sendHeader(request, dp))
-    {
-        return 0;
-    }
     // read
     if (rnw)
     {
+        if (!sendHeader(request, dp))
+        {
+            return 0;
+        }
         uint32_t response = zread(32);
-        bool parity = lnOddParity(response);
         bool read_parity = zread(2) & 1; // parity + turn
-        rSWDIO->output();
+        DIR_OUTPUT();
         zwrite(8, 0);
+        bool parity = lnOddParity(response);
         if (read_parity != parity)
         {
             /* Give up on parity error */
@@ -123,8 +124,13 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
         return response;
     }
     // write
-    zread(1); // turn
-    rSWDIO->output();
+    if (!sendHeader(request, dp))
+    {
+        return 0;
+    }
+    zread(1);          // turn
+    SWD_WAIT_PERIOD(); // extra
+    DIR_OUTPUT();
     const bool parity = lnOddParity(value);
     zwrite(32, value);
     zwrite(9, parity);
@@ -133,7 +139,7 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
 //
 extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
 {
-    rSWDIO->output();
+    DIR_OUTPUT();
     zwrite(tick, value);
 }
 // EOF

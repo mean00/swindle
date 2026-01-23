@@ -6,7 +6,7 @@
 #include "esprit.h"
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbStack.h"
-#include "bmp_pinout.h"
+#include "bmp_devices.h"
 #include "lnSerial.h"
 
 /**

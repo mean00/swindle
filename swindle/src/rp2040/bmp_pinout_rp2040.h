@@ -15,6 +15,3 @@ const lnPin _mapping[9] = {
 
 #define PIN_ADC_NRESET_DIV_BY_TWO GPIO26 // this pins is connected to NRST/2
 #define PIN_ADC_NRESET_MULTIPLIER 1.     // 2.0 if divided by 2 , 1.0 if not divided
-
-#define LN_UART_RX GPIO5
-#define LN_UART_TX GPIO4

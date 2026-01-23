@@ -27,6 +27,12 @@ Original license header
 
  This file implements the SW-DP interface.
 
+
+  There is a one clock difference between the generic template and the PIO driven
+  Not really sure where it's coming from
+
+
+
  */
 #include "esprit.h"
 extern "C"
