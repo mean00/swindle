@@ -22,10 +22,6 @@ const lnPin _mapping[9] = {
 #define LN_SERIAL_INSTANCE 2
 #define LN_LOGGER_INSTANCE 2
 
-#define EXTRA_SETUP()                                                                                                  \
-    {                                                                                                                  \
-    }
-
 extern uint32_t swd_delay_cnt;
 
 #define swait()                                                                                                        \

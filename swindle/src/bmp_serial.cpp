@@ -6,7 +6,7 @@
 #include "esprit.h"
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbStack.h"
-#include "bmp_pinout.h"
+#include "bmp_devices.h"
 #include "lnBmpTask.h"
 #include "lnSerial.h"
 
@@ -321,7 +321,6 @@ void serialInit()
 #if defined(USE_3_CDC)
     initCDCLogger();
 #endif
-    EXTRA_SETUP();
 }
 #if !defined(USE_3_CDC)
 extern "C" void usbCdc_Logger(int n, const char *data)
