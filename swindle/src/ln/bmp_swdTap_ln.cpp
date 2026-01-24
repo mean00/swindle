@@ -30,6 +30,8 @@ extern "C" void swdptap_init()
  *
  */
 
+#define SWINDLE_FAST_IO
+#define SWD_WAIT_PERIOD() swait()
 #define DIR_INPUT() rSWDIO->input()
 #define DIR_OUTPUT() rSWDIO->output()
 
@@ -75,8 +77,5 @@ extern "C" void ln_raw_swd_reset(uint32_t pulses)
     for (int i = 0; i < pulses; i++)
         rSWCLK->pulseClock();
 }
-#define SWD_WAIT_PERIOD() swait()
-#define DIR_INPUT() rSWDIO->input()
-#define DIR_OUTPUT() rSWDIO->output()
 #include "../swd_template.h"
 // EOF

@@ -4,10 +4,16 @@
 #include "lnBMP_reset.h"
 extern "C"
 {
+#include "soc/gpio_reg.h"
+#include "soc/gpio_struct.h"
 #include "driver/gpio.h"
 }
 // clang-format on
 //
+//
+#define FAST_SET() REG_WRITE(GPIO_OUT_W1TS_REG, (1 << _me))
+#define FAST_CLEAR() REG_WRITE(GPIO_OUT_W1TC_REG, (1 << _me))
+#define FAST_READ() ((REG_READ(GPIO_IN_REG) & (1 << _me)) != 0)
 class SwdOutputPin
 {
   public:
@@ -21,11 +27,13 @@ class SwdOutputPin
     LN_ALWAYS_INLINE void on()
     {
 
-        gpio_set_level(_me, 1);
+        // gpio_set_level(_me, 1);
+        FAST_SET();
     }
     LN_ALWAYS_INLINE void off()
     {
-        gpio_set_level(_me, 0);
+        // gpio_set_level(_me, 0);
+        FAST_CLEAR();
     }
     LN_ALWAYS_INLINE void set(bool x)
     {
@@ -66,22 +74,29 @@ class SwdDirectionPin
     LN_ALWAYS_INLINE
     bool read()
     {
-        return gpio_get_level((gpio_num_t)_me);
+        //    return gpio_get_level((gpio_num_t)_me);
+        return FAST_READ();
     }
     LN_ALWAYS_INLINE
     void on()
     {
-        gpio_set_level(_me, 1); // on = let the pullup do its job
+        FAST_SET();
+        // gpio_set_level(_me, 1); // on = let the pullup do its job
     }
     LN_ALWAYS_INLINE
     void off()
     {
-        gpio_set_level(_me, 0); //  gnd
+        FAST_CLEAR();
+        // gpio_set_level(_me, 0); //  gnd
     }
     LN_ALWAYS_INLINE
     void set(uint32_t value)
     {
-        gpio_set_level(_me, value); // on = let the pullup do its job
+        if (value)
+            FAST_SET();
+        else
+            FAST_CLEAR();
+        // gpio_set_level(_me, value); // on = let the pullup do its job
     }
     LN_ALWAYS_INLINE
     bool dir()
@@ -103,9 +118,10 @@ class SwdDirectionPin
     void input()
     {
         currentDrive = false;
-        gpio_set_level(_me, 1); // on = let the pullup do its job
-        // gpio_set_direction((gpio_num_t)_me, GPIO_MODE_INPUT);
-        // gpio_set_pull_mode((gpio_num_t)_me, GPIO_FLOATING);
+        FAST_SET();
+        // gpio_set_level(_me, 1); // on = let the pullup do its job
+        //  gpio_set_direction((gpio_num_t)_me, GPIO_MODE_INPUT);
+        //  gpio_set_pull_mode((gpio_num_t)_me, GPIO_FLOATING);
     }
     void dir_input()
     {
@@ -134,12 +150,14 @@ class SwdWaitPin
     }
     LN_ALWAYS_INLINE void on()
     {
-        gpio_set_level(_me, 1);
+        //    gpio_set_level(_me, 1);
+        FAST_SET();
         __asm__("" ::: "memory");
     }
     LN_ALWAYS_INLINE void off()
     {
-        gpio_set_level(_me, 0);
+        //    gpio_set_level(_me, 0);
+        FAST_CLEAR();
         __asm__("" ::: "memory");
     }
     LN_ALWAYS_INLINE void invClockOn()

@@ -1,7 +1,7 @@
 //____________________________________________
 //____________________________________________
 //____________________________________________
-extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     zwrite(8, request);
@@ -16,7 +16,7 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
     return res != SWD_ACK_OK;
 }
 //
-extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
+extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
     const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
     zwrite(8, request);
@@ -34,7 +34,7 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
     return res == SWD_ACK_OK ? data : 0;
 }
 //
-static bool sendHeader(const uint8_t request, adiv5_debug_port_s *dp)
+static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s *dp)
 {
     platform_timeout_s timeout;
     platform_timeout_set(&timeout, 250U);
@@ -95,8 +95,8 @@ static bool sendHeader(const uint8_t request, adiv5_debug_port_s *dp)
     return true;
 }
 //
-extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
-                                            const uint32_t value)
+extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw,
+                                                            const uint16_t addr, const uint32_t value)
 {
     if ((addr & ADIV5_APnDP) && dp->fault)
         return 0;

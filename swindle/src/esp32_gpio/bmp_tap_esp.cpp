@@ -35,20 +35,8 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
         Logger("Invalid frequency\n");
         return;
     }
-    switch (lnCpuID::vendor())
-    {
-    case lnCpuID::LN_VENDOR_GD: // assume this is a GD32F303 at 96 Mhz
-        alpha = 7.681 * 1000000.;
-        beta = 4.5;
-        break;
-    case lnCpuID::LN_VENDOR_WCH: // assume this is a CH32V3 at 140 Mhz
-        alpha = 16.668 * 1000000.;
-        beta = 5.0;
-        break;
-    default:
-        xAssert(0);
-        break;
-    }
+    alpha = 2.3 * 1000000.;
+    beta = 0.0;
     // convert fq to wait state
     float wf = ((alpha) / (float)fq) - beta;
     if (wf < 0.0)

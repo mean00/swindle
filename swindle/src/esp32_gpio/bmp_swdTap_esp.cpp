@@ -54,7 +54,7 @@ extern "C" void swdptap_init()
  *
  */
 
-static uint32_t zread(const size_t size)
+static uint32_t IRAM_ATTR zread(const size_t size)
 {
     xAssert(!rSWDIO->dir());
     uint32_t value = 0;
@@ -70,7 +70,7 @@ static uint32_t zread(const size_t size)
     }
     return value;
 }
-static void zwrite(const uint32_t size, uint32_t value)
+static void IRAM_ATTR zwrite(const uint32_t size, uint32_t value)
 {
     xAssert(rSWDIO->dir());
     for (size_t i = 0; i < size; i++)
@@ -84,6 +84,7 @@ static void zwrite(const uint32_t size, uint32_t value)
 #define DIR_INPUT() rSWDIO->input()
 #define DIR_OUTPUT() rSWDIO->output()
 #define SWD_WAIT_PERIOD() swait()
-//____________________________________________
+#define SWINDLE_FAST_IO IRAM_ATTR
+
 #include "../swd_template.h"
 //____________________________________________
