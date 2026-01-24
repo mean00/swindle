@@ -83,6 +83,7 @@ static void zwrite(const uint32_t size, uint32_t value)
 
 #define DIR_INPUT() rSWDIO->input()
 #define DIR_OUTPUT() rSWDIO->output()
+#define SWD_WAIT_PERIOD() swait()
 //____________________________________________
 #include "../swd_template.h"
 //____________________________________________
