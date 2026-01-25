@@ -6,9 +6,9 @@ extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr,
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     zwrite(8, request);
     DIR_INPUT();
-    const uint8_t res = (zread(4) >> 1) & 7; // turn +  reply
-    SWD_WAIT_PERIOD();
-    // zread(1);                          // turn
+    const uint8_t res = (zread(5) >> 1) & 7; // turn +  reply + turn
+    // SWD_WAIT_PERIOD();
+    // zread(1); // turn
     DIR_OUTPUT();
     const bool parity = lnOddParity(data);
     zwrite(32, data);
@@ -34,7 +34,7 @@ extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t ad
     return res == SWD_ACK_OK ? data : 0;
 }
 //
-static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s *dp)
+static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s *dp, const uint32_t cycles)
 {
     platform_timeout_s timeout;
     platform_timeout_set(&timeout, 250U);
@@ -43,7 +43,7 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
     {
         zwrite(8, request);
         DIR_INPUT();
-        ack = (zread(4) >> 1) & 7; // turn +  reply
+        ack = (zread(cycles) >> 1) & 7; // turn +  reply
         if (ack == SWD_ACK_OK)
             return true;
         if (ack == SWD_ACK_FAULT)
@@ -105,7 +105,7 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
     // read
     if (rnw)
     {
-        if (!sendHeader(request, dp))
+        if (!sendHeader(request, dp, 4))
         {
             return 0;
         }
@@ -124,11 +124,10 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
         return response;
     }
     // write
-    if (!sendHeader(request, dp))
+    if (!sendHeader(request, dp, 5))
     {
         return 0;
     }
-    zread(1);          // turn
     SWD_WAIT_PERIOD(); // extra
     DIR_OUTPUT();
     const bool parity = lnOddParity(value);
