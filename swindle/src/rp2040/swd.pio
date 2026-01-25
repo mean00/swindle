@@ -33,8 +33,10 @@ begin:
 lp1:        
     out x,1               ; pop one LSB bit    
     mov pins, x           ; out data
-    nop          side WRITE_DIR_UP
-    jmp y-- lp1  side WRITE_DIR_DOWN   ; and clock out
+    nop
+    nop          side WRITE_DIR_UP  ; pulse clock
+    nop          side WRITE_DIR_DOWN
+    jmp y-- lp1           ; and clock out
     
 out1:
     jmp begin    
@@ -42,12 +44,13 @@ out1:
 ;; read : sample on falling edge
 ;;_______________________________
 rread:
-    set pindirs  0  side READ_DIR_UP ; SWDIO as input 
-    out  y,8     
+    set pindirs  0   ; SWDIO as input  clock LOW
+    out  y,8     side READ_DIR_DOWN
 lp2:       
+    nop
+    in  pins,1            ; pop one LSB bit        
     nop          side READ_DIR_UP 
     nop          side READ_DIR_DOWN
-    in  pins,1            ; pop one LSB bit        
     jmp y-- lp2  
 out2:
     push         
