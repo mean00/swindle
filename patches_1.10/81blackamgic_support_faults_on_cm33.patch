@@ -1,0 +1,54 @@
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+index 41ea6082..8185cc28 100644
+--- a/src/target/cortexm.c	2026-01-24 19:05:02.026230912 +0100
++++ b/src/target/cortexm.c	2026-01-25 08:03:29.457033761 +0100
+@@ -950,7 +950,23 @@
+ 	priv->dcache_enabled = ccr & CORTEXM_CCR_DCACHE_ENABLE;
+ 	priv->icache_enabled = ccr & CORTEXM_CCR_ICACHE_ENABLE;
+ 
+-	if ((dfsr & CORTEXM_DFSR_VCATCH) && cortexm_fault_unwind(target))
++	bool fault_state = false;
++	// the V8 may stop before actually executing the instruction
++	// so reading dfsr might not work.
++	// Instead, we check if there are pending faults on ICSR
++	// meaning we stopped while trying to execute a fault
++	// but maybe did not execut it
++	if ((target->target_options & CORTEXM_TOPT_FLAVOUR_V8M)) {
++		const uint32_t icsr = target_mem32_read32(target, CORTEXM_ICSR);
++		const uint32_t pending = CORTEXM_ICSR_VEC_PENDING(icsr);
++		if (pending != 0 && pending < 8) //  catch all faults
++		{
++			fault_state = true;
++		}
++	} else {
++		fault_state = !!(dfsr & CORTEXM_DFSR_VCATCH);
++	}
++	if (fault_state && cortexm_fault_unwind(target))
+ 		return TARGET_HALT_FAULT;
+ 
+ 	/* Remember if we stopped on a breakpoint */
+diff --git a/src/target/cortexm.h b/src/target/cortexm.h
+index 41ea6082..8185cc28 100644
+--- a/src/target/cortexm.h
++++ b/src/target/cortexm.h
+@@ -69,6 +69,9 @@ extern unsigned cortexm_wait_timeout;
+ #define CORTEXM_DWT_MASK(i) (CORTEXM_DWT_BASE + 0x024U + (0x10U * (i)))
+ #define CORTEXM_DWT_FUNC(i) (CORTEXM_DWT_BASE + 0x028U + (0x10U * (i)))
+ 
++/* Arm V8 External Debug Fault Status Register */
++#define CORTEXM_EDFSR (CORTEXM_SCS_BASE + 0xF98U)
++#define CORTEXM_ICSR  (CORTEXM_SCS_BASE + 0xD04U)
+ /* Application Interrupt and Reset Control Register (AIRCR) */
+ #define CORTEXM_AIRCR_VECTKEY (0x05faU << 16U)
+ /* Bits 31:16 - Read as VECTKETSTAT, 0xfa05 */
+@@ -188,6 +191,10 @@ extern unsigned cortexm_wait_timeout;
+ #define CORTEXM_XPSR_THUMB          (1U << 24U)
+ #define CORTEXM_XPSR_EXCEPTION_MASK 0x0000001fU
+ 
++/* ICSR for ArmV8m, the exception are the same as IPSR */
++#define CORTEXM_ICSR_VEC_PENDING(x) (((x) >> 12) & 0x1FF)
++#define CORTEXM_ICSR_VEC_ACTIVE(x)  (((x) >> 0) & 0x1FF)
++
+ bool cortexm_attach(target_s *target);
+ void cortexm_detach(target_s *target);
+ void cortexm_halt_resume(target_s *target, bool step);

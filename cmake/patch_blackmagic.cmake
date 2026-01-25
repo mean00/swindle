@@ -47,6 +47,9 @@ APPLY_PATCH_IF_NEEDED5(patched50 50blackmagic_export_breakpoint_available.patch 
 APPLY_PATCH_IF_NEEDED5(patched51 51blackmagic_add_sw_breakpoint_framework.patch  "hook in the data needed to attach sw breakpoints to target")
 APPLY_PATCH_IF_NEEDED5(patched53 53blackmagic_abort_on_flash_error.patch         "abort buffered flash write as soon as there is one error")
 APPLY_PATCH_IF_NEEDED5(patched54 54blackmagic_dont_doubly_define_rvswd.patch     "avoid doubly definit have_rvswd in hosted mode")
+APPLY_PATCH_IF_NEEDED5(patched80 81blackamgic_support_faults_on_cm33.patch       "Properly managed faults on armv8")
+
+
 
 string(JOIN " " pretty ${already_patched})
 MESSAGE(STATUS "Patch already applied ${pretty} already done")
