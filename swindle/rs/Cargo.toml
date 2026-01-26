@@ -7,10 +7,20 @@ resolver = "2"
 rust_esprit = { path = "../../esprit/rust/rust_esprit"}
 
 [profile.dev]
+debug = true
+opt-level       = 2
 panic = "abort"
-lto = "fat"
+#lto = false  # no lto
+lto = "thin" # average
+#lto = "fat"  # strong lto
+
 
 [profile.release]
+debug = true
+opt-level       = 2
 panic = "abort"
-lto = "fat"
+#lto = false  # no lto
+lto = "thin" # average
+#lto = "fat"  # strong lto
+
 
