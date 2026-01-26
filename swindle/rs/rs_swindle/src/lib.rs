@@ -94,12 +94,11 @@ fn rngdb_send_data_u8(data: &[u8]) {
         rngdb_send_data_c(data.len() as u32, data.as_ptr());
     }
 }
-/*
- *
- *
- */
+/// # Safety
+/// the pointer is expected to be valid !
+///
 #[unsafe(no_mangle)]
-pub extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
+pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     let mut data_as_slice: &[u8];
     unsafe {
         data_as_slice = core::slice::from_raw_parts(d, l);
