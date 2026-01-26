@@ -1,0 +1,16 @@
+[workspace]
+members=["rs_swindle"]
+resolver = "2"
+
+[workspace.dependencies]
+
+rust_esprit = { path = "../../esprit/rust/rust_esprit"}
+
+[profile.dev]
+panic = "abort"
+lto = "fat"
+
+[profile.release]
+panic = "abort"
+lto = "fat"
+
