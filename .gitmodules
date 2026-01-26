@@ -3,7 +3,7 @@
 	url = https://github.com/blackmagic-debug/blackmagic.git
 [submodule "esprit"]
 	path = esprit
-	url = ../esprit.git
+	url = ../esprit
 [submodule "lwip"]
 	path = lwip
 	url = https://github.com/lwip-tcpip/lwip.git
