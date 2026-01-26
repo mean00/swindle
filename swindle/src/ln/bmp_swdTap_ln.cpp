@@ -75,7 +75,7 @@ extern "C" void ln_raw_swd_reset(uint32_t pulses)
     rSWDIO->set(1);
     rSWDIO->output();
     for (int i = 0; i < pulses; i++)
-        rSWCLK->pulseClock();
+        rSWCLK->invPulseClock();
 }
 #include "../swd_template.h"
 // EOF

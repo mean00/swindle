@@ -6,8 +6,9 @@ extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr,
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     zwrite(8, request);
     DIR_INPUT();
-    const uint8_t res = (zread(5) >> 1) & 7; // turn +  reply + turn
-    // SWD_WAIT_PERIOD();
+    const uint8_t res = (zread(4) >> 1) & 7; // turn +  reply + turn
+    zread(1);                                // we have to wait a bit here, dont try to merge it with the above
+    SWD_WAIT_PERIOD();
     // zread(1); // turn
     DIR_OUTPUT();
     const bool parity = lnOddParity(data);
@@ -22,6 +23,7 @@ extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t ad
     zwrite(8, request);
     DIR_INPUT();
     const uint8_t res = zread(4) >> 1; // turn + reply
+    SWD_WAIT_PERIOD();
     uint32_t data = zread(32);
     bool parity = lnOddParity(data);
     const bool rd = zread(2) & 1; // parity + read
@@ -43,7 +45,8 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
     {
         zwrite(8, request);
         DIR_INPUT();
-        ack = (zread(cycles) >> 1) & 7; // turn +  reply
+        ack = (zread(4) >> 1) & 7; // turn +  reply
+        SWD_WAIT_PERIOD();
         if (ack == SWD_ACK_OK)
             return true;
         if (ack == SWD_ACK_FAULT)
@@ -128,6 +131,7 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
     {
         return 0;
     }
+    zread(1);          // we have to wait a bit here, dont try to merge it
     SWD_WAIT_PERIOD(); // extra
     DIR_OUTPUT();
     const bool parity = lnOddParity(value);
