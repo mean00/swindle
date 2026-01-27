@@ -124,5 +124,5 @@ void rv_write_write(uint32_t value)
     rv_stop_bit();
     lnDelayMs(1);
 }
-#include "bmp_rvTap_common.h"
+#include "rvswd_template.h"
 // EOF

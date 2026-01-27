@@ -100,5 +100,5 @@ bool rv_dm_reset()
     xAssert(0);
     return false;
 }
-#include "bmp_rvTap_common.h"
+#include "rvswd_template.h"
 // EOF

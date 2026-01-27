@@ -129,5 +129,5 @@ bool rv_dm_reset()
     lnDelayMs(10);
     return true;
 }
-#include "bmp_rvTap_common.h"
+#include "rvswd_template.h"
 // EOF
