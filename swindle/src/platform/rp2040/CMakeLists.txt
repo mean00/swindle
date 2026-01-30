@@ -5,7 +5,7 @@ SET( EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${CMAKE_BINARY_DIR}/bmp_pio_
 
 add_library(swindleio_impl STATIC bmp_adc_rp2040.cpp bmp_rvTap_rp2040.cpp
 bmp_swdTap_rp2040.cpp bmp_tap_rp2040.cpp ${EXTRA_SOURCE}
-../swd_tap_stubs.cpp
+../../template/swd_tap_stubs.cpp
 )
 IF(USE_RP_CARRIER)
   MESSAGE(STATUS "RP2040 using carrier board layout")
@@ -17,7 +17,8 @@ ELSE()
   target_compile_definitions( swindleio_impl PUBLIC LN_UART_TX=GPIO4)
 ENDIF()
 
-target_include_directories(swindleio_impl PRIVATE ..)
-target_include_directories(swindleio_impl PRIVATE ../../private_include)
+target_include_directories(swindleio_impl PRIVATE ../..)
+target_include_directories(swindleio_impl PRIVATE ../../template)
+target_include_directories(swindleio_impl PRIVATE ../../../private_include)
 TARGET_LINK_LIBRARIES( swindleio_impl PRIVATE esprit_dev )
 

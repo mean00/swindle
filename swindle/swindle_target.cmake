@@ -15,13 +15,13 @@ SET(BRIDGE_SRCS
                 ${B}/bridge.cpp
                 ${B}/bmp_gpio.cpp
                 ${B}/bmp_jtagstubs.cpp
-                ${B}/bmp_tap.cpp
+                ${B}/bmp_reset_pin.cpp
                 CACHE INTERNAL ""
                 )
 IF(SWINDLE_USE_USB)
   IF(NOT LN_SWINDLE_AS_EXTERNAL)
     LIST( APPEND BRIDGE_SRCS ${B}/bmp_serial.cpp
-                ${B}/bmp_usb.cpp
+                ${B}/usb/bmp_usb.cpp
   )
     IF("${LN_USB_NB_CDC}" STREQUAL "3")
       SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
@@ -29,7 +29,8 @@ IF(SWINDLE_USE_USB)
   ENDIF()
 ENDIF()
 IF(SWINDLE_USE_NETWORK)
-  LIST( APPEND BRIDGE_SRCS    ${B}/bmp_net.cpp)
+  LIST( APPEND BRIDGE_SRCS    ${B}/net/bmp_net.cpp)
+  include_directories( ${CMAKE_CURRENT_SOURCE}/net )
 ENDIF()
 
 
@@ -78,14 +79,14 @@ TARGET_LINK_LIBRARIES( libswindle PUBLIC esprit_dev )
 #
 #
 IF(USE_RP2040 OR USE_RP2350)
-  include_directories(src/rp2040)
-  add_subdirectory(src/rp2040)
+  include_directories(src/platform/rp2040)
+  add_subdirectory(src/platform/rp2040)
 ELSEIF("${LN_MCU}" STREQUAL "ESP32")
-  include_directories(src/esp32_gpio)
-  add_subdirectory(src/esp32_gpio)
+  include_directories(src/platform/esp32_gpio)
+  add_subdirectory(src/platform/esp32_gpio)
 ELSE()
-  include_directories(src/ln)
-  add_subdirectory(src/ln)
+  include_directories(src/platform/ln)
+  add_subdirectory(src/platform/ln)
 ENDIF()
 
 TARGET_LINK_LIBRARIES( libswindle PUBLIC swindleio_impl )

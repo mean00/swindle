@@ -101,4 +101,4 @@ static uint32_t zread(uint32_t size)
     {                                                                                                                  \
     }
 
-#include "../swd_template.h"
+#include "swd_template.h"
