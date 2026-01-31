@@ -34,7 +34,7 @@ extern "C"
 #include "bmp_tap_esp.h"
 #include "lnbmp_parity.h"
 
-#include "../swd_tap_stubs.cpp"
+#include "swd_tap_stubs.cpp"
 
 extern "C" void swdptap_init_stubs();
 /*
@@ -86,5 +86,5 @@ static void IRAM_ATTR zwrite(const uint32_t size, uint32_t value)
 #define SWD_WAIT_PERIOD() swait()
 #define SWINDLE_FAST_IO IRAM_ATTR
 
-#include "../swd_template.h"
+#include "swd_template.h"
 //____________________________________________

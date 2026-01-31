@@ -1,4 +1,4 @@
-add_library(swindleio_impl STATIC bmp_adc_esp.cpp bmp_rvTap_esp.cpp bmp_swdTap_esp.cpp bmp_tap_esp.cpp
+add_library(swindleio_impl STATIC bmp_adc_esp.cpp bmp_rvTap_esp_spi.cpp bmp_swdTap_esp_spi.cpp bmp_tap_esp_spi.cpp
 ../../template/swd_tap_stubs.cpp)
 target_include_directories(swindleio_impl PRIVATE ../..)
 target_include_directories(swindleio_impl PRIVATE ../../template)
