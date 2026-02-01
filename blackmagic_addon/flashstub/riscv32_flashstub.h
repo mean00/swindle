@@ -26,8 +26,11 @@
  */
 static inline void __attribute__((always_inline)) riscv_stub_exit(const int code)
 {
-    __asm__("li a0, %0 \n"
-            "ebreak" ::"i"(code));
+    __asm__("mv a0, %0\n"
+            "ebreak" 
+            :
+            :"r"(code)
+            : "a0");
 }
 
 #endif
