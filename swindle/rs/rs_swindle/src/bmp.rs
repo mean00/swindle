@@ -613,6 +613,26 @@ pub fn bmp_get_mw_page_size() -> u32 {
     unsafe { rn_bmp_cmd_c::target_mw_page_size() }
 }
 
+//
+#[derive(PartialEq)]
+#[repr(u32)]
+pub enum bmp_arch {
+    BMP_ARCH_NONE = crate::rn_bmp_cmd_c::BMP_ARCH_NONE,
+    BMP_ARCH_ARM = crate::rn_bmp_cmd_c::BMP_ARCH_ARM,
+    BMP_ARCH_RISCV = crate::rn_bmp_cmd_c::BMP_ARCH_RISCV,
+}
+
+//
+pub fn bmp_get_arch() -> bmp_arch {
+    unsafe {
+        match rn_bmp_cmd_c::bmp_get_arch_c() {
+            crate::rn_bmp_cmd_c::BMP_ARCH_NONE => bmp_arch::BMP_ARCH_NONE,
+            crate::rn_bmp_cmd_c::BMP_ARCH_ARM => bmp_arch::BMP_ARCH_ARM,
+            crate::rn_bmp_cmd_c::BMP_ARCH_RISCV => bmp_arch::BMP_ARCH_RISCV,
+            _ => bmp_arch::BMP_ARCH_NONE,
+        }
+    }
+}
 /*
  */
 // EOF

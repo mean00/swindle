@@ -14,7 +14,7 @@ crate::setup_log!(false);
 const RTT_SIGNATURE: &[u8] = b"SEGGER RTT\0";
 const RTT_SIGNATURE_LEN: usize = 11;
 const TRANSFER_BUFFER_SIZE: usize = 512;
-const RTT_POLLING_DEFAULT_PERIOD: u32 = 50;
+const RTT_POLLING_DEFAULT_PERIOD: u32 = 20;
 const RTT_POLL_ROUNDUP: u32 = 1 << 16; // wrap time every 64k ms 
 //
 unsafe extern "C" {
@@ -58,6 +58,18 @@ pub struct RttControlBlock {
 }
 const BUFFER_SIZE: u32 = core::mem::size_of::<RttBuffer>() as u32;
 const HEADER_SIZE: u32 = core::mem::size_of::<RttControlBlock>() as u32;
+//
+// To read the RTT info, should the chip be stopped
+//
+static mut need_stop_flag: bool = true;
+/*
+ * Return true if the target must be stopped to read/write RTT buffers
+ *
+ */
+fn need_stop() -> bool {
+    unsafe { need_stop_flag }
+}
+
 /*
 *
 */
@@ -79,6 +91,10 @@ fn get_tick() -> u32 {
 }
 
 fn swindle_rtt_access_to_target() -> RttHalt {
+    if !need_stop() {
+        return RttHalt::Halted;
+    }
+
     let mut retries = 20;
     let mut proceed = false;
     while retries > 0 {
@@ -126,6 +142,9 @@ fn swindle_rtt_access_to_target() -> RttHalt {
 *
 */
 fn swindle_rtt_release_target(halt: RttHalt) -> bool {
+    if !need_stop() {
+        return true;
+    }
     match halt {
         RttHalt::AlreadyHalted => true,
         RttHalt::Stepping => true,
@@ -240,7 +259,15 @@ pub extern "C" fn swindle_enable_rtt(enable: bool) {
             return;
         }
     }
+    // For the moment we use a very simple scheme
+    // No need to stop for all cortexM
+    // stop for all others
     unsafe {
+        if enable {
+            need_stop_flag = !(crate::bmp::bmp_get_arch() == crate::bmp::bmp_arch::BMP_ARCH_ARM);
+        } else {
+            need_stop_flag = true;
+        }
         segger_rtt.enabled = enable;
     }
 }

@@ -136,5 +136,11 @@ bool bmp_has_hw_breakpoint_c();
 bool target_has_mw_helpers(void);
 bool bmp_overwrite_flash_c(uint32_t address, const uint8_t *data, uint32_t len);
 uint32_t target_mw_page_size(void);
-
+/*
+ * Warning this define is duplicated in  blackmagic/.../include/target.h
+ */
+#define BMP_ARCH_NONE 0
+#define BMP_ARCH_ARM 1
+#define BMP_ARCH_RISCV 2
+uint32_t bmp_get_arch_c();
 // EOF

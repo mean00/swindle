@@ -14,6 +14,7 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 }
+//
 // C++
 bool rv_dm_probe(uint32_t *chip_id); // C++
 // C
@@ -625,5 +626,13 @@ extern "C" uint32_t target_mw_page_size(void)
     }
     return helpers->page_size(cur_target);
 }
-
+/*
+ *
+ */
+extern "C" uint32_t bmp_get_arch_c()
+{
+    if (!cur_target)
+        return 0;
+    return TOPT_GET_ARCH(cur_target->target_options);
+}
 // EOF
