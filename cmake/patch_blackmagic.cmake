@@ -48,6 +48,7 @@ APPLY_PATCH_IF_NEEDED5(patched51 51blackmagic_add_sw_breakpoint_framework.patch 
 APPLY_PATCH_IF_NEEDED5(patched53 53blackmagic_abort_on_flash_error.patch         "abort buffered flash write as soon as there is one error")
 APPLY_PATCH_IF_NEEDED5(patched54 54blackmagic_dont_doubly_define_rvswd.patch     "avoid doubly definit have_rvswd in hosted mode")
 APPLY_PATCH_IF_NEEDED5(patched80 81blackamgic_support_faults_on_cm33.patch       "Properly managed faults on armv8")
+APPLY_PATCH_IF_NEEDED5(patched82 82blackmagic_export_arch.patch                  "Export the cpu arch (ARM/RISCV) ")
 
 
 
