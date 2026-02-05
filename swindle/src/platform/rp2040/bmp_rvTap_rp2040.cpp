@@ -49,14 +49,19 @@ extern rpPIO_SM *xsm;
     }
 #endif
 
+static inline void send_command(uint32_t cmd, uint32_t param)
+{
+    uint32_t zsize = CMD(cmd) | PARAM(param);
+    xsm->write(1, &zsize);
+}
+
 /**
  * do a falling edge on SWDIO with CLK high (assumed) => start bit
  */
 static void rv_start_bit()
 {
     Debug("Start bit \n");
-    uint32_t zsize = CMD(LN_PIO_START_PC);
-    xsm->write(1, &zsize);
+    send_command(LN_PIO_START_PC, 0);
 }
 
 /**
@@ -66,8 +71,7 @@ static void rv_start_bit()
 static void rv_stop_bit()
 {
     Debug("Stop bit \n");
-    uint32_t zsize = CMD(LN_PIO_STOP_PC);
-    xsm->write(1, &zsize);
+    send_command(LN_PIO_STOP_PC, 0);
     xsm->waitTxEmpty();
 }
 /**
@@ -76,9 +80,8 @@ static void rv_stop_bit()
 static uint32_t rv_read_nbits(int n)
 {
     Debug("Reading %d bits\n", n);
-    uint32_t zsize = PARAM(n - 1) | CMD(LN_PIO_READ_PC);
+    send_command(LN_PIO_READ_PC, n - 1);
     uint32_t value = 0;
-    xsm->write(1, &zsize);
     xsm->waitRxReady();
     xsm->read(1, &value);
     return value;
@@ -90,9 +93,8 @@ static uint32_t rv_read_nbits(int n)
 static void rv_write_nbits(int n, uint32_t value)
 {
     Debug("Writing %d bits\n", n);
-    uint32_t zsize = PARAM(n - 1) | CMD(LN_PIO_WRITE_PC);
+    send_command(LN_PIO_WRITE_PC, n - 1);
     value <<= (32 - n);
-    xsm->write(1, &zsize);
     xsm->write(1, &value);
 }
 /**
