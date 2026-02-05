@@ -1,16 +1,17 @@
 diff --git a/src/include/target.h b/src/include/target.h
-index 6f9151d3..d2ed651a 100644
+index 6f9151d3..b89deb0a 100644
 --- a/src/include/target.h
 +++ b/src/include/target.h
-@@ -38,6 +38,16 @@ typedef SSIZE_T ssize_t;
+@@ -38,6 +38,17 @@ typedef SSIZE_T ssize_t;
  typedef int32_t mode_t;
  #endif /* _MSC_VER */
  
 +// MEANX
-+#define TOPT_GET_ARCH(x) ((x >> 30) & 3)
-+#define TOPT_SET_ARCH(value, arch)                   \
-+	{                                                \
-+		value = (value & ~(3 << 30)) | (arch << 30); \
++#define TOP_ARCH_SHIFT   28
++#define TOPT_GET_ARCH(x) ((x >> TOP_ARCH_SHIFT) & 3)
++#define TOPT_SET_ARCH(value, arch)                                           \
++	{                                                                        \
++		value = (value & ~(3 << TOP_ARCH_SHIFT)) | (arch << TOP_ARCH_SHIFT); \
 +	}
 +#define TOPT_ARCH_ARM   1
 +#define TOPT_ARCH_RISCV 2
@@ -19,20 +20,11 @@ index 6f9151d3..d2ed651a 100644
  typedef struct target target_s;
  typedef uint32_t target_addr32_t;
  typedef uint64_t target_addr64_t;
---- a/src/target/riscv32.c  2026-02-02 19:55:25.518567220 +0100
-+++ b/src/target/riscv32.c	2026-02-02 19:58:12.361025356 +0100
-@@ -72,6 +72,8 @@
- static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
- static void riscv32_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
- 
-+#define PROBED_ARCH TOPT_ARCH_RISCV
-+
- bool riscv32_probe(target_s *const target)
- {
- 	/* 'E' base ISA has 16 GPRs + PC, 'I' base ISA has 32 GPRs + PC */
---- ./src/target/cortexm.c.pre	2026-02-02 19:58:36.554253636 +0100
-+++ ./src/target/cortexm.c	2026-02-02 19:58:59.305565087 +0100
-@@ -296,6 +296,8 @@
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+index a9105c31..731d8e84 100644
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -296,6 +296,8 @@ void cortexm_demcr_write(target_s *target, uint32_t demcr)
  	target_mem32_write32(target, CORTEXM_DEMCR, demcr);
  }
  
@@ -41,9 +33,24 @@ index 6f9151d3..d2ed651a 100644
  bool cortexm_probe(adiv5_access_port_s *ap)
  {
  	target_s *target = target_new();
---- a/src/target/target_probe.h	2026-01-17 18:41:36.930677973 +0100
-+++ b/src/target/target_probe.h	2026-02-02 20:00:45.153527253 +0100
-@@ -28,14 +28,15 @@
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index 58d3f4b4..e97037dc 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -72,6 +72,8 @@ static int riscv32_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
+ static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
+ static void riscv32_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ 
++#define PROBED_ARCH TOPT_ARCH_RISCV
++
+ bool riscv32_probe(target_s *const target)
+ {
+ 	/* 'E' base ISA has 16 GPRs + PC, 'I' base ISA has 32 GPRs + PC */
+diff --git a/src/target/target_probe.h b/src/target/target_probe.h
+index 67f721a2..83890342 100644
+--- a/src/target/target_probe.h
++++ b/src/target/target_probe.h
+@@ -28,14 +28,15 @@ void bmp_tweak_options(uint32_t *opt);
  
  #define STRINGIFY(x) #x
  /* Probe launch macro used by the CPU-generic layers to then call CPU-specific routines safely */

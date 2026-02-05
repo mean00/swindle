@@ -265,6 +265,11 @@ pub extern "C" fn swindle_enable_rtt(enable: bool) {
     unsafe {
         if enable {
             need_stop_flag = !(crate::bmp::bmp_get_arch() == crate::bmp::bmp_arch::BMP_ARCH_ARM);
+            if need_stop_flag {
+                gdb_print!("RTT needs to stop the CPU to read \n");
+            } else {
+                gdb_print!("RTT does NOT need to stop the CPU to read \n");
+            }
         } else {
             need_stop_flag = true;
         }
