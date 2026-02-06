@@ -5,11 +5,10 @@ ARG USER_UID=1000
 ARG USER_GID=1000
 ARG USERNAME=ubuntu
 
-RUN : \
-  && sed -i 's/archive.ubuntu.com/192.168.0.9:3142\/archive.ubuntu.com/g' /etc/apt/sources.list.d/ubuntu.sources \
-  && sed -i 's/security.ubuntu.com/192.168.0.9:3142\/security.ubuntu.com/g' /etc/apt/sources.list.d/ubuntu.sources \
-  && apt-get update \
-  && apt-get install -y \
+#RUN echo 'Acquire::http::Proxy "http://192.168.0.9:3142";' > /etc/apt/apt.conf.d/01proxy
+
+RUN apt-get update 
+RUN apt-get install -y \
     apt-utils \
     bison \
     build-essential \
@@ -17,6 +16,7 @@ RUN : \
     ca-certificates \
     ccache \
     check \
+    cmake \
     curl \
     flex \
     git \
@@ -39,15 +39,16 @@ RUN : \
     ruby \
     sudo \
     unzip \
+    usbutils \
     wget \
     xz-utils \
     zip \
-    make cmake ninja-build usbutils \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/* \
   && update-alternatives --install /usr/bin/python python /usr/bin/python3 10 \
   && :
 
+RUN rm -f  /etc/apt/apt.conf.d/01proxy
 #
 #  Reuse Arm & Riscv toolchains
 #
@@ -56,29 +57,55 @@ RUN chmod a+rwx /root
 
 CMD [ "/bin/bash" ]
 
+###################################
+# Setup user env
+###################################
 USER ${USERNAME}
-RUN /usr/bin/curl -s --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/home/${USERNAME}/.cargo/bin:${PATH}"
-RUN rustc --version && cargo --version
+RUN mkdir ~/.local &&  mkdir ~/.local/bin &&  mkdir ~/.cargo && mkdir ~/.cargo/bin
+RUN echo "export http_proxy=\"\"">> ~/.bashrc
+RUN echo "export https_proxy=\"\"">> ~/.bashrc
+RUN echo "export HTTP_PROXY=\"\"">> ~/.bashrc
+RUN echo "export HTTPS_PROXY=\"\"">> ~/.bashrc
+RUN echo "export PATH=\$PATH:\$HOME/.cargo/bin:\$HOME/.local/bin"  >> ~/.bashrc
 RUN echo ".  \$HOME/.cargo/env" >> /home/$USERNAME/.bashrc
-RUN export PATH=$PATH:\$HOME/.local/bin &&  mkdir -p /home/$USERNAME/.local/bin \
-            && rustup default nightly \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf  \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imafc-unknown-none-elf \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv6m-none-eabi  \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7m-none-eabi  \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7em-none-eabihf  \
-            && rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi 
+ENV http_proxy=""
+ENV https_proxy=""
+ENV HTTP_PROXY=""
+ENV HTTPS_PROXY=""
+#############################################
+# RUST
+#############################################
+RUN cd $HOME && curl -L --noproxy "*" -o rustup-init "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" \
+      && chmod +x rustup-init  \
+      && http_proxy="" https_proxy=""  ./rustup-init -y --no-modify-path
+ENV PATH="/home/${USERNAME}/.cargo/bin:/home/${USERNAME}/.local/bin:${PATH}"
+RUN rustc --version && cargo --version
+            RUN http_proxy="" https_proxy="" rustup default nightly  \
+            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf  \
+            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imafc-unknown-none-elf \
+            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv6m-none-eabi  \
+            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7m-none-eabi  \
+            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7em-none-eabihf  \
+            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi 
 
-# Install riscv toolchain (llvm)
-RUN  wget -nv -O - https://github.com/mean00/LLVM-embedded-toolchain-for-rv32/releases/download/21.1.8/LLVM-ET-RV32-21.1.8-Ubuntu_24.04_x86_64.tar.gz | tar -xz -C /riscv  \
+
+##############################################
+# Install riscv  &arm toolchain (llvm/clang)
+##############################################
+# RV32
+RUN  wget -nv --no-proxy -O - https://github.com/mean00/LLVM-embedded-toolchain-for-rv32/releases/download/21.1.8/LLVM-ET-RV32-21.1.8-Ubuntu_24.04_x86_64.tar.gz | tar -xz -C /riscv  \
               && mv /riscv/LLVM-ET-RV32-21.1.8-Linux-x86_64  /riscv/llvm_21.1.8  && cd /riscv/llvm_21.1.8/bin && ln -s clang++ clang++-21 
-# Install arm toolchain (llvm)
-RUN  wget -nv -O - https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases/download/release-19.1.5/LLVM-ET-Arm-19.1.5-Linux-x86_64.tar.xz | xz -d -c  | tar -x -C /arm && mv /arm/LLVM-ET-Arm-19.1.5-Linux-x86_64  /arm/llvm_19.1 \
-              && cd /arm/llvm_19.1/bin && ln -s clang++ clang++-19
+
+# Arm
+RUN  wget -nv --no-proxy -O - https://github.com/mean00/clang_arm_devcontainer/releases/download/v0.1/clang_toolchain_arm_21.1.1_x86_64_ubuntu.24_04.tar.bz2  \
+  | bzip2 -dc   | tar -x -C /arm && mv /arm/ATfE-21.1.1-Linux-x86_64   /arm/llvm_21.1 \
+            && cd /arm/llvm_21.1/bin && ln -s clang++ clang++-21
+##############################################
 # RP PICO SDK
-RUN            cd /opt/pico && git clone https://github.com/raspberrypi/pico-sdk.git \
+##############################################
+RUN      export http_proxy="" && export https_proxy="" && cd /opt/pico && git clone https://github.com/raspberrypi/pico-sdk.git \
             && cd /opt/pico/pico-sdk/tools/pioasm && mkdir build && cd build && cmake -DPIOASM_VERSION_STRING="blah" .. && make && cp pioasm $HOME/.local/bin \
             && cd /opt/pico/ && git clone https://github.com/raspberrypi/picotool.git && cd picotool && mkdir build && cd build && cmake -DPICO_SDK_PATH=/opt/pico/pico-sdk .. && make && cp picotool  $HOME/.local/bin
+#
 
 
