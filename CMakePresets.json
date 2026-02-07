@@ -1,0 +1,118 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21
+  },
+  "configurePresets": [
+    {
+      "name": "base_usb",
+      "hidden": true,
+      "cacheVariables": {
+        "USE_CLANG": "True",
+        "USE_NO_DEFAULT": "True",
+        "SWINDLE_USE_USB": "True",
+        "SWINDLE_USE_NETWORK": "False"
+      }
+    },
+    {
+      "name": "base_net",
+      "hidden": true,
+      "cacheVariables": {
+        "USE_CLANG": "True",
+        "USE_NO_DEFAULT": "True",
+        "SWINDLE_USE_USB": "False",
+        "SWINDLE_USE_NETWORK": "True"
+      }
+    },
+    {
+      "name": "rp2040",
+      "displayName": "RP2040 zero mini board",
+      "inherits": "base_usb",
+      "cacheVariables": {
+        "USE_RP2040": "true",
+        "USE_RP_ZERO": "true",
+        "USE_RP_CARRIER": "true"
+      }
+    },
+    {
+      "name": "rp2040_inv",
+      "inherits": "rp2040",
+      "displayName": "RP2040 zero mini board with inverted NRST",
+      "cacheVariables": {
+        "USE_INVERTED_NRST": "true"
+      }
+    },
+    {
+      "name": "gd32f303_48",
+      "displayName": "GD32F303 in 48 pins package",
+      "inherits": "base_usb",
+      "cacheVariables": {
+        "USE_GD32F3": "true",
+        "USE_48PIN_PACKAGE": "true",
+        "USE_HW_FPU": "True"
+      }
+    },
+    {
+      "name": "gd32f303_64",
+      "displayName": "GD32F303 in 64 pins package",
+      "inherits": "base_usb",
+      "cacheVariables": {
+        "USE_GD32F3": "true",
+        "USE_48PIN_PACKAGE": "false",
+        "USE_64PIN_PACKAGE": "true",
+        "USE_HW_FPU": "True"
+      }
+    },
+
+    {
+      "name": "gd32f303_48_inv_ws2812",
+      "displayName": "GD32F303 in 48 pins package with RGB led and inverted NRST",
+      "inherits": "gd32f303_48",
+      "cacheVariables": {
+        "USE_WS2812": "True",
+        "USE_INVERTED_NRST": "True"
+      }
+    },
+    {
+      "name": "gd32f303_64_inv_ws2812",
+      "displayName": "GD32F303 in 64 pins package with RGB led and inverted NRST",
+      "inherits": "gd32f303_64",
+      "cacheVariables": {
+        "USE_WS2812": "True",
+        "USE_INVERTED_NRST": "True"
+      }
+    },
+    {
+      "name": "ch32v307",
+      "inherits": "base_usb",
+      "displayName": "CH32V30x in 64 pins package",
+      "cacheVariables": {
+        "USE_CH32V3x": "True",
+        "USE_CH32v3x_HW_IRQ_STACK": "True",
+        "USE_HW_FPU": "True",
+        "USE_64PIN_PACKAGE": "true"
+      }
+    },
+    {
+      "name": "ch32v307_inv_ws2812",
+      "inherits": "ch32v307",
+      "displayName": "CH32V30x in 64 pins package with RGB led and inverted NRST",
+      "cacheVariables": {
+        "USE_WS2812": "True",
+        "USE_INVERTED_NRST": "True"
+      }
+    },
+    {
+      "name": "ch32v307_net",
+      "inherits": "base_net",
+      "displayName": "CH32V307 eval board using ethernet",
+      "cacheVariables": {
+        "USE_CH32V3x": "True",
+        "USE_CH32v3x_HW_IRQ_STACK": "True",
+        "USE_HW_FPU": "True",
+        "USE_64PIN_PACKAGE": "true"
+      }
+    }
+  ]
+}
