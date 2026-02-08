@@ -4100,11 +4100,10 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "C1"
-			(at -0.025 -1.15 0)
+			(at 0.825 -1.525 0)
 			(unlocked yes)
 			(layer "F.SilkS")
-			(hide yes)
-			(uuid "01c0c64c-0f67-41ae-8cb1-0770be5692a8")
+			(uuid "83ae155a-c52f-477e-87e1-47980adddf4a")
 			(effects
 				(font
 					(size 0.8 0.8)
@@ -4116,7 +4115,8 @@
 			(at 1.075 -2.025 0)
 			(unlocked yes)
 			(layer "F.Fab")
-			(uuid "3b2c1275-d441-4868-8fe1-2ba6d49bbdb3")
+			(hide yes)
+			(uuid "0dbe3722-90c7-4c5e-8906-dc02ea30adfd")
 			(effects
 				(font
 					(size 1 1)
@@ -4129,7 +4129,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "0fa7e520-755b-461d-9129-480c8da49c9c")
+			(uuid "1f394990-10aa-4f73-a7fe-772e1659eab5")
 			(effects
 				(font
 					(size 1 1)
@@ -4142,7 +4142,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "34283ecf-9345-4ac8-8434-3b193b6f8403")
+			(uuid "b040c03d-edd4-430a-b61f-5d16b296d74c")
 			(effects
 				(font
 					(size 1.5 1.5)
@@ -6272,7 +6272,7 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "R2"
-			(at 2.075 -0.05 90)
+			(at 2.675 -0.05 0)
 			(unlocked yes)
 			(layer "F.SilkS")
 			(uuid "553a35f9-0ebc-4eb6-869e-0f16a0240a09")
@@ -10652,12 +10652,12 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "C10"
-			(at -2.175 -1.625 180)
+			(at -2.175 -0.225 180)
 			(layer "F.SilkS")
 			(uuid "9fe45a71-cbd0-4350-86f9-fd591e01f3bd")
 			(effects
 				(font
-					(size 1 1)
+					(size 0.8 0.8)
 					(thickness 0.15)
 				)
 			)
