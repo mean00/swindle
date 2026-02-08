@@ -15,7 +15,7 @@ IF(NOT DEFINED LN_ARCH)
     SET(LN_ARCH "RISCV"                   CACHE INTERNAL "")
     SET(LN_MCU  "CH32V3x"                 CACHE INTERNAL "")
     SET(LN_MCU_RAM_SIZE       64          CACHE INTERNAL "")
-    SET(LN_MCU_FLASH_SIZE     300         CACHE INTERNAL "")
+    SET(LN_MCU_FLASH_SIZE     256         CACHE INTERNAL "")
     IF(LN_ENABLE_ETH)
       SET(LN_MCU_STATIC_RAM     42         CACHE INTERNAL "")
       SET(LN_BOOTLOADER_SIZE    0          CACHE INTERNAL "")
@@ -25,11 +25,11 @@ IF(NOT DEFINED LN_ARCH)
     ENDIF()
     SET(LN_SPEC               "picolibc"  CACHE INTERNAL "") # if not set we use nano
     SET(LN_USB_NB_CDC         3           CACHE INTERNAL "") # 2 CDC interfaces
-    SET(LN_MCU_EEPROM_SIZE    1           CACHE INTERNAL "")
+    SET(LN_MCU_EEPROM_SIZE    0           CACHE INTERNAL "")
     IF(SWINDLE_USE_CH32V208)
       SET(LN_MCU_XTAL_CLOCK    25           CACHE INTERNAL "")
     ENDIF()
-    #SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
+    SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
   ELSE()
     IF(USE_GD32F3)
       SET(LN_ENABLED_BOARDS CH32F1 RP2040 RP2350 STM32F1  NRF51 NRF91 LPC11XX LPC15XX LPC17XX STM32F4 STM32G0 STM32H7 STM32H5   STM32L4 CACHE INTERNAL "")
