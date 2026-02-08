@@ -8,7 +8,7 @@ use crate::parsing_util::ascii_string_hex_to_u32;
 use crate::bmp::bmp_mem_write;
 
 crate::setup_log!(false);
-use crate::bmplog;
+//use crate::bmplog;
 
 // memory read m80070f6,4 // m2000000,4
 

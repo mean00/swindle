@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::ptr::addr_of_mut;
 crate::setup_log!(false);
-use crate::gdb_print;
+//use crate::gdb_print;
 //use crate::{bmplog, bmpwarning};
 crate::gdb_print_init!();
 use crate::bmp;
@@ -82,34 +82,37 @@ pub fn get_hashtcb() -> &'static mut hashed_tcb {
 pub fn dump_hash_info() {
     let mut regs: [u32; 16] = [0; 16];
     let info = get_hashtcb();
-    gdb_print!("Hash index = {}\n", info.index);
+    gdb_println!("Hash index = ", Hex(info.index));
     for i in &info.list {
         let val: u32 = i.tcb;
         let id: u32 = i.tid;
-        gdb_print!("------------ID: {:x}-----------\n", id);
-        gdb_print!("TCB: {:x} ", val);
+        gdb_println!("------------ID: ", Hex(id), "-----------");
+        gdb_print!("TCB:  ", Hex(val));
         bmp::bmp_read_mem32(val, &mut regs[0..1]);
         let stack: u32 = regs[0];
-        gdb_print!("SP: {:x} \n", stack);
+        gdb_println!("SP: ", Hex(stack));
         // Read the regs
         bmp::bmp_read_mem32(stack, &mut regs);
         #[allow(clippy::needless_range_loop)]
         for r in 0..4 {
-            gdb_print!(" R{} = 0x{:x}", r, regs[r + 8]);
+            gdb_print!(" R", r);
+            gdb_println!(" = 0x", Hex(regs[r + 8]));
         }
         gdb_print!("\n");
         #[allow(clippy::needless_range_loop)]
         for r in 4..8 {
-            gdb_print!("    R{} = 0x{:x}", r, regs[r]);
+            gdb_print!(" R", r);
+            gdb_println!(" = 0x", Hex(regs[r]));
         }
         gdb_print!("\n");
         #[allow(clippy::needless_range_loop)]
         for r in 8..12 {
-            gdb_print!("    R{} = 0x{:x}", r, regs[r]);
+            gdb_print!(" R", r);
+            gdb_println!(" = 0x", Hex(regs[r]));
         }
         gdb_print!("\n");
-        gdb_print!(" PC = 0x{:x}\n", regs[13]);
-        gdb_print!(" LR = 0x{:x}\n", regs[14]);
-        gdb_print!(" xps = 0x{:x}\n", regs[15]);
+        gdb_println!(" PC = 0x", Hex(regs[13]));
+        gdb_println!(" LR = 0x", Hex(regs[14]));
+        gdb_println!(" xps = 0x", Hex(regs[15]));
     }
 }

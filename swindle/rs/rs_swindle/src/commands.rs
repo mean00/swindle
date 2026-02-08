@@ -34,7 +34,7 @@ type Callback_text = fn(command: &str, args: &[&str]) -> bool;
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, gdb_print};
+//use crate::{bmplog, gdb_print};
 
 pub enum CallbackType {
     text(Callback_text),
@@ -258,7 +258,11 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
         // if the expected command begins with the receive command..
         {
             if !connected && c.require_connected {
-                gdb_print!("Command {} cannot be used while not connected\n", c.command);
+                gdb_print!(
+                    "The following command  cannot be used while not connected :<",
+                    c.command
+                );
+                gdb_print!(">\n");
                 bmplog!("Command not ok while not connected {} \n", c.command);
                 encoder::reply_e01();
                 return true;
@@ -326,7 +330,8 @@ pub fn exec(command: &str) {
         {
             encoder::simple_send(""); // unsupported
             bmplog!("Unsupported cmd :{} \n", command);
-            gdb_print!("!!!Command {} is not supported!!\n", command);
+            gdb_print!("!!! The following command  is not supported : <", command);
+            gdb_print!(">\n");
         }
     }
 }

@@ -29,7 +29,7 @@ fn delay_ms(_a: u32) {}
 //
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning, gdb_print};
+//use crate::{bmplog, bmpwarning, gdb_print};
 //
 pub const MAX_SPACE: usize = 40;
 pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
@@ -447,10 +447,12 @@ fn _fos(_command: &str, args: &[&str]) -> bool {
 fn _ram(_command: &str, _args: &[&str]) -> bool {
     let (min_heap, heap) = bmp::get_heap_stats();
     gdb_print!(
-        "Min Free Heap\t: {} kB \nFree Heap\t: {} kB\n",
+        "Min Free Heap\t: ",
         min_heap >> 10,
+        " kB \nFree Heap\t: ",
         heap >> 10
     );
+    gdb_print!("kB\n");
     encoder::reply_ok();
     true
 }
@@ -476,7 +478,8 @@ fn print_help_tree(helptree: &[HelpTree]) {
         let cmd = i.command;
         let len = cmd.len();
         let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
-        gdb_print!("mon {}{} : {}\n", &cmd, &pad, &(i.help));
+        gdb_print!("mon ", &cmd, " ", &pad);
+        gdb_println!(": ", &(i.help));
     }
 }
 //
@@ -537,7 +540,7 @@ fn _boards(_command: &str, _args: &[&str]) -> bool {
     let boards = bmp::bmp_supported_boards();
     let b: Vec<&str> = boards.split(':').collect();
     for i in b {
-        gdb_print!("\t{}\n", i);
+        gdb_println!("\t", i);
     }
     encoder::reply_ok();
     true
@@ -548,7 +551,7 @@ pub fn _voltage(_command: &str, _args: &[&str]) -> bool {
     let voltage = bmp::bmp_get_target_voltage();
     let voltage32: u32 = (voltage * 1000.0f32) as u32;
 
-    gdb_print!("Voltage (mv) : {}\n", voltage32);
+    gdb_println!("Voltage (mv) : ", voltage32);
     encoder::reply_ok();
     true
 }
@@ -564,7 +567,7 @@ pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
     }
     if args[0].len() > 2 * MAX_RCMD_SIZE {
         //
-        gdb_print!("qRCmd : too long {}\n", args[0].len());
+        gdb_println!("qRCmd : too long ", args[0].len());
         return false;
     }
     // The command is hex encoded, decode it
@@ -603,7 +606,7 @@ pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
  *
  */
 pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
-    gdb_print!("{}\n", bmp::bmp_get_version());
+    gdb_println!("", bmp::bmp_get_version());
     encoder::reply_ok();
     true
 }
@@ -649,7 +652,7 @@ pub fn _ws(_command: &str, args: &[&str]) -> bool {
         bmp::bmp_set_wait_state(ws);
     }
     let w: u32 = bmp::bmp_get_wait_state();
-    gdb_print!("wait states are now {}\n", w);
+    gdb_println!("wait states are now ", w);
     encoder::reply_ok();
     true
 }
@@ -678,7 +681,7 @@ fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
 pub fn _fq(_command: &str, args: &[&str]) -> bool {
     if args.is_empty() {
         let f: u32 = bmp::bmp_get_frequency();
-        gdb_print!("current frequency is {} \n", f);
+        gdb_println!("current frequency is ", f);
         encoder::reply_ok();
         return true;
     }
@@ -694,7 +697,7 @@ pub fn _fq(_command: &str, args: &[&str]) -> bool {
         gdb_print!("incorrect frequency parameter\n");
     }
     let w: u32 = bmp::bmp_get_frequency();
-    gdb_print!("frequency is now {} \n", w);
+    gdb_println!("frequency is now ", w);
     encoder::reply_ok();
     true
 }
@@ -712,7 +715,7 @@ pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
     set_enable_reset(ret as u32);
     encoder::reply_ok();
-    gdb_print!("enable reset pin is now {} \n", get_enable_reset());
+    gdb_println!("enable reset pin is now ", get_enable_reset());
     true
 }
 /*
@@ -757,19 +760,13 @@ pub fn set_custom_target_command(
 fn _map(_command: &str, _args: &[&str]) -> bool {
     let ram: Vec<bmp::MemoryBlock> = bmp::bmp_get_mapping(bmp::mapping::Ram);
     for i in ram {
-        gdb_print!(
-            " RAM   : start=0x{:x} size={} kB\n",
-            i.start_address,
-            i.length / 1024
-        );
+        gdb_print!(" RAM   : start=0x", Hex(i.start_address));
+        gdb_print!(" size=", i.length / 1024, " kB\n");
     }
     let flash: Vec<bmp::MemoryBlock> = bmp::bmp_get_mapping(bmp::mapping::Flash);
     for i in flash {
-        gdb_print!(
-            " FLASH : start=0x{:x} size={} kB\n",
-            i.start_address,
-            i.length / 1024
-        );
+        gdb_print!(" FLASH   : start=0x", Hex(i.start_address));
+        gdb_print!(" size=", i.length / 1024, " kB\n");
     }
     encoder::reply_ok();
     true
@@ -859,7 +856,7 @@ pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
     unsafe { platform_nrst_set_val_internal(ret) };
     encoder::reply_ok();
-    gdb_print!("reset pin is now {} \n", ret);
+    gdb_println!("reset pin is now ", ret);
     true
 }
 unsafe extern "C" {
@@ -902,8 +899,8 @@ pub fn swindle_nrst_set_val(set: u32) {
 }
 pub fn _breakpoint_count(_command: &str, _args: &[&str]) -> bool {
     let (bkpt, wtch) = bmp::bmp_watchpoint_breakpoint_count();
-    gdb_print!("\t HW Breakpoints    : 0x{:x}\n", bkpt);
-    gdb_print!("\t HW Watchpoints    : 0x{:x}\n", wtch);
+    gdb_println!("\t HW Breakpoints    : ", bkpt);
+    gdb_println!("\t HW Watchpoints    : ", wtch);
     encoder::reply_ok();
     true
 }

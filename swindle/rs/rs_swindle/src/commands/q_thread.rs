@@ -8,7 +8,7 @@ use crate::encoder::encoder;
 use crate::parsing_util;
 
 crate::setup_log!(false);
-use crate::bmplog;
+//use crate::bmplog;
 
 use crate::freertos::freertos_symbols::freertos_running;
 use crate::freertos::freertos_tcb::get_threads;
@@ -16,7 +16,7 @@ use crate::freertos::freertos_tcb::{freertos_is_thread_present, freertos_switch_
 use crate::freertos::freertos_tcb::{get_current_thread_id, get_tcb_info_from_id};
 
 crate::gdb_print_init!();
-use crate::gdb_print;
+//use crate::gdb_print;
 //
 // ‘m thread-id’
 // A single thread ID

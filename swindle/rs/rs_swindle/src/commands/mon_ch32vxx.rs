@@ -6,7 +6,7 @@ use crate::parsing_util::ascii_hex_or_dec_to_u32;
 //
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::gdb_print;
+//use crate::gdb_print;
 //
 pub const ch32vxx_command_tree: [CommandTree; 2] = [
     CommandTree {
@@ -54,30 +54,32 @@ pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
         gdb_print!("Error reading WPR register\n");
         return false;
     }
-    gdb_print!("Write Prot : 0x{:x}\n", value[0]);
+    gdb_print!("Write Prot : ", value[0]);
+    gdb_print!("\n");
     if args.is_empty() {
         if !bmp::bmp_read_mem32(CH32V3XX_FLASH_OBR_ADR, &mut value) {
             gdb_print!("Error reading OBR register\n");
             return false;
         }
-        gdb_print!("OBR : {:x}\n", value[0]);
-        gdb_print!("\t Error      : 0x{:x}\n", value[0] & (1 << 0));
-        gdb_print!("\t ReadProt   : 0x{:x}\n", (value[0] & (1 << 1)) >> 1);
-        gdb_print!("\t WDG enable : 0x{:x}\n", (value[0] & (1 << 2)) >> 2);
-        gdb_print!("\t Stop Reset : 0x{:x}\n", (value[0] & (1 << 3)) >> 3);
-        gdb_print!("\t Stby Reset : 0x{:x}\n", (value[0] & (1 << 4)) >> 4);
-        gdb_print!("\t Sram code  : 0x{:x}\n", (value[0] >> 8) & 3);
+        gdb_println!("OBR : ", Hex(value[0]));
+        gdb_println!("\t Error      : ", value[0] & (1 << 0));
+        gdb_println!("\t ReadProt   : ", (value[0] & (1 << 1)) >> 1);
+        gdb_println!("\t WDG enable : ", (value[0] & (1 << 2)) >> 2);
+        gdb_println!("\t Stop Reset : ", (value[0] & (1 << 3)) >> 3);
+        gdb_println!("\t Stby Reset : ", (value[0] & (1 << 4)) >> 4);
+        gdb_println!("\t Sram code  : ", (value[0] >> 8) & 3);
         if (value[0] & CH32V3XX_OBR_ERROR) != 0 {
-            gdb_print!("OBR invalid configuration , inverted option does not match not inverted\n");
+            gdb_print!("\nOBR invalid configuration , inverted option does not match not inverted");
         } else {
-            gdb_print!("OBR configuration is valid\n");
+            gdb_print!("\nOBR configuration is valid");
         }
 
         if (value[0] & CH32V3XX_OBR_RDP_VALID) != 0 {
-            gdb_print!("OBR Read protection is valid \n");
+            gdb_print!("\nOBR Read protection is valid ");
         } else {
-            gdb_print!("OBR Read protection is not valid \n");
+            gdb_print!("\nOBR Read protection is not valid ");
         }
+        gdb_print!("\n");
         encoder::reply_ok();
         return true;
     }
@@ -125,7 +127,8 @@ pub fn _ch32v3_option_byte(_command: &str, args: &[&str]) -> bool {
                 gdb_print!("invalid memory configuration\n");
             }
         }
-        gdb_print!("Flash {} kB, Ram {} kB\n", flash, ram);
+        gdb_print!("Flash ", flash, " kB,");
+        gdb_print!("Ram ", ram, " kB\n");
         encoder::reply_ok();
         return true;
     }

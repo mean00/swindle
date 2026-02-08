@@ -28,7 +28,7 @@ const REPLY_TEMP_BUFFER_SIZE: usize = 32;
 static mut temp_buffer: [u8; REPLY_TEMP_BUFFER_SIZE] = [0; REPLY_TEMP_BUFFER_SIZE];
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+//use crate::{bmplog, bmpwarning};
 
 pub struct rpc_reply_encoder {
     data: &'static mut [u8],

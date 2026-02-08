@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 crate::setup_log!(false);
-use crate::bmplog;
+//use crate::bmplog;
 //
 //
 pub fn chomp(input: &str) -> &str {

@@ -15,7 +15,7 @@ use rpc_parser::rpc_parameter_parser;
 //------------------------------
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::{bmplog, bmpwarning};
+//use crate::{bmplog, bmpwarning};
 //-------------------------------
 /*
  *

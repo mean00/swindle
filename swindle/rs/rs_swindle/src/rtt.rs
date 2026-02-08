@@ -3,7 +3,7 @@
  */
 use crate::bmp;
 use crate::commands::run::HaltState;
-use crate::gdb_print;
+//use crate::gdb_print;
 use crate::setting_keys::{RTT_PERIOD_KEY, RTT_SETTING_KEY};
 use crate::settings;
 #[cfg(not(feature = "hosted"))]
@@ -44,10 +44,10 @@ impl RttBuffer {
     }
 
     fn print(&self) {
-        gdb_print!("\t buffer   : 0x{:x}\n", self.buffer);
-        gdb_print!("\t size     : {}\n", self.size);
-        gdb_print!("\t write    : {}\n", self.write_offset);
-        gdb_print!("\t read     : {}\n", self.read_offset);
+        gdb_println!("\t buffer   : ", Hex(self.buffer));
+        gdb_println!("\n\t size     : \n", self.size);
+        gdb_println!("\n\t write    : \n", self.write_offset);
+        gdb_println!("\n\t read     : \n", self.read_offset);
     }
 }
 #[repr(C)]
@@ -287,19 +287,16 @@ pub fn swindle_rtt_print_info() {
         gdb_print!("We dont have the RTT symbol available! \n");
         return;
     }
-    gdb_print!("Checking control block at  address 0x{:x}\n", adr);
+    gdb_println!("Checking control block at  address 0x\n", Hex(adr));
 
     let cb = RttControlBlock::read(adr);
 
     if cb.max_num_up_buffers == 0 || cb.max_num_up_buffers > 4 {
-        gdb_print!("Invalid number of up buffers {}\n", cb.max_num_up_buffers);
+        gdb_println!("Invalid number of up buffers ", cb.max_num_up_buffers);
         return;
     }
     if cb.max_num_down_buffers > 4 {
-        gdb_print!(
-            "Invalid number of down buffers {}\n",
-            cb.max_num_down_buffers
-        );
+        gdb_println!("Invalid number of down buffers ", cb.max_num_down_buffers);
         return;
     }
     // check signature
@@ -307,10 +304,10 @@ pub fn swindle_rtt_print_info() {
         gdb_print!("Invalid signature \n");
         return;
     }
-    gdb_print!("RTT control block   :\n");
-    gdb_print!("RTT address         :0x{:x}\n", adr);
-    gdb_print!("RTT # up channels   :{}\n", cb.max_num_up_buffers);
-    gdb_print!("RTT # down channels :{}\n", cb.max_num_up_buffers);
+    gdb_println!("RTT control block   :");
+    gdb_println!("RTT address         : ", Hex(adr));
+    gdb_println!("RTT # up channels   :", cb.max_num_up_buffers);
+    gdb_println!("RTT # down channels :", cb.max_num_up_buffers);
     let mut adr_buf = adr + HEADER_SIZE;
     let mut buffer: RttBuffer = RttBuffer {
         name: 0,
@@ -322,7 +319,7 @@ pub fn swindle_rtt_print_info() {
     };
     for i in 0..cb.max_num_up_buffers {
         buffer.invalidate();
-        gdb_print!("Up Channel  {}\n", i);
+        gdb_println!("Up Channel  ", i);
         if SeggerRTT::read_buffer(adr_buf, &mut buffer) && buffer.is_valid() {
             buffer.print();
             // process up
@@ -334,7 +331,7 @@ pub fn swindle_rtt_print_info() {
     }
     for i in 0..cb.max_num_down_buffers {
         buffer.invalidate();
-        gdb_print!("Down Channel  {}\n", i);
+        gdb_println!("Down Channel  ", i);
         if SeggerRTT::read_buffer(adr_buf, &mut buffer) && buffer.is_valid() {
             buffer.print();
             // process up

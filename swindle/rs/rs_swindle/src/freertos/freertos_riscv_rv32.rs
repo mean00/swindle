@@ -12,7 +12,7 @@ crate::setup_log!(false);
 /*
  *
  */
-use crate::bmpwarning;
+//use crate::bmpwarning;
 use crate::freertos::freertos_trait::freertos_switch_handler;
 
 const RV32_GPRS_REGISTER: usize = 28;

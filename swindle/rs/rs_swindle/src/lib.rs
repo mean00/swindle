@@ -10,6 +10,7 @@
 extern crate alloc;
 //#![allow(unused_imports)]
 mod bmp;
+#[macro_use]
 mod bmplogger;
 mod commands;
 mod crc;

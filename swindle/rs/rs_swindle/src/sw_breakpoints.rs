@@ -13,7 +13,7 @@ use core::mem::MaybeUninit;
 
 crate::setup_log!(false);
 use crate::bmp;
-use crate::bmplog;
+//use crate::bmplog;
 
 const ARM_BREAKPOINT_OPCODE: [u8; 2] = [0x00u8, 0xbeu8];
 const RISCV_BREAKPOINT_OPCODE: [u8; 2] = [0x02u8, 0x90u8];

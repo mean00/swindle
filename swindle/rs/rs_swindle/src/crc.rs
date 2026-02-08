@@ -3,7 +3,7 @@
  */
 crate::setup_log!(false);
 use crate::bmp;
-use crate::bmplog;
+//use crate::bmplog;
 use crate::util::xmin;
 
 // qCRC:addr hex,length hex’

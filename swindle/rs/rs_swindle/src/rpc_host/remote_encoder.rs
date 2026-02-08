@@ -26,7 +26,7 @@ const TEMP_BUFFER_SIZE: usize = 64;
 static mut temp_buffer: [u8; TEMP_BUFFER_SIZE] = [0; TEMP_BUFFER_SIZE];
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+//use crate::{bmplog, bmpwarning};
 
 pub struct rpc_encoder {
     checksum: usize,

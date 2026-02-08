@@ -10,7 +10,7 @@ const SW_TOKEN_SIZE: usize = 32;
 type token = ArrayString<U32>;
 //
 crate::setup_log!(false);
-use crate::gdb_print;
+//use crate::gdb_print;
 crate::gdb_print_init!();
 
 /*
@@ -63,12 +63,9 @@ pub fn dump() {
     let info = get_settings();
     gdb_print!("Dumping settings \n");
     for (key, value) in &info.hash {
-        gdb_print!(
-            "Key: {}, Value: {} (dec) - 0x{:x} (hex)\n",
-            key.as_str(),
-            *value,
-            *value as usize
-        );
+        gdb_println!("Key: ", key.as_str());
+        gdb_print!("Value:  ", *value);
+        gdb_println!("- Hex : ", Hex(*value as usize));
     }
 }
 /*

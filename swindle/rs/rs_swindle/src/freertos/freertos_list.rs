@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::bmplog;
+//use crate::bmplog;
 /**
  * \fn freertos_crawl_list
  * \brief returns a list of items, in out case TCB *

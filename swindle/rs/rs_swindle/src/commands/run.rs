@@ -8,7 +8,7 @@ static mut running: bool = false;
 crate::setup_log!(false);
 crate::gdb_print_init!();
 
-use crate::gdb_print;
+//use crate::gdb_print;
 #[derive(PartialEq, Eq)]
 pub enum HaltState {
     Running,

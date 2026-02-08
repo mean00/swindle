@@ -10,7 +10,7 @@ use crate::rpc_common::*;
 crate::setup_log!(false);
 
 crate::gdb_print_init!();
-use crate::{bmplog, gdb_print};
+//use crate::{bmplog, gdb_print};
 
 use crate::rn_bmp_cmd_c::platform_buffer_read;
 
@@ -159,7 +159,7 @@ pub fn remote_adiv5_swd_write_no_check_rs(addr: u16, data: u32) -> bool {
     // now get the reply
     let reply = remote_get_reply();
     if !check_reply(reply, 8) {
-        gdb_print!("Incorret reply to adiv_swd_write\n");
+        gdb_print!("Incorrect reply to adiv_swd_write\n");
         return false;
     }
     true
@@ -177,7 +177,7 @@ pub fn remote_raw_swd_write_rs(tick: u32, value: u32) {
     // now get the reply
     let reply = remote_get_reply();
     if !check_reply(reply, 8) {
-        gdb_print!("Incorret reply to adiv_swd_raw_write\n");
+        gdb_print!("Incorrect reply to adiv_swd_raw_write\n");
     }
 }
 //---------------------
@@ -192,7 +192,7 @@ pub fn remote_adiv5_swd_read_no_check_rs(addr: u16) -> u32 {
     // now get the reply
     let reply = remote_get_reply();
     if !check_reply(reply, 8) {
-        gdb_print!("Incorret reply to adiv_swd_read\n");
+        gdb_print!("Incorrect reply to adiv_swd_read\n");
         return 0;
     }
     u8s_string_to_u32_le(&reply[1..])
@@ -215,7 +215,7 @@ pub fn remote_adiv5_swd_raw_access_rs(rnw: u8, addr: u16, value: u32, fault: &mu
     // now get the reply
     let reply = remote_get_reply();
     if !check_reply(reply, 16) {
-        gdb_print!("Incorret reply to adiv_swd_raw_access\n");
+        gdb_print!("Incorrect reply to adiv_swd_raw_access\n");
         *fault = 2;
         return 0;
     }

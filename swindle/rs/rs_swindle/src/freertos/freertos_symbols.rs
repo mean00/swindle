@@ -6,7 +6,7 @@ use core::ptr::addr_of_mut;
 use crate::freertos::LN_MCU_CORE;
 
 crate::setup_log!(false);
-use crate::{bmplog, bmpwarning};
+//use crate::{bmplog, bmpwarning};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;

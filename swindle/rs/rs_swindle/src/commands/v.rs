@@ -11,7 +11,7 @@ use crate::encoder::encoder;
 use crate::freertos::os_detach;
 use crate::sw_breakpoints;
 
-crate::setup_log!(false);
+crate::setup_log!(true);
 use crate::parsing_util::ascii_string_decimal_to_u32;
 
 const v_command_tree: [CommandTree; 3] = [
@@ -74,6 +74,7 @@ fn _vAttach(_command: &str, args: &[&str]) -> bool {
     if target == 0 {
         target = 1;
     }
+    bmplog!("Attaching to {}  \n", target);
     if bmp_attach(target) {
         /*
          * We don't actually support threads, but GDB 11 and 12 can't work without
@@ -88,6 +89,7 @@ fn _vAttach(_command: &str, args: &[&str]) -> bool {
         encoder::simple_send("T05thread:1;");
         return true;
     }
+    bmplog!("Attach failed\n");
     symbols::reset_symbols();
     os_detach();
     sw_breakpoints::clear_sw_breakpoint();

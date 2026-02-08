@@ -6,8 +6,8 @@ use crate::setting_keys::RTT_SETTING_KEY;
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
-use crate::bmpwarning;
-use crate::gdb_print;
+//use crate::bmpwarning;
+//use crate::gdb_print;
 
 use crate::settings;
 /*
@@ -113,7 +113,9 @@ fn _help(_command: &str, _args: &[&str]) -> bool {
         let cmd = i.command;
         let len = cmd.len();
         let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
-        gdb_print!("mon rtt {}{} : {}\n", &cmd, &pad, &(i.help));
+        gdb_print!("mon rtt  ", &cmd);
+        gdb_print!(" ", &pad);
+        gdb_println!(": ", &(i.help));
     }
     encoder::reply_ok();
     true
