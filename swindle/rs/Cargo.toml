@@ -8,20 +8,24 @@ resolver = "2"
 [workspace.dependencies]
 
 rust_esprit = { path = "../../esprit/rust/rust_esprit"}
+ufmt = { version = "0.2.0", default-features = false }
+heapless = { version = "0.7.17", features = ["ufmt-impl"] }
 
 [profile.dev]
 debug = true
-opt-level       = 2
+opt-level       ="s" 
 panic = "abort"
 #lto = false  # no lto
-lto = "thin" # average
-#lto = "fat"  # strong lto
+#lto = "thin" # average
+lto = "fat"  # strong lto
+codegen-units = 1
 
 
 [profile.release]
 debug = true
-opt-level       = 2
+opt-level       = "s"
 panic = "abort"
+codegen-units = 1
 #lto = false  # no lto
 lto = "thin" # average
 #lto = "fat"  # strong lto

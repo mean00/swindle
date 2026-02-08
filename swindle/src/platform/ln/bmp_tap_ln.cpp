@@ -49,11 +49,11 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
     }
     // convert fq to wait state
     float wf = ((alpha) / (float)fq) - beta;
-    if (wf < 0.0)
-        wf = 0.;
+    if (wf < 0.0f)
+        wf = 0.f;
 
     // get wf which is the wait state as rounded int
-    wf = floor(wf + 0.49);
+    wf = floor(wf + 0.49f);
     // now reinvert it to update the actual fq
     float gf = (alpha) / (wf + beta);
     swd_frequency = gf;

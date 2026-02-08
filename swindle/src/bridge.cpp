@@ -46,7 +46,10 @@ extern "C"
     const char *platform_target_voltage(void)
     {
         float v = bmp_get_target_voltage_c();
-        snprintf(buffer, 9, "%2.2f v", v);
+        uint32_t by_10 = (uint32_t)(v * 10.f);
+        uint32_t left = by_10 / 10;
+        uint32_t right = by_10 - (left * 10);
+        snprintf(buffer, 9, "%d.%02d v", left, right);
         return buffer;
     }
 

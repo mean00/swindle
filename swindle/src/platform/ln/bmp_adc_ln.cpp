@@ -34,8 +34,8 @@ extern "C" float bmp_get_target_voltage_c()
     }
     sample /= 16;
 
-    vcc = (float)sample * vcc * PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER
-    vcc = vcc / 4095000.;
+    vcc = (float)sample * vcc * (float)PIN_ADC_NRESET_MULTIPLIER; // need to multiply by PIN_ADC_NRESET_MULTIPLIER
+    vcc = vcc / 4095000.f;
     return vcc;
 }
 // EOF

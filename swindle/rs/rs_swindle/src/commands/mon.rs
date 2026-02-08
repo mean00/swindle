@@ -546,7 +546,7 @@ fn _boards(_command: &str, _args: &[&str]) -> bool {
 //
 pub fn _voltage(_command: &str, _args: &[&str]) -> bool {
     let voltage = bmp::bmp_get_target_voltage();
-    let voltage32: u32 = (voltage * 1000.) as u32;
+    let voltage32: u32 = (voltage * 1000.0f32) as u32;
 
     gdb_print!("Voltage (mv) : {}\n", voltage32);
     encoder::reply_ok();
