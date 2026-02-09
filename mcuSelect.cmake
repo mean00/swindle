@@ -25,7 +25,7 @@ IF(NOT DEFINED LN_ARCH)
     ENDIF()
     SET(LN_SPEC               "picolibc"  CACHE INTERNAL "") # if not set we use nano
     SET(LN_USB_NB_CDC         3           CACHE INTERNAL "") # 2 CDC interfaces
-    SET(LN_MCU_EEPROM_SIZE    0           CACHE INTERNAL "")
+    SET(LN_MCU_EEPROM_SIZE    1           CACHE INTERNAL "")
     IF(SWINDLE_USE_CH32V208)
       SET(LN_MCU_XTAL_CLOCK    25           CACHE INTERNAL "")
     ENDIF()
