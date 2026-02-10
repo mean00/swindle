@@ -9,7 +9,6 @@ extern void gmp_gpio_init_adc();
 
 uint32_t swd_delay_cnt = 4;
 uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
-SwdPin *rDirection;
 SwdDirectionPin *rSWDIO;
 SwdWaitPin *rSWCLK;
 SwdReset *pReset;
@@ -72,8 +71,7 @@ extern "C" uint32_t bmp_get_wait_state_c()
 */
 void bmp_gpio_init_once()
 {
-    rDirection = new SwdPin(TDIRECTION_PIN);
-    rSWDIO = new SwdDirectionPin(TSWDIO_PIN);
+    rSWDIO = new SwdDirectionPin(TSWDIO_PIN, TDIRECTION_PIN);
     rSWCLK = new SwdWaitPin(TSWDCK_PIN); // automatically add delay after toggle
     pReset = new SwdReset(TRESET_PIN);   // automatically add delay after toggle
     pReset->setup();
@@ -83,7 +81,6 @@ void bmp_gpio_init_once()
     rSWCLK->hiZ();
     pReset->hiZ(); // hi-z by default
     pReset->off(); // hi-z by default
-    tapOutput();
     gmp_gpio_init_adc();
 }
 /**
@@ -96,7 +93,6 @@ void bmp_io_begin_session()
     rSWDIO->output();
     rSWCLK->clockOn();
     rSWCLK->output();
-    tapOutput();
     pReset->off(); // hi-z by default
 }
 /**
@@ -110,7 +106,6 @@ void bmp_io_end_session()
     rSWCLK->hiZ();
     rSWCLK->hiZ();
     pReset->off(); // hi-z by default
-    tapOutput();
 }
 /**
  *

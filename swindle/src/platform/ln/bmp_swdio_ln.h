@@ -3,10 +3,6 @@
  */
 #include "lnBMP_reset.h"
 
-// clang-format on
-static void __inline__ tapOutput();
-static void __inline__ tapInput();
-//
 // #include "lnBMP_swdio_ln.h"
 // #include "lnBMP_swdio_common.h"
 //
@@ -63,7 +59,7 @@ class SwdPin
 class SwdDirectionPin
 {
   public:
-    SwdDirectionPin(lnBMPPins no) : _fast(_mapping[no])
+    SwdDirectionPin(lnBMPPins no, lnBMPPins dir) : _fast(_mapping[no]), _fastdir(_mapping[dir])
     {
         _me = _mapping[no];
         dir_output();
@@ -76,14 +72,14 @@ class SwdDirectionPin
     void dir_input()
     {
         lnPinMode(_me, lnINPUT_FLOATING);
-        tapInput();
+        _fastdir.off();
         currentDrive = false;
     }
     LN_ALWAYS_INLINE
     void dir_output()
     {
         lnPinMode(_me, lnOUTPUT, SWD_IO_SPEED); // 10 Mhz
-        tapOutput();
+        _fastdir.on();
         currentDrive = true;
     }
     LN_ALWAYS_INLINE void input()
@@ -122,19 +118,11 @@ class SwdDirectionPin
     }
     bool currentDrive;
     lnFastIO _fast;
+    lnFastIO _fastdir;
     lnPin _me;
 };
 extern SwdPin *rDirection;
 
-// clang-format on
-void __inline__ tapOutput()
-{
-    rDirection->on();
-}
-void __inline__ tapInput()
-{
-    rDirection->off(); // off();
-}
 /**
  *
  */
