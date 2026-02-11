@@ -158,7 +158,7 @@ impl ToLog for &str {
 impl ToLog for &&str {
     #[inline(always)]
     fn log(self) {
-        G::print_str(*self);
+        G::print_str(self);
     }
 }
 // Handle characters
@@ -345,15 +345,15 @@ macro_rules! gdb_println {
 #[macro_export]
 macro_rules! gdb_print_init {
     () => {
-        #[allow(unused_macros)]
-        #[allow(unused)]
-        use crate::bmplogger::Hex;
-        #[allow(unused)]
-        use crate::bmplogger::ToLog;
         #[cfg(feature = "hosted")]
         #[allow(unused)]
         use ufmt::uwrite;
         #[allow(unused)]
         use $crate::bmplogger::G;
+        #[allow(unused_macros)]
+        #[allow(unused)]
+        use $crate::bmplogger::Hex;
+        #[allow(unused)]
+        use $crate::bmplogger::ToLog;
     };
 }
