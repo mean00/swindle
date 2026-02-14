@@ -1,0 +1,20 @@
+[package]
+name = "rsbmp_wrapper"
+version = "0.1.0"
+edition.workspace = true
+
+[features]
+std = ["rsbmp/std"]
+native = ["rsbmp/native"]
+hosted = ["rsbmp/hosted"]
+rp2040 = ["rsbmp/rp2040"]
+esp32 = ["rsbmp/esp32"]
+
+
+
+[dependencies]
+rsbmp = { path="../rs_swindle", default-features = false, features=["native"]}
+rust_esprit = { workspace = true, optional = true }
+
+[lib]
+crate-type = ["staticlib"] # staticlib for corrosion

@@ -8,12 +8,13 @@ edition = "2024"
 [features]
 default = ["native"]
 std = []
-native = ["rust_esprit"]
+native = ["dep:rust_esprit"]
 hosted = []
 
 
 rp2040 = ["rust_esprit/rp2040"]
 esp32 = ["rust_esprit/esp32"]
+use_esprit = ["dep:rust_esprit"]
 
 
 [dependencies]
@@ -31,5 +32,5 @@ strum_macros = { version = "0.27.1", default-features = false, features = []}
 [lib]
 name = "rsbmp"
 path = "src/lib.rs"
-crate-type = ["staticlib"] # Creates static lib
+crate-type = ["rlib"] # Creates static lib
 

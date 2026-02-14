@@ -167,6 +167,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsbmp_wrapper"
+version = "0.1.0"
+dependencies = [
+ "rsbmp",
+ "rust_esprit",
+]
+
+[[package]]
 name = "rust_esprit"
 version = "0.0.0"
 dependencies = [

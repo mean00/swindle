@@ -83,7 +83,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_int
 include(rnCmake)
 MESSAGE(STATUS "Rust, enabling hosted feature")
 #RUST_ADD( rsbmp rs/rs_swindle/Cargo.toml    "${LN_LTO_RUST_FLAGS}" "hosted")
-corrosion_import_crate(MANIFEST_PATH rs/rs_swindle/Cargo.toml    FLAGS ${LN_LTO_RUST_FLAGS} )
-corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
-corrosion_set_features(rsbmp NO_DEFAULT_FEATURES FEATURES hosted)
+corrosion_import_crate(MANIFEST_PATH rs/rs_swindle_wrapper/Cargo.toml    FLAGS ${LN_LTO_RUST_FLAGS} )
+corrosion_add_target_rustflags( rsbmp_wrapper --cfg feature="hosted")
+corrosion_set_features(rsbmp_wrapper NO_DEFAULT_FEATURES FEATURES hosted)
 # ===========================================================================================

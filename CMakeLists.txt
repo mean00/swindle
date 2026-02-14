@@ -174,7 +174,7 @@ ENDIF()
 ADD_SUBDIRECTORY(swindle)
 TARGET_LINK_LIBRARIES(swindle PUBLIC libswindle)
 TARGET_LINK_LIBRARIES(swindle PUBLIC swindle_interface)
-TARGET_LINK_LIBRARIES(swindle PUBLIC rsbmp)
+TARGET_LINK_LIBRARIES(swindle PUBLIC rsbmp_wrapper)
 #FIXME TODO this should be automatic
 if(SWINDLE_USE_NETWORK)
   TARGET_LINK_LIBRARIES(swindle PUBLIC lwipcore lnEth_wch)

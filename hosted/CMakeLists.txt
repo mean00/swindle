@@ -124,7 +124,7 @@ SET(SRC   ${H}/main.cpp
 ADD_EXECUTABLE(swindle_hosted ${SRC})
 
 target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
-target_link_libraries(swindle_hosted PRIVATE rsbmp)
+target_link_libraries(swindle_hosted PRIVATE rsbmp_wrapper)
 target_link_libraries(swindle_hosted PRIVATE esprit_dev)
 target_link_libraries(swindle_hosted PRIVATE swindle_interface)
 target_link_libraries(swindle_hosted PRIVATE libswindle  )
