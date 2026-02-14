@@ -26,7 +26,7 @@ index 9e00f2c4..6994bd58 100644
  		dp->error(dp, true);
  		response = dp->low_access(dp, rnw, addr, value);
 diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
-index 61752f16..38cc7089 100644
+index 06e41e5e..c9a579df 100644
 --- a/src/target/adiv5_swd.c
 +++ b/src/target/adiv5_swd.c
 @@ -54,6 +54,7 @@ uint8_t make_packet_request(const uint8_t rnw, const uint16_t addr)
@@ -50,22 +50,21 @@ index 61752f16..38cc7089 100644
  }
  
  /* Switch out of dormant state into SWD */
-@@ -83,15 +86,24 @@ static void dormant_to_swd_sequence(void)
+@@ -83,15 +86,22 @@ static void dormant_to_swd_sequence(void)
  	 * See B5.3.2
  	 */
  	DEBUG_INFO("Switching from JTAG to dormant\n");
 -	swd_proc.seq_out(ADIV5_JTAG_TO_DORMANT_SEQUENCE0, 5U);
 -	swd_proc.seq_out(ADIV5_JTAG_TO_DORMANT_SEQUENCE1, 31U);
 -	swd_proc.seq_out(ADIV5_JTAG_TO_DORMANT_SEQUENCE2, 8U);
-+	// MEANX swd_proc.seq_out(ADIV5_JTAG_TO_DORMANT_SEQUENCE0, 5U);
++	// MEANX 	swd_proc.seq_out(ADIV5_JTAG_TO_DORMANT_SEQUENCE0, 5U);
 +	// MEANX swd_proc.seq_out(ADIV5_JTAG_TO_DORMANT_SEQUENCE1, 31U);
 +	// MEANX swd_proc.seq_out(ADIV5_JTAG_TO_DORMANT_SEQUENCE2, 8U);
 +	ln_raw_swd_write(5, ADIV5_JTAG_TO_DORMANT_SEQUENCE0);
 +	ln_raw_swd_write(31, ADIV5_JTAG_TO_DORMANT_SEQUENCE1);
 +	ln_raw_swd_write(8, ADIV5_JTAG_TO_DORMANT_SEQUENCE2);
-+
  	/* Send the 128-bit Selection Alert sequence on SWDIOTMS */
- 	DEBUG_INFO("Switching out of dormant state into SWD\n");
+ 	DEBUG_INFO("Switching from dormant to SWD\n");
 -	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_0, 32U);
 -	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_1, 32U);
 -	swd_proc.seq_out(ADIV5_SELECTION_ALERT_SEQUENCE_2, 32U);
@@ -78,11 +77,10 @@ index 61752f16..38cc7089 100644
 +	ln_raw_swd_write(32, ADIV5_SELECTION_ALERT_SEQUENCE_1);
 +	ln_raw_swd_write(32, ADIV5_SELECTION_ALERT_SEQUENCE_2);
 +	ln_raw_swd_write(32, ADIV5_SELECTION_ALERT_SEQUENCE_3);
-+
  	/*
  	 * We combine the last two sequences in a single seq_out as an optimization
  	 *
-@@ -101,7 +113,8 @@ static void dormant_to_swd_sequence(void)
+@@ -101,7 +111,8 @@ static void dormant_to_swd_sequence(void)
  	 * The bits are shifted out to the right, so we shift the second sequence left by the size of the first sequence
  	 * The first sequence is 4 bits and the second 8 bits, totaling 12 bits in the combined sequence
  	 */
@@ -92,7 +90,7 @@ index 61752f16..38cc7089 100644
  
  	/*
  	 * The target is in the protocol error state after selecting SWD
-@@ -125,7 +138,8 @@ static void jtag_to_swd_sequence(void)
+@@ -125,7 +136,8 @@ static void jtag_to_swd_sequence(void)
  	swd_line_reset_sequence(false);
  
  	/* Send the 16-bit JTAG-to-SWD select sequence on SWDIO/TMS */
@@ -102,7 +100,7 @@ index 61752f16..38cc7089 100644
  
  	/*
  	 * This ensures that if a SWD/JTAG DP was already in SWD operation before sending the select sequence,
-@@ -134,7 +148,7 @@ static void jtag_to_swd_sequence(void)
+@@ -134,7 +146,7 @@ static void jtag_to_swd_sequence(void)
  	swd_line_reset_sequence(true);
  }
  
@@ -111,7 +109,7 @@ index 61752f16..38cc7089 100644
  {
  	const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
  	swd_proc.seq_out(request, 8U);
-@@ -144,7 +158,7 @@ bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+@@ -144,7 +156,7 @@ bool adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
  	return res != SWD_ACK_OK;
  }
  
@@ -120,7 +118,7 @@ index 61752f16..38cc7089 100644
  {
  	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
  	swd_proc.seq_out(request, 8U);
-@@ -155,6 +169,19 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
+@@ -155,6 +167,19 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
  	return res == SWD_ACK_OK ? data : 0;
  }
  
@@ -140,7 +138,7 @@ index 61752f16..38cc7089 100644
  bool adiv5_swd_scan(void)
  {
  	return adiv5_swd_scan_targetid(0);
-@@ -170,17 +197,21 @@ bool adiv5_swd_scan_targetid(const uint32_t targetid)
+@@ -170,17 +195,21 @@ bool adiv5_swd_scan_targetid(const uint32_t targetid)
  		DEBUG_ERROR("calloc: failed in %s\n", __func__);
  		return false;
  	}
@@ -168,7 +166,7 @@ index 61752f16..38cc7089 100644
  	if (!bmda_swd_dp_init(dp)) {
  		free(dp);
  		return false;
-@@ -403,7 +434,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
+@@ -403,7 +432,7 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
  			ADIV5_DP_CTRLSTAT_WDATAERR);
  }
  
