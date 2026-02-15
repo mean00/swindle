@@ -31,6 +31,9 @@ extern "C"
 #include "timing.h"
 }
 #include "bmp_pinmode.h"
+
+#define ESP_RUN_FAST __attribute__((optimize("O3"))) IRAM_ATTR
+
 #include "bmp_swdio_esp.h"
 
 #include "bmp_tap_esp.h"
@@ -56,7 +59,7 @@ extern "C" void swdptap_init()
  *
  */
 
-static uint32_t IRAM_ATTR zread(const size_t size)
+static uint32_t ESP_RUN_FAST zread(const size_t size)
 {
     xAssert(!rSWDIO->dir());
     uint32_t value = 0;
@@ -72,7 +75,7 @@ static uint32_t IRAM_ATTR zread(const size_t size)
     }
     return value;
 }
-static void IRAM_ATTR zwrite(const uint32_t size, uint32_t value)
+static void ESP_RUN_FAST zwrite(const uint32_t size, uint32_t value)
 {
     xAssert(rSWDIO->dir());
     for (size_t i = 0; i < size; i++)
