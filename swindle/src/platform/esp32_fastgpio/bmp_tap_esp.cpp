@@ -15,8 +15,8 @@
 #include "driver/dedic_gpio.h"
 extern void gmp_gpio_init_adc();
 
-uint32_t swd_delay_cnt = 1;
-uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
+uint32_t swd_delay_cnt = 10;          // around 1.3 Mbit/s
+uint32_t swd_frequency = 1300 * 1000; // 1.3Mhz by default
 SwdDirectionPin *rSWDIO;
 SwdWaitPin *rSWCLK;
 SwdReset *pReset;
@@ -34,25 +34,25 @@ extern "C" void bmp_set_wait_state_c(uint32_t ws)
  */
 extern "C" void bmp_set_frequency_c(uint32_t fq)
 {
-    float alpha = 0, beta = 0;
+    uint32_t ws = 2;
+    const float ratio = 12500000.f;
     if (fq < 10)
     {
         Logger("Invalid frequency\n");
         return;
     }
-    alpha = 2.3 * 1000000.;
-    beta = 0.0;
-    // convert fq to wait state
-    float wf = ((alpha) / (float)fq) - beta;
-    if (wf < 0.0)
-        wf = 0.;
-
-    // get wf which is the wait state as rounded int
-    wf = floor(wf + 0.49);
+    if (fq > 10 * 1000 * 1000)
+    {
+        ws = 1;
+    }
+    else
+    {
+        ws = floor(0.49f + ratio / (float)fq);
+    }
     // now reinvert it to update the actual fq
-    float gf = (alpha) / (wf + beta);
+    float gf = ratio / (float)ws;
     swd_frequency = gf;
-    bmp_set_wait_state_c((uint32_t)wf);
+    bmp_set_wait_state_c((uint32_t)ws);
 }
 /**
  * @brief
@@ -75,8 +75,8 @@ void bmp_gpio_init_once()
     gpio_config_t io_conf = {};
     io_conf.pin_bit_mask = (1ULL << ck);
     io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.intr_type = GPIO_INTR_DISABLE, // nope
-        gpio_config(&io_conf);
+    io_conf.intr_type = GPIO_INTR_DISABLE; // nope
+    gpio_config(&io_conf);
 
     io_conf.pin_bit_mask = (1ULL << io);
     io_conf.mode = GPIO_MODE_INPUT_OUTPUT; // Bidirectional

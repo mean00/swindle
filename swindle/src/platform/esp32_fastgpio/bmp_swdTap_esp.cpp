@@ -89,7 +89,7 @@ static void ESP_RUN_FAST zwrite(const uint32_t size, uint32_t value)
 #define DIR_INPUT() rSWDIO->input()
 #define DIR_OUTPUT() rSWDIO->output()
 #define SWD_WAIT_PERIOD() swait()
-#define SWINDLE_FAST_IO IRAM_ATTR
+#define SWINDLE_FAST_IO ESP_RUN_FAST
 
 #include "swd_template.h"
 //____________________________________________
