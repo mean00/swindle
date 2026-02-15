@@ -1,5 +1,5 @@
 #pragma once
-
+#include "lnGPIO_pins.h"
 // mapping of BMP gpio to the GPIO we use
 const lnPin _mapping[9] = {
     GPIO0, // 0 TMS_PIN

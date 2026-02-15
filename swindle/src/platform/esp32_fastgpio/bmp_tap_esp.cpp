@@ -1,14 +1,18 @@
 /*
  *
  */
-#include "esprit.h"
+#include "stdint.h"
 #include "bmp_pinout.h"
+//
+#include "hal/gpio_types.h"
+//
 #include "bmp_swdio_esp.h"
+#include "bmp_tap_esp.h"
+#include "esprit.h"
 #include "lnCpuID.h"
 #include "math.h"
-#include "bmp_tap_esp.h"
 
-#include <driver/dedic_gpio.h>
+#include "driver/dedic_gpio.h"
 extern void gmp_gpio_init_adc();
 
 uint32_t swd_delay_cnt = 1;
@@ -61,52 +65,44 @@ extern "C" uint32_t bmp_get_wait_state_c()
 /**
 
 */
-dedic_gpio_bundle_handle_t bundle = NULL;
+static dedic_gpio_bundle_handle_t bundle = NULL;
 void bmp_gpio_init_once()
 {
-    // configure SWDIO pin as pullup
+    // create a fast gpio bundle for SWDCLK & SWDIO
     gpio_num_t io = (gpio_num_t)_mapping[TSWDIO_PIN];
-    gpio_reset_pin(io);
-    // The SWDIO is pullup + od
-    gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << io),
-        .mode = GPIO_MODE_INPUT_OUTPUT_OD,     // Input + Output Open-Drain
-        .pull_up_en = GPIO_PULLUP_ENABLE,      // Internal pull-up to keep it High by default
-        .pull_down_en = GPIO_PULLDOWN_DISABLE, // nope
-        .intr_type = GPIO_INTR_DISABLE,        // nope
-    };
+    gpio_num_t ck = (gpio_num_t)_mapping[TSWDCK_PIN];
+    //
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask = (1ULL << ck);
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.intr_type = GPIO_INTR_DISABLE, // nope
+        gpio_config(&io_conf);
+
+    io_conf.pin_bit_mask = (1ULL << io);
+    io_conf.mode = GPIO_MODE_INPUT_OUTPUT; // Bidirectional
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.intr_type = GPIO_INTR_DISABLE; // nope
     gpio_config(&io_conf);
-    // clk
-    gpio_num_t clk = (gpio_num_t)_mapping[TSWDCK_PIN];
-    gpio_reset_pin(clk);
-    // The SWDIO is pullup + od
-    gpio_config_t clk_conf = {
-        .pin_bit_mask = (1ULL << clk),
-        .mode = GPIO_MODE_OUTPUT_OD,           // Input + Output Open-Drain
-        .pull_up_en = GPIO_PULLUP_ENABLE,      // Internal pull-up to keep it High by default
-        .pull_down_en = GPIO_PULLDOWN_DISABLE, // nope
-        .intr_type = GPIO_INTR_DISABLE,        // nope
-    };
-    gpio_config(&clk_conf);
 
-    // Prepare fast GPIO bundle for SWDCLK  & SWDIO
-    dedic_gpio_bundle_config_t bundle_cfg = {
-        .gpio_array = (int[]){_mapping[TSWDCK_PIN], _mapping[TSWDIO_PIN]},
-        .array_size = 2,
-        .flags = {
-            .in_en = 1,      // Enable input for SWDIO
-            .in_invert = 0,  // Enable input for SWDIO
-            .out_en = 1,     // Enable output for both (SWDIO will toggle direction)
-            .out_invert = 0, // Enable output for both (SWDIO will toggle direction)
-        }};
-
+    // 2. Create the Dedicated GPIO Bundle
+    // Order in this array determines the bit position in the mask
+    const int bundle_pins[] = {ck, io};
+    dedic_gpio_bundle_config_t bundle_config = {.gpio_array = bundle_pins,
+                                                .array_size = 2,
+                                                .flags = {
+                                                    .in_en = 1, // Required for reading bit 1
+                                                    .in_invert = 0,
+                                                    .out_en = 1,
+                                                    .out_invert = 0,
+                                                }};
+    //
     // Bundle
-    esp_err_t err = dedic_gpio_new_bundle(&bundle_cfg, &bundle);
+    esp_err_t err = dedic_gpio_new_bundle(&bundle_config, &bundle);
     xAssert(err == ESP_OK);
 
-    rSWDIO = new SwdDirectionPin(1 << 1); //
-    rSWCLK = new SwdWaitPin(1 << 0);      //
-    pReset = new SwdReset(TRESET_PIN);    //
+    rSWDIO = new SwdDirectionPin(1);   // io is 1
+    rSWCLK = new SwdWaitPin(0);        // ck is 0
+    pReset = new SwdReset(TRESET_PIN); //
     pReset->setup();
     rSWDIO->output();
     pReset->off(); // hi-z by default

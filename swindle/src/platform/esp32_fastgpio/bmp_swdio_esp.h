@@ -4,16 +4,17 @@
 #include "lnBMP_reset.h"
 extern "C"
 {
+#include "driver/gpio.h"
 #include "soc/gpio_reg.h"
 #include "soc/gpio_struct.h"
-#include "driver/gpio.h"
 #warning HARDCODE ESP32S3 CONFIG_IDF_TARGET_ESP32S3
 // #include "hal/esp32s3/include/hal/dedic_gpio_cpu_ll.h"
-#include "dedic_gpio_cpu_ll.h"
+#include "hal/dedic_gpio_cpu_ll.h"
 }
 // clang-format on
 //
 //
+extern uint32_t swd_delay_cnt;
 #define FAST_SET() REG_WRITE(GPIO_OUT_W1TS_REG, (1 << _me))
 #define FAST_CLEAR() REG_WRITE(GPIO_OUT_W1TC_REG, (1 << _me))
 #define FAST_READ() ((REG_READ(GPIO_IN_REG) & (1 << _me)) != 0)
@@ -50,13 +51,13 @@ class SwdOutputPin
     gpio_num_t _me;
 };
 /**
- *
+ * IO
  *
  */
 class SwdDirectionPin
 {
   public:
-    SwdDirectionPin(uint32_t bit) : _bit(bit)
+    SwdDirectionPin(uint32_t bit) : _bit(1 << bit)
     {
         hiZ();
     }
@@ -124,7 +125,7 @@ class SwdDirectionPin
 class SwdWaitPin
 {
   public:
-    SwdWaitPin(uint32_t bit) : _bit(bit)
+    SwdWaitPin(uint32_t bit) : _bit(1 << bit)
     {
         on();
     }

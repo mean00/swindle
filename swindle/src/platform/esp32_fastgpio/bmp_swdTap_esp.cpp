@@ -19,9 +19,11 @@
  */
 
 /* This file implements the SW-DP interface. */
+#include "stdint.h"
+//
 
-#include "esprit.h"
 #include "bmp_pinout.h"
+#include "esprit.h"
 extern "C"
 {
 #include "adiv5.h"
