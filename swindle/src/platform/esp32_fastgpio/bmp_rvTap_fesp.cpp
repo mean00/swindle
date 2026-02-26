@@ -53,8 +53,8 @@ extern "C"
 #include "esprit.h"
 #include "lnBMP_reset.h"
 #include "bmp_pinout.h"
-#include "bmp_swdio_esp.h"
-#include "bmp_tap_esp.h"
+#include "bmp_swdio_fesp.h"
+#include "bmp_tap_fesp.h"
 #include "lnbmp_parity.h"
 //--
 extern void bmp_gpio_init();

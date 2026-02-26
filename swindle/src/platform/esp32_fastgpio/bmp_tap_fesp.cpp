@@ -6,8 +6,8 @@
 //
 #include "hal/gpio_types.h"
 //
-#include "bmp_swdio_esp.h"
-#include "bmp_tap_esp.h"
+#include "bmp_swdio_fesp.h"
+#include "bmp_tap_fesp.h"
 #include "esprit.h"
 #include "lnCpuID.h"
 #include "math.h"

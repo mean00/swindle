@@ -3,7 +3,7 @@
  */
 #pragma once
 #include "bmp_pinout.h"
-#include "bmp_swdio_esp.h"
+#include "bmp_swdio_fesp.h"
 #include "stdint.h"
 extern uint32_t swd_delay_cnt;
 extern SwdWaitPin *rSWCLK;

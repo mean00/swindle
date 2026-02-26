@@ -34,9 +34,9 @@ extern "C"
 
 #define ESP_RUN_FAST __attribute__((optimize("O3"))) IRAM_ATTR
 
-#include "bmp_swdio_esp.h"
+#include "bmp_swdio_fesp.h"
 
-#include "bmp_tap_esp.h"
+#include "bmp_tap_fesp.h"
 #include "lnbmp_parity.h"
 
 #include "swd_tap_stubs.cpp"
