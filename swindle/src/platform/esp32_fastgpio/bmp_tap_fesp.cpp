@@ -68,6 +68,10 @@ extern "C" uint32_t bmp_get_wait_state_c()
 static dedic_gpio_bundle_handle_t bundle = NULL;
 void bmp_gpio_init_once()
 {
+    Logger("Initializing IO with : \n");
+    Logger("\t SWDIO : %d\n", _mapping[TSWDIO_PIN]);
+    Logger("\t SWCLK : %d\n", _mapping[TSWDCK_PIN]);
+    Logger("\t Reset : %d\n", _mapping[TRESET_PIN]);
     // create a fast gpio bundle for SWDCLK & SWDIO
     gpio_num_t io = (gpio_num_t)_mapping[TSWDIO_PIN];
     gpio_num_t ck = (gpio_num_t)_mapping[TSWDCK_PIN];
@@ -131,5 +135,12 @@ void bmp_io_end_session()
     rSWDIO->hiZ();
     rSWDIO->hiZ();
     pReset->off(); // hi-z by default
+}
+/*
+ *
+ */
+uint8_t ln_get_ws2812_pin()
+{
+    return LN_ESP_2812_PIN;
 }
 //
