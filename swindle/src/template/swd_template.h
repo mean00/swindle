@@ -63,6 +63,7 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
                                ADIV5_DP_ABORT_STKCMPCLR);
         }
         // something is wrong, retry
+        DIR_INPUT();
         zread(1); // turn
         DIR_OUTPUT();
         zwrite(8, 0);
