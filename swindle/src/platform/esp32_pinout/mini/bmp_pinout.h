@@ -12,7 +12,7 @@ const lnPin _mapping[9] = {
     GPIO8, // 6 SWCLK_PIN
 
     GPIO9,  // 7 RST
-    GPIO11, // 8 direction
+    GPIO10, // 8 direction
 };
 
 #define PIN_ADC_NRESET_DIV_BY_TWO PA3 // this pins is connected to NRST/2
