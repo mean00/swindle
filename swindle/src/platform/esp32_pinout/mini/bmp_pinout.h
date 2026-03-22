@@ -11,9 +11,9 @@ const lnPin _mapping[9] = {
     GPIO7, // 5 SWDIO_PIN
     GPIO8, // 6 SWCLK_PIN
 
-    GPIO9,  // 7 RST
-    GPIO10, // 8 direction
+    GPIO9, // 7 RST
+    GPIO11 // 8 direction
 };
 
-#define PIN_ADC_NRESET_DIV_BY_TWO PA3 // this pins is connected to NRST/2
+#define PIN_ADC_NRESET_DIV_BY_TWO 10 // this pins is connected to NRST/2
 #define LN_ESP_2812_PIN 21
