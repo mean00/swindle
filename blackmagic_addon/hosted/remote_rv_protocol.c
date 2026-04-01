@@ -66,6 +66,7 @@ bool remote_ch32_riscv_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *va
             dmi->fault = RV_DMI_SUCCESS;
             return true;
         }
+        retries--;
     }
 }
 /**
@@ -93,6 +94,7 @@ bool remote_ch32_riscv_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t va
             dmi->fault = RV_DMI_SUCCESS;
             return true;
         }
+        retries--;
     }
 }
 /**
