@@ -1,3 +1,0 @@
-SUBSYSTEM=="tty", ATTRS{interface}=="pswindle GDB Server", SYMLINK+="ttySwindleGdb3"
-SUBSYSTEM=="tty", ATTRS{interface}=="pswindle GDB Uart",SYMLINK+="ttySwindleUart3"  
-SUBSYSTEM=="tty", ATTRS{interface}=="pswindle GDB Log",SYMLINK+="ttySwindleLog3"  
