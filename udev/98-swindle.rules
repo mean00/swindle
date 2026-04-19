@@ -1,0 +1,10 @@
+# Swindle device - multiple ACM ports
+# /etc/udev/rules.d/99-swindle.rules
+# Swindle Debugger - fixed symlinks for each interface
+SUBSYSTEM=="tty", KERNEL=="ttyACM*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="6030", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="ttySwindleGdb2", MODE="0666", GROUP="dialout"
+SUBSYSTEM=="tty", KERNEL=="ttyACM*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="6030", ENV{ID_USB_INTERFACE_NUM}=="02", SYMLINK+="ttySwindleUart2", MODE="0666", GROUP="dialout"
+SUBSYSTEM=="tty", KERNEL=="ttyACM*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="6030", ENV{ID_USB_INTERFACE_NUM}=="04", SYMLINK+="ttySwindleLog2", MODE="0666", GROUP="dialout"
+
+
+
+
