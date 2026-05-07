@@ -34,6 +34,7 @@ RUN apt-get install -y \
     make \
     ninja-build \
     python3 \
+    python3-pip \
     python3-venv \
     python3-crcmod \
     ruby \
@@ -43,9 +44,14 @@ RUN apt-get install -y \
     wget \
     xz-utils \
     zip \
+    zsh neovim \
+    meson  
+RUN apt-get install -y \
+    tmux
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10 \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/* \
-  && update-alternatives --install /usr/bin/python python /usr/bin/python3 10 \
   && :
 
 RUN rm -f  /etc/apt/apt.conf.d/01proxy
@@ -54,24 +60,18 @@ RUN rm -f  /etc/apt/apt.conf.d/01proxy
 #
 RUN mkdir /arm && mkdir /riscv && mkdir /opt/pico && chown ubuntu /opt/pico && chown $USERNAME /riscv /arm
 RUN chmod a+rwx /root
-
+RUN echo 'ubuntu:ubuntu' | chpasswd
+RUN usermod -aG sudo ubuntu
 CMD [ "/bin/bash" ]
 
 ###################################
 # Setup user env
 ###################################
+RUN chsh -s /usr/bin/zsh ${USERNAME}
 USER ${USERNAME}
 RUN mkdir ~/.local &&  mkdir ~/.local/bin &&  mkdir ~/.cargo && mkdir ~/.cargo/bin
-RUN echo "export http_proxy=\"\"">> ~/.bashrc
-RUN echo "export https_proxy=\"\"">> ~/.bashrc
-RUN echo "export HTTP_PROXY=\"\"">> ~/.bashrc
-RUN echo "export HTTPS_PROXY=\"\"">> ~/.bashrc
 RUN echo "export PATH=\$PATH:\$HOME/.cargo/bin:\$HOME/.local/bin"  >> ~/.bashrc
 RUN echo ".  \$HOME/.cargo/env" >> /home/$USERNAME/.bashrc
-ENV http_proxy=""
-ENV https_proxy=""
-ENV HTTP_PROXY=""
-ENV HTTPS_PROXY=""
 #############################################
 # RUST
 #############################################
@@ -79,33 +79,72 @@ RUN cd $HOME && curl -L --noproxy "*" -o rustup-init "https://static.rust-lang.o
       && chmod +x rustup-init  \
       && http_proxy="" https_proxy=""  ./rustup-init -y --no-modify-path
 ENV PATH="/home/${USERNAME}/.cargo/bin:/home/${USERNAME}/.local/bin:${PATH}"
+ENV TERM="linux"
 RUN rustc --version && cargo --version
-            RUN http_proxy="" https_proxy="" rustup default nightly  \
-            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf  \
-            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imafc-unknown-none-elf \
-            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv6m-none-eabi  \
-            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7m-none-eabi  \
-            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7em-none-eabihf  \
-            && http_proxy="" https_proxy="" rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi 
+            RUN rustup default nightly  \
+            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imac-unknown-none-elf  \
+            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   riscv32imafc-unknown-none-elf \
+            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv6m-none-eabi  \
+            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7m-none-eabi  \
+            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7em-none-eabihf  \
+            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi 
 
 
 ##############################################
 # Install riscv  &arm toolchain (llvm/clang)
 ##############################################
-# RV32
+# Clang RV32
 RUN  wget -nv --no-proxy -O - https://github.com/mean00/LLVM-embedded-toolchain-for-rv32/releases/download/21.1.8/LLVM-ET-RV32-21.1.8-Ubuntu_24.04_x86_64.tar.gz | tar -xz -C /riscv  \
               && mv /riscv/LLVM-ET-RV32-21.1.8-Linux-x86_64  /riscv/llvm_21.1.8  && cd /riscv/llvm_21.1.8/bin && ln -s clang++ clang++-21 
 
-# Arm
+# Clang Arm
+#
 RUN  wget -nv --no-proxy -O - https://github.com/mean00/clang_arm_devcontainer/releases/download/v0.1/clang_toolchain_arm_21.1.1_x86_64_ubuntu.24_04.tar.bz2  \
   | bzip2 -dc   | tar -x -C /arm && mv /arm/ATfE-21.1.1-Linux-x86_64   /arm/llvm_21.1 \
             && cd /arm/llvm_21.1/bin && ln -s clang++ clang++-21
+
+
+# GCC Arm
+# 
+RUN cd /tmp && wget  --no-proxy https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v15.2.1-1.1/xpack-arm-none-eabi-gcc-15.2.1-1.1-linux-x64.tar.gz  &&  tar -xzf xpack-arm*.tar.gz -C /arm \
+           &&  mv /arm/xpack-arm* /arm/15.2.1 
+#RUN cd /tmp && wget  --no-proxy https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v14.2.1-1.1/xpack-arm-none-eabi-gcc-14.2.1-1.1-linux-arm.tar.gz &&  tar -xzf xpack-arm*.tar.gz -C /arm &&  mv /arm/xpack-arm* /arm/14.2 
+
+# Gcc Arm  picolibc support
+# 
+COPY picolibc.sh /tmp/picolibc.sh
+RUN bash /tmp/picolibc.sh
 ##############################################
 # RP PICO SDK
 ##############################################
-RUN      export http_proxy="" && export https_proxy="" && cd /opt/pico && git clone https://github.com/raspberrypi/pico-sdk.git \
-            && cd /opt/pico/pico-sdk/tools/pioasm && mkdir build && cd build && cmake -DPIOASM_VERSION_STRING="blah" .. && make && cp pioasm $HOME/.local/bin \
-            && cd /opt/pico/ && git clone https://github.com/raspberrypi/picotool.git && cd picotool && mkdir build && cd build && cmake -DPICO_SDK_PATH=/opt/pico/pico-sdk .. && make && cp picotool  $HOME/.local/bin
+RUN cd /opt/pico && git clone https://github.com/raspberrypi/pico-sdk.git \
+      && cd /opt/pico/pico-sdk/tools/pioasm && mkdir build && cd build && cmake -DPIOASM_VERSION_STRING="blah" .. && make && cp pioasm $HOME/.local/bin \
+      && cd /opt/pico/ && git clone https://github.com/raspberrypi/picotool.git && cd picotool && mkdir build && cd build && cmake -DPICO_SDK_PATH=/opt/pico/pico-sdk .. && make && cp picotool  $HOME/.local/bin
+
+############################################
+# ZSH
 #
+############################################
+RUN cat <<EOF > /home/${USERNAME}/.zshrc
+# History Settings
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt appendhistory
+setopt sharehistory
+
+# Completion System
+autoload -Uz compinit && compinit
+
+# Prompt
+PROMPT='%F{cyan}[%n@docker]%f %F{blue}%~%f %# '
+
+# Aliases
+alias ls='ls --color=auto'
+alias ll='ls -lah'
+export TERM='linux'
+EOF
+
+
 
 
