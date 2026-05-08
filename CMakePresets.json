@@ -44,6 +44,24 @@
       }
     },
     {
+      "name": "rp2350",
+      "displayName": "RP2350 zero mini board",
+      "inherits": "base_usb",
+      "cacheVariables": {
+        "USE_RP2350": "true",
+        "USE_RP_ZERO": "true",
+        "USE_RP_CARRIER": "true"
+      }
+    },
+    {
+      "name": "rp2350_inv",
+      "inherits": "rp2350",
+      "displayName": "RP2350 zero mini board with inverted NRST",
+      "cacheVariables": {
+        "USE_INVERTED_NRST": "true"
+      }
+    },
+    {
       "name": "gd32f303_48",
       "displayName": "GD32F303 in 48 pins package",
       "inherits": "base_usb",
