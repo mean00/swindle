@@ -44,3 +44,4 @@ build_default.cmake
 lnBlackmagic/rs/lnbmp/target/
 swindle/rs/target
 devpodup.sh
+.history
