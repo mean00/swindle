@@ -7,7 +7,7 @@ use crate::commands::run::HaltState;
 use crate::setting_keys::{RTT_PERIOD_KEY, RTT_SETTING_KEY};
 use crate::settings;
 #[cfg(not(feature = "hosted"))]
-use rust_esprit::rn_freertos_c::xTaskGetTickCount;
+use rust_esprit::tick_count;
 crate::gdb_print_init!();
 crate::setup_log!(false);
 
@@ -83,9 +83,8 @@ enum RttHalt {
 
 fn get_tick() -> u32 {
     #[cfg(not(feature = "hosted"))]
-    unsafe {
-        xTaskGetTickCount() & (RTT_POLL_ROUNDUP - 1)
-    }
+    return tick_count() & (RTT_POLL_ROUNDUP - 1);
+
     #[cfg(feature = "hosted")]
     0
 }

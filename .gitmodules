@@ -1,6 +1,6 @@
 [submodule "blackmagic"]
 	path = blackmagic
-	url = https://github.com/blackmagic-debug/blackmagic.git
+	url = https://codeberg.org/blackmagic-debug/blackmagic.git
 [submodule "esprit"]
 	path = esprit
 	url = ../esprit
