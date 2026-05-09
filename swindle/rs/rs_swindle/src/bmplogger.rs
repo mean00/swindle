@@ -11,14 +11,14 @@ macro_rules! bmplog
             ($x:expr) => {
                 if(log_enabled)
                 {
-                    lnLogger!($x)
+                    logger!($x)
                 }
             };
 
             ($x:expr, $($y:expr),+) => {
                 if(log_enabled)
                 {
-                    lnLogger!( $x, $($y),+)
+                    logger!( $x, $($y),+)
                 }
             };
         }
@@ -28,11 +28,11 @@ macro_rules! bmplog
 macro_rules! bmpwarning
         {
             ($x:expr) => {
-                    lnLogger!($x)
+                    logger!($x)
             };
 
             ($x:expr, $($y:expr),+) => {
-                    lnLogger!( $x, $($y),+)
+                    logger!( $x, $($y),+)
             };
         }
 
@@ -41,8 +41,8 @@ macro_rules! bmpwarning
 macro_rules! setup_log {
     ($x:expr) => {
         #[allow(unused)]
-        use rust_esprit::{lnLogger, lnLogger_init};
-        lnLogger_init!();
+        use rust_esprit::{logger, logger_init};
+        logger_init!();
         static log_enabled: bool = $x;
     };
 }
