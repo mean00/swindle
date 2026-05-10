@@ -182,7 +182,7 @@ extern "C" uint32_t bmp_get_wait_state_c()
  *
  *
  */
-void bmp_io_begin_session()
+extern "C" void bmp_io_begin_session()
 {
     pReset->off(); // hi-z by default
 }
@@ -190,7 +190,7 @@ void bmp_io_begin_session()
  * @brief
  *
  */
-void bmp_io_end_session()
+extern "C" void bmp_io_end_session()
 {
     pReset->off(); // hi-z by default
 }// EOF

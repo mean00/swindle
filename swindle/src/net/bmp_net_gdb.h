@@ -30,6 +30,10 @@ extern "C"
  *
  *
  */
+// Forward declarations of extern "C" functions from the platform layer
+extern "C" void bmp_io_begin_session();
+extern "C" void bmp_io_end_session();
+
 class socketRunnerGdb : public socketRunner
 {
   public:

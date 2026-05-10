@@ -32,6 +32,8 @@ pub mod rpc_host;
 pub mod rpc_target;
 mod rtt;
 mod sw_breakpoints;
+#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
+mod usb_gdb;
 mod util;
 
 use crate::commands::run;
@@ -67,9 +69,9 @@ pub extern "C" fn rngdbstub_shutdown() {
     bmp::bmp_detach();
     clear_autoauto();
 }
-/*
- *
- */
+// In hosted/network mode, the C side provides rngdb_send_data_c / rngdb_output_flush_c
+// (via bmp_net_gdb.h). In non-hosted (USB) mode, usb_gdb.rs provides them.
+#[cfg(any(feature = "hosted", feature = "network"))]
 unsafe extern "C" {
     fn rngdb_send_data_c(sz: u32, ptr: *const cty::c_uchar);
     fn rngdb_output_flush_c();
@@ -77,23 +79,26 @@ unsafe extern "C" {
 /*
  */
 fn rngdb_output_flush() {
-    unsafe {
-        rngdb_output_flush_c();
-    }
+    #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
+    usb_gdb::rngdb_output_flush_c();
+    #[cfg(any(feature = "hosted", feature = "network"))]
+    unsafe { rngdb_output_flush_c() }
 }
 /*
  */
 fn rngdb_send_data(data: &str) {
-    unsafe {
-        rngdb_send_data_c(data.len() as u32, data.as_ptr());
-    }
+    #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
+    usb_gdb::rngdb_send_data_c(data.len() as u32, data.as_ptr());
+    #[cfg(any(feature = "hosted", feature = "network"))]
+    unsafe { rngdb_send_data_c(data.len() as u32, data.as_ptr()) }
 }
 /*
  */
 fn rngdb_send_data_u8(data: &[u8]) {
-    unsafe {
-        rngdb_send_data_c(data.len() as u32, data.as_ptr());
-    }
+    #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
+    usb_gdb::rngdb_send_data_c(data.len() as u32, data.as_ptr());
+    #[cfg(any(feature = "hosted", feature = "network"))]
+    unsafe { rngdb_send_data_c(data.len() as u32, data.as_ptr()) }
 }
 /// # Safety
 /// the pointer is expected to be valid !

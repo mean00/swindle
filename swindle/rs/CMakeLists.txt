@@ -9,6 +9,9 @@ ELSE()
   SET(LN_LTO_RUST_FLAGS ${LN_LTO_RUST_FLAGS} -C opt-level=s)  # we try to make arm code smaller, we dont care for hosted
   RUST_ADD( rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml )
   corrosion_add_target_rustflags( rsbmp_wrapper --cfg feature="native")
+  IF(SWINDLE_USE_NETWORK)
+    corrosion_add_target_rustflags( rsbmp_wrapper --cfg feature="network")
+  ENDIF()
 ENDIF()
 
 

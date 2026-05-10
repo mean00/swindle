@@ -8,9 +8,11 @@ edition = "2024"
 [features]
 #default = ["native"]
 std = []
-native = ["dep:rust_esprit"]
+native = ["dep:rust_esprit", "cdc"]
 hosted = []
+network = []
 
+cdc = ["rust_esprit/cdc"]
 
 rp2040 = ["rust_esprit/rp2040"]
 esp32 = ["rust_esprit/esp32"]

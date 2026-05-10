@@ -20,8 +20,8 @@ extern "C"
 //
 extern "C" void pins_init();
 extern void serialInit();
-extern void bmp_io_begin_session();
-extern void bmp_io_end_session();
+extern "C" void bmp_io_begin_session();
+extern "C" void bmp_io_end_session();
 //--
 /**
  *

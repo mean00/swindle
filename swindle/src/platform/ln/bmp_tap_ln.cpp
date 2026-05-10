@@ -87,7 +87,7 @@ void bmp_gpio_init_once()
  * @brief
  *
  */
-void bmp_io_begin_session()
+extern "C" void bmp_io_begin_session()
 {
     rSWDIO->on();
     rSWDIO->output();
@@ -99,7 +99,7 @@ void bmp_io_begin_session()
  * @brief
  *
  */
-void bmp_io_end_session()
+extern "C" void bmp_io_end_session()
 {
     rSWDIO->hiZ();
     rSWDIO->hiZ();
