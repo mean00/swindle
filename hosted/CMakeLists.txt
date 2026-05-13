@@ -22,6 +22,16 @@ set(CMAKE_AUTOMOC ON)
 #find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
 find_package(Qt6 COMPONENTS Network SerialPort REQUIRED)
 
+# Qt6 adds -mno-direct-extern-access which clang rejects
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  foreach(qt_target Qt6::Core Qt6::Network Qt6::SerialPort)
+    get_target_property(qt_iflags ${qt_target} INTERFACE_COMPILE_OPTIONS)
+    if(qt_iflags)
+      string(REPLACE "-mno-direct-extern-access" "" qt_iflags "${qt_iflags}")
+      set_target_properties(${qt_target} PROPERTIES INTERFACE_COMPILE_OPTIONS "${qt_iflags}")
+    endif()
+  endforeach()
+endif()
 
 ADD_DEFINITIONS("-DCONFIG_BMDA")
 #
