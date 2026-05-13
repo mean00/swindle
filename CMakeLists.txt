@@ -178,6 +178,9 @@ TARGET_LINK_LIBRARIES(swindle PUBLIC swindle_interface)
 # symbols against the C++ platform library that follows.
 TARGET_LINK_LIBRARIES(swindle PUBLIC rsbmp_wrapper)
 TARGET_LINK_LIBRARIES(swindle PUBLIC libswindle)
+# lnarduino_c_bindings is an OBJECT library; its objects are added to libswindle
+# via swindle_target.cmake (see BRIDGE_SRCS).
+# TARGET_LINK_LIBRARIES(swindle PUBLIC lnarduino_c_bindings)
 #FIXME TODO this should be automatic
 if(SWINDLE_USE_NETWORK)
   TARGET_LINK_LIBRARIES(swindle PUBLIC lwipcore lnEth_wch)

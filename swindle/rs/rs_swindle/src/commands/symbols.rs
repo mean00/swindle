@@ -42,20 +42,35 @@ const symbols_to_collect: [list_of_symbols; NB_OF_SYMBOL_TABLE] = [
 /**
  * This is used to do bookkeeping of the symbol parser
  */
+use core::cell::UnsafeCell;
+
+// Safe: only accessed from single-threaded embedded context
+struct SyncCell<T>(UnsafeCell<T>);
+unsafe impl<T> Sync for SyncCell<T> {}
+impl<T> SyncCell<T> {
+    const fn new(val: T) -> Self { SyncCell(UnsafeCell::new(val)) }
+    fn get(&self) -> T where T: Copy { unsafe { *self.0.get() } }
+    fn set(&self, val: T) where T: Copy { unsafe { *self.0.get() = val; } }
+}
+
+#[derive(Clone, Copy)]
 struct parser_index {
     table_index: usize,
     line_index: usize,
 }
 //
-static mut symbol_indeces: parser_index = parser_index {
+static symbol_indeces: SyncCell<parser_index> = SyncCell::new(parser_index {
     table_index: 0,
     line_index: 0,
-};
+});
 /*
  *
  */
-fn get_index() -> &'static mut parser_index {
-    unsafe { &mut symbol_indeces }
+fn get_index() -> parser_index {
+    symbol_indeces.get()
+}
+fn set_index(val: parser_index) {
+    symbol_indeces.set(val);
 }
 /*
  *
@@ -93,9 +108,10 @@ fn ask_for_next_symbol(name: &str) -> bool {
 #[unsafe(no_mangle)]
 pub fn reset_symbols() {
     bmplog!("Clearing symbols\n");
-    let indeces: &mut parser_index = get_index();
-    indeces.table_index = 0;
-    indeces.line_index = 0;
+    set_index(parser_index {
+        table_index: 0,
+        line_index: 0,
+    });
     for ref i in symbols_to_collect {
         (i.clear)();
     }
@@ -106,10 +122,11 @@ pub fn reset_symbols() {
  */
 #[unsafe(no_mangle)]
 pub fn q_symbols(args: &[&str]) -> bool {
-    let indeces = get_index();
+    let mut indeces = get_index();
     // empty one = let's start
     if args[0].is_empty() && args[1].is_empty() {
         reset_symbols();
+        indeces = get_index();
         ask_for_next_symbol(symbols_to_collect[indeces.table_index].symbols[indeces.line_index]);
         return true;
     }
@@ -122,8 +139,11 @@ pub fn q_symbols(args: &[&str]) -> bool {
     bmplog!("Key {} value {}\n", key, value);
     (symbols_to_collect[indeces.table_index].processing)(key, value);
     indeces.line_index += 1;
-    if update_indeces(indeces) {
+    if update_indeces(&mut indeces) {
+        set_index(indeces);
         ask_for_next_symbol(symbols_to_collect[indeces.table_index].symbols[indeces.line_index]);
+    } else {
+        set_index(indeces);
     }
     true
 }

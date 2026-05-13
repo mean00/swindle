@@ -14,15 +14,23 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 }
-extern "C" void usbCdc_Logger(int n, const char *data);
+// Rust-owned logger CDC
+extern "C" void rn_usb_cdc_logger(int n, const uint8_t *data);
+// Rust-owned bridge CDC
+extern "C" void rn_serial_bridge_write(int n, const uint8_t *data);
+
 extern "C" void swindleRedirectLog_c(int32_t toggle)
 {
     Logger("Setting redirect to usb to %d\n", toggle);
-    if (toggle)
-        setLogger(usbCdc_Logger);
-    else
+    if (toggle) {
+#if defined(USE_3_CDC)
+        setLogger((void (*)(int, const char *))rn_usb_cdc_logger);
+#else
+        setLogger((void (*)(int, const char *))rn_serial_bridge_write);
+#endif
+    } else {
         setLogger(NULL);
+    }
     Logger("Setting redirect to usb to %d\n", toggle);
-    Logger("cant redirect logger \n");
 }
 // EOF

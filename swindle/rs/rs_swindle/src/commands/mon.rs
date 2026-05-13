@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicU32, Ordering};
+
 use crate::bmp;
 use crate::commands::mon_ch32vxx;
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
@@ -34,8 +36,19 @@ crate::gdb_print_init!();
 pub const MAX_SPACE: usize = 40;
 pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
-static mut targetCommandTree: Option<&[CommandTree]> = None;
-static mut targetHelpTree: Option<&[HelpTree]> = None;
+use core::cell::UnsafeCell;
+
+// Safe: only accessed from single-threaded embedded context
+struct SyncCell<T>(UnsafeCell<T>);
+unsafe impl<T> Sync for SyncCell<T> {}
+impl<T> SyncCell<T> {
+    const fn new(val: T) -> Self { SyncCell(UnsafeCell::new(val)) }
+    fn get(&self) -> T where T: Copy { unsafe { *self.0.get() } }
+    fn set(&self, val: T) where T: Copy { unsafe { *self.0.get() = val; } }
+}
+
+static targetCommandTree: SyncCell<Option<&'static [CommandTree]>> = SyncCell::new(None);
+static targetHelpTree: SyncCell<Option<&'static [HelpTree]>> = SyncCell::new(None);
 //
 unsafe extern "C" {
     pub fn _Z17lnSoftSystemResetv();
@@ -702,14 +715,12 @@ pub fn _fq(_command: &str, args: &[&str]) -> bool {
     true
 }
 #[unsafe(no_mangle)]
-static mut autoreset: u32 = 1;
+static autoreset: AtomicU32 = AtomicU32::new(1);
 pub fn set_enable_reset(nw: u32) {
-    unsafe {
-        autoreset = nw;
-    }
+    autoreset.store(nw, Ordering::Relaxed);
 }
 pub fn get_enable_reset() -> u32 {
-    unsafe { autoreset }
+    autoreset.load(Ordering::Relaxed)
 }
 pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
@@ -739,10 +750,8 @@ pub fn add_target_commands(target_name: &str) {
  *
  */
 pub fn clear_custom_target_command() {
-    unsafe {
-        targetCommandTree = None;
-        targetHelpTree = None;
-    }
+    targetCommandTree.set(None);
+    targetHelpTree.set(None);
 }
 /*
  *
@@ -752,10 +761,8 @@ pub fn set_custom_target_command(
     commandTree: &'static [CommandTree],
     helpTree: &'static [HelpTree],
 ) {
-    unsafe {
-        targetCommandTree = Some(commandTree);
-        targetHelpTree = Some(helpTree);
-    }
+    targetCommandTree.set(Some(commandTree));
+    targetHelpTree.set(Some(helpTree));
 }
 fn _map(_command: &str, _args: &[&str]) -> bool {
     let ram: Vec<bmp::MemoryBlock> = bmp::bmp_get_mapping(bmp::mapping::Ram);
@@ -823,14 +830,14 @@ fn _unset(_command: &str, args: &[&str]) -> bool {
  *
  */
 pub fn get_custom_target_command() -> Option<&'static [CommandTree]> {
-    unsafe { targetCommandTree }
+    targetCommandTree.get()
 }
 /*
  *
  *
  */
 pub fn get_custom_target_help() -> Option<&'static [HelpTree]> {
-    unsafe { targetHelpTree }
+    targetHelpTree.get()
 }
 /*
 *

@@ -97,27 +97,24 @@ impl GdbCdc {
             return;
         }
 
-        // Build the GdbCdc with a placeholder cdc, then immediately replace
-        // it with the real one (which needs the GdbCdc's address for the
-        // handler cookie).
-        let mut gdb_cdc = GdbCdc {
-            cdc: unsafe { core::mem::zeroed() },
-            event_group: EventGroup::new(),
-            in_session: AtomicBool::new(false),
-            buffer: [0u8; GDB_BUFFER_SIZE],
-        };
+        // Write placeholder into static first (avoids Drop running on stack copy)
+        unsafe {
+            GDB_CDC.write(GdbCdc {
+                cdc: core::mem::zeroed(),
+                event_group: EventGroup::new(),
+                in_session: AtomicBool::new(false),
+                buffer: [0u8; GDB_BUFFER_SIZE],
+            });
+        }
 
-        // Take a pointer to the static before it's fully initialised.
-        let gdb_ptr: *mut GdbCdc = &mut gdb_cdc;
+        // Take pointer from static location (stable, never moves)
+        let gdb_ptr: *mut GdbCdc = unsafe { GDB_CDC.as_mut_ptr() };
 
         // Build the handler (which points back to the GdbCdc) and create
         // the real CdcAcm.
         let handler = Box::new(GdbCdcHandler { gdb: gdb_ptr });
-        gdb_cdc.cdc = CdcAcm::new(instance, handler);
+        unsafe { &mut *gdb_ptr }.cdc = CdcAcm::new(instance, handler);
 
-        unsafe {
-            GDB_CDC.write(gdb_cdc);
-        }
         GDB_CDC_INITIALIZED.store(true, Ordering::Relaxed);
     }
 

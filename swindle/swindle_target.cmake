@@ -20,12 +20,13 @@ SET(BRIDGE_SRCS
                 )
 IF(SWINDLE_USE_USB)
   IF(NOT LN_SWINDLE_AS_EXTERNAL)
-    LIST( APPEND BRIDGE_SRCS ${B}/bmp_serial.cpp
+    LIST( APPEND BRIDGE_SRCS #${B}/bmp_serial.cpp
                 ${B}/usb/bmp_usb.cpp
+                ${ESPRIT_ROOT}/rust/rust_esprit/c_interface/lnSerial_c.cpp
   )
-    IF("${LN_USB_NB_CDC}" STREQUAL "3")
-      SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
-    ENDIF()
+    #IF("${LN_USB_NB_CDC}" STREQUAL "3")
+    #SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
+    #ENDIF()
   ENDIF()
 ENDIF()
 IF(SWINDLE_USE_NETWORK)

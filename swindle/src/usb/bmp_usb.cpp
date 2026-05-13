@@ -6,6 +6,7 @@
 #include "include/lnUsbDFUrt.h"
 #include "include/lnUsbStack.h"
 #include "lnBMP_usb_descriptor.h"
+#include "bmp_devices.h"
 
 extern "C"
 {
@@ -22,7 +23,6 @@ extern "C"
 #endif
 
 extern "C" void pins_init();
-extern void serialInit();
 extern void bmp_io_begin_session();
 extern void bmp_io_end_session();
 extern "C" void bmp_rtt_poll_c();
@@ -30,9 +30,13 @@ extern "C" void swindle_init_rtt();
 extern "C" void swindle_run_rtt();
 extern "C" void swindle_purge_rtt();
 extern "C" bool swindle_rtt_enabled();
-extern "C" void usbCdc_Logger(int n, const char *data);
-// device -> host
-extern "C" uint32_t usbCdc_write_available();
+// Rust-owned logger CDC
+extern "C" void rn_logger_cdc_init(uint32_t instance);
+extern "C" void rn_usb_cdc_logger(int n, const uint8_t *data);
+extern "C" uint32_t rn_usb_cdc_write_available();
+// Rust-owned USB↔UART bridge
+extern "C" void rn_serial_bridge_init(uint32_t usb_instance, int32_t serial_instance, int32_t baud);
+extern "C" void rn_serial_bridge_write(int n, const uint8_t *data);
 extern "C" bool swindle_write_rtt_channel(uint32_t channel, uint32_t size, const uint8_t *data);
 // host -> device
 extern "C" void swindle_reinit_rtt();
@@ -43,11 +47,19 @@ extern "C" uint32_t swindle_rtt_write_available(uint32_t channel);
  */
 extern "C" void swindle_rtt_send_data_to_host(unsigned int index, uint32_t len, const uint8_t *data)
 {
-    usbCdc_Logger((int)len, (const char *)data);
+#if defined(USE_3_CDC)
+    rn_usb_cdc_logger((int)len, data);
+#else
+    rn_serial_bridge_write((int)len, data);
+#endif
 }
 extern "C" uint32_t swindle_rtt_room_available_to_host(uint32_t dex)
 {
-    return usbCdc_write_available();
+#if defined(USE_3_CDC)
+    return rn_usb_cdc_write_available();
+#else
+    return 64;
+#endif
 }
 
 // Rust part
@@ -125,7 +137,12 @@ extern "C" int gdb_if_init(void)
 
     // start GDB CDC/ACM via Rust-owned instance
     rngdb_cdc_init(0);
-    serialInit();
+#if defined(USE_3_CDC)
+    // start logger CDC via Rust-owned instance
+    rn_logger_cdc_init(LN_LOGGER_INSTANCE);
+#endif
+    // start USB↔UART bridge via Rust-owned instance
+    rn_serial_bridge_init(LN_USB_INSTANCE, LN_SERIAL_INSTANCE, 115200);
     // init DFU
     lnUsbDFURT::addDFURTCb(goDfu);
     usb->start();

@@ -323,15 +323,18 @@ void serialInit()
 #endif
 }
 #if !defined(USE_3_CDC)
+// When there is no dedicated logger CDC, the logger output goes through
+// the Rust-owned USB↔UART bridge CDC instead.
+extern "C" void rn_usb_cdc_logger(int n, const uint8_t *data);
+extern "C" uint32_t rn_usb_cdc_write_available();
+
 extern "C" void usbCdc_Logger(int n, const char *data)
 {
-    // thread safe ?
-    serial->_usb->write((const uint8_t *)data, n);
-    serial->_usb->flush();
+    rn_usb_cdc_logger(n, (const uint8_t *)data);
 }
 extern "C" uint32_t usbCdc_write_available()
 {
-    return serial->_usb->writeAvailable();
+    return rn_usb_cdc_write_available();
 }
 #endif
 // EOF

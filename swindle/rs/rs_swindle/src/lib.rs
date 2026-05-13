@@ -30,8 +30,11 @@ pub mod rpc_common;
 pub mod rpc_host;
 #[cfg(not(feature = "hosted"))]
 pub mod rpc_target;
+mod cdc_logger;
 mod rtt;
 mod sw_breakpoints;
+#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
+mod usb_serial_bridge;
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
 mod usb_gdb;
 mod util;

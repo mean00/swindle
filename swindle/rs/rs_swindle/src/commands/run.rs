@@ -1,9 +1,11 @@
+use core::sync::atomic::{AtomicBool, Ordering};
+
 use crate::bmp;
 use crate::commands::mon::get_enable_reset;
 use crate::encoder::encoder;
 use numtoa::NumToA;
 
-static mut running: bool = false;
+static running: AtomicBool = AtomicBool::new(false);
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
@@ -20,9 +22,7 @@ pub enum HaltState {
     Fault,
 }
 fn set_running(r: bool) {
-    unsafe {
-        running = r;
-    }
+    running.store(r, Ordering::Relaxed);
 }
 pub fn target_halt() {
     set_running(false);
@@ -31,7 +31,7 @@ pub fn target_halt() {
 }
 
 pub fn target_is_running() -> bool {
-    unsafe { running }
+    running.load(Ordering::Relaxed)
 }
 
 //
