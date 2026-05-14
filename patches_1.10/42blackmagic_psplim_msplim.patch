@@ -31,7 +31,7 @@ index 8f116683..d92be2f1 100644
  
  #endif /* TARGET_CORTEX_H */
 diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index 76936948..962f8b19 100644
+index bf822491..e6e808f4 100644
 --- a/src/target/cortexm.c
 +++ b/src/target/cortexm.c
 @@ -48,8 +48,12 @@
@@ -135,18 +135,18 @@ index 76936948..962f8b19 100644
 +};
 +// The "type" field for each Cortex-M special purpose register.
 +static const gdb_reg_type_e cortex_m_sys_types[CORTEXM_SYS_REG_COUNT] = {
-+	GDB_TYPE_DATA_PTR,    // msp
-+	GDB_TYPE_DATA_PTR,    // psp
-+	GDB_TYPE_UNSPECIFIED, // state
-+};
-+// The "type" field for each Cortex-M special purpose register.
-+static const gdb_reg_type_e cortex_m_trustzone_types[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
  	GDB_TYPE_DATA_PTR,    // msp
  	GDB_TYPE_DATA_PTR,    // psp
 -	GDB_TYPE_UNSPECIFIED, // primask
 -	GDB_TYPE_UNSPECIFIED, // basepri
 -	GDB_TYPE_UNSPECIFIED, // faultmask
 -	GDB_TYPE_UNSPECIFIED, // control
++	GDB_TYPE_UNSPECIFIED, // state
++};
++// The "type" field for each Cortex-M special purpose register.
++static const gdb_reg_type_e cortex_m_trustzone_types[CORTEXM_TRUSTZONE_REG_COUNT / 2] = {
++	GDB_TYPE_DATA_PTR,    // msp
++	GDB_TYPE_DATA_PTR,    // psp
 +	GDB_TYPE_DATA_PTR,    // msplim
 +	GDB_TYPE_DATA_PTR,    // psplim
 +	GDB_TYPE_UNSPECIFIED, // state
@@ -222,7 +222,16 @@ index 76936948..962f8b19 100644
  );
  
  // clang-format on
-@@ -613,9 +657,28 @@ enum {
+@@ -505,7 +549,7 @@ bool cortexm_probe(adiv5_access_port_s *ap)
+ 		PROBE(lpc11xx_probe); /* LPC1343 */
+ 		break;
+ 	}
+-#if CONFIG_BMDA == 0
++#if NOT_USED_HERE_CONFIG_BMDA == 0
+ 	gdb_outf("Please report unknown device with Designer 0x%x Part ID 0x%x\n", target->designer_code, target->part_id);
+ #else
+ 	DEBUG_WARN(
+@@ -618,11 +662,30 @@ enum {
  	DB_DEMCR
  };
  
@@ -250,9 +259,12 @@ index 76936948..962f8b19 100644
 -	uint32_t *const regs = data;
 +	uint32_t *regs = data;
  	adiv5_access_port_s *const ap = cortex_ap(target);
- #if DISABLED_CONFIG_BMDA == 1
+-#if CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	if (ap->dp->ap_regs_read && ap->dp->ap_reg_read) {
-@@ -640,25 +703,27 @@ static void cortexm_regs_read(target_s *const target, void *const data)
+ 		uint32_t core_regs[21U];
+ 		ap->dp->ap_regs_read(ap, core_regs);
+@@ -645,36 +708,38 @@ static void cortexm_regs_read(target_s *const target, void *const data)
  		adi_ap_banked_access_setup(ap);
  
  		/* Walk the regnum_cortex_m array, reading the registers it specifies */
@@ -292,18 +304,23 @@ index 76936948..962f8b19 100644
 +			regs += CORTEX_FLOAT_REG_COUNT;
 +			// /MEANX
  		}
- #if DISABLED_CONFIG_BMDA == 1
+-#if CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	}
-@@ -667,7 +732,7 @@ static void cortexm_regs_read(target_s *const target, void *const data)
+ #endif
+ }
  
  static void cortexm_regs_write(target_s *const target, const void *const data)
  {
 -	const uint32_t *const regs = data;
 +	const uint32_t *regs = data; // meanx
  	adiv5_access_port_s *const ap = cortex_ap(target);
- #if DISABLED_CONFIG_BMDA == 1
+-#if CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	if (ap->dp->ap_reg_write) {
-@@ -690,25 +755,21 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
+ 		for (size_t i = 0; i < CORTEXM_GENERAL_REG_COUNT; ++i)
+ 			ap->dp->ap_reg_write(ap, regnum_cortex_m[i], regs[i]);
+@@ -695,27 +760,23 @@ static void cortexm_regs_write(target_s *const target, const void *const data)
  		adi_ap_banked_access_setup(ap);
  
  		/* Walk the regnum_cortex_m array, writing the registers it specifies */
@@ -337,9 +354,12 @@ index 76936948..962f8b19 100644
 +			cortexm_write_reg_sequence(ap->dp, CORTEX_FLOAT_REG_COUNT, regnum_cortex_mf, regs);
 +			regs += CORTEX_FLOAT_REG_COUNT;
  		}
- #if DISABLED_CONFIG_BMDA == 1
+-#if CONFIG_BMDA == 1
++#if NOT_USED_HERE_CONFIG_BMDA == 1
  	}
-@@ -724,17 +785,26 @@ int cortexm_mem_write_aligned(target_s *target, target_addr_t dest, const void *
+ #endif
+ }
+@@ -729,17 +790,26 @@ int cortexm_mem_write_aligned(target_s *target, target_addr_t dest, const void *
  
  static int dcrsr_regnum(target_s *target, uint32_t reg)
  {
@@ -374,7 +394,7 @@ index 76936948..962f8b19 100644
  	}
  	return -1;
  }
-@@ -743,9 +813,12 @@ static size_t cortexm_reg_read(target_s *target, uint32_t reg, void *data, size_
+@@ -748,9 +818,12 @@ static size_t cortexm_reg_read(target_s *target, uint32_t reg, void *data, size_
  {
  	if (max < 4U)
  		return 0;
@@ -390,7 +410,7 @@ index 76936948..962f8b19 100644
  	return 4U;
  }
  
-@@ -753,9 +826,12 @@ static size_t cortexm_reg_write(target_s *target, uint32_t reg, const void *data
+@@ -758,9 +831,12 @@ static size_t cortexm_reg_write(target_s *target, uint32_t reg, const void *data
  {
  	if (max < 4U)
  		return 0;
@@ -406,7 +426,28 @@ index 76936948..962f8b19 100644
  	return 4U;
  }
  
-@@ -1356,8 +1432,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
+@@ -855,10 +931,18 @@ static target_halt_reason_e cortexm_halt_poll(target_s *target, target_addr64_t
+ 		dhcsr = target_mem32_read32(target, CORTEXM_DHCSR);
+ 	}
+ 	CATCH () {
+-	case EXCEPTION_ERROR:
++	case EXCEPTION_ERROR: {
+ 		/* Things went seriously wrong and there is no recovery from this... */
+-		target_list_free();
++		TRY (EXCEPTION_ALL) { // it might go wrong here too..
++			target_list_free();
++		}
++		CATCH () {
++		default:
++			break;
++		}
+ 		return TARGET_HALT_ERROR;
++		break;
++	}
+ 	case EXCEPTION_TIMEOUT:
+ 		/* Timeout isn't actually a problem and probably means target is in WFI */
+ 		return TARGET_HALT_RUNNING;
+@@ -1376,8 +1460,14 @@ static size_t cortexm_build_target_fpu_description(char *const buffer, const siz
   *      <reg name="psp_ns" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="msp_s" bitsize="32" save-restore="no" type="data_ptr"/>
   *      <reg name="psp_s" bitsize="32" save-restore="no" type="data_ptr"/>
@@ -421,7 +462,7 @@ index 76936948..962f8b19 100644
  static size_t cortexm_build_target_secext_description(char *const buffer, const size_t max_length)
  {
  	size_t offset = 0U;
-@@ -1368,19 +1450,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
+@@ -1388,19 +1478,20 @@ static size_t cortexm_build_target_secext_description(char *const buffer, const
  
  	/* Loop through first the non-secure and then the secure registers */
  	for (uint8_t mode = 0U; mode <= 1U; ++mode) {
@@ -448,7 +489,7 @@ index 76936948..962f8b19 100644
  		}
  	}
  
-@@ -1475,30 +1558,45 @@ static size_t cortexm_build_target_description(
+@@ -1495,30 +1586,45 @@ static size_t cortexm_build_target_description(
  	 * We'll use the 'associative arrays' defined for those values.
  	 * NOTE: unlike the other loops, this loop uses a size_t for its counter, as it's used to index into arrays.
  	 */

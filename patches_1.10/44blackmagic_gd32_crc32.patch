@@ -1,16 +1,16 @@
 diff --git a/src/target/stm32f1.c b/src/target/stm32f1.c
-index 31881278..e338c7b3 100644
+index 99f991cf..76d43a66 100644
 --- a/src/target/stm32f1.c
 +++ b/src/target/stm32f1.c
-@@ -174,6 +174,7 @@ static void stm32f1_detach(target_s *target);
+@@ -175,6 +175,7 @@ static void stm32f1_detach(target_s *target);
  static bool stm32f1_flash_erase(target_flash_s *flash, target_addr_t addr, size_t len);
  static bool stm32f1_flash_write(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
  static bool stm32f1_mass_erase(target_s *target, platform_timeout_s *print_progess);
 +static bool gd32_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32);
  
- static void stm32f1_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize)
+ static void stm32f1_add_flash(target_s *const target, const uint32_t addr, const size_t length, const size_t erasesize)
  {
-@@ -282,7 +283,7 @@ bool gd32f1_probe(target_s *target)
+@@ -283,7 +284,7 @@ bool gd32f1_probe(target_s *const target)
  	target_addr32_t dbgmcu_config_taddr;
  	const uint16_t device_id = stm32f1_read_idcode(target, &dbgmcu_config_taddr);
  	size_t block_size = 0x400;
@@ -19,7 +19,7 @@ index 31881278..e338c7b3 100644
  	switch (device_id) {
  	case 0x414U: /* GD32F30x_HD, High density */
  	case 0x430U: /* GD32F30x_XD, XL-density */
-@@ -1359,3 +1360,43 @@ static bool stm32f1_cmd_uid(target_s *target, int argc, const char **argv)
+@@ -1392,3 +1393,43 @@ static bool stm32f1_cmd_uid(target_s *const target, const int argc, const char *
  		uid_base = STM32F3_UID_BASE;
  	return stm32_uid(target, uid_base);
  }

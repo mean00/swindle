@@ -26,7 +26,7 @@ index 9e00f2c4..6994bd58 100644
  		dp->error(dp, true);
  		response = dp->low_access(dp, rnw, addr, value);
 diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
-index 06e41e5e..c9a579df 100644
+index fa08c2c2..70ebaa0e 100644
 --- a/src/target/adiv5_swd.c
 +++ b/src/target/adiv5_swd.c
 @@ -54,6 +54,7 @@ uint8_t make_packet_request(const uint8_t rnw, const uint16_t addr)

@@ -1,22 +1,14 @@
-diff --git a/src/command.c b/src/command.c
-index 83233e33..b437c5ff 100644
---- a/src/command.c
-+++ b/src/command.c
-@@ -96,6 +96,8 @@ static bool cmd_debug_bmp(target_s *target, int argc, const char **argv);
- static bool cmd_shutdown_bmda(target_s *target, int argc, const char **argv);
- #endif
+diff --git a/src/platforms/hosted/platform.h b/src/platforms/hosted/platform.h
+index 57f3086b..fd5f11c3 100644
+--- a/src/platforms/hosted/platform.h
++++ b/src/platforms/hosted/platform.h
+@@ -48,7 +48,9 @@ void platform_buffer_flush(void);
+ 	do {                 \
+ 	} while (0)
+ #define PLATFORM_HAS_POWER_SWITCH
++#ifndef PLATFORM_HAS_RVSWD
+ #define PLATFORM_HAS_RVSWD
++#endif
  
-+extern bool rvswd_scan();
-+
- #ifdef _MSC_VER
- #define strtok_r strtok_s
- #endif
-@@ -370,7 +372,7 @@ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv)
- #if CONFIG_BMDA == 1
- 		scan_result = bmda_rvswd_scan();
- #else
--		scan_result = false;
-+		scan_result = rvswd_scan();
- #endif
- 	}
- 	CATCH () {
+ #define PRODUCT_ID_ANY 0xffffU
+ 

@@ -1,5 +1,5 @@
 diff --git a/src/command.c b/src/command.c
-index c86dedb3..83233e33 100644
+index d280ddd4..babfc95a 100644
 --- a/src/command.c
 +++ b/src/command.c
 @@ -59,10 +59,10 @@ typedef struct scan_command {
@@ -16,7 +16,16 @@ index c86dedb3..83233e33 100644
  #endif
  static bool cmd_onboard_flash_scan(target_s *target, int argc, const char **argv);
  static bool cmd_auto_scan(target_s *target, int argc, const char **argv);
-@@ -249,7 +249,7 @@ bool cmd_help(target_s *target, int argc, const char **argv)
+@@ -96,6 +96,8 @@ static bool cmd_debug_bmp(target_s *target, int argc, const char **argv);
+ static bool cmd_shutdown_bmda(target_s *target, int argc, const char **argv);
+ #endif
+ 
++extern bool rvswd_scan();
++
+ #ifdef _MSC_VER
+ #define strtok_r strtok_s
+ #endif
+@@ -245,7 +247,7 @@ bool cmd_help(target_s *target, int argc, const char **argv)
  	return true;
  }
  
@@ -25,3 +34,12 @@ index c86dedb3..83233e33 100644
  {
  	(void)target;
  	(void)argc;
+@@ -366,7 +368,7 @@ bool cmd_rvswd_scan(target_s *target, int argc, const char **argv)
+ #if CONFIG_BMDA == 1
+ 		scan_result = bmda_rvswd_scan();
+ #else
+-		scan_result = false;
++		scan_result = rvswd_scan();
+ #endif
+ 	}
+ 	CATCH () {

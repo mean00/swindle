@@ -1,5 +1,5 @@
 diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index 57e9472c..04c566f6 100644
+index a4dca1be..343c24b5 100644
 --- a/src/target/riscv32.c
 +++ b/src/target/riscv32.c
 @@ -30,7 +30,6 @@
@@ -10,10 +10,46 @@ index 57e9472c..04c566f6 100644
  #include "general.h"
  #include "target.h"
  #include "target_internal.h"
-@@ -684,3 +683,80 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
+@@ -92,6 +91,13 @@ static void riscv32_regs_write(target_s *target, const void *data);
+ static int riscv32_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
+ static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
+ 
++static const char *riscv32_target_arch(target_s *target)
++{
++	(void)target;
++	return "RISCV";
++}
++
++#define PROBED_ARCH TOPT_ARCH_RISCV
+ bool riscv32_probe(target_s *const target)
+ {
+ 	/* 'E' base ISA has 16 GPRs + PC, 'I' base ISA has 32 GPRs + PC */
+@@ -121,7 +127,8 @@ bool riscv32_probe(target_s *const target)
+ 		break;
+ 	case JEP106_MANUFACTURER_WCH:
+ 		PROBE(ch32v003x_probe);
+-		PROBE(ch32vx_probe);
++		//PROBE(ch32vx_probe);
++		PROBE(ch32v3xx_probe);
+ 		break;
+ 	default:
+ 		break;
+@@ -826,7 +833,7 @@ static int riscv32_breakwatch_set(target_s *const target, breakwatch_s *const br
+ 	}
+ 	/* Grab the address to set the breakwatch on and configure the hardware */
+ 	const uint32_t address = breakwatch->addr;
+-	const bool result = riscv_config_trigger(hart, trigger, mode, &config, &address);
++	const bool result = riscv_config_trigger32(hart, trigger, mode, config, address);
+ 	/* If configuration succeeds, store the trigger index in the breakwatch structure */
+ 	if (result)
+ 		breakwatch->reserved[0] = trigger;
+@@ -839,5 +846,82 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	const uint32_t config = RV32_MATCH_ADDR_DATA_TRIGGER;
  	const uint32_t address = 0;
- 	return riscv_config_trigger(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, &config, &address) ? 0 : -1;
- }
+-	return riscv_config_trigger(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, &config, &address) ? 0 : -1;
++	return riscv_config_trigger32(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, config, address) ? 0 : -1;
++}
 +
 +/*
 + *   Small helper function to translate target to hart and simplify parameters
@@ -90,12 +126,12 @@ index 57e9472c..04c566f6 100644
 +	riscv32_target_csr_write(target, RV_CSR_MIE, mie); // put back MIE
 +	target->reg_write(target, RISCV_REG_PC, &pc, 4);
 +	return ret;
-+}
+ }
 diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
-index aa4a305a..bf5d661a 100644
+index 85b2ce52..f25c51e5 100644
 --- a/src/target/riscv_debug.h
 +++ b/src/target/riscv_debug.h
-@@ -233,6 +233,14 @@ typedef struct riscv_hart {
+@@ -306,6 +306,14 @@ typedef struct riscv_hart {
  #define RV_FPU_GDB_OFFSET     33
  #define RV_FPU_GDB_CSR_OFFSET 66
  
@@ -110,7 +146,16 @@ index aa4a305a..bf5d661a 100644
  /* JTAG DTM function declarations */
  #ifdef CONFIG_RISCV
  void riscv_jtag_dtm_handler(uint8_t dev_index);
-@@ -268,4 +276,15 @@ uint32_t riscv32_pack_data(const void *src, uint8_t access_width);
+@@ -330,6 +338,8 @@ bool riscv_csr_write(riscv_hart_s *hart, uint16_t reg, const void *data);
+ riscv_match_size_e riscv_breakwatch_match_size(size_t size);
+ bool riscv_config_trigger(
+ 	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, const void *config, const void *address);
++bool riscv_config_trigger32(
++	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, uint32_t config, uint32_t address);
+ 
+ bool riscv_attach(target_s *target);
+ void riscv_detach(target_s *target);
+@@ -341,4 +351,15 @@ uint32_t riscv32_pack_data(const void *src, uint8_t access_width);
  void riscv32_mem_read(target_s *target, void *dest, target_addr64_t src, size_t len);
  void riscv32_mem_write(target_s *target, target_addr64_t dest, const void *src, size_t len);
  

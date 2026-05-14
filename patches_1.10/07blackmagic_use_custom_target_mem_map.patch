@@ -1,30 +1,50 @@
 diff --git a/src/gdb_main.c b/src/gdb_main.c
-index 9cca19e0..c192d474 100644
+index 72d48720..589b0749 100644
 --- a/src/gdb_main.c
 +++ b/src/gdb_main.c
-@@ -459,6 +459,8 @@ static void exec_q_supported(const char *packet, const size_t length)
- 		GDB_PACKET_BUFFER_SIZE);
+@@ -493,6 +493,8 @@ static void exec_q_supported(const char *packet, const size_t length)
+ 	}
  }
  
-+extern  char *ztarget_mem_map(const target_s *t);
++extern char *ztarget_mem_map(const target_s *t);
 +
  static void exec_q_memory_map(const char *packet, const size_t length)
  {
  	(void)length;
-@@ -471,9 +473,16 @@ static void exec_q_memory_map(const char *packet, const size_t length)
- 		gdb_putpacketz("E01");
+@@ -502,26 +504,25 @@ static void exec_q_memory_map(const char *packet, const size_t length)
+ 	if (!target)
+ 		target = last_target;
+ 	if (!target) {
+-		gdb_put_packet_error(1U);
++		gdb_putpacketz("E01");
  		return;
  	}
-+#if 0 // dont abuse the stack
- 	char buf[1024];
- 	target_mem_map(target, buf, sizeof(buf)); /* Fixme: Check size!*/
- 	handle_q_string_reply(buf, packet);
-+#else
-+    char *out=ztarget_mem_map(cur_target);
-+    handle_q_string_reply(out,packet);
-+    free(out);
-+	
-+#endif
+ 
+ 	/* Decode the offset into the map being requested */
+ 	uint32_t offset = 0;
+ 	if (!read_hex32(packet, NULL, &offset, ',')) {
+-		gdb_put_packet_error(1U);
++		gdb_putpacketz("E01");
+ 		return;
+ 	}
+ 
+-	/* Grab not more than a GDB packet buffer's worth of data */
+-	char buffer[GDB_PACKET_BUFFER_SIZE];
+-	const size_t chunk_length = target_mem_map_chunk(target, buffer, ARRAY_LENGTH(buffer), offset);
+-
+-	/* Determine if this was the last chunk so we generate the right kind of packet */
+-	const bool end = target->map_transfer_offset == 0U;
+-
+-	/* And now send the chunk back to the host */
+-	gdb_put_packet(end ? "l" : "m", 1U, buffer, chunk_length, false);
++	char *out = ztarget_mem_map(target);
++	if (out) {
++		/* Send the whole map as a single chunk */
++		handle_q_string_reply(out, packet);
++		free(out);
++	} else {
++		gdb_putpacketz("E01");
++	}
  }
  
  static void exec_q_feature_read(const char *packet, const size_t length)

@@ -1,8 +1,8 @@
 diff --git a/src/platforms/hosted/remote/protocol_v3.c b/src/platforms/hosted/remote/protocol_v3.c
-index a81c3cc4..7dcc4f20 100644
+index 04675fa2..03fbcd53 100644
 --- a/src/platforms/hosted/remote/protocol_v3.c
 +++ b/src/platforms/hosted/remote/protocol_v3.c
-@@ -55,11 +55,13 @@ void remote_v3_init(void)
+@@ -60,11 +60,13 @@ void remote_v3_init(void)
  
  bool remote_v3_adiv5_init(adiv5_debug_port_s *const dp)
  {

@@ -1,18 +1,15 @@
 diff --git a/src/include/target.h b/src/include/target.h
-index 6f9151d3..b89deb0a 100644
+index ce0be5d1..31c63602 100644
 --- a/src/include/target.h
 +++ b/src/include/target.h
-@@ -38,6 +38,17 @@ typedef SSIZE_T ssize_t;
+@@ -38,6 +38,14 @@ typedef SSIZE_T ssize_t;
  typedef int32_t mode_t;
  #endif /* _MSC_VER */
  
 +// MEANX
 +#define TOP_ARCH_SHIFT   28
 +#define TOPT_GET_ARCH(x) ((x >> TOP_ARCH_SHIFT) & 3)
-+#define TOPT_SET_ARCH(value, arch)                                           \
-+	{                                                                        \
-+		value = (value & ~(3 << TOP_ARCH_SHIFT)) | (arch << TOP_ARCH_SHIFT); \
-+	}
++#define TOPT_SET_ARCH(val, arch) 		val = (val & ~(3 << TOP_ARCH_SHIFT)) | (arch << TOP_ARCH_SHIFT);
 +#define TOPT_ARCH_ARM   1
 +#define TOPT_ARCH_RISCV 2
 +// /MEANX
@@ -20,57 +17,41 @@ index 6f9151d3..b89deb0a 100644
  typedef struct target target_s;
  typedef uint32_t target_addr32_t;
  typedef uint64_t target_addr64_t;
-diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index a9105c31..731d8e84 100644
---- a/src/target/cortexm.c
-+++ b/src/target/cortexm.c
-@@ -296,6 +296,8 @@ void cortexm_demcr_write(target_s *target, uint32_t demcr)
- 	target_mem32_write32(target, CORTEXM_DEMCR, demcr);
- }
- 
-+#define PROBED_ARCH TOPT_ARCH_ARM
-+
- bool cortexm_probe(adiv5_access_port_s *ap)
- {
- 	target_s *target = target_new();
-diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index 58d3f4b4..e97037dc 100644
---- a/src/target/riscv32.c
-+++ b/src/target/riscv32.c
-@@ -72,6 +72,8 @@ static int riscv32_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
- static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
- static void riscv32_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
- 
-+#define PROBED_ARCH TOPT_ARCH_RISCV
-+
- bool riscv32_probe(target_s *const target)
- {
- 	/* 'E' base ISA has 16 GPRs + PC, 'I' base ISA has 32 GPRs + PC */
 diff --git a/src/target/target_probe.h b/src/target/target_probe.h
-index 67f721a2..83890342 100644
+index 4463906d..e76c9036 100644
 --- a/src/target/target_probe.h
 +++ b/src/target/target_probe.h
-@@ -28,14 +28,15 @@ void bmp_tweak_options(uint32_t *opt);
+@@ -23,14 +23,19 @@
+ #include "target.h"
+ #include "adiv5.h"
  
++/* -- MEANX -- */
++void bmp_tweak_options(uint32_t *opt);
++
  #define STRINGIFY(x) #x
  /* Probe launch macro used by the CPU-generic layers to then call CPU-specific routines safely */
--#define PROBE(x)                                          \
--	do {                                                  \
--		DEBUG_TARGET("Calling %s\n", STRINGIFY(x));       \
--		if ((x)(target)) {                                \
--			bmp_tweak_options(&(target->target_options)); \
--			return true;                                  \
--		}                                                 \
--		target_check_error(target);                       \
-+#define PROBE(x)                                                \
-+	do {                                                        \
-+		DEBUG_TARGET("Calling %s\n", STRINGIFY(x));             \
-+		if ((x)(target)) {                                      \
-+			bmp_tweak_options(&(target->target_options));       \
-+			TOPT_SET_ARCH(target->target_options, PROBED_ARCH); \
-+			return true;                                        \
-+		}                                                       \
-+		target_check_error(target);                             \
+-#define PROBE(x)                                    \
+-	do {                                            \
+-		DEBUG_TARGET("Calling %s\n", STRINGIFY(x)); \
+-		if ((x)(target))                            \
+-			return true;                            \
+-		target_check_error(target);                 \
++#define PROBE(x)                                          \
++	do {                                                  \
++		DEBUG_TARGET("Calling %s\n", STRINGIFY(x));       \
++		if ((x)(target)) {                                \
++			bmp_tweak_options(&(target->target_options)); \
++			return true;                                  \
++		}                                                 \
++		target_check_error(target);                       \
  	} while (0)
  
  /*
+@@ -113,5 +118,6 @@ bool stm32c5_probe(target_s *target);
+ bool zynq7_probe(target_s *target);
+ 
+ void lpc55_dp_prepare(adiv5_debug_port_s *dp);
++bool ch32v3xx_probe(target_s *target);
+ 
+ #endif /* TARGET_TARGET_PROBE_H */
+

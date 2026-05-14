@@ -1,72 +1,32 @@
-diff --git a/src/target/cortexm.c b/src/target/cortexm.c
-index e5d6b312..71a66055 100644
---- a/src/target/cortexm.c
-+++ b/src/target/cortexm.c
-@@ -1061,6 +1061,25 @@ static uint32_t cortexm_dwt_func(target_s *target, target_breakwatch_e type)
- 	}
- }
+diff --git a/src/target/cortex.h b/src/target/cortex.h
+index 8f116683..d92be2f1 100644
+--- a/src/target/cortex.h
++++ b/src/target/cortex.h
+@@ -77,13 +77,22 @@
+ #define CORTEX_CPUID_REVISION_MASK 0x00f00000U
+ #define CORTEX_CPUID_PATCH_MASK    0x0000000fU
  
-+static uint32_t cortexm_dwt_func_v8m(target_s *target, target_breakwatch_e type, size_t len)
-+{
-+	uint32_t x = CORTEXM_DWT_FUNC_ACTION_DEBUG_EVENT_V8M;
-+	switch (type) {
-+	case TARGET_WATCH_WRITE:
-+		x |= CORTEXM_DWT_FUNC_MATCH_WRITE_V8M;
-+		break;
-+	case TARGET_WATCH_READ:
-+		x |= CORTEXM_DWT_FUNC_MATCH_READ_V8M;
-+		break;
-+	case TARGET_WATCH_ACCESS:
-+		x |= CORTEXM_DWT_FUNC_MATCH_ACCESS_V8M;
-+	default:
-+		return -1;
-+	}
-+	x |= CORTEXM_DWT_FUNC_LEN_VALUE(len);
-+	return x;
-+}
+-#define CORTEX_FLOAT_REG_COUNT          33U
+-#define CORTEX_DOUBLE_REG_COUNT         17U
+-#define CORTEXM_GENERAL_REG_COUNT       20U /* General purpose register count for Cortex-M cores */
+-#define CORTEXM_TRUSTZONE_REG_COUNT     4U  /* TrustZone register count for Cortex-M cores */
+-#define CORTEXAR_GENERAL_REG_COUNT      17U /* General purpose register count for Cortex-A/R cores */
++#define CORTEX_FLOAT_REG_COUNT  33U
++#define CORTEX_DOUBLE_REG_COUNT 17U
++// meanx #define CORTEXM_GENERAL_REG_COUNT       20U /* General purpose register count for Cortex-M cores */
++// meanx #define CORTEXM_TRUSTZONE_REG_COUNT     4U  /* TrustZone register count for Cortex-M cores */
++// meanx #define CORTEXAR_GENERAL_REG_COUNT      17U /* General purpose register count for Cortex-A/R cores */
+ #define CORTEXA_ARMV8_GENERAL_REG_COUNT 31U /* General purpose register count for Cortex-A/R cores in AArch64 mode */
+ 
++// meanx
++#define CORTEXM_GP_REG_COUNT        13U /* General purpose register count for Cortex-M cores r0 to r12 */
++#define CORTEXM_SP_REG_COUNT        04U /* sp lr pc xpsr */
++#define CORTEXM_SYS_REG_COUNT       03U /* Sys section : MSP/PSP/state */
++#define CORTEXM_TRUSTZONE_REG_COUNT 10U /* TrustZone register count for Cortex-M cores msp psp msplim psplim state x2 */
++// obsolete, for compatibility with older lpc code
++#define CORTEXM_GENERAL_REG_COUNT 20U
++// / meanx
 +
- static int cortexm_breakwatch_set(target_s *target, breakwatch_s *breakwatch)
- {
- 	cortexm_priv_s *priv = target->priv;
-@@ -1102,11 +1121,15 @@ static int cortexm_breakwatch_set(target_s *target, breakwatch_s *breakwatch)
- 			return -1;
+ adiv5_access_port_s *cortex_ap(target_s *target);
  
- 		priv->base.watchpoints_mask |= 1U << i;
--
--		target_mem32_write32(target, CORTEXM_DWT_COMP(i), val);
--		target_mem32_write32(target, CORTEXM_DWT_MASK(i), cortexm_dwt_mask(breakwatch->size));
--		target_mem32_write32(target, CORTEXM_DWT_FUNC(i), cortexm_dwt_func(target, breakwatch->type));
--
-+		if ((target->target_options & CORTEXM_TOPT_FLAVOUR_V8M)) {
-+			target_mem32_write32(target, CORTEXM_DWT_COMP(i), val);
-+			target_mem32_write32(
-+				target, CORTEXM_DWT_FUNC(i), cortexm_dwt_func_v8m(target, breakwatch->type, breakwatch->size));
-+		} else {
-+			target_mem32_write32(target, CORTEXM_DWT_COMP(i), val);
-+			target_mem32_write32(target, CORTEXM_DWT_MASK(i), cortexm_dwt_mask(breakwatch->size));
-+			target_mem32_write32(target, CORTEXM_DWT_FUNC(i), cortexm_dwt_func(target, breakwatch->type));
-+		}
- 		breakwatch->reserved[0] = i;
- 		return 0;
- 	default:
-diff --git a/src/target/cortexm.h b/src/target/cortexm.h
-index 7ee80e9f..b00cfe65 100644
---- a/src/target/cortexm.h
-+++ b/src/target/cortexm.h
-@@ -164,7 +164,15 @@ extern unsigned cortexm_wait_timeout;
- #define CORTEXM_DWT_FUNC_FUNC_READ      (5U << 0U)
- #define CORTEXM_DWT_FUNC_FUNC_WRITE     (6U << 0U)
- #define CORTEXM_DWT_FUNC_FUNC_ACCESS    (7U << 0U)
--
-+/* Variant for V8M */
-+#define CORTEXM_DWT_FUNC_MATCH_READ_V8M         (6U << 0U)
-+#define CORTEXM_DWT_FUNC_MATCH_WRITE_V8M        (5U << 0U)
-+#define CORTEXM_DWT_FUNC_MATCH_ACCESS_V8M       (4U << 0U)
-+#define CORTEXM_DWT_FUNC_ACTION_TRIGGER_V8M     (0U << 4U)
-+#define CORTEXM_DWT_FUNC_ACTION_DEBUG_EVENT_V8M (1U << 4U)
-+#define CORTEXM_DWT_FUNC_LEN_VALUE(len)         (((len) >> 1) << 10U)
-+
-+/* */
- #define CORTEXM_XPSR_THUMB          (1U << 24U)
- #define CORTEXM_XPSR_EXCEPTION_MASK 0x0000001fU
- 
+ #endif /* TARGET_CORTEX_H */

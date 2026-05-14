@@ -1,53 +1,14 @@
-diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index 57e9472c..d25a9b08 100644
---- a/src/target/riscv32.c
-+++ b/src/target/riscv32.c
-@@ -55,6 +55,7 @@ typedef struct riscv32_regs {
- #define RV32_MATCH_READ 0x00000001U
- /* Match when the processor tries to write the location */
- #define RV32_MATCH_WRITE 0x00000002U
-+
- /* Define that the match should occur in all/any mode */
- #define RV32_MATCH_ANY_MODE 0x00000058U
- /* Set the match action to raise a breakpoint exception */
-@@ -669,7 +670,7 @@ static int riscv32_breakwatch_set(target_s *const target, breakwatch_s *const br
- 	}
- 	/* Grab the address to set the breakwatch on and configure the hardware */
- 	const uint32_t address = breakwatch->addr;
--	const bool result = riscv_config_trigger(hart, trigger, mode, &config, &address);
-+	const bool result = riscv_config_trigger32(hart, trigger, mode, config, address);
- 	/* If configuration succeeds, store the trigger index in the breakwatch structure */
- 	if (result)
- 		breakwatch->reserved[0] = trigger;
-@@ -682,5 +683,5 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
- 	riscv_hart_s *const hart = riscv_hart_struct(target);
- 	const uint32_t config = RV32_MATCH_ADDR_DATA_TRIGGER;
- 	const uint32_t address = 0;
--	return riscv_config_trigger(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, &config, &address) ? 0 : -1;
-+	return riscv_config_trigger32(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, config, address) ? 0 : -1;
- }
 diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
-index ff07de53..5f530b36 100644
+index 0047b91f..11d07bce 100644
 --- a/src/target/riscv_debug.c
 +++ b/src/target/riscv_debug.c
-@@ -933,6 +933,48 @@ riscv_match_size_e riscv_breakwatch_match_size(const size_t size)
- 	return 0U;
+@@ -947,6 +947,37 @@ uint8_t riscv_mem_access_width(const riscv_hart_s *const hart, const target_addr
+ 	return access_width;
  }
  
 +/* All possible match modes */
 +#define RV32_MATCH_MASK 0x00000007U
 +
-+/**
-+ * @brief 
-+ * 
-+ * @param hart 
-+ * @param trigger 
-+ * @param mode 
-+ * @param config 
-+ * @param address 
-+ * @return true 
-+ * @return false 
-+ */
 +bool riscv_config_trigger32(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
 +	const uint32_t config, const uint32_t address)
 +{
@@ -76,19 +37,6 @@ index ff07de53..5f530b36 100644
 +	return result;
 +}
 +
- bool riscv_config_trigger(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
- 	const void *const config, const void *const address)
+ static void riscv_hart_discover_triggers(riscv_hart_s *const hart)
  {
-diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
-index aa4a305a..f1740881 100644
---- a/src/target/riscv_debug.h
-+++ b/src/target/riscv_debug.h
-@@ -257,6 +257,8 @@ bool riscv_csr_write(riscv_hart_s *hart, uint16_t reg, const void *data);
- riscv_match_size_e riscv_breakwatch_match_size(size_t size);
- bool riscv_config_trigger(
- 	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, const void *config, const void *address);
-+bool riscv_config_trigger32(
-+	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, uint32_t config, uint32_t address);
- 
- bool riscv_attach(target_s *target);
- void riscv_detach(target_s *target);
+ 	/* Discover how many breakpoints this hart supports */
