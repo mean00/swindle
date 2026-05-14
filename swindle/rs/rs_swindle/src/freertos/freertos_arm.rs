@@ -8,7 +8,6 @@ crate::setup_log!(false);
 crate::gdb_print_init!();
 
 use crate::freertos::LN_MCU_CORE;
-use crate::freertos::freertos_arm_m0::freertos_switch_handler_m0;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
 use crate::freertos::freertos_arm_m33::freertos_switch_handler_m33;
 use crate::freertos::freertos_riscv_rv32::freertos_switch_handler_rv32;
@@ -84,7 +83,7 @@ pub fn freertos_attach_arm(cpu: u32) -> bool {
     }
     unsafe {
         let switcher: Box<dyn freertos_switch_handler> = match core {
-            LN_MCU_CORE::LN_MCU_CM0 => Box::new(freertos_switch_handler_m0::new()),
+            LN_MCU_CORE::LN_MCU_CM0 => Box::new(freertos_switch_handler_m3::new()),
             LN_MCU_CORE::LN_MCU_CM3 => Box::new(freertos_switch_handler_m3::new()),
             LN_MCU_CORE::LN_MCU_CM4 => Box::new(freertos_switch_handler_m3::new()),
             LN_MCU_CORE::LN_MCU_CM33 => Box::new(freertos_switch_handler_m33::new()),

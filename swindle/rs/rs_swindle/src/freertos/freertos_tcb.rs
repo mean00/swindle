@@ -4,7 +4,9 @@ use alloc::vec::Vec;
 use crate::freertos::freertos_hashtcb::get_hashtcb;
 use crate::freertos::freertos_list::{freertos_crawl_list, freertos_replace_in_list};
 
-use crate::freertos::freertos_symbols::{get_current_tcb_address, get_symbols};
+use crate::freertos::freertos_symbols::{
+    get_current_tcb_address, get_symbols, FreeRTOSDebugOffsets, FreeRTOSSymbolName,
+};
 use crate::freertos::freertos_trait::freertos_task_state;
 
 use crate::freertos::{freertos_switch_task_action, freertos_task_info, os_can_switch};
@@ -12,7 +14,27 @@ use crate::freertos::{freertos_switch_task_action, freertos_task_info, os_can_sw
 crate::setup_log!(false);
 //use crate::{bmplog, bmpwarning};
 
-const OFFSET_TO_SIZE: u32 = 44;
+/// Default hardcoded offsets used as fallback when the target doesn't export `freeRTOSDebug`.
+const FALLBACK_OFFSETS: FreeRTOSDebugOffsets = FreeRTOSDebugOffsets {
+    magic: 0,
+    list_size: 0,
+    offset_list_item_next: 4,
+    offset_list_item_owner: 12,
+    offset_list_number_of_item: 0,
+    offset_list_index: 4,
+    nb_of_priorities: 16,
+    mpu_enabled: 0,
+    max_task_name_len: 16,
+    offset_task_name: 52,
+    offset_task_num: 68,
+};
+
+/// Get the effective debug offsets: from target if available, otherwise fallback.
+fn get_debug_offsets() -> FreeRTOSDebugOffsets {
+    get_symbols()
+        .debug_offsets
+        .unwrap_or(FALLBACK_OFFSETS)
+}
 
 const map_state: [freertos_task_state; 5] = [
     freertos_task_state::running,
@@ -22,48 +44,45 @@ const map_state: [freertos_task_state; 5] = [
     freertos_task_state::ready,
 ];
 
-enum freeRtosSymbolIndex {
-    pxCurrentTCB = 0,
-    xSuspendedTaskList = 1,
-    xDelayedTaskList1 = 2,
-    xDelayedTaskList2 = 3,
-    pxReadyTasksLists = 4,
-}
-const FreeRTOSSymbolName: [&str; 5] = [
-    "pxCurrentTCB",
-    "xSuspendedTaskList",
-    "xDelayedTaskList1",
-    "xDelayedTaskList2",
-    "pxReadyTasksLists",
-];
-
 //--
 /*
  *
  */
 
 fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> {
+    let off = get_debug_offsets();
     let mut data: [u32; 16] = [0; 16];
     if !bmp_read_mem32(tcb, &mut data[0..1]) {
         bmpwarning!("cannot read TCB\n");
         return None;
     }
     let topOfStack: u32 = data[0];
-    if !bmp_read_mem32(tcb + OFFSET_TO_SIZE, &mut data[0..2]) {
+    // Read priority and stack pointer from TCB
+    // uxPriority is at offset 44 in standard TCB layout
+    // pxStack follows uxPriority
+    if !bmp_read_mem32(tcb + 44, &mut data[0..2]) {
         bmpwarning!("cannot read TCB\n");
         return None;
     }
     let priority = data[0];
     let stack = data[1];
 
-    let mut name: [u8; 8] = [b' '; 8];
-    if !bmp_read_mem(tcb + OFFSET_TO_SIZE + 8, &mut name) {
+    // Read task name from dynamic offset
+    let name_len = off.max_task_name_len as usize;
+    let mut name: Vec<u8> = vec![b' '; name_len];
+    if !bmp_read_mem(tcb + off.offset_task_name, &mut name) {
         bmpwarning!("cannot read name\n");
         return None;
     }
+    // Trim trailing whitespace/null for the fixed-size array
+    let trimmed_len = name.iter().rposition(|&c| c != b' ' && c != 0).map(|i| i + 1).unwrap_or(0);
+    let mut name_arr: [u8; 8] = [b' '; 8];
+    let copy_len = core::cmp::min(trimmed_len, 8);
+    name_arr[..copy_len].copy_from_slice(&name[..copy_len]);
+
     Some(freertos_task_info {
         tcb_addr: tcb,
-        name,
+        name: name_arr,
         tcb_no: 0,
         top_of_stack: topOfStack,
         bottom_of_stack: stack,

@@ -4,7 +4,6 @@
  *
  */
 use alloc::vec::Vec;
-use core::ptr::addr_of_mut;
 crate::setup_log!(false);
 //use crate::gdb_print;
 //use crate::{bmplog, bmpwarning};
@@ -67,13 +66,7 @@ static mut tcb_hashmap: Option<hashed_tcb> = None;
  */
 pub fn get_hashtcb() -> &'static mut hashed_tcb {
     unsafe {
-        if tcb_hashmap.is_none() {
-            tcb_hashmap = Some(hashed_tcb::new());
-        }
-        match &mut *addr_of_mut!(tcb_hashmap) {
-            Some(x) => x,
-            None => panic!("hashap"),
-        }
+        tcb_hashmap.get_or_insert_with(hashed_tcb::new)
     }
 }
 /*
