@@ -3,10 +3,10 @@
 # Supported boards
 #----------------------------
 
-SET(HOSTED ${BMP}/src/platforms/hosted CACHE INTERNAL "")
-SET(PC ${BMP}/src/platforms/hosted CACHE INTERNAL "")
-SET(LN_EXT "arm_gd32fx" CACHE INTERNAL "")
-SET(LN_MCU "M3" CACHE INTERNAL "")
+set(HOSTED ${BMP}/src/platforms/hosted CACHE INTERNAL "")
+set(PC ${BMP}/src/platforms/hosted CACHE INTERNAL "")
+set(LN_EXT "arm_gd32fx" CACHE INTERNAL "")
+set(LN_MCU "M3" CACHE INTERNAL "")
 
 include(./swindle_common.cmake)
 
@@ -37,7 +37,7 @@ include_directories( ${BMP}/src)
 include_directories( ${BMP}/src/target)
 # ===========================================================================================
 
-SET(BM_HOSTED
+set(BM_HOSTED
           ${HOSTED}/bmp_remote.c
           ${HOSTED}/platform.c
           ${HOSTED}/debug.c

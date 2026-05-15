@@ -25,18 +25,19 @@ mod rtt_consts;
 mod setting_keys;
 mod settings;
 //mod rpc;
+#[cfg(not(feature = "hosted"))]
+mod cdc_logger;
 pub mod rpc_common;
 #[cfg(feature = "hosted")]
 pub mod rpc_host;
 #[cfg(not(feature = "hosted"))]
 pub mod rpc_target;
-mod cdc_logger;
 mod rtt;
 mod sw_breakpoints;
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-mod usb_serial_bridge;
-#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
 mod usb_gdb;
+#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
+mod usb_serial_bridge;
 mod util;
 
 use crate::commands::run;
@@ -85,7 +86,9 @@ fn rngdb_output_flush() {
     #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
     usb_gdb::rngdb_output_flush_c();
     #[cfg(any(feature = "hosted", feature = "network"))]
-    unsafe { rngdb_output_flush_c() }
+    unsafe {
+        rngdb_output_flush_c()
+    }
 }
 /*
  */
@@ -93,7 +96,9 @@ fn rngdb_send_data(data: &str) {
     #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
     usb_gdb::rngdb_send_data_c(data.len() as u32, data.as_ptr());
     #[cfg(any(feature = "hosted", feature = "network"))]
-    unsafe { rngdb_send_data_c(data.len() as u32, data.as_ptr()) }
+    unsafe {
+        rngdb_send_data_c(data.len() as u32, data.as_ptr())
+    }
 }
 /*
  */
@@ -101,7 +106,9 @@ fn rngdb_send_data_u8(data: &[u8]) {
     #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
     usb_gdb::rngdb_send_data_c(data.len() as u32, data.as_ptr());
     #[cfg(any(feature = "hosted", feature = "network"))]
-    unsafe { rngdb_send_data_c(data.len() as u32, data.as_ptr()) }
+    unsafe {
+        rngdb_send_data_c(data.len() as u32, data.as_ptr())
+    }
 }
 /// # Safety
 /// the pointer is expected to be valid !

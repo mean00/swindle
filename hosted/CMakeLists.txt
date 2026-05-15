@@ -22,17 +22,6 @@ set(CMAKE_AUTOMOC ON)
 #find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
 find_package(Qt6 COMPONENTS Network SerialPort REQUIRED)
 
-# Qt6 adds -mno-direct-extern-access which clang rejects
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  foreach(qt_target Qt6::Core Qt6::Network Qt6::SerialPort)
-    get_target_property(qt_iflags ${qt_target} INTERFACE_COMPILE_OPTIONS)
-    if(qt_iflags)
-      string(REPLACE "-mno-direct-extern-access" "" qt_iflags "${qt_iflags}")
-      set_target_properties(${qt_target} PROPERTIES INTERFACE_COMPILE_OPTIONS "${qt_iflags}")
-    endif()
-  endforeach()
-endif()
-
 ADD_DEFINITIONS("-DCONFIG_BMDA")
 #
 # Create a dummy setup to build BMP/lnBMP
@@ -49,10 +38,10 @@ set(CMAKE_MODULE_PATH       ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../cmake ${
 
 
 SET(Rust_CARGO_TARGET "" CACHE INTERNAL "")
-SET(CMAKE_C_COMPILER /usr/bin/clang CACHE INTERNAL "")
-SET(CMAKE_CXX_COMPILER /usr/bin/clang++ CACHE INTERNAL "")
-SET(CMAKE_CXX_AR /usr/bin/llvm-ar  CACHE INTERNAL "")
-SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
+#SET(CMAKE_C_COMPILER /usr/bin/clang CACHE INTERNAL "")
+#SET(CMAKE_CXX_COMPILER /usr/bin/clang++ CACHE INTERNAL "")
+#SET(CMAKE_CXX_AR /usr/bin/llvm-ar  CACHE INTERNAL "")
+#SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
 #
 SET(LN_ENABLED_BOARDS   CH32F1 RP2350 RP2040 STM32F1 CACHE INTERNAL "")
 #
@@ -142,3 +131,17 @@ target_link_libraries(swindle_hosted PRIVATE swindle_interface)
 target_link_libraries(swindle_hosted PRIVATE libswindle  )
 target_link_libraries(swindle_hosted PRIVATE embeddedPrintf usb-1.0 )
 target_link_libraries(swindle_hosted PRIVATE Qt6::Core Qt6::Network Qt6::SerialPort)
+
+
+# Qt6 adds -mno-direct-extern-access which clang rejects
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  foreach(qt_target Qt6::Core Qt6::Network Qt6::SerialPort swindle_hosted)
+    get_target_property(qt_iflags ${qt_target} INTERFACE_COMPILE_OPTIONS)
+    if(qt_iflags)
+      string(REPLACE "-mno-direct-extern-access" "" qt_iflags "${qt_iflags}")
+      set_target_properties(${qt_target} PROPERTIES INTERFACE_COMPILE_OPTIONS "${qt_iflags}")
+    endif()
+  endforeach()
+endif()
+
+

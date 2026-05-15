@@ -294,3 +294,7 @@ extern "C" void setLogger(void *)
 extern "C" void usbCdc_Logger(int n, const char *data)
 {
 }
+extern "C" const uint32_t *lnGetFreeRTOSDebug()
+{
+    return NULL;
+}
