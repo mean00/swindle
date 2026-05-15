@@ -1,25 +1,13 @@
 diff --git a/src/target/target.c b/src/target/target.c
-index 226266ad..a6603cd5 100644
+index 315f9837..e19dffb7 100644
 --- a/src/target/target.c
 +++ b/src/target/target.c
-@@ -43,6 +43,9 @@ target_s *target_list = NULL;
- 
- #define FLASH_WRITE_BUFFER_CEILING 1024U
- 
-+#define snprintf snprintf_
-+int snprintf_(char *buffer, size_t count, const char *format, ...);
-+
- static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
- static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
- static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
-@@ -691,6 +694,31 @@ void tc_printf(target_s *target, const char *fmt, ...)
- 	va_list ap;
- 	va_start(ap, fmt);
- 	target->tc->printf(target->tc, fmt, ap);
--	(void)fflush(stdout);
-+	// MEANX (void)fflush(stdout);
+@@ -697,3 +697,30 @@ void tc_printf(target_s *target, const char *fmt, ...)
+ 	// MEANX (void)fflush(stdout);
  	va_end(ap);
  }
++
++// MEANX
 +
 +bool breakpoint_available(target_s *target)
 +{

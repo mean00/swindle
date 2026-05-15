@@ -1,5 +1,5 @@
 diff --git a/src/target/riscv32.c b/src/target/riscv32.c
-index a4dca1be..343c24b5 100644
+index b993805d..343c24b5 100644
 --- a/src/target/riscv32.c
 +++ b/src/target/riscv32.c
 @@ -30,7 +30,6 @@
@@ -24,17 +24,7 @@ index a4dca1be..343c24b5 100644
  bool riscv32_probe(target_s *const target)
  {
  	/* 'E' base ISA has 16 GPRs + PC, 'I' base ISA has 32 GPRs + PC */
-@@ -121,7 +127,8 @@ bool riscv32_probe(target_s *const target)
- 		break;
- 	case JEP106_MANUFACTURER_WCH:
- 		PROBE(ch32v003x_probe);
--		PROBE(ch32vx_probe);
-+		//PROBE(ch32vx_probe);
-+		PROBE(ch32v3xx_probe);
- 		break;
- 	default:
- 		break;
-@@ -826,7 +833,7 @@ static int riscv32_breakwatch_set(target_s *const target, breakwatch_s *const br
+@@ -827,7 +833,7 @@ static int riscv32_breakwatch_set(target_s *const target, breakwatch_s *const br
  	}
  	/* Grab the address to set the breakwatch on and configure the hardware */
  	const uint32_t address = breakwatch->addr;
@@ -43,7 +33,7 @@ index a4dca1be..343c24b5 100644
  	/* If configuration succeeds, store the trigger index in the breakwatch structure */
  	if (result)
  		breakwatch->reserved[0] = trigger;
-@@ -839,5 +846,82 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
+@@ -840,5 +846,82 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
  	riscv_hart_s *const hart = riscv_hart_struct(target);
  	const uint32_t config = RV32_MATCH_ADDR_DATA_TRIGGER;
  	const uint32_t address = 0;

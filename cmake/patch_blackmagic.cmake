@@ -23,9 +23,12 @@ apply_patch_if_needed5(patched07 07blackmagic_use_custom_target_mem_map.patch "u
 apply_patch_if_needed5(patched10 10blackmagic_make_swd_scan_public.patch "make swdp_scan public ")
 apply_patch_if_needed5(patched11 11blackmagic_use_embedded_printf.patch "use embedded printf ")
 apply_patch_if_needed5(patched12 12blackmagic_disable_cortexr.patch "disable cortexr ")
+#
 apply_patch_if_needed5(patched14 14blackmagic_disable_snprintf_define.patch "disable snprintf define")
 apply_patch_if_needed5(patched13 13blackmagic_rvswd_perigoso.patch "add rvswd support (based on perigoso work)")
+
 apply_patch_if_needed5(patched21 21blackmagic_riscv_flashstub_vanilla.patch "declare flashstub function")
+
 apply_patch_if_needed5(patched26 26blackmagic_riscv_check_watchpoint.patch
                        "explicitely fail when we cant put watchpoints")
 # IF(NOT LN_DISABLE_SWINDLE_LNIO)
@@ -36,24 +39,27 @@ apply_patch_if_needed5(patched36 36blackmagic_remove_printf_warning_v3.patch
                        "remove a warning because we ovveride printf")
 apply_patch_if_needed5(patched37 37blackmagic_hack_remote_protocolv3.patch
                        "dirty hack to bring back remote protocol v3, probably not the right way")
-apply_patch_if_needed5(patched40 40blackmagic_custom_crc.patch "compute CRC via a stub.")
+# Merged with 51 apply_patch_if_needed5(patched40 40blackmagic_custom_crc.patch "compute CRC via a stub.")
+#
 apply_patch_if_needed5(patched42 42blackmagic_psplim_msplim.patch "add psplim and msplim.")
-apply_patch_if_needed5(patched43 43dontdoubleassert.patch "Try to manage double assert better.")
+# Merged with 42 ====>apply_patch_if_needed5(patched43 43dontdoubleassert.patch "Try to manage double assert better.")
 apply_patch_if_needed5(patched44 44blackmagic_gd32_crc32.patch "stub CRC32 computation (GD32).")
-apply_patch_if_needed5(patched45 45blackmagic_disable_bmda_read_regs.patch
-                       "disable shortcut for read/write register in hosted mode.")
+# Merged with 42 apply_patch_if_needed5(patched45 45blackmagic_disable_bmda_read_regs.patch
+#                       "disable shortcut for read/write register in hosted mode.")
+
 apply_patch_if_needed5(patched46 46blackmagic_rp2040_crc32.patch "use RP2040 DMA to compute GDB CRC32")
 apply_patch_if_needed5(patched47 47blackmagic_tweak_options.patch "patch option field after probe")
 apply_patch_if_needed5(patched48 48blackmagic_enable_native_rvswd.patch "enable rvswd for native mode")
 apply_patch_if_needed5(patched49 49blackmagic_hook_rvswd_to_host_mode.patch "enable rvswd for hosted mode")
+#partially merged with 42
 apply_patch_if_needed5(patched50 50blackmagic_export_breakpoint_available.patch
                        "export a helper function to query the # of hw breakoint/watchpoint")
 apply_patch_if_needed5(patched51 51blackmagic_add_sw_breakpoint_framework.patch
                        "hook in the data needed to attach sw breakpoints to target")
 apply_patch_if_needed5(patched53 53blackmagic_abort_on_flash_error.patch
                        "abort buffered flash write as soon as there is one error")
-apply_patch_if_needed5(patched54 54blackmagic_dont_doubly_define_rvswd.patch
-                       "avoid doubly definit have_rvswd in hosted mode")
+# merged with another patch apply_patch_if_needed5(patched54 54blackmagic_dont_doubly_define_rvswd.patch
+#"avoid doubly definit have_rvswd in hosted mode")
 apply_patch_if_needed5(patched82 82blackmagic_export_arch.patch "Export the cpu arch (ARM/RISCV) ")
 
 string(JOIN " " pretty ${already_patched})
