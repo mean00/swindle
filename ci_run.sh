@@ -18,8 +18,10 @@ runbuild() {
 
 runbuild rp2040 rp2040
 runbuild rp2040_inv rp2040_inv
+runbuild rp2350 rp2350
+runbuild rp2350_inv rp2350_inv
 runbuild gd32f303_48 gd32f303_48
 runbuild gd32f303_48_inv_ws2812 gd32f303_48_inv_ws2812
 runbuild ch32v307 ch32v307
 runbuild ch32v307_inv_ws2812 ch32v307_inv_ws2812
-runbuild ch32v307_net ch32v307_net
+#runbuild ch32v307_net ch32v307_net
