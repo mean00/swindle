@@ -63,16 +63,19 @@ impl freertos_switch_handler for freertos_switch_handler_m33 {
      * We write them as if it was a freertos task switch
      */
     fn write_registers_to_stack(&mut self) -> bool {
-        self.gpr.registers[13] -= STACKED_REGISTER_SIZE; // adjust stack to be at the beginning
         self.gpr.pointer = self.gpr.registers[13];
-
-        self.gpr.push(14, 17); // r14/r15/R16 (xPSR)
-        self.gpr.push(12, 13); // R12
-        self.gpr.push(0, 4); // push  R0 to R4 excluded
-        self.gpr.push(4, 12); // push  R4..r12 excluded
-
-        self.gpr.push(14, 15); // LR
-        self.gpr.push(PSPLIM, PSPLIM + 1); // psplim
+        // Push in the same order as real FreeRTOS M33 PendSV:
+        // First the manual-save block (R4..R11), then exception frame, then PSPLIM/EXC_RETURN
+        self.gpr.push_ascending(4, 12); // r4..r11 (R4 at lowest addr, matching stmdb {r4-r11})
+        // Exception frame (hardware auto-stack): R0,R1,R2,R3,R12,LR,PC,xPSR
+        self.gpr.push_ascending(0, 4); // r0..r1..r2.r3
+        self.gpr.push_ascending(12, 13); // r12
+        self.gpr.push_ascending(14, 16); // r14/r15 (LR/PC)
+        self.gpr.push_ascending(16, 17); // xpsr
+        // FPU IF NEEDED TODO
+        self.gpr.push_ascending(PSPLIM, PSPLIM + 1); // psplim
+        // Update SP to the final pointer value (lowest address = first pushed register)
+        self.gpr.registers[13] = self.gpr.pointer;
 
         true
     }
@@ -80,18 +83,15 @@ impl freertos_switch_handler for freertos_switch_handler_m33 {
      * read register dump from adr, careful the register are out of order
      */
     fn read_registers_from_addr(&mut self, address: u32) -> bool {
-        self.gpr.registers[13] = address + STACKED_REGISTER_SIZE;
-        // rewind by 16 *4=64 bytes, we dont save SP on SP but on TCP
         self.gpr.pointer = address;
-        // now read the registers onto the stack
-        self.gpr.pop(PSPLIM, PSPLIM + 1); // psplim
-        self.gpr.pop(14, 15); // LR
-
-        self.gpr.pop(4, 12); // push  R4..r12 excluded
-        self.gpr.pop(0, 4); //
-        self.gpr.pop(12, 13); // R12
-        self.gpr.pop(14, 17); // r14/r15/R16 PSR
-
+        // Read in the same order as write_registers_to_stack (matching real FreeRTOS)
+        self.gpr.pop_ascending(4, 12); // r4..r11
+        self.gpr.pop_ascending(0, 4); // r0..r3
+        self.gpr.pop_ascending(12, 13); // R12
+        self.gpr.pop_ascending(14, 16); // LR/PC
+        self.gpr.pop_ascending(16, 17); // XPSR
+        self.gpr.pop_ascending(PSPLIM, PSPLIM + 1); // psplim
+        self.gpr.registers[13] = self.gpr.pointer;
         true
     }
 

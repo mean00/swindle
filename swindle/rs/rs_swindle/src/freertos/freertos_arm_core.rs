@@ -57,19 +57,49 @@ impl freertos_cortexm_core {
     /*
      *
      */
-    pub fn push(&mut self, first: usize, last: usize) -> bool {
+    pub fn push_ascending(&mut self, first: usize, last: usize) -> bool {
         let to_push = last - first;
-        self.pointer -= 4 * to_push as u32;
-        let current = self.pointer;
-        bmp_write_mem32(current, &self.registers[first..last])
+        self.pointer -= 4u32 * to_push as u32;
+        bmp_write_mem32(self.pointer, &self.registers[first..last])
     }
     /*
      *
      */
-    pub fn pop(&mut self, first: usize, last: usize) -> bool {
-        let current = self.pointer;
+    pub fn push_descending(&mut self, first: usize, last: usize) -> bool {
+        let to_push = last - first;
+        self.pointer -= 4u32 * to_push as u32;
+        for reg in 0..to_push {
+            let r = last - 1 - reg;
+            bmp_write_mem32(
+                self.pointer + 4u32 * (reg as u32),
+                &self.registers[r..r + 1],
+            );
+        }
+        true
+    }
+    /*
+     *
+     */
+    pub fn pop_ascending(&mut self, first: usize, last: usize) -> bool {
+        let ret = bmp_read_mem32(self.pointer, &mut self.registers[first..last]);
         self.pointer += 4 * (last - first) as u32;
-        bmp_read_mem32(current, &mut self.registers[first..last])
+        ret
+    }
+    /*
+     *
+     */
+    pub fn pop_descending(&mut self, first: usize, last: usize) -> bool {
+        let to_push = last - first;
+        let mut ret: bool = true;
+        for reg in 0..to_push {
+            let r = last - 1 - reg;
+            ret &= bmp_read_mem32(
+                self.pointer + 4u32 * (reg as u32),
+                &mut self.registers[r..r + 1],
+            );
+        }
+        self.pointer += 4 * (last - first) as u32;
+        ret
     }
 }
 //--

@@ -1,26 +1,38 @@
 /*
-*  This is normally ~ the same thing as cortex m0
+High address
+ |
+ |
+ \/ decreasing
++-------------------------------+  <-- PSP point before exception
+|  xPSR                         |
+|  Return PC (from task)        |  \
+|  LR (R14)                     |  | Core
+|  R12                          |  | Registers
+|  R3,
+|  R2
+|  R1
+|  R0               |  / (Auto)
++-------------------------------+  <-- PSP after exception
+|  S0
+|  S1
+|   ...
+|  S14
+|  S15
+|  FPSCR
++-------------------------------+
+|  R4                          |  \
+|  R5                          |  |
+|  ...                         |  | Extra Registers
+|  R11                         |  | (Saved by FreeRTOS)
++-------------------------------+  <-- PSP after manual save
+
+The gpr.push call will *FIRST* decrease the stack and then push the registers
+
 */
 use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_trait::freertos_switch_handler;
 crate::setup_log!(false);
 //use crate::bmplog;
-
-const STACKED_REGISTER_SIZE: u32 = 16 * 4;
-
-/*
- *  Stack layout for cortex M3 (or M4 without FPU)
-Newer stack
-    Extra
-        r4--r11     8
-    Interrupt
-        r0--r3      4
-        r12
-        r14 (lr)
-        r15 (pc)
-        r16 (xpsr)  4
-Original stack
- */
 
 /*
  *
@@ -60,13 +72,20 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
      * We write them as if it was a freertos task switch
      */
     fn write_registers_to_stack(&mut self) -> bool {
-        self.gpr.registers[13] -= STACKED_REGISTER_SIZE; // adjust stack to be at the beginning
         self.gpr.pointer = self.gpr.registers[13];
         bmplog!("Pusing registers to stack at 0x{:x}\n", self.gpr.pointer);
-        self.gpr.push(14, 17); // r14/r15/R16 (xPSR)
-        self.gpr.push(12, 13); // R12
-        self.gpr.push(0, 4); // push  R0 to R4 excluded
-        self.gpr.push(4, 12); // push  R4..r12 excluded
+        // Push in the same order as real FreeRTOS PendSV:
+        // First the manual-save block (R4..R11), then the exception frame (R0..R3,R12,LR,PC,xPSR)
+        // Real FreeRTOS: stmdb r0!, {r4-r11}  -> R4 at lowest address, R11 at highest
+        self.gpr.push_ascending(4, 12); // r4..r11 (R4 at lowest addr, matching stmdb {r4-r11})
+        // Exception frame (hardware auto-stack): R0,R1,R2,R3,R12,LR,PC,xPSR
+        self.gpr.push_ascending(0, 4); // r0..r1..r2.r3
+        self.gpr.push_ascending(12, 13); // r12
+        self.gpr.push_ascending(14, 16); // r14/r15 (LR/PC)
+        self.gpr.push_ascending(16, 17); // xpsr
+        // FPU IF NEEDED TODO
+        // Update SP to the final pointer value (lowest address = first pushed register)
+        self.gpr.registers[13] = self.gpr.pointer;
 
         true
     }
@@ -75,15 +94,15 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
      */
     fn read_registers_from_addr(&mut self, address: u32) -> bool {
         bmplog!("Reading registers from  0x{:x}\n", address);
-        self.gpr.registers[13] = address + STACKED_REGISTER_SIZE;
-        // rewind by 16 *4=64 bytes, we dont save SP on SP but on TCP
         self.gpr.pointer = address;
-        // now read the registers onto the stack
-        self.gpr.pop(4, 12); // push  R4..r12 excluded
-        self.gpr.pop(0, 4); //
-        self.gpr.pop(12, 13); // R12
-        self.gpr.pop(14, 17); // r14/r15/R16 PSR
-
+        // Read registers from the stack in the same order as they were written
+        // (matching real FreeRTOS: R4..R11 first, then exception frame)
+        self.gpr.pop_ascending(4, 12); // r4..r11
+        // FPU TODO
+        self.gpr.pop_ascending(0, 4); // r0..r3
+        self.gpr.pop_ascending(12, 13); // R12
+        self.gpr.pop_ascending(14, 16); // LR/PC
+        self.gpr.pop_ascending(16, 17); // XPSR
         true
     }
 
