@@ -56,6 +56,15 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
     }
     let thread_id = parsing_util::ascii_string_hex_to_u32(args[1]);
 
+    if !freertos_running() {
+        // When FreeRTOS is not enabled, return a default thread
+        let mut e = encoder::new();
+        e.begin();
+        e.hex_and_add("Thread:default state:running");
+        e.end();
+        return true;
+    }
+
     let info = get_tcb_info_from_id(thread_id);
     if let Some(x) = info {
         let mut e = encoder::new();
