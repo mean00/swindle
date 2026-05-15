@@ -1,112 +1,92 @@
 # ===========================================================================================
 #
-#
-#
-#
-#
 # ===========================================================================================
-MESSAGE(STATUS "Building for embedded mode (${SWINDLE_HOSTED})")
-IF(USE_RP2040 OR USE_RP2350)
-  SET(EXTRA _rp2040)
-ELSE()
-  SET(EXTRA _ln)
-ENDIF()
-SET(BRIDGE_SRCS
-                ${B}/bridge.cpp
-                ${B}/bmp_gpio.cpp
-                ${B}/bmp_jtagstubs.cpp
-                ${B}/bmp_reset_pin.cpp
-                CACHE INTERNAL ""
-                )
-IF(SWINDLE_USE_USB)
-  IF(NOT LN_SWINDLE_AS_EXTERNAL)
-    LIST( APPEND BRIDGE_SRCS #${B}/bmp_serial.cpp
-                ${B}/usb/bmp_usb.cpp
-                ${ESPRIT_ROOT}/rust/rust_esprit/c_interface/lnSerial_c.cpp
-  )
-    #IF("${LN_USB_NB_CDC}" STREQUAL "3")
-    #SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp)
-    #ENDIF()
-  ENDIF()
-ENDIF()
-IF(SWINDLE_USE_NETWORK)
-  LIST( APPEND BRIDGE_SRCS    ${B}/net/bmp_net.cpp)
-  include_directories( ${CMAKE_CURRENT_SOURCE}/net )
-ENDIF()
-
-
+message(STATUS "Building for embedded mode (${SWINDLE_HOSTED})")
+if(USE_RP2040 OR USE_RP2350)
+  set(EXTRA _rp2040)
+else()
+  set(EXTRA _ln)
+endif()
+set(BRIDGE_SRCS
+    ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_jtagstubs.cpp ${B}/bmp_reset_pin.cpp
+    CACHE INTERNAL "")
+if(SWINDLE_USE_USB)
+  if(NOT LN_SWINDLE_AS_EXTERNAL)
+    list(APPEND BRIDGE_SRCS # ${B}/bmp_serial.cpp
+         ${B}/usb/bmp_usb.cpp ${ESPRIT_ROOT}/rust/rust_esprit/c_interface/lnSerial_c.cpp)
+    # IF("${LN_USB_NB_CDC}" STREQUAL "3") SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp) ENDIF()
+  endif()
+endif()
+if(SWINDLE_USE_NETWORK)
+  list(APPEND BRIDGE_SRCS ${B}/net/bmp_net.cpp)
+  include_directories(${CMAKE_CURRENT_SOURCE}/net)
+endif()
 
 # #
 include(./swindle_common.cmake)
 # ==========================================================================
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories( ${BMP}/src)
-include_directories( ${BMP}/src/include)
-include_directories( ${BMP}/src/target)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${BMP}/src)
+include_directories(${BMP}/src/include)
+include_directories(${BMP}/src/target)
 # ==========================================================================
-ADD_DEFINITIONS("-DENABLE_DEBUG=1")
-ADD_DEFINITIONS("-DPLATFORM_IDENT=\"lnBMP\"")
-ADD_DEFINITIONS("-DPC_HOSTED=0")
-ADD_DEFINITIONS("-include miniplatform.h")
-ADD_DEFINITIONS("-DBMD_IS_STDC=1")
+add_definitions("-DENABLE_DEBUG=1")
+add_definitions("-DPLATFORM_IDENT=\"lnBMP\"")
+add_definitions("-DPC_HOSTED=0")
+add_definitions("-include miniplatform.h")
+add_definitions("-DBMD_IS_STDC=1")
 # ==========================================================================
-if(USE_INVERTED_NRST )
-  SET( EXTRA_SOURCE  ${EXTRA_SOURCE} ${B}/bmp_reset_inv.cpp)
+if(USE_INVERTED_NRST)
+  set(EXTRA_SOURCE ${EXTRA_SOURCE} ${B}/bmp_reset_inv.cpp)
 else()
-  SET( EXTRA_SOURCE  ${EXTRA_SOURCE} ${B}/bmp_reset.cpp)
+  set(EXTRA_SOURCE ${EXTRA_SOURCE} ${B}/bmp_reset.cpp)
 endif()
 
-# O0, 1, 2 works
-# OZ does not work
-# rvTap does not like -Oz
-# Something to fix here
-#MESSAGE(STATUS "Restricting flags for rvTap to -Os")
+# O0, 1, 2 works OZ does not work rvTap does not like -Oz Something to fix here MESSAGE(STATUS "Restricting flags for
+# rvTap to -Os")
 #
 # ===========================================================================================
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
-IF(LN_EXTERNAL_RUST)
-ELSE()
-  ADD_SUBDIRECTORY( rs )
-ENDIF()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rs/rs_swindle/c_interface bmp_c_interface)
+if(LN_EXTERNAL_RUST)
+
+else()
+  add_subdirectory(rs)
+endif()
 # ===========================================================================================
 
-ADD_LIBRARY(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS}  ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE} )
-TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
-TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config )
-TARGET_INCLUDE_DIRECTORIES( libswindle PRIVATE ${myB}/private_include)
-TARGET_INCLUDE_DIRECTORIES( libswindle PUBLIC  ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS} )
-TARGET_LINK_LIBRARIES( libswindle PUBLIC esprit_dev )
+add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE})
+target_include_directories(libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(libswindle PRIVATE ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config)
+target_include_directories(libswindle PRIVATE ${myB}/private_include)
+target_include_directories(libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS})
+target_link_libraries(libswindle PUBLIC esprit_dev)
 #
-#
-#
-IF(USE_RP2040 OR USE_RP2350)
+if(USE_RP2040 OR USE_RP2350)
   include_directories(src/platform/rp2040)
   add_subdirectory(src/platform/rp2040)
-ELSEIF("${LN_MCU}" STREQUAL "ESP32")
+elseif("${LN_MCU}" STREQUAL "ESP32")
   set(ESP32_IMPL esp32_fastgpio)
-  #set(ESP32_IMPL esp32_gpio)
-  #set(ESP32_IMPL esp32_spi)
+  # set(ESP32_IMPL esp32_gpio) set(ESP32_IMPL esp32_spi)
   include_directories(src/platform/esp32_pinout)
   include_directories(src/platform/${ESP32_IMPL})
   add_subdirectory(src/platform/${ESP32_IMPL})
   if("${LN_ESP_BOARD}" STREQUAL "mini")
-    target_compile_definitions( swindleio_impl PRIVATE "-DLN_ESP_MINI=1")
+    target_compile_definitions(swindleio_impl PRIVATE "-DLN_ESP_MINI=1")
     message(STATUS "Using ESP32S3 Mini pinout")
   else()
-    target_compile_definitions( swindleio_impl PRIVATE "-DLN_ESP_WROOM=1")
+    target_compile_definitions(swindleio_impl PRIVATE "-DLN_ESP_WROOM=1")
     message(STATUS "Using ESP32S3 WROOM pinout")
   endif()
-ELSE()
+else()
   include_directories(src/platform/ln)
   add_subdirectory(src/platform/ln)
-ENDIF()
+endif()
 
-TARGET_LINK_LIBRARIES( libswindle PUBLIC swindleio_impl )
-IF(USE_GD32F3)
-  TARGET_COMPILE_DEFINITIONS( libswindle PUBLIC  USE_GD32F303)
-ENDIF()
+target_link_libraries(libswindle PUBLIC swindleio_impl)
+if(USE_GD32F3)
+  target_compile_definitions(libswindle PUBLIC USE_GD32F303)
+endif()
 
-#---------
-#
+# ---------
 #
 # ===========================================================================================

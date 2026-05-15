@@ -1,18 +1,25 @@
-SET(S ${BMP}/src CACHE INTERNAL "")
-SET(T ${BMP}/src/target CACHE INTERNAL "")
-SET(P ${BMP}/src/platforms CACHE INTERNAL "")
-SET(myB ${CMAKE_CURRENT_SOURCE_DIR}/ CACHE INTERNAL "")
-SET(B ${myB}/src CACHE INTERNAL "")
-SET(BMP_EXTRA  ${B}/../../blackmagic_addon/)
-#
+set(S
+    ${BMP}/src
+    CACHE INTERNAL "")
+set(T
+    ${BMP}/src/target
+    CACHE INTERNAL "")
+set(P
+    ${BMP}/src/platforms
+    CACHE INTERNAL "")
+set(myB
+    ${CMAKE_CURRENT_SOURCE_DIR}/
+    CACHE INTERNAL "")
+set(B
+    ${myB}/src
+    CACHE INTERNAL "")
+set(BMP_EXTRA ${B}/../../blackmagic_addon/)
 #
 include(./boards.cmake)
-GENERATE_BOARD_STUB()
-OPTION(SWINDLE_HOSTED  "Enable Hosted mode" OFF)
-IF (SWINDLE_HOSTED)
+generate_board_stub()
+option(SWINDLE_HOSTED "Enable Hosted mode" OFF)
+if(SWINDLE_HOSTED)
   include(./swindle_hosted.cmake)
-ELSE()
+else()
   include(./swindle_target.cmake)
-ENDIF()
-
-
+endif()

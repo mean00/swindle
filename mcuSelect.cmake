@@ -1,105 +1,296 @@
 # We ony enable usb for arm and non small footprint
-IF(NOT DEFINED LN_ARCH)
-  IF(USE_CH32V3x) # RISCV
-    IF(LN_ENABLE_ETH)
-      SET(LN_ENABLED_BOARDS CH32F1 RP2040 RP2350 STM32F1  NRF51 NRF91 STM32F4 STM32G0 STM32H7 STM32H5 STM32L4 CACHE INTERNAL "")
-    ELSE()
-      SET(LN_ENABLED_BOARDS CH32F1 RP2040 RP2350 STM32F1  NRF51 NRF91 LPC11XX LPC15XX LPC17XX STM32F4 STM32G0 STM32H7 STM32H5   STM32L4 CACHE INTERNAL "")
-    ENDIF()
-    # try without crystal...
-    #SET(LN_USE_INTERNAL_CLOCK True        CACHE INTERNAL "")
-    #SET(LN_MCU_SPEED          48000000    CACHE INTERNAL "") # 96 Mhz
-    #SET(LN_MCU_SPEED          96000000    CACHE INTERNAL "") # 96 Mhz
-    #SET(LN_MCU_SPEED          96000000   CACHE INTERNAL "") # 144 Mhz
-    SET(LN_MCU_SPEED          144000000   CACHE INTERNAL "") # 144 Mhz
-    SET(LN_ARCH "RISCV"                   CACHE INTERNAL "")
-    SET(LN_MCU  "CH32V3x"                 CACHE INTERNAL "")
-    SET(LN_MCU_RAM_SIZE       64          CACHE INTERNAL "")
-    SET(LN_MCU_FLASH_SIZE     256         CACHE INTERNAL "")
-    IF(LN_ENABLE_ETH)
-      SET(LN_MCU_STATIC_RAM     42         CACHE INTERNAL "")
-      SET(LN_BOOTLOADER_SIZE    0          CACHE INTERNAL "")
-    ELSE()
-      SET(LN_MCU_STATIC_RAM     13          CACHE INTERNAL "")
-      SET(LN_BOOTLOADER_SIZE    16          CACHE INTERNAL "") # 16
-    ENDIF()
-    SET(LN_SPEC               "picolibc"  CACHE INTERNAL "") # if not set we use nano
-    SET(LN_USB_NB_CDC         3           CACHE INTERNAL "") # 2 CDC interfaces
-    SET(LN_MCU_EEPROM_SIZE    1           CACHE INTERNAL "")
-    IF(SWINDLE_USE_CH32V208)
-      SET(LN_MCU_XTAL_CLOCK    25           CACHE INTERNAL "")
-    ENDIF()
-    SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
-  ELSE()
-    IF(USE_GD32F3)
-      SET(LN_ENABLED_BOARDS CH32F1 RP2040 RP2350 STM32F1  NRF51 NRF91 LPC11XX LPC15XX LPC17XX STM32F4 STM32G0 STM32H7 STM32H5   STM32L4 CACHE INTERNAL "")
-      SET(LN_ARCH            "ARM" CACHE INTERNAL "")
-      SET(LN_MCU             "M4"  CACHE INTERNAL "")
-      SET(LN_MCU_FLASH_SIZE  256   CACHE INTERNAL "")
-      SET(LN_MCU_RAM_SIZE    39    CACHE INTERNAL "")
-      SET(LN_MCU_STATIC_RAM  9     CACHE INTERNAL "")
-      #SET(LN_MCU_SPEED 72000000    CACHE INTERNAL "") #=> ok
-      SET(LN_MCU_SPEED 96000000    CACHE INTERNAL "") #=> ok
-      SET(LN_USB_NB_CDC 2 CACHE INTERNAL "")
+if(NOT DEFINED LN_ARCH)
+  if(USE_CH32V3x) # RISCV
+    if(LN_ENABLE_ETH)
+      set(LN_ENABLED_BOARDS
+          CH32F1
+          RP2040
+          RP2350
+          STM32F1
+          NRF51
+          NRF91
+          STM32F4
+          STM32G0
+          STM32H7
+          STM32H5
+          STM32L4
+          CACHE INTERNAL "")
+    else()
+      set(LN_ENABLED_BOARDS
+          CH32F1
+          RP2040
+          RP2350
+          STM32F1
+          NRF51
+          NRF91
+          LPC11XX
+          LPC15XX
+          LPC17XX
+          STM32F4
+          STM32G0
+          STM32H7
+          STM32H5
+          STM32L4
+          CACHE INTERNAL "")
+    endif()
+    # try without crystal... SET(LN_USE_INTERNAL_CLOCK True        CACHE INTERNAL "") SET(LN_MCU_SPEED          48000000
+    # CACHE INTERNAL "") # 96 Mhz SET(LN_MCU_SPEED          96000000    CACHE INTERNAL "") # 96 Mhz SET(LN_MCU_SPEED
+    # 96000000   CACHE INTERNAL "") # 144 Mhz
+    set(LN_MCU_SPEED
+        144000000
+        CACHE INTERNAL "") # 144 Mhz
+    set(LN_ARCH
+        "RISCV"
+        CACHE INTERNAL "")
+    set(LN_MCU
+        "CH32V3x"
+        CACHE INTERNAL "")
+    set(LN_MCU_RAM_SIZE
+        64
+        CACHE INTERNAL "")
+    set(LN_MCU_FLASH_SIZE
+        256
+        CACHE INTERNAL "")
+    if(LN_ENABLE_ETH)
+      set(LN_MCU_STATIC_RAM
+          42
+          CACHE INTERNAL "")
+      set(LN_BOOTLOADER_SIZE
+          0
+          CACHE INTERNAL "")
+    else()
+      set(LN_MCU_STATIC_RAM
+          13
+          CACHE INTERNAL "")
+      set(LN_BOOTLOADER_SIZE
+          16
+          CACHE INTERNAL "") # 16
+    endif()
+    set(LN_SPEC
+        "picolibc"
+        CACHE INTERNAL "") # if not set we use nano
+    set(LN_USB_NB_CDC
+        3
+        CACHE INTERNAL "") # 2 CDC interfaces
+    set(LN_MCU_EEPROM_SIZE
+        1
+        CACHE INTERNAL "")
+    if(SWINDLE_USE_CH32V208)
+      set(LN_MCU_XTAL_CLOCK
+          25
+          CACHE INTERNAL "")
+    endif()
+    set(LN_SPEC
+        "picolibc"
+        CACHE INTERNAL "") # if not set we use nano
+  else()
+    if(USE_GD32F3)
+      set(LN_ENABLED_BOARDS
+          CH32F1
+          RP2040
+          RP2350
+          STM32F1
+          NRF51
+          NRF91
+          LPC11XX
+          LPC15XX
+          LPC17XX
+          STM32F4
+          STM32G0
+          STM32H7
+          STM32H5
+          STM32L4
+          CACHE INTERNAL "")
+      set(LN_ARCH
+          "ARM"
+          CACHE INTERNAL "")
+      set(LN_MCU
+          "M4"
+          CACHE INTERNAL "")
+      set(LN_MCU_FLASH_SIZE
+          256
+          CACHE INTERNAL "")
+      set(LN_MCU_RAM_SIZE
+          39
+          CACHE INTERNAL "")
+      set(LN_MCU_STATIC_RAM
+          9
+          CACHE INTERNAL "")
+      # SET(LN_MCU_SPEED 72000000    CACHE INTERNAL "") #=> ok
+      set(LN_MCU_SPEED
+          96000000
+          CACHE INTERNAL "") # => ok
+      set(LN_USB_NB_CDC
+          2
+          CACHE INTERNAL "")
 
-      #      SET(LN_MCU_SPEED  72000000    CACHE INTERNAL "") #=> ok
-      SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
-      SET(LN_BOOTLOADER_SIZE 8     CACHE INTERNAL "")
-    ELSEIF(USE_RP2040)
-      SET(LN_ENABLED_BOARDS CH32F1 RP2040 RP2350 STM32F1  NRF51 NRF91 LPC11XX LPC15XX LPC17XX STM32F4 STM32G0 STM32H7 STM32H5   STM32L4 CACHE INTERNAL "")
-      SET(LN_ARCH            "ARM" CACHE INTERNAL "")
-      SET(LN_MCU             "RP2040"  CACHE INTERNAL "")
-      SET(LN_USB_NB_CDC 3 CACHE INTERNAL "") # 2 CDC interfaces
-      IF(USE_RP2040_PURE_RAM)
-        SET(LN_MCU_FLASH_SIZE  128   CACHE INTERNAL "")
-        SET(LN_MCU_RAM_SIZE    64    CACHE INTERNAL "")
-      ELSE()
-        SET(LN_MCU_RAM_SIZE    200    CACHE INTERNAL "")
-        SET(LN_MCU_FLASH_SIZE  2048   CACHE INTERNAL "")
-      ENDIF()
-      SET(LN_MCU_SPEED       125000000       CACHE INTERNAL "")
-      SET(LN_MCU_STATIC_RAM  10     CACHE INTERNAL "")
-      SET(LN_MCU_EEPROM_SIZE 2     CACHE INTERNAL "")
-      SET(LN_BOOTLOADER_SIZE 0     CACHE INTERNAL "")
-      SET(LN_SPEC            "picolibc"   CACHE INTERNAL "") # if not set we use nano
-    ELSEIF(USE_RP2350)
-      SET(LN_ENABLED_BOARDS CH32F1 RP2040 RP2350 STM32F1  NRF51 NRF91 LPC11XX LPC15XX LPC17XX STM32F4 STM32G0 STM32H7 STM32H5   STM32L4 CACHE INTERNAL "")
-      SET(LN_ARCH            "ARM" CACHE INTERNAL "")
-      SET(LN_MCU             "RP2350"  CACHE INTERNAL "")
-      SET(LN_USB_NB_CDC 3 CACHE INTERNAL "") # 2 CDC interfaces
-      IF(USE_RP2040_PURE_RAM)
-        SET(LN_MCU_FLASH_SIZE  300   CACHE INTERNAL "")
-        SET(LN_MCU_RAM_SIZE    200    CACHE INTERNAL "")
-      ELSE()
-        SET(LN_MCU_RAM_SIZE    500  CACHE INTERNAL "")
-        SET(LN_MCU_FLASH_SIZE  4096   CACHE INTERNAL "")
-      ENDIF()
-      SET(LN_MCU_SPEED       150000000       CACHE INTERNAL "")
-      SET(LN_MCU_STATIC_RAM  10     CACHE INTERNAL "")
-      SET(LN_MCU_EEPROM_SIZE 2     CACHE INTERNAL "")
-      SET(LN_BOOTLOADER_SIZE 0     CACHE INTERNAL "")
-      SET(LN_SPEC            "picolibc"   CACHE INTERNAL "") # if not set we use nano
+      # SET(LN_MCU_SPEED  72000000    CACHE INTERNAL "") #=> ok
+      set(LN_SPEC
+          "picolibc"
+          CACHE INTERNAL "") # if not set we use nano
+      set(LN_BOOTLOADER_SIZE
+          8
+          CACHE INTERNAL "")
+    elseif(USE_RP2040)
+      set(LN_ENABLED_BOARDS
+          CH32F1
+          RP2040
+          RP2350
+          STM32F1
+          NRF51
+          NRF91
+          LPC11XX
+          LPC15XX
+          LPC17XX
+          STM32F4
+          STM32G0
+          STM32H7
+          STM32H5
+          STM32L4
+          CACHE INTERNAL "")
+      set(LN_ARCH
+          "ARM"
+          CACHE INTERNAL "")
+      set(LN_MCU
+          "RP2040"
+          CACHE INTERNAL "")
+      set(LN_USB_NB_CDC
+          3
+          CACHE INTERNAL "") # 2 CDC interfaces
+      if(USE_RP2040_PURE_RAM)
+        set(LN_MCU_FLASH_SIZE
+            128
+            CACHE INTERNAL "")
+        set(LN_MCU_RAM_SIZE
+            64
+            CACHE INTERNAL "")
+      else()
+        set(LN_MCU_RAM_SIZE
+            200
+            CACHE INTERNAL "")
+        set(LN_MCU_FLASH_SIZE
+            2048
+            CACHE INTERNAL "")
+      endif()
+      set(LN_MCU_SPEED
+          125000000
+          CACHE INTERNAL "")
+      set(LN_MCU_STATIC_RAM
+          10
+          CACHE INTERNAL "")
+      set(LN_MCU_EEPROM_SIZE
+          2
+          CACHE INTERNAL "")
+      set(LN_BOOTLOADER_SIZE
+          0
+          CACHE INTERNAL "")
+      set(LN_SPEC
+          "picolibc"
+          CACHE INTERNAL "") # if not set we use nano
+    elseif(USE_RP2350)
+      set(LN_ENABLED_BOARDS
+          CH32F1
+          RP2040
+          RP2350
+          STM32F1
+          NRF51
+          NRF91
+          LPC11XX
+          LPC15XX
+          LPC17XX
+          STM32F4
+          STM32G0
+          STM32H7
+          STM32H5
+          STM32L4
+          CACHE INTERNAL "")
+      set(LN_ARCH
+          "ARM"
+          CACHE INTERNAL "")
+      set(LN_MCU
+          "RP2350"
+          CACHE INTERNAL "")
+      set(LN_USB_NB_CDC
+          3
+          CACHE INTERNAL "") # 2 CDC interfaces
+      if(USE_RP2040_PURE_RAM)
+        set(LN_MCU_FLASH_SIZE
+            300
+            CACHE INTERNAL "")
+        set(LN_MCU_RAM_SIZE
+            200
+            CACHE INTERNAL "")
+      else()
+        set(LN_MCU_RAM_SIZE
+            500
+            CACHE INTERNAL "")
+        set(LN_MCU_FLASH_SIZE
+            4096
+            CACHE INTERNAL "")
+      endif()
+      set(LN_MCU_SPEED
+          150000000
+          CACHE INTERNAL "")
+      set(LN_MCU_STATIC_RAM
+          10
+          CACHE INTERNAL "")
+      set(LN_MCU_EEPROM_SIZE
+          2
+          CACHE INTERNAL "")
+      set(LN_BOOTLOADER_SIZE
+          0
+          CACHE INTERNAL "")
+      set(LN_SPEC
+          "picolibc"
+          CACHE INTERNAL "") # if not set we use nano
 
-
-    ELSE() # Small bluepill style
-      SET(LN_ARCH            "ARM" CACHE INTERNAL "")
-      SET(LN_MCU             "M3"  CACHE INTERNAL "")
-      SET(LN_MCU_RAM_SIZE    20    CACHE INTERNAL "")
-      SET(LN_MCU_SPEED 72000000       CACHE INTERNAL "")
-      SET(LN_USB_NB_CDC 2 CACHE INTERNAL "") # 2 CDC interfaces
-      SET(LN_ENABLED_BOARDS   CH32F1 RP2040 RP2350 STM32F1 CACHE INTERNAL "")
-      IF(USE_SMALLFOOTPRINT)
-        SET(LN_MCU_STATIC_RAM  3    CACHE INTERNAL "")
-        SET(LN_MCU_FLASH_SIZE  64   CACHE INTERNAL "")
-        SET(LN_MCU_EEPROM_SIZE 2    CACHE INTERNAL "")
-      ELSE() # "Big" flash
-        SET(LN_MCU_STATIC_RAM  7     CACHE INTERNAL "")
-        SET(LN_MCU_FLASH_SIZE  188   CACHE INTERNAL "")
-        SET(LN_MCU_EEPROM_SIZE 2     CACHE INTERNAL "")
-        SET(LN_BOOTLOADER_SIZE 8     CACHE INTERNAL "")
-      ENDIF()
-      SET(LN_SPEC         "picolibc"   CACHE INTERNAL "") # if not set we use nano
-    ENDIF() # GD32F3
-  ENDIF() # CH32V3
-ENDIF(NOT DEFINED LN_ARCH)
-MESSAGE(STATUS "Architecture ${LN_ARCH}, MCU=${LN_MCU}")
+    else() # Small bluepill style
+      set(LN_ARCH
+          "ARM"
+          CACHE INTERNAL "")
+      set(LN_MCU
+          "M3"
+          CACHE INTERNAL "")
+      set(LN_MCU_RAM_SIZE
+          20
+          CACHE INTERNAL "")
+      set(LN_MCU_SPEED
+          72000000
+          CACHE INTERNAL "")
+      set(LN_USB_NB_CDC
+          2
+          CACHE INTERNAL "") # 2 CDC interfaces
+      set(LN_ENABLED_BOARDS
+          CH32F1 RP2040 RP2350 STM32F1
+          CACHE INTERNAL "")
+      if(USE_SMALLFOOTPRINT)
+        set(LN_MCU_STATIC_RAM
+            3
+            CACHE INTERNAL "")
+        set(LN_MCU_FLASH_SIZE
+            64
+            CACHE INTERNAL "")
+        set(LN_MCU_EEPROM_SIZE
+            2
+            CACHE INTERNAL "")
+      else() # "Big" flash
+        set(LN_MCU_STATIC_RAM
+            7
+            CACHE INTERNAL "")
+        set(LN_MCU_FLASH_SIZE
+            188
+            CACHE INTERNAL "")
+        set(LN_MCU_EEPROM_SIZE
+            2
+            CACHE INTERNAL "")
+        set(LN_BOOTLOADER_SIZE
+            8
+            CACHE INTERNAL "")
+      endif()
+      set(LN_SPEC
+          "picolibc"
+          CACHE INTERNAL "") # if not set we use nano
+    endif() # GD32F3
+  endif() # CH32V3
+endif(NOT DEFINED LN_ARCH)
+message(STATUS "Architecture ${LN_ARCH}, MCU=${LN_MCU}")
