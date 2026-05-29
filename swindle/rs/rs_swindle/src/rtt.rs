@@ -8,6 +8,7 @@ use crate::setting_keys::{RTT_PERIOD_KEY, RTT_SETTING_KEY};
 use crate::settings;
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::tick_count;
+use core::mem::MaybeUninit;
 crate::gdb_print_init!();
 crate::setup_log!(false);
 
@@ -22,7 +23,7 @@ unsafe extern "C" {
     fn swindle_rtt_room_available_to_host(index: u32) -> u32;
 }
 pub extern "C" fn swindle_rtt_room_available_to_device(index: u32) -> u32 {
-    unsafe { segger_rtt.write_room[index as usize] }
+    swindle_get_rtt().write_room[index as usize]
 }
 
 #[repr(C)]
@@ -198,19 +199,28 @@ struct SeggerRTT {
     last_time: u32,
     write_room: [u32; 4],
 }
+// SAFETY: SeggerRTT is only used in a single-threaded debugger context.
+unsafe impl Sync for SeggerRTT {}
 static mut RTT_BUFFER: [u32; TRANSFER_BUFFER_SIZE / 4 + 1] = [0; TRANSFER_BUFFER_SIZE / 4 + 1];
 fn get_transfer_buffer() -> *mut u8 {
     unsafe { &mut RTT_BUFFER as *mut _ as *mut u8 }
 }
 
-static mut segger_rtt: SeggerRTT = SeggerRTT {
-    enabled: false,
-    last_time: 0,
-    write_room: [0, 0, 0, 0],
-};
 //
 fn swindle_get_rtt() -> &'static mut SeggerRTT {
-    unsafe { &mut segger_rtt }
+    static mut RTT: MaybeUninit<SeggerRTT> = MaybeUninit::uninit();
+    static mut RTT_INIT: bool = false;
+    unsafe {
+        if !RTT_INIT {
+            RTT.write(SeggerRTT {
+                enabled: false,
+                last_time: 0,
+                write_room: [0, 0, 0, 0],
+            });
+            RTT_INIT = true;
+        }
+        RTT.assume_init_mut()
+    }
 }
 /*
 *
@@ -219,9 +229,7 @@ fn swindle_get_rtt() -> &'static mut SeggerRTT {
 pub fn swindle_init_rtt() {}
 #[unsafe(no_mangle)]
 pub fn swindle_reinit_rtt() {
-    unsafe {
-        segger_rtt.write_room = [0, 0, 0, 0];
-    }
+    swindle_get_rtt().write_room = [0, 0, 0, 0];
 }
 
 /*
@@ -237,7 +245,7 @@ pub fn swindle_rtt_enabled() -> bool {
 */
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_run_rtt() -> bool {
-    unsafe { segger_rtt.process() }
+    swindle_get_rtt().process()
 }
 
 #[unsafe(no_mangle)]
@@ -261,19 +269,21 @@ pub extern "C" fn swindle_enable_rtt(enable: bool) {
     // For the moment we use a very simple scheme
     // No need to stop for all cortexM
     // stop for all others
-    unsafe {
-        if enable {
+    if enable {
+        unsafe {
             need_stop_flag = !(crate::bmp::bmp_get_arch() == crate::bmp::bmp_arch::BMP_ARCH_ARM);
-            if need_stop_flag {
-                gdb_print!("RTT needs to stop the CPU to read \n");
-            } else {
-                gdb_print!("RTT does NOT need to stop the CPU to read \n");
-            }
+        }
+        if unsafe { need_stop_flag } {
+            gdb_print!("RTT needs to stop the CPU to read \n");
         } else {
+            gdb_print!("RTT does NOT need to stop the CPU to read \n");
+        }
+    } else {
+        unsafe {
             need_stop_flag = true;
         }
-        segger_rtt.enabled = enable;
     }
+    swindle_get_rtt().enabled = enable;
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_rtt_write_available(channel: u32) -> u32 {

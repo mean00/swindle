@@ -4,8 +4,8 @@
  *
  */
 use arraystring::{ArrayString, typenum::U32};
-use core::ptr::addr_of_mut;
 use hashbrown::HashMap;
+use core::mem::MaybeUninit;
 const SW_TOKEN_SIZE: usize = 32;
 type token = ArrayString<U32>;
 //
@@ -20,6 +20,8 @@ crate::gdb_print_init!();
 struct swindle_settings {
     hash: HashMap<token, u32>,
 }
+// SAFETY: swindle_settings is only used in a single-threaded debugger context.
+unsafe impl Sync for swindle_settings {}
 /*
  */
 impl swindle_settings {
@@ -41,19 +43,15 @@ impl swindle_settings {
 
 //--
 
-static mut my_settings: Option<swindle_settings> = None;
-/*
- *
- */
 fn get_settings() -> &'static mut swindle_settings {
+    static mut SETTINGS: MaybeUninit<swindle_settings> = MaybeUninit::uninit();
+    static mut SETTINGS_INIT: bool = false;
     unsafe {
-        if my_settings.is_none() {
-            my_settings = Some(swindle_settings::new());
+        if !SETTINGS_INIT {
+            SETTINGS.write(swindle_settings::new());
+            SETTINGS_INIT = true;
         }
-        match &mut *addr_of_mut!(my_settings) {
-            Some(x) => x,
-            None => panic!("hashap"),
-        }
+        SETTINGS.assume_init_mut()
     }
 }
 /*
@@ -123,9 +121,8 @@ pub fn get_or_default(k: &str, def: u32) -> u32 {
  *
  */
 pub fn init_settings() {
-    unsafe {
-        my_settings = Some(swindle_settings::new());
-    }
+    // OnceLock initialises lazily on first access; this call forces it.
+    get_settings();
 }
 // C interface
 

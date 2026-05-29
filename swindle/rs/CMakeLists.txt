@@ -8,7 +8,7 @@ if(SWINDLE_HOSTED)
 else()
   message(STATUS "Rust swindle in target mode")
   set(LN_LTO_RUST_FLAGS ${LN_LTO_RUST_FLAGS} -C opt-level=s) # we try to make arm code smaller, we dont care for hosted
-  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml)
+  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native)
   corrosion_add_target_rustflags(rsbmp_wrapper --cfg feature="native")
   if(SWINDLE_USE_NETWORK)
     corrosion_add_target_rustflags(rsbmp_wrapper --cfg feature="network")

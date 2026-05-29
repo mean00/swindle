@@ -4,6 +4,7 @@
  *
  */
 use alloc::vec::Vec;
+use core::mem::MaybeUninit;
 crate::setup_log!(false);
 //use crate::gdb_print;
 //use crate::{bmplog, bmpwarning};
@@ -18,6 +19,8 @@ pub struct hashed_tcb {
     list: Vec<tcb_to_tid>,
     index: u32,
 }
+// SAFETY: hashed_tcb is only used in a single-threaded debugger context.
+unsafe impl Sync for hashed_tcb {}
 /*
  *
  */
@@ -60,13 +63,15 @@ impl hashed_tcb {
 
 //--
 
-static mut tcb_hashmap: Option<hashed_tcb> = None;
-/*
- *
- */
 pub fn get_hashtcb() -> &'static mut hashed_tcb {
+    static mut HASH: MaybeUninit<hashed_tcb> = MaybeUninit::uninit();
+    static mut HASH_INIT: bool = false;
     unsafe {
-        tcb_hashmap.get_or_insert_with(hashed_tcb::new)
+        if !HASH_INIT {
+            HASH.write(hashed_tcb::new());
+            HASH_INIT = true;
+        }
+        HASH.assume_init_mut()
     }
 }
 /*

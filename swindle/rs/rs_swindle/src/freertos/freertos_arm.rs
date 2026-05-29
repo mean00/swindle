@@ -14,6 +14,7 @@ use crate::freertos::freertos_riscv_rv32::freertos_switch_handler_rv32;
 use crate::freertos::freertos_symbols::get_symbols;
 use crate::freertos::freertos_trait::freertos_switch_handler;
 use alloc::boxed::Box;
+use core::mem::MaybeUninit;
 
 const ARM_PARTNO_MASK: u32 = 0xfff0;
 
@@ -29,7 +30,21 @@ pub struct FreeRTOS_switcher {
     pub switcher: Option<Box<dyn freertos_switch_handler>>,
 }
 
-static mut FreeRTOS_switcher_internal: FreeRTOS_switcher = FreeRTOS_switcher { switcher: None };
+// SAFETY: FreeRTOS_switcher is only used in a single-threaded debugger context.
+unsafe impl Send for FreeRTOS_switcher {}
+unsafe impl Sync for FreeRTOS_switcher {}
+
+fn get_switcher() -> &'static mut FreeRTOS_switcher {
+    static mut SWITCHER: MaybeUninit<FreeRTOS_switcher> = MaybeUninit::uninit();
+    static mut SWITCHER_INIT: bool = false;
+    unsafe {
+        if !SWITCHER_INIT {
+            SWITCHER.write(FreeRTOS_switcher { switcher: None });
+            SWITCHER_INIT = true;
+        }
+        SWITCHER.assume_init_mut()
+    }
+}
 /*
  *
  */
@@ -54,11 +69,10 @@ fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> 
  * returns the old TCB new stack value
  */
 pub fn freertos_switch_task_action_arm(new_stack: u32) -> u32 {
-    unsafe {
-        match &mut FreeRTOS_switcher_internal.switcher {
-            Some(e) => freertos_switch(e.as_mut(), new_stack),
-            None => panic!("inconsistent"),
-        }
+    let switcher = get_switcher();
+    match &mut switcher.switcher {
+        Some(e) => freertos_switch(e.as_mut(), new_stack),
+        None => panic!("inconsistent"),
     }
 }
 
@@ -81,31 +95,27 @@ pub fn freertos_attach_arm(cpu: u32) -> bool {
             }
         };
     }
-    unsafe {
-        let switcher: Box<dyn freertos_switch_handler> = match core {
-            LN_MCU_CORE::LN_MCU_CM0 => Box::new(freertos_switch_handler_m3::new()),
-            LN_MCU_CORE::LN_MCU_CM3 => Box::new(freertos_switch_handler_m3::new()),
-            LN_MCU_CORE::LN_MCU_CM4 => Box::new(freertos_switch_handler_m3::new()),
-            LN_MCU_CORE::LN_MCU_CM33 => Box::new(freertos_switch_handler_m33::new()),
-            LN_MCU_CORE::LN_MCU_RV32 => Box::new(freertos_switch_handler_rv32::new()),
-            _ => {
-                return false;
-            }
-        };
-        FreeRTOS_switcher_internal.switcher = Some(switcher);
-    } // unsafe
+    let switcher: Box<dyn freertos_switch_handler> = match core {
+        LN_MCU_CORE::LN_MCU_CM0 => Box::new(freertos_switch_handler_m3::new()),
+        LN_MCU_CORE::LN_MCU_CM3 => Box::new(freertos_switch_handler_m3::new()),
+        LN_MCU_CORE::LN_MCU_CM4 => Box::new(freertos_switch_handler_m3::new()),
+        LN_MCU_CORE::LN_MCU_CM33 => Box::new(freertos_switch_handler_m33::new()),
+        LN_MCU_CORE::LN_MCU_RV32 => Box::new(freertos_switch_handler_rv32::new()),
+        _ => {
+            return false;
+        }
+    };
+    get_switcher().switcher = Some(switcher);
     true
 }
 
 pub fn freertos_can_switch_arm() -> bool {
-    unsafe { FreeRTOS_switcher_internal.switcher.is_some() }
+    get_switcher().switcher.is_some()
 }
 
 /*
  *
  */
 pub fn freertos_detach_arm() {
-    unsafe {
-        FreeRTOS_switcher_internal.switcher = None;
-    }
+    get_switcher().switcher = None;
 }

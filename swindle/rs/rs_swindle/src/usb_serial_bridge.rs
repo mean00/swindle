@@ -53,7 +53,7 @@ impl CdcEventHandler for BridgeCdcHandler {
                 // DTR acts funky, so we don't clear connected
             }
             CdcEvent::SetSpeed => {
-                b.serial.set_speed(payload as i32);
+                b.serial.set_speed(payload);
             }
         }
     }
@@ -125,7 +125,7 @@ impl UsbSerialBridge {
     /// Create and initialise the USB↔UART bridge.
     ///
     /// Must be called once before any other function.
-    pub fn init(usb_instance: u32, serial_instance: i32, baud: i32) {
+    pub fn init(usb_instance: u32, serial_instance: u32, baud: u32) {
         if BRIDGE_INITIALIZED.load(Ordering::Relaxed) {
             return;
         }
@@ -134,7 +134,7 @@ impl UsbSerialBridge {
         unsafe {
             BRIDGE.write(UsbSerialBridge {
                 cdc: core::mem::zeroed(),
-                serial: SerialRxTx::new(serial_instance, BRIDGE_BUFFER_SIZE as i32, true),
+                serial: SerialRxTx::new(serial_instance, BRIDGE_BUFFER_SIZE as u32, true),
                 event_group: EventGroup::new(),
                 connected: AtomicBool::new(false),
                 usb2serial: Pump::new(),
@@ -256,7 +256,7 @@ impl UsbSerialBridge {
                             nb,
                         );
                     }
-                    this.serial.consume(nb as i32);
+                    this.serial.consume(nb as u32);
                     this.serial2usb.txing = true;
                     this.serial2usb.dex = 0;
                     this.serial2usb.limit = nb;
@@ -297,7 +297,7 @@ impl UsbSerialBridge {
 
 /// Initialise the USB↔UART bridge (called from C++ `serialInit` equivalent).
 #[unsafe(no_mangle)]
-pub extern "C" fn rn_serial_bridge_init(usb_instance: u32, serial_instance: i32, baud: i32) {
+pub extern "C" fn rn_serial_bridge_init(usb_instance: u32, serial_instance: u32, baud: u32) {
     UsbSerialBridge::init(usb_instance, serial_instance, baud);
 }
 
@@ -310,7 +310,7 @@ pub extern "C" fn rn_serial_bridge_task() {
 
 /// Write data to the bridge CDC (used for log/RTT redirect on 2-CDC builds).
 #[unsafe(no_mangle)]
-pub extern "C" fn rn_serial_bridge_write(n: i32, data: *const u8) {
+pub extern "C" fn rn_serial_bridge_write(n: u32, data: *const u8) {
     if n <= 0 || !BRIDGE_INITIALIZED.load(Ordering::Relaxed) {
         return;
     }

@@ -24,6 +24,7 @@ mod rn_bmp_cmd_c;
 mod rtt_consts;
 mod setting_keys;
 mod settings;
+mod sync_cell;
 //mod rpc;
 #[cfg(not(feature = "hosted"))]
 mod cdc_logger;

@@ -5,6 +5,7 @@ edition.workspace = true
 
 [features]
 std = ["rsbmp/std"]
+fake_std = ["rsbmp/fake_std"]
 native = ["rsbmp/native"]
 hosted = ["rsbmp/hosted"]
 rp2040 = ["rsbmp/rp2040"]

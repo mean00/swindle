@@ -1,6 +1,6 @@
 use crate::bmp;
 use crate::parsing_util;
-use core::ptr::addr_of_mut;
+use core::mem::MaybeUninit;
 
 use crate::freertos::LN_MCU_CORE;
 
@@ -62,20 +62,26 @@ pub struct FreeRTOSSymbols {
     pub mcu_handler: LN_MCU_CORE,
     pub debug_offsets: Option<FreeRTOSDebugOffsets>,
 }
+// SAFETY: FreeRTOSSymbols is only used in a single-threaded debugger context.
+unsafe impl Sync for FreeRTOSSymbols {}
 
-static mut freeRtosSymbols_internal: FreeRTOSSymbols = FreeRTOSSymbols {
-    running: false,
-    valid: false,
-    addresses: [None; NB_FREERTOS_SYMBOLS],
-    cpuid: 0,
-    mcu_handler: LN_MCU_CORE::LN_MCU_NONE,
-    debug_offsets: None,
-};
-/*
- *
- */
 pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
-    unsafe { &mut *addr_of_mut!(freeRtosSymbols_internal) }
+    static mut SYMBOLS: MaybeUninit<FreeRTOSSymbols> = MaybeUninit::uninit();
+    static mut SYMBOLS_INIT: bool = false;
+    unsafe {
+        if !SYMBOLS_INIT {
+            SYMBOLS.write(FreeRTOSSymbols {
+                running: false,
+                valid: false,
+                addresses: [None; NB_FREERTOS_SYMBOLS],
+                cpuid: 0,
+                mcu_handler: LN_MCU_CORE::LN_MCU_NONE,
+                debug_offsets: None,
+            });
+            SYMBOLS_INIT = true;
+        }
+        SYMBOLS.assume_init_mut()
+    }
 }
 /*
  * \brief : clear the loaded symbols

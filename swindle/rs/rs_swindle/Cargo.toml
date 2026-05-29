@@ -14,6 +14,8 @@ network = []
 
 cdc = ["rust_esprit/cdc"]
 
+fake_std = ["rust_esprit/fake_std"]
+
 rp2040 = ["rust_esprit/rp2040"]
 esp32 = ["rust_esprit/esp32"]
 use_esprit = ["dep:rust_esprit"]
