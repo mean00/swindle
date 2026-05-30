@@ -117,9 +117,7 @@ fn rngdb_send_data_u8(data: &[u8]) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     let mut data_as_slice: &[u8];
-    unsafe {
-        data_as_slice = core::slice::from_raw_parts(d, l);
-    }
+    data_as_slice = core::slice::from_raw_parts(d, l);
     // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
     // i'm not sure what happens escaping-wise if we let the parser handle it
     if run::target_is_running() {
@@ -166,9 +164,7 @@ pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             rngdb_send_data_u8(&[CHAR_ACK]);
                             rngdb_output_flush();
                             let as_string: &str;
-                            unsafe {
-                                as_string = core::str::from_utf8_unchecked(s);
-                            }
+                            as_string = core::str::from_utf8_unchecked(s);
                             bmplog!("Exec..:");
                             bmplog!(as_string);
                             bmplog!("\n");
