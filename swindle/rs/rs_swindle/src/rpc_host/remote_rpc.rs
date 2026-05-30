@@ -100,7 +100,7 @@ pub fn remote_ch32_riscv_dmi_read_rs(address: u32, value: &mut u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_READ]);
-    e.add_u32_le(address);
+    e.add_u8_hex(address);
     e.end();
     // now get the reply
     let reply = remote_get_reply();
@@ -119,7 +119,7 @@ pub fn remote_ch32_riscv_dmi_write_rs(address: u32, value: u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_WRITE]);
-    e.add_u32_le(address);
+    e.add_u8_hex(address);
     e.add_u32_le(value);
     e.end();
     // now get the reply
@@ -153,7 +153,7 @@ pub fn remote_adiv5_swd_write_no_check_rs(addr: u16, data: u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_WRITE]);
-    e.add_u32_le(addr as u32);
+    e.add_u16_le(addr as u32);
     e.add_u32_le(data);
     e.end();
     // now get the reply
@@ -187,7 +187,7 @@ pub fn remote_adiv5_swd_read_no_check_rs(addr: u16) -> u32 {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_READ]);
-    e.add_u32_le(addr as u32);
+    e.add_u16_le(addr as u32);
     e.end();
     // now get the reply
     let reply = remote_get_reply();
@@ -208,8 +208,8 @@ pub fn remote_adiv5_swd_raw_access_rs(rnw: u8, addr: u16, value: u32, fault: &mu
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_LOWLEVEL]);
-    e.add_u32_le(rnw as u32);
-    e.add_u32_le(addr as u32);
+    e.add_u8_hex(rnw as u32);
+    e.add_u16_le(addr as u32);
     e.add_u32_le(value);
     e.end();
     // now get the reply

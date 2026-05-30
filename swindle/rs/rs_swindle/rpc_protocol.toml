@@ -1,0 +1,344 @@
+# ============================================================================
+# swindle RPC Protocol Definition
+# ============================================================================
+# Single source of truth for the probe↔host RPC exchange.
+# The generator (generate_rpc.py) reads this and produces:
+#   - rpc_common_generated.rs  (constants + backward-compat aliases)
+#   - rpc_target_generated.rs  (target-side dispatch)
+#   - rpc_host_generated.rs    (host-side client callers)
+#
+# Wire format:
+#   [class_byte][cmd_byte][hex_encoded_params...]
+#   Reply: &K[hex_encoded_data]  (OK) or &E[hex_encoded_error] (error)
+#
+# All integer params are ASCII hex-encoded on the wire.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# GEN — Generic probe operations
+# ---------------------------------------------------------------------------
+[class.GEN]
+id = "G"
+handler = "rpc_gen_impl"
+description = "Generic probe operations (voltage, reset, frequency, pins)"
+
+[class.GEN.command.START]
+id = "A"
+old_name = "RPC_START"
+description = "Start session"
+reply = { type = "string", fixed = "\"LNBMP\"" }
+
+[class.GEN.command.VOLTAGE]
+id = "V"
+old_name = "RPC_VOLTAGE"
+description = "Read target voltage"
+reply = "string"
+
+[class.GEN.command.NRST_SET]
+id = "Z"
+old_name = "RPC_NRST_SET"
+description = "Set nRST pin"
+params = [
+  { name = "assert", type = "bool" }
+]
+reply = "ok"
+
+[class.GEN.command.NRST_GET]
+id = "z"
+old_name = "RPC_NRST_GET"
+description = "Get nRST pin state"
+reply = { type = "u8", doc = "0 = deasserted, 1 = asserted" }
+
+[class.GEN.command.TARGET_CLK_OE]
+id = "E"
+old_name = "RPC_TARGET_CLK_OE"
+description = "Enable/disable target clock output"
+params = [
+  { name = "enable", type = "bool" }
+]
+reply = "ok"
+
+[class.GEN.command.FREQ_SET]
+id = "F"
+old_name = "RPC_FREQ_SET"
+description = "Set SWD frequency"
+params = [
+  { name = "freq_khz", type = "u32", doc = "Frequency in kHz" }
+]
+reply = "ok"
+
+[class.GEN.command.FREQ_GET]
+id = "f"
+old_name = "RPC_FREQ_GET"
+description = "Get SWD frequency"
+reply = { type = "u32", doc = "Frequency in kHz" }
+
+[class.GEN.command.PWR_SET]
+id = "P"
+old_name = "RPC_PWR_SET"
+description = "Set target power"
+params = [
+  { name = "enabled", type = "bool" }
+]
+reply = "ok"
+
+[class.GEN.command.PWR_GET]
+id = "p"
+old_name = "RPC_PWR_GET"
+description = "Get target power state"
+reply = { type = "u8" }
+
+# ---------------------------------------------------------------------------
+# SWDP — SWD Protocol initialization
+# ---------------------------------------------------------------------------
+[class.SWDP]
+id = "S"
+handler = "rpc_swdp_impl"
+description = "SWD protocol initialization"
+
+[class.SWDP.command.INIT]
+id = "S"
+old_name = "RPC_INIT"
+description = "Initialize SWD"
+params = []
+reply = "ok"
+
+# ---------------------------------------------------------------------------
+# HL — High-Level protocol (version negotiation, capabilities)
+# ---------------------------------------------------------------------------
+[class.HL]
+id = "H"
+handler = "rpc_hl_impl"
+description = "High-level protocol (version negotiation, capabilities)"
+
+[class.HL.command.CHECK]
+id = "C"
+old_name = "RPC_HL_CHECK"
+description = "Get protocol version"
+reply = { type = "u8", doc = "Protocol version (currently 3)" }
+
+[class.HL.command.ACCEL]
+id = "A"
+old_name = "RPC_HL_ACCEL"
+description = "Get accelerated capabilities bitmap"
+reply = { type = "u8", doc = "Bitmap: bit0=ADIV5 supported" }
+
+# ---------------------------------------------------------------------------
+# RV — RISC-V Debug Module operations
+# ---------------------------------------------------------------------------
+[class.RV]
+id = "B"
+handler = "rpc_rv_impl"
+description = "RISC-V Debug Module operations"
+
+[class.RV.command.RESET]
+id = "S"
+old_name = "RPC_RV_RESET"
+description = "Reset RISC-V DM"
+params = []
+reply = { type = "u32", on_error = "ok_bool" }
+
+[class.RV.command.DM_READ]
+id = "r"
+old_name = "RPC_RV_DM_READ"
+description = "Read RISC-V DM register"
+params = [
+  { name = "address", type = "u8", doc = "DM register address (5 bits)" }
+]
+reply = { type = "u32_le", on_error = "ok_bool" }
+
+[class.RV.command.DM_WRITE]
+id = "w"
+old_name = "RPC_RV_DM_WRITE"
+description = "Write RISC-V DM register"
+params = [
+  { name = "address", type = "u8" },
+  { name = "value", type = "u32" }
+]
+reply = { type = "u32", on_error = "ok_bool" }
+
+# ---------------------------------------------------------------------------
+# LNADIV — Low-level ADIv5 SWD register access
+# ---------------------------------------------------------------------------
+[class.LNADIV]
+id = "L"
+handler = "rpc_lnadiv_impl"
+description = "Low-level ADIv5 SWD register access"
+
+[class.LNADIV.command.WRITE]
+id = "W"
+old_name = "RPC_LNADIV_WRITE"
+description = "Write SWD register (no fault check)"
+params = [
+  { name = "address", type = "u16" },
+  { name = "data", type = "u32" }
+]
+reply = { type = "u32", on_error = "ok_bool" }
+
+[class.LNADIV.command.READ]
+id = "R"
+old_name = "RPC_LNADIV_READ"
+description = "Read SWD register (no fault check)"
+params = [
+  { name = "address", type = "u16" }
+]
+reply = { type = "u32", on_error = "ok_bool" }
+
+[class.LNADIV.command.RAW_WRITE]
+id = "A"
+old_name = "RPC_LNADIV_RAW_WRITE"
+description = "Raw SWD bitbang write"
+params = [
+  { name = "tick_count", type = "u32", doc = "Number of clock cycles" },
+  { name = "value", type = "u32", doc = "Data to shift out" }
+]
+reply = { type = "u32", on_error = "ok_bool" }
+
+[class.LNADIV.command.LOWLEVEL]
+id = "B"
+old_name = "RPC_LNADIV_LOWLEVEL"
+description = "Full SWD access with fault reporting"
+params = [
+  { name = "rnw", type = "u8", doc = "0=write, 1=read" },
+  { name = "address", type = "u16" },
+  { name = "value", type = "u32" }
+]
+reply = { type = "compound", fields = [
+  { name = "response", type = "u32_le", doc = "Readback value" },
+  { name = "fault", type = "u32_le", doc = "Fault code" }
+] }
+
+# ---------------------------------------------------------------------------
+# ADIV5 — High-level ADIv5 DP/AP/memory access
+# ---------------------------------------------------------------------------
+[class.ADIV5]
+id = "A"
+handler = "rpc_adiv5_impl"
+description = "High-level ADIv5 DP/AP/memory access"
+
+[class.ADIV5.command.RAW_ACCESS_V3]
+id = "R"
+old_name = "RPC_RAW_ACCESS_V3"
+description = "DP raw access with fault reporting"
+params = [
+  { name = "device_index", type = "u8" },
+  { name = "ap_selection", type = "u8" },
+  { name = "address", type = "u16_be" },
+  { name = "value", type = "u32_be", optional = true, doc = "Write value (omit for read)" }
+]
+reply = { type = "compound", on_error = "fault", fields = [
+  { name = "outvalue", type = "u32_le" },
+  { name = "fault", type = "u32_le" }
+] }
+
+[class.ADIV5.command.DP_READ]
+id = "d"
+old_name = "RPC_DP_READ"
+description = "Read DP register"
+params = [
+  { name = "device_index", type = "u8" },
+  { name = "ap_selection", type = "u8" },
+  { name = "address", type = "u32_be" }
+]
+reply = { type = "u32_le", on_error = "fault" }
+
+[class.ADIV5.command.AP_READ]
+id = "a"
+old_name = "RPC_AP_READ"
+description = "Read AP register"
+params = [
+  { name = "device_index", type = "u8" },
+  { name = "ap_selection", type = "u8" },
+  { name = "address", type = "u16_be" }
+]
+reply = { type = "u32", on_error = "fault" }
+
+[class.ADIV5.command.AP_WRITE]
+id = "A"
+old_name = "RPC_AP_WRITE"
+description = "Write AP register"
+params = [
+  { name = "device_index", type = "u8" },
+  { name = "ap_selection", type = "u8" },
+  { name = "address", type = "u16_be" },
+  { name = "value", type = "u32_be" }
+]
+reply = { type = "u32", on_error = "fault", doc = "0 on success" }
+
+[class.ADIV5.command.MEM_READ]
+id = "m"
+old_name = "RPC_MEM_READ_V3"
+description = "Read memory block via AP"
+params = [
+  { name = "device_index", type = "u8" },
+  { name = "ap_selection", type = "u8" },
+  { name = "csw", type = "u32_be" },
+  { name = "address", type = "u32_be" },
+  { name = "length", type = "u32_be" }
+]
+reply = { type = "hex_block", max_length = 1024, on_error = "fault" }
+
+[class.ADIV5.command.MEM_WRITE]
+id = "M"
+old_name = "RPC_MEM_WRITE_V3"
+description = "Write memory block via AP"
+params = [
+  { name = "device_index", type = "u8" },
+  { name = "ap_selection", type = "u8" },
+  { name = "csw", type = "u32_be" },
+  { name = "align", type = "u8" },
+  { name = "address", type = "u32_be" },
+  { name = "length", type = "u32_be" },
+  { name = "data", type = "hex_block", doc = "Hex-encoded data bytes (must match length)" }
+]
+reply = { type = "u32", on_error = "fault", doc = "fault code" }
+
+# ---------------------------------------------------------------------------
+# SWINDLE — Swindle probe specific commands
+# ---------------------------------------------------------------------------
+[class.SWINDLE]
+id = "Z"
+handler = "rpc_swindle_impl"
+description = "Swindle probe specific commands"
+
+[class.SWINDLE.command.CRC32]
+id = "C"
+old_name = "RPC_SWINDLE_CRC32"
+description = "Compute CRC32 of target memory"
+params = [
+  { name = "address", type = "u32", doc = "Start address" },
+  { name = "length", type = "u32", doc = "Length in bytes" }
+]
+reply = { type = "u32_le", on_error = "ok_bool", doc = "CRC32 value" }
+
+[class.SWINDLE.command.GET_FQ]
+id = "G"
+old_name = "RPC_SWINDLE_GET_FQ"
+description = "Get current SWD frequency"
+params = []
+reply = { type = "u32_le", on_error = "ok_bool", doc = "Frequency in Hz" }
+
+[class.SWINDLE.command.SET_FQ]
+id = "S"
+old_name = "RPC_SWINDLE_SET_FQ"
+description = "Set SWD frequency"
+params = [
+  { name = "freq_hz", type = "u32" }
+]
+reply = "ok"
+
+# ---------------------------------------------------------------------------
+# JTAG — placeholder, currently unsupported
+# ---------------------------------------------------------------------------
+[class.JTAG]
+id = "J"
+handler = "rpc_jtag_impl"
+description = "JTAG operations (not yet implemented)"
+
+# ---------------------------------------------------------------------------
+# SPI — placeholder, currently unsupported
+# ---------------------------------------------------------------------------
+[class.SPI]
+id = "s"
+handler = "rpc_spi_impl"
+description = "SPI operations (not yet implemented)"

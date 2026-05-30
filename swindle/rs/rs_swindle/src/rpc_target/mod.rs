@@ -69,21 +69,21 @@ fn rpc_wrapper(input: &[u8]) -> bool {
 /*
  *
  */
-fn rpc_reply_ok(subcode: u8) {
+pub fn rpc_reply_ok(subcode: u8) {
     let mut reply = rpc_reply_encoder::new();
     reply.add_u8_wrapped(subcode);
     reply.end();
 }
 //
-fn rpc_reply32_le_ok(subcode: u32) {
+pub fn rpc_reply32_le_ok(subcode: u32) {
     let mut reply = rpc_reply_encoder::new();
     reply.add_u32_le_wrapped(subcode);
     reply.end();
 }
-fn rpc_reply_error(subcode: u8) {
+pub fn rpc_reply_error(subcode: u8) {
     rpc_reply_encoder::simple_error(subcode);
 }
-fn rpc_reply_full_error(complex: &[u8]) {
+pub fn rpc_reply_full_error(complex: &[u8]) {
     let mut reply = rpc_reply_encoder::new_error();
     for &i in complex {
         reply.add_u8_wrapped(i);
@@ -95,7 +95,7 @@ fn rpc_reply_full_error(complex: &[u8]) {
  *
  */
 #[unsafe(no_mangle)]
-fn rpc_reply_string(s: &[u8]) {
+pub fn rpc_reply_string(s: &[u8]) {
     let mut reply = rpc_reply_encoder::new();
     reply.add_string(s);
     reply.end();
@@ -103,7 +103,7 @@ fn rpc_reply_string(s: &[u8]) {
 /*
  *
  */
-fn rpc_reply_hex_string(code: u8, s: &[u8]) {
+pub fn rpc_reply_hex_string(code: u8, s: &[u8]) {
     rpc_message_out_no_flush(&[RPC_REMOTE_RESP, code]);
     encoder::hexify_and_raw_send(s);
     rpc_message_out(&[crate::packet_symbols::RPC_END]);
@@ -111,7 +111,7 @@ fn rpc_reply_hex_string(code: u8, s: &[u8]) {
 /*
  *
  */
-fn reply_adiv5_32(fault: i32, value: u32) {
+pub fn reply_adiv5_32(fault: i32, value: u32) {
     if fault != 0 {
         bmplog!("\tAdiv error   : 0x{:x}\n", fault as u32);
         // Assume it is a FALT rpc_reply_error(fault as u8);
@@ -134,7 +134,7 @@ fn reply_adiv5_32(fault: i32, value: u32) {
 /*
  *
  */
-fn rpc_reply_bool_32le(ok: bool, value: u32) {
+pub fn rpc_reply_bool_32le(ok: bool, value: u32) {
     if !ok {
         bmplog!("\rv error   \n");
         rpc_reply_error(1_u8);

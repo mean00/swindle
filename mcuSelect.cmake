@@ -114,7 +114,7 @@ if(NOT DEFINED LN_ARCH)
           39
           CACHE INTERNAL "")
       set(LN_MCU_STATIC_RAM
-          9
+          10
           CACHE INTERNAL "")
       # SET(LN_MCU_SPEED 72000000    CACHE INTERNAL "") #=> ok
       set(LN_MCU_SPEED

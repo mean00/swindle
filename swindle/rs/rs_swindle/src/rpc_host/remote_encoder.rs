@@ -116,6 +116,24 @@ impl rpc_encoder {
 
         self.add_u8(&tmp);
     }
+    pub fn add_u8_hex(&mut self, val: u32) {
+        let tmp = u8_to_ascii((val & 0xff) as u8);
+        self.add_u8(&tmp);
+    }
+    pub fn add_u16_le(&mut self, val: u32) {
+        let mut tmp: [u8; 4] = [0; 4];
+        let v = val as u16;
+        u8_to_ascii_to_buffer((v & 0xff) as u8, &mut tmp[0..2]);
+        u8_to_ascii_to_buffer(((v >> 8) & 0xff) as u8, &mut tmp[2..4]);
+        self.add_u8(&tmp);
+    }
+    pub fn add_u16_be(&mut self, val: u32) {
+        let mut tmp: [u8; 4] = [0; 4];
+        let v = val as u16;
+        u8_to_ascii_to_buffer(((v >> 8) & 0xff) as u8, &mut tmp[0..2]);
+        u8_to_ascii_to_buffer((v & 0xff) as u8, &mut tmp[2..4]);
+        self.add_u8(&tmp);
+    }
     pub fn simple_send_u32_le(val: u32) {
         let mut e = Self::new();
 

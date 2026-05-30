@@ -85,6 +85,13 @@ pub fn ascii_string_hex_to_u32_le(s: &str) -> u32 {
     u8s_string_to_u32_le(datain)
 }
 
+pub fn u8s_string_to_u8(datain: &[u8]) -> u8 {
+    if datain.len() < 2 {
+        return 0;
+    }
+    (_hex(datain[0]) << 4) + _hex(datain[1])
+}
+
 pub fn u8s_string_to_u32_le(datain: &[u8]) -> u32 {
     let mut val: u32 = 0;
     let mut shift = 0;

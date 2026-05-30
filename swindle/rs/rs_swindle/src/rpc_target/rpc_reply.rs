@@ -24,7 +24,8 @@ use crate::{rngdb_output_flush, rngdb_send_data, rngdb_send_data_u8};
 use core::ptr::addr_of_mut;
 
 // DF -- not thread safe, not re-entrant,ugly but simple
-const REPLY_TEMP_BUFFER_SIZE: usize = 32;
+// Large enough for RPC reply encoding + ADIV5 mem_read/write data buffers
+const REPLY_TEMP_BUFFER_SIZE: usize = 1024;
 static mut temp_buffer: [u8; REPLY_TEMP_BUFFER_SIZE] = [0; REPLY_TEMP_BUFFER_SIZE];
 
 crate::setup_log!(false);
@@ -38,7 +39,7 @@ pub struct rpc_reply_encoder {
 // this buffer is NOT thread safe and should be used
 // only in a single shot
 
-fn get_temp_buffer() -> &'static mut [u8] {
+pub(crate) fn get_temp_buffer() -> &'static mut [u8] {
     unsafe { &mut *addr_of_mut!(temp_buffer) }
 }
 //

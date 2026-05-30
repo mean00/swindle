@@ -33,6 +33,16 @@ pub mod rpc_common;
 pub mod rpc_host;
 #[cfg(not(feature = "hosted"))]
 pub mod rpc_target;
+// Auto-generated RPC modules
+#[allow(dead_code)]
+pub mod rpc_common_generated;
+#[cfg(feature = "hosted")]
+pub mod rpc_host_generated;
+#[cfg(not(feature = "hosted"))]
+pub mod rpc_target_generated;
+// RPC implementation modules (called by generated dispatch)
+#[cfg(not(feature = "hosted"))]
+pub mod rpc_target_impl;
 mod rtt;
 mod sw_breakpoints;
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
@@ -117,7 +127,9 @@ fn rngdb_send_data_u8(data: &[u8]) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
     let mut data_as_slice: &[u8];
-    data_as_slice = core::slice::from_raw_parts(d, l);
+    unsafe {
+        data_as_slice = core::slice::from_raw_parts(d, l);
+    }
     // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
     // i'm not sure what happens escaping-wise if we let the parser handle it
     if run::target_is_running() {
@@ -149,7 +161,7 @@ pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             //bmplog!("--> ACK\n");
                             //rngdb_send_data( CHAR_ACK );
                             #[cfg(not(feature = "hosted"))]
-                            rpc_target::rpc(s);
+                            rpc_target_generated::rpc_dispatch(s);
                             bmplog!("Rpc done\n");
                         }
                     }
@@ -164,7 +176,9 @@ pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
                             rngdb_send_data_u8(&[CHAR_ACK]);
                             rngdb_output_flush();
                             let as_string: &str;
-                            as_string = core::str::from_utf8_unchecked(s);
+                            unsafe {
+                                as_string = core::str::from_utf8_unchecked(s);
+                            }
                             bmplog!("Exec..:");
                             bmplog!(as_string);
                             bmplog!("\n");
