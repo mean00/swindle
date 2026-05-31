@@ -104,7 +104,7 @@ fn lookup_name(key: &str) -> freeRtosSymbolIndex {
         if i == freeRtosSymbolIndex::invalid {
             return freeRtosSymbolIndex::invalid;
         }
-        let index = i.clone() as usize;
+        let index = i as usize;
         if key == FreeRTOSSymbolName[index] {
             return i;
         }

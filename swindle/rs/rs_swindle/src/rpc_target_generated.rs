@@ -82,8 +82,9 @@ pub mod rpc_gen_impl {
     }
 
     fn cmd_nrst_get(parser: &mut rpc_parameter_parser) -> bool {
-        let value = crate::rpc_target_impl::rpc_gen_impl::nrst_get();
-        rpc_reply_ok(value as u8);
+        let val = crate::rpc_target_impl::rpc_gen_impl::nrst_get();
+        #[allow(clippy::unnecessary_cast)]
+        rpc_reply_ok(val as u8);
         true
     }
 
@@ -115,8 +116,9 @@ pub mod rpc_gen_impl {
     }
 
     fn cmd_pwr_get(parser: &mut rpc_parameter_parser) -> bool {
-        let value = crate::rpc_target_impl::rpc_gen_impl::pwr_get();
-        rpc_reply_ok(value as u8);
+        let val = crate::rpc_target_impl::rpc_gen_impl::pwr_get();
+        #[allow(clippy::unnecessary_cast)]
+        rpc_reply_ok(val as u8);
         true
     }
 
@@ -160,14 +162,16 @@ pub mod rpc_hl_impl {
     }
 
     fn cmd_check(parser: &mut rpc_parameter_parser) -> bool {
-        let value = crate::rpc_target_impl::rpc_hl_impl::check();
-        rpc_reply_ok(value as u8);
+        let val = crate::rpc_target_impl::rpc_hl_impl::check();
+        #[allow(clippy::unnecessary_cast)]
+        rpc_reply_ok(val as u8);
         true
     }
 
     fn cmd_accel(parser: &mut rpc_parameter_parser) -> bool {
-        let value = crate::rpc_target_impl::rpc_hl_impl::accel();
-        rpc_reply_ok(value as u8);
+        let val = crate::rpc_target_impl::rpc_hl_impl::accel();
+        #[allow(clippy::unnecessary_cast)]
+        rpc_reply_ok(val as u8);
         true
     }
 

@@ -3,8 +3,6 @@
 //! Replaces the C++ `BMPSerial` class in `bmp_serial.cpp`.
 //! Bridges data between a CDC‑ACM (virtual COM port) and a hardware UART.
 
-#![allow(dead_code)]
-
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
@@ -236,7 +234,8 @@ impl UsbSerialBridge {
             return false;
         }
 
-        loop {
+        // loop
+        {
             match this.serial2usb.txing {
                 false => {
                     // Idle: try to read from serial
@@ -260,7 +259,7 @@ impl UsbSerialBridge {
                     this.serial2usb.txing = true;
                     this.serial2usb.dex = 0;
                     this.serial2usb.limit = nb;
-                    return true;
+                    true
                 }
                 true => {
                     // Sending: pump data to USB
@@ -284,7 +283,7 @@ impl UsbSerialBridge {
                         this.serial2usb.txing = false;
                         this.event_group.set_events(SERIAL_EVENT);
                     }
-                    return true;
+                    true
                 }
             }
         }
@@ -311,7 +310,7 @@ pub extern "C" fn rn_serial_bridge_task() {
 /// Write data to the bridge CDC (used for log/RTT redirect on 2-CDC builds).
 #[unsafe(no_mangle)]
 pub extern "C" fn rn_serial_bridge_write(n: u32, data: *const u8) {
-    if n <= 0 || !BRIDGE_INITIALIZED.load(Ordering::Relaxed) {
+    if n == 0 || !BRIDGE_INITIALIZED.load(Ordering::Relaxed) {
         return;
     }
     let slice = unsafe { core::slice::from_raw_parts(data, n as usize) };

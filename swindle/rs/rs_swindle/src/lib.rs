@@ -4,7 +4,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
-#![allow(dead_code)]
 //
 #[macro_use]
 extern crate alloc;
@@ -24,186 +23,39 @@ mod rn_bmp_cmd_c;
 mod rtt_consts;
 mod setting_keys;
 mod settings;
-mod sync_cell;
+//mod sync_cell;
 //mod rpc;
 #[cfg(not(feature = "hosted"))]
 mod cdc_logger;
 pub mod rpc_common;
-#[cfg(feature = "hosted")]
-pub mod rpc_host;
-#[cfg(not(feature = "hosted"))]
-pub mod rpc_target;
-// Auto-generated RPC modules
-#[allow(dead_code)]
 pub mod rpc_common_generated;
-#[cfg(feature = "hosted")]
-pub mod rpc_host_generated;
-#[cfg(not(feature = "hosted"))]
-pub mod rpc_target_generated;
-// RPC implementation modules (called by generated dispatch)
-#[cfg(not(feature = "hosted"))]
-pub mod rpc_target_impl;
+// RPC modules: hosted vs target
+cfg_if::cfg_if! {
+    if #[cfg(feature = "hosted")] {
+        pub mod rpc_host;
+        pub mod rpc_host_generated;
+    } else {
+        pub mod rpc_target;
+        pub mod rpc_target_generated;
+        pub mod rpc_target_impl;
+    }
+}
 mod rtt;
 mod sw_breakpoints;
-#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-mod usb_gdb;
-#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-mod usb_serial_bridge;
+// USB vs non-USB transport
+cfg_if::cfg_if! {
+    if #[cfg(not(any(feature = "hosted", feature = "network")))] {
+        mod usb;
+    } else {
+        mod not_usb;
+    }
+}
 mod util;
-
-use crate::commands::run;
-use crate::decoder::gdb_stream;
-use core::mem::MaybeUninit;
-use decoder::RESULT_AUTOMATON;
-use packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
+//
+mod swindle;
+pub(crate) use swindle::{rngdb_output_flush, rngdb_send_data, rngdb_send_data_u8};
+//
 crate::gdb_print_init!();
-
-crate::setup_log!(false);
-//use crate::{bmplog,bmpwarning};
-
-static mut autoauto: MaybeUninit<gdb_stream<INPUT_BUFFER_SIZE>> = MaybeUninit::uninit();
-/*
- *
- */
-fn get_autoauto() -> &'static mut gdb_stream<INPUT_BUFFER_SIZE> {
-    unsafe { autoauto.assume_init_mut() }
-}
-fn clear_autoauto() {
-    get_autoauto().set_available(false);
-}
-#[unsafe(no_mangle)]
-pub extern "C" fn rngdbstub_init() {
-    settings::init_settings();
-    unsafe {
-        autoauto.write(gdb_stream::<INPUT_BUFFER_SIZE>::new());
-        get_autoauto().set_available(true);
-    }
-}
-#[unsafe(no_mangle)]
-pub extern "C" fn rngdbstub_shutdown() {
-    bmp::bmp_detach();
-    clear_autoauto();
-}
-// In hosted/network mode, the C side provides rngdb_send_data_c / rngdb_output_flush_c
-// (via bmp_net_gdb.h). In non-hosted (USB) mode, usb_gdb.rs provides them.
-#[cfg(any(feature = "hosted", feature = "network"))]
-unsafe extern "C" {
-    fn rngdb_send_data_c(sz: u32, ptr: *const cty::c_uchar);
-    fn rngdb_output_flush_c();
-}
-/*
- */
-fn rngdb_output_flush() {
-    #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-    usb_gdb::rngdb_output_flush_c();
-    #[cfg(any(feature = "hosted", feature = "network"))]
-    unsafe {
-        rngdb_output_flush_c()
-    }
-}
-/*
- */
-fn rngdb_send_data(data: &str) {
-    #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-    usb_gdb::rngdb_send_data_c(data.len() as u32, data.as_ptr());
-    #[cfg(any(feature = "hosted", feature = "network"))]
-    unsafe {
-        rngdb_send_data_c(data.len() as u32, data.as_ptr())
-    }
-}
-/*
- */
-fn rngdb_send_data_u8(data: &[u8]) {
-    #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-    usb_gdb::rngdb_send_data_c(data.len() as u32, data.as_ptr());
-    #[cfg(any(feature = "hosted", feature = "network"))]
-    unsafe {
-        rngdb_send_data_c(data.len() as u32, data.as_ptr())
-    }
-}
-/// # Safety
-/// the pointer is expected to be valid !
-///
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
-    let mut data_as_slice: &[u8];
-    unsafe {
-        data_as_slice = core::slice::from_raw_parts(d, l);
-    }
-    // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
-    // i'm not sure what happens escaping-wise if we let the parser handle it
-    if run::target_is_running() {
-        if data_as_slice.len() == 1 {
-            match data_as_slice[0] {
-                3 => run::target_halt(),
-                _ => bmplog!("Warning : garbage received"),
-            }
-        }
-        return;
-    }
-    // the target is stopped
-    // we can parse the incoming commands
-    let available = get_autoauto().get_available();
-    match available {
-        true => {
-            while !data_as_slice.is_empty() {
-                let x = get_autoauto();
-                let consumed: usize;
-                let state: RESULT_AUTOMATON;
-                bmplog!("Parsing..\n");
-                (consumed, state) = x.parse(data_as_slice);
-                bmplog!("Parsed..\n");
-                match state {
-                    RESULT_AUTOMATON::RpcReady => {
-                        bmplog!("Rpc....\n");
-                        let s = x.get_result(); // s is a RPC command block
-                        if !s.is_empty() {
-                            //bmplog!("--> ACK\n");
-                            //rngdb_send_data( CHAR_ACK );
-                            #[cfg(not(feature = "hosted"))]
-                            rpc_target_generated::rpc_dispatch(s);
-                            bmplog!("Rpc done\n");
-                        }
-                    }
-                    RESULT_AUTOMATON::Ready => {
-                        // ok we have a full string...
-                        bmplog!("Gdb call\n");
-                        let s = x.get_result();
-                        if s.is_empty() {
-                            bmplog!("Cannot read string");
-                        } else {
-                            bmplog!("--> ACK\n");
-                            rngdb_send_data_u8(&[CHAR_ACK]);
-                            rngdb_output_flush();
-                            let as_string: &str;
-                            unsafe {
-                                as_string = core::str::from_utf8_unchecked(s);
-                            }
-                            bmplog!("Exec..:");
-                            bmplog!(as_string);
-                            bmplog!("\n");
-                            if bmp::bmp_try() {
-                                commands::exec(as_string);
-                                bmplog!("Exec done\n");
-                            }
-                            if bmp::bmp_catch() != 0 {
-                                gdb_print!("Stray exception\n");
-                                encoder::encoder::reply_e01();
-                            }
-                        }
-                    }
-                    RESULT_AUTOMATON::Error => {
-                        rngdb_send_data_u8(&[CHAR_NACK]);
-                        rngdb_output_flush();
-                    }
-                    RESULT_AUTOMATON::Continue => (),
-                    RESULT_AUTOMATON::Reset => (),
-                }
-                data_as_slice = &data_as_slice[consumed..];
-            }
-        }
-        false => panic!("noauto"),
-    };
-}
-
+//
 // EOF
+

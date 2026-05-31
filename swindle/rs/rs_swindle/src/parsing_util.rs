@@ -85,6 +85,7 @@ pub fn ascii_string_hex_to_u32_le(s: &str) -> u32 {
     u8s_string_to_u32_le(datain)
 }
 
+#[allow(dead_code)]
 pub fn u8s_string_to_u8(datain: &[u8]) -> u8 {
     if datain.len() < 2 {
         return 0;
@@ -133,7 +134,7 @@ pub fn u8s_string_to_u32(datain: &[u8]) -> u32 {
 //
 //
 //
-pub fn u32_to_ascii_le_buffer(value: u32, out: &mut [u8]) {
+pub fn _u32_to_ascii_le_buffer(value: u32, out: &mut [u8]) {
     let mut value = value;
     for i in 0..4 {
         let ascii = u8_to_ascii((value & 0xff) as u8);
@@ -162,7 +163,7 @@ pub fn u8_to_ascii_to_buffer(value: u8, out: &mut [u8]) {
 //
 //
 //
-pub fn take_adress_length(xin: &str) -> Option<(u32, u32)> {
+pub fn _take_adress_length(xin: &str) -> Option<(u32, u32)> {
     let args: Vec<&str> = xin.split(',').collect();
     if args.len() != 2 {
         bmplog!("take_adress_length : wrong param");

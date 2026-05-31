@@ -139,6 +139,7 @@ fn _disable(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
+#[allow(dead_code)]
 fn TrueFalse(onoff: u32) -> &'static str {
     if onoff == 0 { "false" } else { "true" }
 }

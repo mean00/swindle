@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use alloc::alloc::Layout;
 use alloc::alloc::alloc;
 use cty::size_t;

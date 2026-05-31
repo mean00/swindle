@@ -1,1 +1,1 @@
-cargo clippy --target=thumbv7m-none-eabi
+cargo clippy --target=thumbv7m-none-eabi --features native

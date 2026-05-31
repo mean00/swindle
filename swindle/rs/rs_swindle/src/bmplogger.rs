@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use core::convert::Infallible;
 #[allow(unused_imports)]
 #[cfg(feature = "native")]
@@ -43,6 +44,7 @@ macro_rules! setup_log {
         #[allow(unused)]
         use rust_esprit::{logger, logger_init};
         logger_init!();
+        #[allow(unused)]
         static log_enabled: bool = $x;
     };
 }

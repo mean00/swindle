@@ -32,6 +32,7 @@ hashbrown = "0.16.1"
 arraystring = { version = "0.3.0", default-features = false, features = [] }
 strum = { version = "0.27.2", default-features = false, features = []}
 strum_macros = { version = "0.27.2", default-features = false, features = []}
+cfg-if = "1.0"
 #
 [lib]
 name = "rsbmp"

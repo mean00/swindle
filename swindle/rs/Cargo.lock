@@ -155,6 +155,7 @@ name = "rsbmp"
 version = "0.1.0"
 dependencies = [
  "arraystring",
+ "cfg-if",
  "crc",
  "cty",
  "hashbrown",

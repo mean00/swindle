@@ -315,8 +315,9 @@ def gen_target(classes):
                     lines.append(f"        rpc_reply_hex_string(RPC_RESP_OK, &buffer[..len]);")
                     lines.append("        true")
                 elif rtype == "u8":
-                    lines.append(f"        let value = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
-                    lines.append(f"        rpc_reply_ok(value as u8);")
+                    lines.append(f"        let val = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        #[allow(clippy::unnecessary_cast)]")
+                    lines.append(f"        rpc_reply_ok(val as u8);")
                     lines.append("        true")
                 elif on_error == "ok_bool":
                     lines.append(f"        let (ok, value) = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")

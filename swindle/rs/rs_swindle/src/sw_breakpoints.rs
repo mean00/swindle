@@ -97,6 +97,7 @@ pub fn clear_sw_breakpoint() {
 /*
 *
 */
+#[allow(dead_code)]
 pub fn clear_mw_breakpoint() {
     get_list_mw_ref().breakpoint.clear();
 }

@@ -42,9 +42,23 @@ use core::cell::UnsafeCell;
 struct SyncCell<T>(UnsafeCell<T>);
 unsafe impl<T> Sync for SyncCell<T> {}
 impl<T> SyncCell<T> {
-    const fn new(val: T) -> Self { SyncCell(UnsafeCell::new(val)) }
-    fn get(&self) -> T where T: Copy { unsafe { *self.0.get() } }
-    fn set(&self, val: T) where T: Copy { unsafe { *self.0.get() = val; } }
+    const fn new(val: T) -> Self {
+        SyncCell(UnsafeCell::new(val))
+    }
+    fn get(&self) -> T
+    where
+        T: Copy,
+    {
+        unsafe { *self.0.get() }
+    }
+    fn set(&self, val: T)
+    where
+        T: Copy,
+    {
+        unsafe {
+            *self.0.get() = val;
+        }
+    }
 }
 
 static targetCommandTree: SyncCell<Option<&'static [CommandTree]>> = SyncCell::new(None);
@@ -54,7 +68,7 @@ unsafe extern "C" {
     pub fn _Z17lnSoftSystemResetv();
 }
 unsafe extern "C" {
-    pub fn resetTest();
+    //pub fn resetTest();
     pub fn resetTest2();
 }
 

@@ -11,7 +11,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(dead_code)]
 #![allow(unused_imports)]
 
 use crate::packet_symbols;
@@ -197,6 +196,7 @@ impl encoder {
         Self::raw_send_u8(&u8_to_ascii((self.checksum & 0xff) as u8));
         Self::flush();
     }
+    #[allow(dead_code)]
     pub fn error(code: u8) {
         let mut e = Self::new();
         let zero: char = (b'0' + code) as char;
@@ -214,6 +214,7 @@ impl encoder {
         e.end();
     }
     //
+    #[allow(dead_code)]
     pub fn raw_send(data: &str) {
         rngdb_send_data_u8(data.as_bytes());
     }

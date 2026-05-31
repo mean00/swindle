@@ -5,8 +5,6 @@
 //! session events, and provides read/write primitives for the
 //! GDB stub.
 
-#![allow(dead_code)]
-
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
@@ -50,12 +48,16 @@ impl CdcEventHandler for GdbCdcHandler {
                 // Ignored for GDB CDC
             }
             CdcEvent::SessionStart => {
-                unsafe { bmp_io_begin_session(); }
+                unsafe {
+                    bmp_io_begin_session();
+                }
                 gdb.in_session.store(true, Ordering::Relaxed);
                 gdb.event_group.set_events(GDB_SESSION_START);
             }
             CdcEvent::SessionEnd => {
-                unsafe { bmp_io_end_session(); }
+                unsafe {
+                    bmp_io_end_session();
+                }
                 gdb.in_session.store(false, Ordering::Relaxed);
                 gdb.event_group.set_events(GDB_SESSION_END);
             }
@@ -120,9 +122,7 @@ impl GdbCdc {
 
     /// Get a mutable reference to the global GDB CDC instance.
     fn instance() -> &'static mut GdbCdc {
-        unsafe {
-            &mut *GDB_CDC.as_mut_ptr()
-        }
+        unsafe { &mut *GDB_CDC.as_mut_ptr() }
     }
 
     /// Take ownership of the event group (must be called from the task that owns it).
@@ -134,7 +134,8 @@ impl GdbCdc {
     /// Wait for CDC events with a timeout.
     pub fn wait_events() -> u32 {
         let this = Self::instance();
-        this.event_group.wait_events(0xffff, GDB_MAX_POLLING_PERIOD_MS as i32)
+        this.event_group
+            .wait_events(0xffff, GDB_MAX_POLLING_PERIOD_MS as i32)
     }
 
     /// Check if a GDB session is active.
@@ -236,7 +237,9 @@ pub extern "C" fn rngdb_gdb_task() {
         let ev = GdbCdc::wait_events();
         if connected {
             // Check if the target reached a breakpoint/watchpoint/...
-            unsafe { rngdbstub_poll(); }
+            unsafe {
+                rngdbstub_poll();
+            }
             if bmp::bmp_attached() {
                 if rtt::swindle_rtt_enabled() {
                     rtt::swindle_run_rtt();
@@ -248,11 +251,15 @@ pub extern "C" fn rngdb_gdb_task() {
         if ev != 0 {
             if ev & GDB_SESSION_START != 0 {
                 rtt::swindle_reinit_rtt();
-                unsafe { rngdbstub_init(); }
+                unsafe {
+                    rngdbstub_init();
+                }
                 connected = true;
             }
             if ev & GDB_SESSION_END != 0 {
-                unsafe { rngdbstub_shutdown(); }
+                unsafe {
+                    rngdbstub_shutdown();
+                }
                 connected = false;
             }
             if ev & GDB_CDC_DATA_AVAILABLE != 0 {

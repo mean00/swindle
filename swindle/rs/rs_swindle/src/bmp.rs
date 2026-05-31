@@ -1,3 +1,5 @@
+//
+
 use crate::commands::run::HaltState;
 use crate::rn_bmp_cmd_c;
 use alloc::vec::Vec;
@@ -115,7 +117,7 @@ pub fn bmp_read_register(reg: u32) -> Option<u32> {
         None
     }
 }
-
+#[allow(dead_code)]
 pub fn riscv_list_csr(out: &mut [u32]) -> Option<&[u32]> {
     let n = unsafe { rn_bmp_cmd_c::riscv_list_csr(0, 0, core::ptr::null_mut()) };
     if n > (out.len() as u32) {
@@ -174,7 +176,8 @@ pub fn bmp_flash_complete() -> bool {
     unsafe { rn_bmp_cmd_c::bmp_flash_complete_c() }
 }
 
-pub fn bmp_crc32(address: u32, length: u32) -> Option<u32> {
+//#[allow(dead_code)]
+pub fn _bmp_crc32(address: u32, length: u32) -> Option<u32> {
     unsafe {
         let mut crc: u32 = 0;
         let crc_ptr: *mut u32 = &mut crc;
@@ -309,6 +312,8 @@ pub fn bmp_platform_nrst_get_val() -> bool {
 pub fn bmp_platform_target_clk_output_enable(enable: bool) {
     unsafe { rn_bmp_cmd_c::platform_target_clk_output_enable(enable) }
 }
+
+#[allow(dead_code)]
 pub fn dummyFun() -> *const u8 {
     let s: &'static str = "aaa";
     let p: *const u8 = s.as_ptr();
@@ -317,7 +322,7 @@ pub fn dummyFun() -> *const u8 {
 /*
  *
  */
-pub fn bmplog(s: &str) {
+pub fn _bmplog(s: &str) {
     unsafe {
         rn_bmp_cmd_c::Logger2(s.len() as i32, s.as_ptr());
     }
@@ -497,7 +502,7 @@ pub fn rv_dm_start() {
 /*
  *
  */
-pub fn bmp_rv_reset() -> bool {
+pub fn _bmp_rv_reset() -> bool {
     unsafe {
         let status: bool = rn_bmp_cmd_c::bmp_rv_dm_reset_c();
         status
@@ -524,7 +529,7 @@ pub fn bmp_rv_write(adr: u8, data: u32) -> bool {
     unsafe { rn_bmp_cmd_c::bmp_rv_dm_write_c(adr, data) }
 }
 
-pub fn bmp_rvswdp_probe(id: &mut u32) -> bool {
+pub fn _bmp_rvswdp_probe(id: &mut u32) -> bool {
     let id_ptr: *mut u32 = id;
     unsafe { rn_bmp_cmd_c::bmp_rv_rvswd_probe_c(id_ptr) }
 }
@@ -551,7 +556,7 @@ pub fn bmp_ch32v3xx_write_user_option_byte(memory_conf: u8) -> bool {
     unsafe { rn_bmp_cmd_c::bmp_ch32v3xx_write_user_option_byte_c(memory_conf) }
 }
 //
-pub fn bmp_ch32v3xx_read_user_option_byte() -> u8 {
+pub fn _bmp_ch32v3xx_read_user_option_byte() -> u8 {
     unsafe { rn_bmp_cmd_c::bmp_ch32v3xx_read_user_option_byte_c() }
 }
 //
@@ -585,7 +590,7 @@ pub fn bmp_catch() -> i32 {
 /*
 *
 */
-pub fn bmp_enable_reset_pin(enabled: bool) {
+pub fn _bmp_enable_reset_pin(enabled: bool) {
     unsafe {
         rn_bmp_cmd_c::bmp_enable_reset_pin_c(enabled);
     }

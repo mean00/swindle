@@ -1,4 +1,5 @@
 // https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
+#![allow(dead_code)]
 
 pub mod freertos_arm;
 pub mod freertos_arm_core;

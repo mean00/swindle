@@ -9,8 +9,8 @@ use crate::settings;
 use core::mem::MaybeUninit;
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::tick_count;
-crate::gdb_print_init!();
-crate::setup_log!(false);
+//crate::gdb_print_init!();
+//crate::setup_log!(false);
 
 const RTT_SIGNATURE: &[u8] = b"SEGGER RTT\0";
 const RTT_SIGNATURE_LEN: usize = 11;
@@ -22,6 +22,7 @@ unsafe extern "C" {
     fn swindle_rtt_send_data_to_host(index: u32, len: u32, data: *const u8);
     fn swindle_rtt_room_available_to_host(index: u32) -> u32;
 }
+#[allow(dead_code)]
 pub extern "C" fn swindle_rtt_room_available_to_device(index: u32) -> u32 {
     swindle_get_rtt().write_room[index as usize]
 }

@@ -3,8 +3,6 @@
 //! Replaces the C++ `BMPUsbLogger` class in `bmp_cdc_logger.cpp`.
 //! Provides a dedicated CDC‑ACM virtual COM port for debug log output.
 
-#![allow(dead_code)]
-
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 

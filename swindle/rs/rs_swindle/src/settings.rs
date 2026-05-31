@@ -4,14 +4,14 @@
  *
  */
 use arraystring::{ArrayString, typenum::U32};
-use hashbrown::HashMap;
 use core::mem::MaybeUninit;
+use hashbrown::HashMap;
 const SW_TOKEN_SIZE: usize = 32;
 type token = ArrayString<U32>;
 //
-crate::setup_log!(false);
+//crate::setup_log!(false);
 //use crate::gdb_print;
-crate::gdb_print_init!();
+//crate::gdb_print_init!();
 
 /*
  *
@@ -36,6 +36,7 @@ impl swindle_settings {
     /*
      *
      */
+    #[allow(dead_code)]
     fn clear(&mut self) {
         self.hash.clear();
     }
