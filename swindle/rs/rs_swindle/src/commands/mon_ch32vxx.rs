@@ -54,7 +54,7 @@ pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
         gdb_print!("Error reading WPR register\n");
         return false;
     }
-    gdb_print!("Write Prot : ", value[0]);
+    gdb_print!("Write Prot : ", Hex(value[0]));
     gdb_print!("\n");
     if args.is_empty() {
         if !bmp::bmp_read_mem32(CH32V3XX_FLASH_OBR_ADR, &mut value) {
@@ -108,7 +108,8 @@ pub fn _ch32v3_option_byte(_command: &str, args: &[&str]) -> bool {
             return false;
         }
         let mut option = (value[0] >> 16) & 0xff;
-        gdb_print!("option byte 0x{:x}\n", option);
+        gdb_print!("Option byte:", Hex(option));
+        gdb_print!("\n");
         if (option & 0x7) != 0x7 {
             gdb_print!("invalid memory configuration\n");
             return false;
@@ -127,8 +128,9 @@ pub fn _ch32v3_option_byte(_command: &str, args: &[&str]) -> bool {
                 gdb_print!("invalid memory configuration\n");
             }
         }
-        gdb_print!("Flash ", flash, " kB,");
-        gdb_print!("Ram ", ram, " kB\n");
+        gdb_print!("Flash (kB):", flash);
+        gdb_print!("\nRam (kB):", ram);
+        gdb_print!("\n");
         encoder::reply_ok();
         return true;
     }

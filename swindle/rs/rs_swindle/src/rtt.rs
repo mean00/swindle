@@ -6,9 +6,9 @@ use crate::commands::run::HaltState;
 //use crate::gdb_print;
 use crate::setting_keys::{RTT_PERIOD_KEY, RTT_SETTING_KEY};
 use crate::settings;
+use core::mem::MaybeUninit;
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::tick_count;
-use core::mem::MaybeUninit;
 crate::gdb_print_init!();
 crate::setup_log!(false);
 
@@ -296,7 +296,8 @@ pub fn swindle_rtt_print_info() {
         gdb_print!("We dont have the RTT symbol available! \n");
         return;
     }
-    gdb_println!("Checking control block at  address 0x\n", Hex(adr));
+    gdb_println!("Checking control block at  address: ", Hex(adr));
+    gdb_println!("\n");
 
     let cb = RttControlBlock::read(adr);
 
