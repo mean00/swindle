@@ -163,9 +163,9 @@ def gen_target(classes):
         "#![allow(unused_imports)]",
         "",
         "use crate::rpc_common_generated::*;",
-        "use crate::rpc_target::rpc_parser::rpc_parameter_parser;",
-        "use crate::rpc_target::*;",
-        "use crate::rpc_target::rpc_reply::*;",
+        "use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;",
+        "use crate::native::rpc_target::*;",
+        "use crate::native::rpc_target::rpc_reply::*;",
         "use crate::bmp;",
         "use crate::parsing_util;",
         "use crate::encoder::*;",
@@ -205,7 +205,9 @@ def gen_target(classes):
             continue
         lines += [f"// ── {cls['name']} dispatch ──",
                   f"pub mod {cls['handler']} {{",
-                  f"    use super::*;",
+                  f"    use crate::native::rpc_target::*;",
+                  f"    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;",
+                  f"    use crate::rpc_common_generated::*;",
                   f"",
                   f"    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {{",
                   f"        match parser.next_cmd() {{",
@@ -255,23 +257,23 @@ def gen_target(classes):
             reply = cmd["reply"]
             if isinstance(reply, str):
                 if reply == "ok":
-                    lines.append(f"        crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append("        rpc_reply_encoder::new().end();")
                     lines.append("        true")
                 elif reply == "string":
-                    lines.append(f"        let s = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let s = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append("        rpc_reply_string(s);")
                     lines.append("        true")
                 else:
                     # Simple type reply
-                    lines.append(f"        let result = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let result = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append(f"        rpc_reply32_le_ok(result);")
                     lines.append("        true")
             elif isinstance(reply, dict):
                 rtype = reply.get("type", "ok")
                 on_error = reply.get("on_error", None)
                 if rtype == "string":
-                    lines.append(f"        let s = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let s = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append("        rpc_reply_string(s);")
                     lines.append("        true")
                 elif rtype == "compound":
@@ -281,7 +283,7 @@ def gen_target(classes):
                     field_types = [f["type"] for f in fields]
                     # Call impl, get tuple back
                     field_list = ", ".join(field_names)
-                    lines.append(f"        let ({field_list}) = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let ({field_list}) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     if on_error == "fault":
                         lines.append(f"        if {field_names[0] if 'fault' not in field_names else 'fault'} != 0 {{")
                         lines.append("            rpc_reply_error(RPC_ERROR_FAULT);")
@@ -300,13 +302,13 @@ def gen_target(classes):
                     lines.append("        true")
                 elif rtype == "hex_block":
                     max_len = reply.get("max_length", 1024)
-                    lines.append(f"        let buffer = crate::rpc_target::rpc_reply::get_temp_buffer();")
+                    lines.append(f"        let buffer = crate::native::rpc_target::rpc_reply::get_temp_buffer();")
                     # Add buffer param to impl args
                     buffer_impl_args = impl_args
                     if buffer_impl_args:
                         buffer_impl_args += ", "
                     buffer_impl_args += "buffer"
-                    lines.append(f"        let (fault, len) = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({buffer_impl_args});")
+                    lines.append(f"        let (fault, len) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({buffer_impl_args});")
                     if on_error == "fault":
                         lines.append("        if fault != 0 {")
                         lines.append("            rpc_reply_error(fault as u8);")
@@ -315,20 +317,20 @@ def gen_target(classes):
                     lines.append(f"        rpc_reply_hex_string(RPC_RESP_OK, &buffer[..len]);")
                     lines.append("        true")
                 elif rtype == "u8":
-                    lines.append(f"        let val = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let val = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append(f"        #[allow(clippy::unnecessary_cast)]")
                     lines.append(f"        rpc_reply_ok(val as u8);")
                     lines.append("        true")
                 elif on_error == "ok_bool":
-                    lines.append(f"        let (ok, value) = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let (ok, value) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append("        rpc_reply_bool_32le(ok, value);")
                     lines.append("        true")
                 elif on_error == "fault":
-                    lines.append(f"        let (fault, value) = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let (fault, value) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append("        reply_adiv5_32(fault, value);")
                     lines.append("        true")
                 else:
-                    lines.append(f"        let value = crate::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
+                    lines.append(f"        let value = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append(f"        rpc_reply32_le_ok(value);")
                     lines.append("        true")
             lines.append("    }")
@@ -354,7 +356,7 @@ def gen_host(classes):
         "#![allow(unused_imports)]",
         "",
         "use crate::rpc_common_generated::*;",
-        "use crate::rpc_host::remote_encoder::rpc_encoder;",
+        "use crate::hosted::rpc_host::remote_encoder::rpc_encoder;",
         "use crate::parsing_util::{u8s_string_to_u32_le, u8s_string_to_u8};",
         "use crate::rn_bmp_cmd_c::platform_buffer_read;",
         "",
@@ -542,15 +544,19 @@ def main():
     (out_dir / "rpc_common_generated.rs").write_text(common)
     print(f"  → {out_dir / 'rpc_common_generated.rs'}")
 
-    # Generate target
+    # Generate target (native)
+    target_dir = out_dir / "native"
+    target_dir.mkdir(parents=True, exist_ok=True)
     target = gen_target(classes)
-    (out_dir / "rpc_target_generated.rs").write_text(target)
-    print(f"  → {out_dir / 'rpc_target_generated.rs'}")
+    (target_dir / "rpc_target_generated.rs").write_text(target)
+    print(f"  → {target_dir / 'rpc_target_generated.rs'}")
 
     # Generate host
+    host_dir = out_dir / "hosted"
+    host_dir.mkdir(parents=True, exist_ok=True)
     host = gen_host(classes)
-    (out_dir / "rpc_host_generated.rs").write_text(host)
-    print(f"  → {out_dir / 'rpc_host_generated.rs'}")
+    (host_dir / "rpc_host_generated.rs").write_text(host)
+    print(f"  → {host_dir / 'rpc_host_generated.rs'}")
 
     print("Done.")
 

@@ -127,6 +127,7 @@ impl encoder {
         Self::raw_send_u8(&[packet_symbols::CHAR_START]);
     }
     //
+    #[cfg(not(feature = "hosted"))]
     pub fn hexify_and_raw_send(str: &[u8]) {
         let buffer = get_temp_buffer();
         let mut byt = str;

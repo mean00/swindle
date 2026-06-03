@@ -6,11 +6,11 @@ use crate::bmp;
 use crate::encoder::*;
 pub mod rpc_parser;
 pub mod rpc_reply;
+pub use rpc_reply::*;
 use crate::bmp::{bmp_get_frequency, bmp_set_frequency};
 use crate::crc::do_local_crc32;
 use crate::parsing_util;
 use crate::rpc_common::*;
-use crate::rpc_target::rpc_reply::*;
 use rpc_parser::rpc_parameter_parser;
 //------------------------------
 crate::setup_log!(false);

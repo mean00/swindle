@@ -7,9 +7,9 @@
 #![allow(unused_imports)]
 
 use crate::rpc_common_generated::*;
-use crate::rpc_target::rpc_parser::rpc_parameter_parser;
-use crate::rpc_target::*;
-use crate::rpc_target::rpc_reply::*;
+use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+use crate::native::rpc_target::*;
+use crate::native::rpc_target::rpc_reply::*;
 use crate::bmp;
 use crate::parsing_util;
 use crate::encoder::*;
@@ -42,7 +42,9 @@ pub fn rpc_dispatch(input: &[u8]) -> bool {
 
 // ── GEN dispatch ──
 pub mod rpc_gen_impl {
-    use super::*;
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
 
     pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
         match parser.next_cmd() {
@@ -63,26 +65,26 @@ pub mod rpc_gen_impl {
     }
 
     fn cmd_start(parser: &mut rpc_parameter_parser) -> bool {
-        let s = crate::rpc_target_impl::rpc_gen_impl::start();
+        let s = crate::native::rpc_target_impl::rpc_gen_impl::start();
         rpc_reply_string(s);
         true
     }
 
     fn cmd_voltage(parser: &mut rpc_parameter_parser) -> bool {
-        let s = crate::rpc_target_impl::rpc_gen_impl::voltage();
+        let s = crate::native::rpc_target_impl::rpc_gen_impl::voltage();
         rpc_reply_string(s);
         true
     }
 
     fn cmd_nrst_set(parser: &mut rpc_parameter_parser) -> bool {
         let assert = parser.next_cmd() != b'0';
-        crate::rpc_target_impl::rpc_gen_impl::nrst_set(assert);
+        crate::native::rpc_target_impl::rpc_gen_impl::nrst_set(assert);
         rpc_reply_encoder::new().end();
         true
     }
 
     fn cmd_nrst_get(parser: &mut rpc_parameter_parser) -> bool {
-        let val = crate::rpc_target_impl::rpc_gen_impl::nrst_get();
+        let val = crate::native::rpc_target_impl::rpc_gen_impl::nrst_get();
         #[allow(clippy::unnecessary_cast)]
         rpc_reply_ok(val as u8);
         true
@@ -90,33 +92,33 @@ pub mod rpc_gen_impl {
 
     fn cmd_target_clk_oe(parser: &mut rpc_parameter_parser) -> bool {
         let enable = parser.next_cmd() != b'0';
-        crate::rpc_target_impl::rpc_gen_impl::target_clk_oe(enable);
+        crate::native::rpc_target_impl::rpc_gen_impl::target_clk_oe(enable);
         rpc_reply_encoder::new().end();
         true
     }
 
     fn cmd_freq_set(parser: &mut rpc_parameter_parser) -> bool {
         let freq_khz = parser.next_u32();
-        crate::rpc_target_impl::rpc_gen_impl::freq_set(freq_khz);
+        crate::native::rpc_target_impl::rpc_gen_impl::freq_set(freq_khz);
         rpc_reply_encoder::new().end();
         true
     }
 
     fn cmd_freq_get(parser: &mut rpc_parameter_parser) -> bool {
-        let value = crate::rpc_target_impl::rpc_gen_impl::freq_get();
+        let value = crate::native::rpc_target_impl::rpc_gen_impl::freq_get();
         rpc_reply32_le_ok(value);
         true
     }
 
     fn cmd_pwr_set(parser: &mut rpc_parameter_parser) -> bool {
         let enabled = parser.next_cmd() != b'0';
-        crate::rpc_target_impl::rpc_gen_impl::pwr_set(enabled);
+        crate::native::rpc_target_impl::rpc_gen_impl::pwr_set(enabled);
         rpc_reply_encoder::new().end();
         true
     }
 
     fn cmd_pwr_get(parser: &mut rpc_parameter_parser) -> bool {
-        let val = crate::rpc_target_impl::rpc_gen_impl::pwr_get();
+        let val = crate::native::rpc_target_impl::rpc_gen_impl::pwr_get();
         #[allow(clippy::unnecessary_cast)]
         rpc_reply_ok(val as u8);
         true
@@ -126,7 +128,9 @@ pub mod rpc_gen_impl {
 
 // ── SWDP dispatch ──
 pub mod rpc_swdp_impl {
-    use super::*;
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
 
     pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
         match parser.next_cmd() {
@@ -139,7 +143,7 @@ pub mod rpc_swdp_impl {
     }
 
     fn cmd_init(parser: &mut rpc_parameter_parser) -> bool {
-        crate::rpc_target_impl::rpc_swdp_impl::init();
+        crate::native::rpc_target_impl::rpc_swdp_impl::init();
         rpc_reply_encoder::new().end();
         true
     }
@@ -148,7 +152,9 @@ pub mod rpc_swdp_impl {
 
 // ── HL dispatch ──
 pub mod rpc_hl_impl {
-    use super::*;
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
 
     pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
         match parser.next_cmd() {
@@ -162,14 +168,14 @@ pub mod rpc_hl_impl {
     }
 
     fn cmd_check(parser: &mut rpc_parameter_parser) -> bool {
-        let val = crate::rpc_target_impl::rpc_hl_impl::check();
+        let val = crate::native::rpc_target_impl::rpc_hl_impl::check();
         #[allow(clippy::unnecessary_cast)]
         rpc_reply_ok(val as u8);
         true
     }
 
     fn cmd_accel(parser: &mut rpc_parameter_parser) -> bool {
-        let val = crate::rpc_target_impl::rpc_hl_impl::accel();
+        let val = crate::native::rpc_target_impl::rpc_hl_impl::accel();
         #[allow(clippy::unnecessary_cast)]
         rpc_reply_ok(val as u8);
         true
@@ -179,7 +185,9 @@ pub mod rpc_hl_impl {
 
 // ── RV dispatch ──
 pub mod rpc_rv_impl {
-    use super::*;
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
 
     pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
         match parser.next_cmd() {
@@ -194,14 +202,14 @@ pub mod rpc_rv_impl {
     }
 
     fn cmd_reset(parser: &mut rpc_parameter_parser) -> bool {
-        let (ok, value) = crate::rpc_target_impl::rpc_rv_impl::reset();
+        let (ok, value) = crate::native::rpc_target_impl::rpc_rv_impl::reset();
         rpc_reply_bool_32le(ok, value);
         true
     }
 
     fn cmd_dm_read(parser: &mut rpc_parameter_parser) -> bool {
         let address = parser.next_u8();
-        let (ok, value) = crate::rpc_target_impl::rpc_rv_impl::dm_read(address);
+        let (ok, value) = crate::native::rpc_target_impl::rpc_rv_impl::dm_read(address);
         rpc_reply_bool_32le(ok, value);
         true
     }
@@ -209,7 +217,7 @@ pub mod rpc_rv_impl {
     fn cmd_dm_write(parser: &mut rpc_parameter_parser) -> bool {
         let address = parser.next_u8();
         let value = parser.next_u32();
-        let (ok, value) = crate::rpc_target_impl::rpc_rv_impl::dm_write(address, value);
+        let (ok, value) = crate::native::rpc_target_impl::rpc_rv_impl::dm_write(address, value);
         rpc_reply_bool_32le(ok, value);
         true
     }
@@ -218,7 +226,9 @@ pub mod rpc_rv_impl {
 
 // ── LNADIV dispatch ──
 pub mod rpc_lnadiv_impl {
-    use super::*;
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
 
     pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
         match parser.next_cmd() {
@@ -236,14 +246,14 @@ pub mod rpc_lnadiv_impl {
     fn cmd_write(parser: &mut rpc_parameter_parser) -> bool {
         let address = parser.next_u16();
         let data = parser.next_u32();
-        let (ok, value) = crate::rpc_target_impl::rpc_lnadiv_impl::write(address, data);
+        let (ok, value) = crate::native::rpc_target_impl::rpc_lnadiv_impl::write(address, data);
         rpc_reply_bool_32le(ok, value);
         true
     }
 
     fn cmd_read(parser: &mut rpc_parameter_parser) -> bool {
         let address = parser.next_u16();
-        let (ok, value) = crate::rpc_target_impl::rpc_lnadiv_impl::read(address);
+        let (ok, value) = crate::native::rpc_target_impl::rpc_lnadiv_impl::read(address);
         rpc_reply_bool_32le(ok, value);
         true
     }
@@ -251,7 +261,7 @@ pub mod rpc_lnadiv_impl {
     fn cmd_raw_write(parser: &mut rpc_parameter_parser) -> bool {
         let tick_count = parser.next_u32();
         let value = parser.next_u32();
-        let (ok, value) = crate::rpc_target_impl::rpc_lnadiv_impl::raw_write(tick_count, value);
+        let (ok, value) = crate::native::rpc_target_impl::rpc_lnadiv_impl::raw_write(tick_count, value);
         rpc_reply_bool_32le(ok, value);
         true
     }
@@ -260,7 +270,7 @@ pub mod rpc_lnadiv_impl {
         let rnw = parser.next_u8();
         let address = parser.next_u16();
         let value = parser.next_u32();
-        let (response, fault) = crate::rpc_target_impl::rpc_lnadiv_impl::lowlevel(rnw, address, value);
+        let (response, fault) = crate::native::rpc_target_impl::rpc_lnadiv_impl::lowlevel(rnw, address, value);
         let mut reply = rpc_reply_encoder::new();
         reply.add_u32_le_wrapped(response);
         reply.add_u32_le_wrapped(fault);
@@ -272,7 +282,9 @@ pub mod rpc_lnadiv_impl {
 
 // ── ADIV5 dispatch ──
 pub mod rpc_adiv5_impl {
-    use super::*;
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
 
     pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
         match parser.next_cmd() {
@@ -294,7 +306,7 @@ pub mod rpc_adiv5_impl {
         let ap_selection = parser.next_u8();
         let address = parser.next_u16_be();
         let value = parser.next_u32_be();
-        let (outvalue, fault) = crate::rpc_target_impl::rpc_adiv5_impl::raw_access_v3(device_index, ap_selection, address, value);
+        let (outvalue, fault) = crate::native::rpc_target_impl::rpc_adiv5_impl::raw_access_v3(device_index, ap_selection, address, value);
         if fault != 0 {
             rpc_reply_error(RPC_ERROR_FAULT);
             return true;
@@ -310,7 +322,7 @@ pub mod rpc_adiv5_impl {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
         let address = parser.next_u32_be();
-        let (fault, value) = crate::rpc_target_impl::rpc_adiv5_impl::dp_read(device_index, ap_selection, address);
+        let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::dp_read(device_index, ap_selection, address);
         reply_adiv5_32(fault, value);
         true
     }
@@ -319,7 +331,7 @@ pub mod rpc_adiv5_impl {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
         let address = parser.next_u16_be();
-        let (fault, value) = crate::rpc_target_impl::rpc_adiv5_impl::ap_read(device_index, ap_selection, address);
+        let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::ap_read(device_index, ap_selection, address);
         reply_adiv5_32(fault, value);
         true
     }
@@ -329,7 +341,7 @@ pub mod rpc_adiv5_impl {
         let ap_selection = parser.next_u8();
         let address = parser.next_u16_be();
         let value = parser.next_u32_be();
-        let (fault, value) = crate::rpc_target_impl::rpc_adiv5_impl::ap_write(device_index, ap_selection, address, value);
+        let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::ap_write(device_index, ap_selection, address, value);
         reply_adiv5_32(fault, value);
         true
     }
@@ -340,8 +352,8 @@ pub mod rpc_adiv5_impl {
         let csw = parser.next_u32_be();
         let address = parser.next_u32_be();
         let length = parser.next_u32_be();
-        let buffer = crate::rpc_target::rpc_reply::get_temp_buffer();
-        let (fault, len) = crate::rpc_target_impl::rpc_adiv5_impl::mem_read(device_index, ap_selection, csw, address, length, buffer);
+        let buffer = crate::native::rpc_target::rpc_reply::get_temp_buffer();
+        let (fault, len) = crate::native::rpc_target_impl::rpc_adiv5_impl::mem_read(device_index, ap_selection, csw, address, length, buffer);
         if fault != 0 {
             rpc_reply_error(fault as u8);
             return true;
@@ -358,7 +370,7 @@ pub mod rpc_adiv5_impl {
         let address = parser.next_u32_be();
         let length = parser.next_u32_be();
         let data = parser.end();
-        let (fault, value) = crate::rpc_target_impl::rpc_adiv5_impl::mem_write(device_index, ap_selection, csw, align, address, length, data);
+        let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::mem_write(device_index, ap_selection, csw, align, address, length, data);
         reply_adiv5_32(fault, value);
         true
     }
@@ -367,7 +379,9 @@ pub mod rpc_adiv5_impl {
 
 // ── SWINDLE dispatch ──
 pub mod rpc_swindle_impl {
-    use super::*;
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
 
     pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
         match parser.next_cmd() {
@@ -384,20 +398,20 @@ pub mod rpc_swindle_impl {
     fn cmd_crc32(parser: &mut rpc_parameter_parser) -> bool {
         let address = parser.next_u32();
         let length = parser.next_u32();
-        let (ok, value) = crate::rpc_target_impl::rpc_swindle_impl::crc32(address, length);
+        let (ok, value) = crate::native::rpc_target_impl::rpc_swindle_impl::crc32(address, length);
         rpc_reply_bool_32le(ok, value);
         true
     }
 
     fn cmd_get_fq(parser: &mut rpc_parameter_parser) -> bool {
-        let (ok, value) = crate::rpc_target_impl::rpc_swindle_impl::get_fq();
+        let (ok, value) = crate::native::rpc_target_impl::rpc_swindle_impl::get_fq();
         rpc_reply_bool_32le(ok, value);
         true
     }
 
     fn cmd_set_fq(parser: &mut rpc_parameter_parser) -> bool {
         let freq_hz = parser.next_u32();
-        crate::rpc_target_impl::rpc_swindle_impl::set_fq(freq_hz);
+        crate::native::rpc_target_impl::rpc_swindle_impl::set_fq(freq_hz);
         rpc_reply_encoder::new().end();
         true
     }

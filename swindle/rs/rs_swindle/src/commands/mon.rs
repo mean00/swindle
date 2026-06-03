@@ -67,6 +67,7 @@ static targetHelpTree: SyncCell<Option<&'static [HelpTree]>> = SyncCell::new(Non
 unsafe extern "C" {
     pub fn _Z17lnSoftSystemResetv();
 }
+#[cfg(not(feature = "hosted"))]
 unsafe extern "C" {
     //pub fn resetTest();
     pub fn resetTest2();

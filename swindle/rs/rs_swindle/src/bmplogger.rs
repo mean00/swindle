@@ -1,101 +1,7 @@
 #![allow(dead_code)]
 use core::convert::Infallible;
-#[allow(unused_imports)]
-#[cfg(feature = "native")]
-use rust_esprit as rn;
+use core::sync::atomic::AtomicBool;
 use ufmt::uWrite;
-
-#[cfg(feature = "native")]
-#[macro_export]
-macro_rules! bmplog
-        {
-            ($x:expr) => {
-                if(log_enabled)
-                {
-                    logger!($x)
-                }
-            };
-
-            ($x:expr, $($y:expr),+) => {
-                if(log_enabled)
-                {
-                    logger!( $x, $($y),+)
-                }
-            };
-        }
-//--
-#[cfg(feature = "native")]
-#[macro_export]
-macro_rules! bmpwarning
-        {
-            ($x:expr) => {
-                    logger!($x)
-            };
-
-            ($x:expr, $($y:expr),+) => {
-                    logger!( $x, $($y),+)
-            };
-        }
-
-#[cfg(feature = "native")]
-#[macro_export]
-macro_rules! setup_log {
-    ($x:expr) => {
-        #[allow(unused)]
-        use rust_esprit::{logger, logger_init};
-        logger_init!();
-        #[allow(unused)]
-        static log_enabled: bool = $x;
-    };
-}
-
-// ------------Hosted mode ------------
-//#[cfg(feature = "hosted")]
-////#[macro_export]
-//-------------
-
-#[cfg(feature = "hosted")]
-#[macro_export]
-macro_rules! bmplog
-        {
-            ($x:expr) => {
-                if(log_enabled)
-                {
-                    print!("{}",($x))
-                }
-            };
-
-            ($x:expr, $($y:expr),+) => {
-                if(log_enabled)
-                {
-                    print!( $x, $($y),+)
-                }
-            };
-        }
-//--
-#[cfg(feature = "hosted")]
-#[macro_export]
-macro_rules! bmpwarning
-        {
-            ($x:expr) => {
-                print!($x)
-            };
-
-            ($x:expr, $($y:expr),+) => {
-                print!( $x, $($y),+)
-            };
-        }
-
-#[cfg(feature = "hosted")]
-#[macro_export]
-macro_rules! setup_log {
-    ($x:expr) => {
-        static log_enabled: bool = $x;
-        extern crate std;
-        #[allow(unused_imports)]
-        use std::print;
-    };
-}
 
 //---------------------------------
 //
@@ -103,6 +9,15 @@ macro_rules! setup_log {
 
 use ufmt::uwrite;
 pub struct G;
+
+/// Global log enabled flag, set by setup_log!
+pub static LOG_ENABLED: AtomicBool = AtomicBool::new(false);
+
+/// Check if logging is enabled (used by bmplog! macro)
+#[inline(always)]
+pub fn is_log_enabled() -> bool {
+    LOG_ENABLED.load(core::sync::atomic::Ordering::Relaxed)
+}
 
 impl uWrite for G {
     type Error = Infallible;
@@ -235,6 +150,43 @@ impl ToLog for usize {
     }
 }
 
+// ── bmplog! / bmpwarning! / setup_log! macros ──
+// These are defined here (in a #[macro_use] module) so they're
+// automatically available crate-wide without explicit imports.
+// The underlying logger! / logger_init! come from the feature-gated
+// native::logger_native or hosted::logger_hosted modules.
+
+#[macro_export]
+macro_rules! bmplog {
+    ($x:expr) => {
+        if $crate::bmplogger::LOG_ENABLED.load(core::sync::atomic::Ordering::Relaxed) {
+            $crate::gdb_print!($x)
+        }
+    };
+    ($x:expr, $($y:expr),+) => {
+        if $crate::bmplogger::LOG_ENABLED.load(core::sync::atomic::Ordering::Relaxed) {
+            $crate::gdb_print!($x, $($y),+)
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bmpwarning {
+    ($x:expr) => {
+        $crate::gdb_print!($x)
+    };
+    ($x:expr, $($y:expr),+) => {
+        $crate::gdb_print!($x, $($y),+)
+    };
+}
+
+#[macro_export]
+macro_rules! setup_log {
+    ($x:expr) => {
+        $crate::logger_init!();
+    };
+}
+
 #[macro_export]
 macro_rules! gdb_print2 {
     // --- Recursive Thin Branches ---
@@ -311,19 +263,19 @@ macro_rules! gdb_print {
 
     // --- 3. TERMINATION BASE CASES ---
     // Look for Hex first!
-    (Hex($val:expr)) => {
-        $crate::bmplogger::G::print_hex($val as u32);
-    };
+    (Hex($val:expr)) => {{
+        $crate::bmplogger::G::print_hex($val as u32)
+    }};
 
-    ($label:literal) => {
-        $crate::bmplogger::G::print_str($label);
-    };
+    ($label:literal) => {{
+        $crate::bmplogger::G::print_str($label)
+    }};
 
     // This is line 269 in your error log. It must stay at the bottom
     // of the termination cases so it doesn't "steal" the Hex match.
-    ($val:expr) => {
-        $crate::bmplogger::ToLog::log($val);
-    };
+    ($val:expr) => {{
+        $crate::bmplogger::ToLog::log($val)
+    }};
 
     // --- 4. FALLBACK ---
     ($x:expr, $($y:expr),+) => {

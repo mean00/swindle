@@ -7,7 +7,7 @@
 #![allow(unused_imports)]
 
 use crate::rpc_common_generated::*;
-use crate::rpc_host::remote_encoder::rpc_encoder;
+use crate::hosted::rpc_host::remote_encoder::rpc_encoder;
 use crate::parsing_util::{u8s_string_to_u32_le, u8s_string_to_u8};
 use crate::rn_bmp_cmd_c::platform_buffer_read;
 

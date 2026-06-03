@@ -25,21 +25,22 @@ mod setting_keys;
 mod settings;
 //mod sync_cell;
 //mod rpc;
-#[cfg(not(feature = "hosted"))]
-mod cdc_logger;
 pub mod rpc_common;
 pub mod rpc_common_generated;
+// Feature-gated modules: native vs hosted
+#[cfg(not(feature = "hosted"))]
+pub mod native;
+#[cfg(feature = "hosted")]
+pub mod hosted;
 // RPC modules: hosted vs target
 cfg_if::cfg_if! {
     if #[cfg(feature = "hosted")] {
-        pub mod rpc_host;
-        pub mod rpc_host_generated;
+        pub use hosted::{rpc_host, rpc_host_generated};
     } else {
-        pub mod rpc_target;
-        pub mod rpc_target_generated;
-        pub mod rpc_target_impl;
+        pub use native::{rpc_target, rpc_target_generated, rpc_target_impl};
     }
 }
+// rtt and sw_breakpoints are at crate root (contents are #[cfg] guarded)
 mod rtt;
 mod sw_breakpoints;
 // USB vs non-USB transport
@@ -58,4 +59,3 @@ pub(crate) use swindle::{rngdb_output_flush, rngdb_send_data, rngdb_send_data_u8
 crate::gdb_print_init!();
 //
 // EOF
-

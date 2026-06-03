@@ -8,7 +8,7 @@ use crate::decoder::gdb_stream;
 use crate::encoder;
 use crate::packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 #[cfg(not(feature = "hosted"))]
-use crate::rpc_target_generated;
+use crate::native;
 use crate::settings;
 use core::mem::MaybeUninit;
 //
@@ -26,6 +26,7 @@ pub(crate) fn rngdb_send_data_u8(data: &[u8]) { usb::rngdb_send_data_u8(data) }
 #[cfg(any(feature = "hosted", feature = "network"))]
 pub(crate) fn rngdb_output_flush() { not_usb::rngdb_output_flush() }
 #[cfg(any(feature = "hosted", feature = "network"))]
+#[allow(dead_code)]
 pub(crate) fn rngdb_send_data(data: &str) { not_usb::rngdb_send_data(data) }
 #[cfg(any(feature = "hosted", feature = "network"))]
 pub(crate) fn rngdb_send_data_u8(data: &[u8]) { not_usb::rngdb_send_data_u8(data) }
@@ -101,7 +102,7 @@ fn run_parser(data_as_slice: &[u8]) {
                     //bmplog!("--> ACK\n");
                     //rngdb_send_data( CHAR_ACK );
                     #[cfg(not(feature = "hosted"))]
-                    rpc_target_generated::rpc_dispatch(s);
+                    native::rpc_target_generated::rpc_dispatch(s);
                     bmplog!("Rpc done\n");
                 }
             }

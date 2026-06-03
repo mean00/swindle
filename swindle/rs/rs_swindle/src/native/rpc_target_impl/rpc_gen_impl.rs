@@ -47,7 +47,7 @@ pub fn target_clk_oe(enable: bool) {
 
 /// Set frequency (no-op for now)
 pub fn freq_set(freq: u32) {
-    crate::rpc_target_impl::rpc_swindle_impl::set_fq(freq);
+    crate::native::rpc_target_impl::rpc_swindle_impl::set_fq(freq);
     // no-op
 }
 
@@ -55,7 +55,7 @@ pub fn freq_set(freq: u32) {
 pub fn freq_get() -> u32 {
     let _ok: bool;
     let fq: u32;
-    (_ok, fq) = crate::rpc_target_impl::rpc_swindle_impl::get_fq();
+    (_ok, fq) = crate::native::rpc_target_impl::rpc_swindle_impl::get_fq();
     fq
 }
 

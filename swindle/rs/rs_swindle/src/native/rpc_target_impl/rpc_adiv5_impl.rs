@@ -52,7 +52,7 @@ pub fn mem_write(device_index: u32, ap_selection: u32, csw: u32, align: u32, add
     if length > 1024 {
         return (-1, 0);
     }
-    let buffer = crate::rpc_target::rpc_reply::get_temp_buffer();
+    let buffer = crate::native::rpc_target::rpc_reply::get_temp_buffer();
     let decoded = crate::parsing_util::u8_hex_string_to_u8s(data, buffer);
     let fault = bmp::bmp_adiv5_mem_write(
         device_index,
