@@ -17,24 +17,24 @@ const vflash_command_tree: [CommandTree; 3] = [
         min_args: 2,
         require_connected: true,
         cb: CallbackType::text(_vFlashErase),
-        start_separator: ":",
-        next_separator: ",",
+        start_separator: b':',
+        next_separator: b',',
     }, // flash erase
     CommandTree {
         command: "vFlashWrite",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::raw(_vFlashWrite),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // flash write
     CommandTree {
         command: "vFlashDone",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_vFlashDone),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // flash erase
 ];
 

@@ -12,35 +12,6 @@ extern crate std;
 #[cfg(feature = "hosted")]
 #[allow(unused_imports)]
 use std::print;
-
-pub fn xswap(a: &mut isize, b: &mut isize) {
-    core::mem::swap(&mut (*a), &mut (*b));
-}
-pub fn xmin<T: core::cmp::PartialOrd>(a: T, b: T) -> T {
-    if a < b {
-        return a;
-    }
-    b
-}
-pub fn xmax(a: isize, b: isize) -> isize {
-    if b < a {
-        return a;
-    }
-    b
-}
-
-pub fn xminu(a: usize, b: usize) -> usize {
-    if a < b {
-        return a;
-    }
-    b
-}
-pub fn xmaxu(a: usize, b: usize) -> usize {
-    if b < a {
-        return a;
-    }
-    b
-}
 //
 //https://stackoverflow.com/questions/59232877/how-to-allocate-structs-on-the-heap-without-taking-up-space-on-the-stack-in-stab
 

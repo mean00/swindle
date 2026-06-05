@@ -119,7 +119,7 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
     /*
      * write internal to actual registers
      */
-    fn write_current_registers(&self) -> bool {
+    fn write_cur_registers(&self) -> bool {
         for i in 1..31 {
             bmp_write_register(i as u32, self.gprs.gprs[i]);
         }
@@ -130,7 +130,7 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
     /*
      * copy actual registers to internal
      */
-    fn read_current_registers(&mut self) -> bool {
+    fn read_cur_registers(&mut self) -> bool {
         let regs = bmp_read_registers();
         if regs.len() < 33 {
             bmpwarning!("Incorrect # of registers {}", regs.len());
@@ -173,5 +173,6 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
     fn get_sp(&self) -> u32 {
         self.gprs.sp
     }
+
 }
 // EOF

@@ -28,7 +28,6 @@ ufmt = { workspace = true } #version = "*", default-features = false }
 heapless =  { workspace = true } #{ version = "*", features = ["ufmt-impl"] }
 numtoa = {version = "0.3.0"}
 crc = { version ="3.0.1", features = []}
-hashbrown = "0.16.1"
 arraystring = { version = "0.3.0", default-features = false, features = [] }
 strum = { version = "0.27.2", default-features = false, features = []}
 strum_macros = { version = "0.27.2", default-features = false, features = []}

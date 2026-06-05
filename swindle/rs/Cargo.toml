@@ -9,7 +9,7 @@ resolver = "2"
 
 rust_esprit = { path = "../../esprit/rust/rust_esprit"}
 ufmt = { version = "0.2.0", default-features = false }
-heapless = { version = "0.7.17", features = ["ufmt-impl"] }
+heapless = { version = "0.9.3", features = ["ufmt"]}
 
 [profile.dev]
 debug = true

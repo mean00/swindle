@@ -2,7 +2,7 @@ use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use alloc::vec::Vec;
 
 use crate::freertos::freertos_hashtcb::get_hashtcb;
-use crate::freertos::freertos_list::{freertos_crawl_list, freertos_replace_in_list};
+use crate::freertos::freertos_list::freertos_crawl_list;
 
 use crate::freertos::freertos_symbols::{
     get_current_tcb_address, get_symbols, FreeRTOSDebugOffsets, FreeRTOSSymbolName,
@@ -57,10 +57,12 @@ fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> 
         return None;
     }
     let topOfStack: u32 = data[0];
-    // Read priority and stack pointer from TCB
-    // uxPriority is at offset 44 in standard TCB layout
-    // pxStack follows uxPriority
-    if !bmp_read_mem32(tcb + 44, &mut data[0..2]) {
+    // Read priority and stack pointer from TCB.
+    // uxPriority and pxStack are always the two 4-byte fields immediately
+    // before pcTaskName, regardless of MPU wrappers or other config.
+    // Derive their offsets from the already-known offset_task_name.
+    let priority_off = off.offset_task_name - 8; // uxPriority (pxStack follows at +4)
+    if !bmp_read_mem32(tcb + priority_off, &mut data[0..2]) {
         bmpwarning!("cannot read TCB\n");
         return None;
     }
@@ -286,16 +288,6 @@ pub fn freertos_switch_task(thread_id: u32) -> bool {
     // write new top of stack
     let item: [u32; 1] = [old_stack];
     bmp_write_mem32(old_current_tcb_adr, &item);
-    let symbol = get_symbols();
-    // swap old and new tcb
-    for index in 1..5 {
-        bmplog!(" replacing in  list {}:\n", index);
-        freertos_replace_in_list(
-            symbol.addresses[index].unwrap(),
-            new_tcb.tcb_addr,
-            old_current_tcb_adr,
-        );
-    }
 
     // switch to that thread..
     set_pxCurrentTCB(new_tcb.tcb_addr);

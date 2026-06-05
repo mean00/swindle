@@ -14,16 +14,16 @@ pub const ch32vxx_command_tree: [CommandTree; 2] = [
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_obr),
-        start_separator: " ",
-        next_separator: " ",
+        start_separator: b' ',
+        next_separator: b' ',
     }, //
     CommandTree {
         command: "ch32v3_option_byte",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_ch32v3_option_byte),
-        start_separator: " ",
-        next_separator: " ",
+        start_separator: b' ',
+        next_separator: b' ',
     }, //
 ];
 //

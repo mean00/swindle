@@ -49,10 +49,10 @@ pub struct CommandTree {
     cb: CallbackType, // string + strings
     // this is the separator (if any) after the command
     // for example for vCont:A, it is ':'
-    start_separator: &'static str,
+    start_separator: u8,
     // this is the separator between next args
     // for example vCont:A,B,C it is ','
-    next_separator: &'static str,
+    next_separator: u8,
 }
 //
 pub struct HelpTree {
@@ -66,112 +66,112 @@ const main_command_tree: [CommandTree; 23] = [
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qStartNoAckMode),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "!",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_extendedMode),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // enable extended mode
     CommandTree {
         command: "T",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(q_thread::_T),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // enable extended mode
     CommandTree {
         command: "Hg",
         min_args: 1,
         require_connected: true,
         cb: CallbackType::text(q_thread::_Hg),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // select thread
     CommandTree {
         command: "Hc",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_Hc),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, //
     CommandTree {
         command: "vCont", // vCont;c
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_vCont),
-        start_separator: ";",
-        next_separator: ";",
+        start_separator: b';',
+        next_separator: b';',
     },
     CommandTree {
         command: "vFlash",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::raw(_flashv),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // test
     CommandTree {
         command: "v",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::raw(_v),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // test
     CommandTree {
         command: "q",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::raw(_q),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // see q commands in commands/q.rs
     CommandTree {
         command: "g",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_g),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // read registers
     CommandTree {
         command: "?",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_mark),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // reason for halt
     CommandTree {
         command: "X",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::raw(_X), // addr,length:XX…’  X2000000;4:4
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // write binary
     CommandTree {
         command: "m",
         min_args: 2,
         require_connected: true,
         cb: CallbackType::text(_m), // m2000000,4
-        start_separator: "",
-        next_separator: ",",
+        start_separator: 0,
+        next_separator: b',',
     }, // read memory
     CommandTree {
         command: "p",
         min_args: 1,
         require_connected: true,
         cb: CallbackType::text(_p),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // read register
     CommandTree {
         // Pf=123
@@ -179,72 +179,72 @@ const main_command_tree: [CommandTree; 23] = [
         min_args: 2,
         require_connected: true,
         cb: CallbackType::text(_P),
-        start_separator: "",
-        next_separator: "=",
+        start_separator: 0,
+        next_separator: b'=',
     }, // write register
     CommandTree {
         command: "z",
         min_args: 2,
         require_connected: true,
         cb: CallbackType::text(_z), // breakpoint (remove) ‘z type,addr,kind’
-        start_separator: "",
-        next_separator: ",",
+        start_separator: 0,
+        next_separator: b',',
     }, // read memory
     CommandTree {
         command: "Z",
         min_args: 2,
         require_connected: true,
         cb: CallbackType::text(_Z), // breakpoint (set) '‘Z type,addr,kind’'
-        start_separator: "",
-        next_separator: ",",
+        start_separator: 0,
+        next_separator: b',',
     },
     CommandTree {
         command: "R",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_R), // restart
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "r",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_R), // reset the whole system
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "s",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_s), // single step
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "k",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_k), // kill
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "c",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_c), // resume c[addr]
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "D",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_D), // detach
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
 ];
 #[unsafe(no_mangle)]
@@ -273,11 +273,11 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                         // split args by splitter
                         let as_string = command;
                         // do we have a start separator ?
-                        let prefix_size = c.command.len() + c.start_separator.len();
+                        let prefix_size = c.command.len() + if c.start_separator != 0 { 1 } else { 0 };
                         let mut conf: Vec<&str>;
-                        if as_string.len() > prefix_size && !c.next_separator.is_empty() {
+                        if as_string.len() > prefix_size && c.next_separator != 0 {
                             //} && !c.next_separator.is_empty() {
-                            conf = as_string[prefix_size..].split(c.next_separator).collect();
+                            conf = as_string[prefix_size..].split(c.next_separator as char).collect();
                         } else {
                             // no extra data
                             bmplog!("command : {} \n", command);
@@ -307,8 +307,8 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                     CallbackType::raw(x) => {
                         bmplog!(c.command);
                         bmplog!("\n");
-                        let prefix_size = c.command.len() + c.start_separator.len();
-                        if command.len() > prefix_size && !c.next_separator.is_empty() {
+                        let prefix_size = c.command.len() + if c.start_separator != 0 { 1 } else { 0 };
+                        if command.len() > prefix_size && c.next_separator != 0 {
                             return (x)(command, &command.as_bytes()[prefix_size..]);
                         } else {
                             // no extra data

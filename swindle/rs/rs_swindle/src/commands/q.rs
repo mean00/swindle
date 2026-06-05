@@ -31,40 +31,40 @@ const q_command_tree: [CommandTree; 18] = [
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qLaunchGDBServer),
-        start_separator: ":",
-        next_separator: ":",
+        start_separator: b':',
+        next_separator: b':',
     },
     CommandTree {
         command: "qHostInfo",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qHostInfo),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "qQueryGDBServer",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qQueryGDBServer),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "qGetWorkingDir",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qGetWorkingDir),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     },
     CommandTree {
         command: "qRegisterInfo",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qRegisterInfo),
-        start_separator: "#",
-        next_separator: "",
+        start_separator: b'#',
+        next_separator: 0,
     },
     //
     CommandTree {
@@ -72,104 +72,104 @@ const q_command_tree: [CommandTree; 18] = [
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qSymbol),
-        start_separator: ":",
-        next_separator: ":",
+        start_separator: b':',
+        next_separator: b':',
     }, // read symbol
     CommandTree {
         command: "qSupported", // : qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qSupported),
-        start_separator: ":",
-        next_separator: ";",
+        start_separator: b':',
+        next_separator: b';',
     }, // supported features
     CommandTree {
         command: "qXfer", // qXfer:features:read:target.xml:d9c,83b
         min_args: 3,
         require_connected: false,
         cb: CallbackType::text(_qXfer),
-        start_separator: ":",
-        next_separator: ":",
+        start_separator: b':',
+        next_separator: b':',
     }, // read memory map
     CommandTree {
         command: "qTStatus",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qTStatus),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // trace status
     CommandTree {
         command: "qRcmd",
         min_args: 1,
         require_connected: false,
         cb: CallbackType::text(_qRcmd),
-        start_separator: ",",
-        next_separator: "",
+        start_separator: b',',
+        next_separator: 0,
     }, // execute command
     CommandTree {
         command: "qAttached",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qAttached),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // remote thread
     CommandTree {
         command: "qfThreadInfo",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qfThreadInfo),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // thread info begin
     CommandTree {
         command: "qsThreadInfo",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qsThreadInfo),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // List threads
     CommandTree {
         command: "qThreadExtraInfo",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qThreadExtraInfo),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // List threads
     CommandTree {
         command: "qP",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qP),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // List threads
     CommandTree {
         command: "qCRC", //  qCRC:0,61b4
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(_qCRC),
-        start_separator: ":",
-        next_separator: ",",
+        start_separator: b':',
+        next_separator: b',',
     }, // set code/data/.. offset
     CommandTree {
         command: "qC",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qC),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // Current thread Id
     CommandTree {
         command: "qOffsets",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_qOffsets),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // set code/data/.. offset
 ];
 

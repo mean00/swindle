@@ -18,7 +18,7 @@ use freertos_arm::{
     freertos_switch_task_action_arm,
 };
 //use freertos_arm_core::freertos_cortexm_core;
-use freertos_symbols::get_symbols;
+use freertos_symbols::{freertos_clear_symbols, get_symbols};
 use freertos_trait::freertos_task_info;
 
 crate::setup_log!(false);
@@ -46,6 +46,7 @@ pub fn os_attach(cpuid: u32) {
  */
 pub fn os_detach() {
     freertos_detach_arm();
+    freertos_clear_symbols();
 }
 /*
  *

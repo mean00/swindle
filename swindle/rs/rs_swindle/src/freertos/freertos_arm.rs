@@ -52,7 +52,7 @@ fn get_switcher() -> &'static mut FreeRTOS_switcher {
 fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> u32 {
     bmplog!("Switching to new stack 0x:{:x}\n", new_stack);
     // load current regs into cortex
-    cortex.read_current_registers();
+    cortex.read_cur_registers();
     // save on to tcb
     cortex.write_registers_to_stack();
     // Updated stack of old thread
@@ -61,7 +61,7 @@ fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> 
     // restore registers
     cortex.read_registers_from_addr(new_stack);
     // update actual reg from copy in cortex
-    cortex.write_current_registers();
+    cortex.write_cur_registers();
     saved_stack
 }
 /*

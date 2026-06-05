@@ -58,13 +58,13 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
     /*
      * write internal to actual registers
      */
-    fn write_current_registers(&self) -> bool {
+    fn write_cur_registers(&self) -> bool {
         self.gpr.write_current_gpr_registers()
     }
     /*
      * copy actual registers to internal
      */
-    fn read_current_registers(&mut self) -> bool {
+    fn read_cur_registers(&mut self) -> bool {
         self.gpr.read_current_gpr_registers()
     }
     /*
@@ -74,15 +74,26 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
     fn write_registers_to_stack(&mut self) -> bool {
         self.gpr.pointer = self.gpr.registers[13];
         bmplog!("Pusing registers to stack at 0x{:x}\n", self.gpr.pointer);
-        // Push in the same order as real FreeRTOS PendSV:
-        // First the manual-save block (R4..R11), then the exception frame (R0..R3,R12,LR,PC,xPSR)
-        // Real FreeRTOS: stmdb r0!, {r4-r11}  -> R4 at lowest address, R11 at highest
-        self.gpr.push_ascending(4, 12); // r4..r11 (R4 at lowest addr, matching stmdb {r4-r11})
-        // Exception frame (hardware auto-stack): R0,R1,R2,R3,R12,LR,PC,xPSR
-        self.gpr.push_ascending(0, 4); // r0..r1..r2.r3
-        self.gpr.push_ascending(12, 13); // r12
-        self.gpr.push_ascending(14, 16); // r14/r15 (LR/PC)
+        // Push in the same order as real FreeRTOS PendSV, matching the
+        // layout that read_registers_from_addr() expects:
+        //
+        //   Low address (top_of_stack):
+        //     R4..R11     (manual save, stmdb {r4-r11})
+        //     R0,R1,R2,R3 (exception frame, hardware auto-stack)
+        //     R12
+        //     LR (R14)
+        //     PC (R15)
+        //     xPSR
+        //   High address (original PSP):
+        //
+        // push_ascending decrements pointer first, then writes. So the
+        // *last* push lands at the lowest address (top_of_stack).
+        // Push exception frame first (higher addresses), then R4..R11 below.
         self.gpr.push_ascending(16, 17); // xpsr
+        self.gpr.push_ascending(14, 16); // LR, PC
+        self.gpr.push_ascending(12, 13); // R12
+        self.gpr.push_ascending(0, 4);   // R0,R1,R2,R3
+        self.gpr.push_ascending(4, 12);  // R4..R11 (lowest address = top_of_stack)
         // FPU IF NEEDED TODO
         // Update SP to the final pointer value (lowest address = first pushed register)
         self.gpr.registers[13] = self.gpr.pointer;
@@ -103,6 +114,10 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
         self.gpr.pop_ascending(12, 13); // R12
         self.gpr.pop_ascending(14, 16); // LR/PC
         self.gpr.pop_ascending(16, 17); // XPSR
+        // Set SP (R13) to the top of the saved stack frame.
+        // The saved frame doesn't contain SP explicitly — SP is implicit
+        // as the pointer to the frame itself (pxTopOfStack).
+        self.gpr.registers[13] = self.gpr.pointer;
         true
     }
 
@@ -110,5 +125,6 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
         bmplog!("Reading SP =  0x{:x}\n", self.gpr.get_sp());
         self.gpr.get_sp()
     }
+
 }
 // EOF

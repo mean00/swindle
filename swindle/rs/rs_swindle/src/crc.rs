@@ -4,7 +4,7 @@
 crate::setup_log!(false);
 use crate::bmp;
 //use crate::bmplog;
-use crate::util::xmin;
+use core::cmp::min;
 
 // qCRC:addr hex,length hex’
 // return Ccrc32 hex
@@ -32,7 +32,7 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     let tail = address + length;
     let mut adr: u32 = address;
     while adr < tail {
-        let rd: usize = xmin(tail - adr, CRC_BUFFER_SIZE as u32) as usize;
+        let rd: usize = min(tail - adr, CRC_BUFFER_SIZE as u32) as usize;
         if !bmp::bmp_read_mem(adr, &mut buffer[0..rd]) {
             return (false, 0);
         }

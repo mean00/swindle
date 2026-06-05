@@ -56,8 +56,8 @@ impl freertos_task_info {
  *
  */
 pub trait freertos_switch_handler {
-    fn write_current_registers(&self) -> bool;
-    fn read_current_registers(&mut self) -> bool;
+    fn write_cur_registers(&self) -> bool;
+    fn read_cur_registers(&mut self) -> bool;
     fn write_registers_to_stack(&mut self) -> bool;
     fn read_registers_from_addr(&mut self, address: u32) -> bool;
     fn get_sp(&self) -> u32;

@@ -3,10 +3,11 @@
  *   whatever freertos compilation options are.
  *
  */
+use crate::setting_keys::MAX_SETTING_ENTRIES;
+use crate::setting_keys::SW_TOKEN_SIZE;
 use arraystring::{ArrayString, typenum::U32};
 use core::mem::MaybeUninit;
-use hashbrown::HashMap;
-const SW_TOKEN_SIZE: usize = 32;
+use heapless::LinearMap;
 type token = ArrayString<U32>;
 //
 //crate::setup_log!(false);
@@ -18,7 +19,7 @@ type token = ArrayString<U32>;
  *
  */
 struct swindle_settings {
-    hash: HashMap<token, u32>,
+    hash: LinearMap<token, u32, MAX_SETTING_ENTRIES>,
 }
 // SAFETY: swindle_settings is only used in a single-threaded debugger context.
 unsafe impl Sync for swindle_settings {}
@@ -30,7 +31,7 @@ impl swindle_settings {
      */
     fn new() -> Self {
         swindle_settings {
-            hash: HashMap::new(),
+            hash: LinearMap::new(),
         }
     }
     /*
@@ -85,11 +86,10 @@ fn to_token(key: &str) -> token {
 pub fn set(k: &str, value: u32) {
     let info = get_settings();
     let key: token = to_token(k);
-    if info.hash.contains_key(&key) {
-        let (_other_key, old_value) = info.hash.get_key_value_mut(&key).unwrap();
+    if let Some(old_value) = info.hash.get_mut(&key) {
         *old_value = value;
     } else {
-        info.hash.insert(key, value);
+        let _ = info.hash.insert(key, value);
     }
 }
 /*

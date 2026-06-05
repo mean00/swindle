@@ -20,24 +20,24 @@ const v_command_tree: [CommandTree; 3] = [
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_vMustReply),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // test
     CommandTree {
         command: "vAttach",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_vAttach),
-        start_separator: ";",
-        next_separator: "",
+        start_separator: b';',
+        next_separator: 0,
     }, // test
     CommandTree {
         command: "vRun",
         min_args: 0,
         require_connected: true,
         cb: CallbackType::text(vRun),
-        start_separator: "",
-        next_separator: "",
+        start_separator: 0,
+        next_separator: 0,
     }, // test
 ];
 //

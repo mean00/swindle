@@ -1,7 +1,7 @@
 //use crate::bmplogger::*;
 use crate::parsing_util;
 use crate::parsing_util::ascii_octet_to_hex;
-use crate::util::xmin;
+use core::cmp::min;
 //crate::setup_log!(false);
 /*
  */
@@ -16,13 +16,13 @@ impl<'a> rpc_parameter_parser<'a> {
         rpc_parameter_parser { data }
     }
     pub fn next_u32(&mut self) -> u32 {
-        let n = xmin(self.data.len(), 8);
+        let n = min(self.data.len(), 8);
         let out: u32 = parsing_util::u8s_string_to_u32_le(&self.data[0..n]);
         self.data = &self.data[n..];
         out
     }
     pub fn next_u32_be(&mut self) -> u32 {
-        let n = xmin(self.data.len(), 8);
+        let n = min(self.data.len(), 8);
         let out: u32 = parsing_util::u8s_string_to_u32(&self.data[0..n]);
         self.data = &self.data[n..];
         out

@@ -4,7 +4,7 @@
 
 use alloc::vec::Vec;
 
-use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
+use crate::bmp::bmp_read_mem32;
 use crate::freertos::freertos_symbols::{get_symbols, FreeRTOSDebugOffsets};
 crate::setup_log!(false);
 crate::gdb_print_init!();
@@ -95,80 +95,5 @@ pub fn freertos_crawl_list(address: u32) -> Vec<u32> {
         v.push(tcb);
     }
     v
-}
-/*
- *
- *
- */
-pub fn freertos_replace_in_list(address: u32, oldtcb: u32, newtcb: u32) -> bool {
-    let off = get_list_offsets();
-    let mut list_header: [u32; 5] = [0, 0, 0, 0, 0];
-
-    // Read the list head
-    //  0 #of items
-    //  1 *pIndex = last item
-    //listEnd
-    //  2 item value (ffff)
-    //  3 *pxNext = start of list <= beignning of the list
-    //  4 *previous
-    //  5 *owner
-    //  6 *container
-    if !bmp_read_mem32(address, &mut list_header) {
-        bmplog!("Fail to parse list at address 0x{:x}\n", address);
-        return false;
-    }
-    let count = list_header[off.offset_list_number_of_item as usize / 4];
-
-    if count > 20
-    // if it's unresonnable it's garbage
-    {
-        bmplog!("Unreasonnably large list\n");
-        return false;
-    }
-
-    let mut next = list_header[off.offset_list_index as usize / 4];
-
-    let mut items: [u32; 5] = [0, 0, 0, 0, 0];
-
-    const PORT_MAX_DELAY: u32 = 0xFFFFFFFF;
-    let mut checked: u32 = 0;
-
-    // Iterate up to count+1 times to handle starting at xListEnd
-    for _i in 0..=(count + 1) {
-        if checked >= count {
-            break; // checked all real items
-        }
-        // Read item
-        // 0 number
-        // 1 *next
-        // 2 *previous
-        // 3 *owner <- tcb
-        // 4 *container
-        if !bmp_read_mem32(next, &mut items) {
-            bmplog!("Fail to parse list at address 0x{:x}\n", next);
-            return false;
-        }
-        // Skip the end marker (xListEnd)
-        if items[0] == PORT_MAX_DELAY {
-            next = items[off.offset_list_item_next as usize / 4];
-            continue;
-        }
-        checked += 1;
-        if oldtcb == items[off.offset_list_item_owner as usize / 4]
-        // found !
-        {
-            bmplog!(
-                "Replacing {:x} by {:x} in list {}\n",
-                oldtcb,
-                newtcb,
-                address
-            );
-            items[off.offset_list_item_owner as usize / 4] = newtcb;
-            bmp_write_mem32(next, &items);
-            return true;
-        }
-        next = items[off.offset_list_item_next as usize / 4];
-    }
-    false
 }
 // EOF
