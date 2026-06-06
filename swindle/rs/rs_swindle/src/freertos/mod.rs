@@ -19,9 +19,10 @@ use freertos_arm::{
 };
 //use freertos_arm_core::freertos_cortexm_core;
 use freertos_symbols::{freertos_clear_symbols, get_symbols};
+pub use freertos_tcb::freertos_invalidate_cache;
 use freertos_trait::freertos_task_info;
 
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 
 #[derive(PartialEq, Copy, Clone)]

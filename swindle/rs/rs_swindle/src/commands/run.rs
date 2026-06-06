@@ -3,6 +3,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use crate::bmp;
 use crate::commands::mon::get_enable_reset;
 use crate::encoder::encoder;
+use crate::freertos::freertos_invalidate_cache;
 use numtoa::NumToA;
 
 static running: AtomicBool = AtomicBool::new(false);
@@ -22,6 +23,9 @@ pub enum HaltState {
     Fault,
 }
 fn set_running(r: bool) {
+    // Invalidate FreeRTOS TCB cache whenever target state changes
+    // (resume or halt from poll), so next thread query re-scans.
+    freertos_invalidate_cache();
     running.store(r, Ordering::Relaxed);
 }
 pub fn target_halt() {

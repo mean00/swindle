@@ -1,5 +1,6 @@
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use alloc::vec::Vec;
+use core::mem::MaybeUninit;
 
 use crate::freertos::freertos_hashtcb::get_hashtcb;
 use crate::freertos::freertos_list::freertos_crawl_list;
@@ -11,7 +12,7 @@ use crate::freertos::freertos_trait::freertos_task_state;
 
 use crate::freertos::{freertos_switch_task_action, freertos_task_info, os_can_switch};
 
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::{bmplog, bmpwarning};
 
 /// Default hardcoded offsets used as fallback when the target doesn't export `freeRTOSDebug`.
@@ -43,6 +44,40 @@ const map_state: [freertos_task_state; 5] = [
     freertos_task_state::blocked,
     freertos_task_state::ready,
 ];
+
+//--
+// Cache for freertos_collect_information() results.
+// Avoids re-scanning target memory on every GDB thread query.
+// Invalidated when the target resumes execution.
+// SAFETY: single-threaded debugger context.
+struct TcbCache {
+    data: Vec<freertos_task_info>,
+    dirty: bool,
+}
+
+unsafe impl Sync for TcbCache {}
+
+fn get_cache() -> &'static mut TcbCache {
+    static mut CACHE: MaybeUninit<TcbCache> = MaybeUninit::uninit();
+    static mut CACHE_INIT: bool = false;
+    unsafe {
+        if !CACHE_INIT {
+            CACHE.write(TcbCache {
+                data: Vec::new(),
+                dirty: true,
+            });
+            CACHE_INIT = true;
+        }
+        CACHE.assume_init_mut()
+    }
+}
+
+/// Invalidate the TCB cache. Call this when the target resumes execution.
+pub fn freertos_invalidate_cache() {
+    let cache = get_cache();
+    cache.dirty = true;
+    cache.data.clear();
+}
 
 //--
 /*
@@ -96,18 +131,25 @@ fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> 
 /*
  *
  */
-pub fn freertos_collect_information() -> Vec<freertos_task_info> {
-    let mut output: Vec<freertos_task_info> = Vec::new();
+pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
+    let cache = get_cache();
+    if !cache.dirty {
+        bmplog!("freertos_collect_information: returning cached data\n");
+        return &cache.data;
+    }
+
     let symbol = get_symbols();
     if !symbol.running {
-        return output;
+        cache.dirty = false;
+        return &cache.data;
     }
 
     // Read pcCurrentTcb
     let mut data: [u32; 1] = [0];
     if !bmp_read_mem32(get_current_tcb_address(), &mut data) {
         bmpwarning!("cannot read value of pxCurrentTCB\n");
-        return output;
+        cache.dirty = false;
+        return &cache.data;
     }
     // pxCurrentTCB
     let current = data[0];
@@ -116,7 +158,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
     if let Some(mut x) = read_tcb(current, map_state[0]) {
         let tid = get_hashtcb().get(x.tcb_addr);
         x.tcb_no = tid;
-        output.push(x);
+        cache.data.push(x);
     }
     // read other lists
     bmplog!("---- scanning ----\n");
@@ -133,7 +175,7 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
                 if let Some(mut x) = read_tcb(i, map_state[index]) {
                     let tid = get_hashtcb().get(x.tcb_addr);
                     x.tcb_no = tid;
-                    output.push(x);
+                    cache.data.push(x);
                 }
             } else {
                 bmplog!("\t\t ==current, skipping\n");
@@ -142,11 +184,13 @@ pub fn freertos_collect_information() -> Vec<freertos_task_info> {
     }
     bmplog!("---- scanning done ----\n");
     bmplog!("---- dumping ----\n");
-    for t in &output {
+    for t in &cache.data {
         t.print_tcb();
     }
     bmplog!("---- dumping done----\n");
-    output
+
+    cache.dirty = false;
+    &cache.data
 }
 /*
  *
@@ -200,15 +244,14 @@ pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
         return None;
     }
 
-    for r in t.into_iter() {
+    for r in t.iter() {
         r.print_tcb();
         if r.tcb_no == id {
-            return Some(r);
+            return Some(r.clone());
         }
     }
     bmplog!("Not found!\n");
     None
-    //t.into_iter().find(|i| i.tcb_no == id)
 }
 
 /*
@@ -285,6 +328,10 @@ pub fn freertos_switch_task(thread_id: u32) -> bool {
     // let's switch
     bmplog!("switching...\n");
     let old_stack = freertos_switch_task_action(new_tcb.top_of_stack);
+    if old_stack == 0 {
+        bmpwarning!("freertos_switch_task: switch action failed (old_stack=0)\n");
+        return false;
+    }
     // write new top of stack
     let item: [u32; 1] = [old_stack];
     bmp_write_mem32(old_current_tcb_adr, &item);

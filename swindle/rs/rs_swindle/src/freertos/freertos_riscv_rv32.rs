@@ -8,7 +8,7 @@
 use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 use crate::bmp::{bmp_read_registers, bmp_write_register};
 
-crate::setup_log!(false);
+setup_log!(false);
 /*
  *
  */

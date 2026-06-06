@@ -1,4 +1,4 @@
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmpwarning;
 crate::gdb_print_init!();
 
@@ -32,7 +32,10 @@ impl freertos_cortexm_core {
      */
     pub fn write_current_gpr_registers(&self) -> bool {
         for i in 0..CORTEXM_GPR_REG_COUNT {
-            bmp_write_register(i as u32, self.registers[i]);
+            if !bmp_write_register(i as u32, self.registers[i]) {
+                bmpwarning!("write_current_gpr_registers: failed to write register {}\n", i);
+                return false;
+            }
         }
         true
     }
@@ -57,6 +60,13 @@ impl freertos_cortexm_core {
     /*
      *
      */
+    /// Write a single value to the stack, decrementing pointer first.
+    /// Used for values not in the register array (e.g. EXC_RETURN, PSPLIM).
+    pub fn write_ascending(&mut self, value: u32) -> bool {
+        self.pointer -= 4;
+        bmp_write_mem32(self.pointer, &[value])
+    }
+
     pub fn push_ascending(&mut self, first: usize, last: usize) -> bool {
         let to_push = last - first;
         self.pointer -= 4u32 * to_push as u32;

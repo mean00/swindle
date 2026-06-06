@@ -1,4 +1,4 @@
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
 
 /*
@@ -14,6 +14,7 @@ pub enum freertos_task_state {
     suspended = b'S' as isize,
 }
 
+#[derive(Clone)]
 pub struct freertos_task_info {
     pub name: [u8; 8],
     pub tcb_addr: u32,

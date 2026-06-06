@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 
 use crate::bmp::bmp_read_mem32;
 use crate::freertos::freertos_symbols::{get_symbols, FreeRTOSDebugOffsets};
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 //use crate::bmplog;
 

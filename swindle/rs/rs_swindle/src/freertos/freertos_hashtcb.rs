@@ -5,7 +5,7 @@
  */
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::gdb_print;
 //use crate::{bmplog, bmpwarning};
 crate::gdb_print_init!();

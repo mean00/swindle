@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 
 use crate::freertos::LN_MCU_CORE;
 
-crate::setup_log!(false);
+setup_log!(false);
 
 // Reference the C-side `lnGetFreeRTOSDebug()` to force the linker to pull in
 // the `lnFreeRTOSDebug.cpp.obj` from the archive, which contains the

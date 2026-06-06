@@ -3,7 +3,7 @@
     ARM core / FreeRTOS implementation
 
 */
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
 crate::gdb_print_init!();
 
@@ -51,17 +51,29 @@ fn get_switcher() -> &'static mut FreeRTOS_switcher {
 
 fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> u32 {
     bmplog!("Switching to new stack 0x:{:x}\n", new_stack);
-    // load current regs into cortex
-    cortex.read_cur_registers();
+    // load cur regs into cortex
+    if !cortex.read_cur_registers() {
+        bmpwarning!("freertos_switch: read_cur_registers failed\n");
+        return 0;
+    }
     // save on to tcb
-    cortex.write_registers_to_stack();
+    if !cortex.write_registers_to_stack() {
+        bmpwarning!("freertos_switch: write_registers_to_stack failed\n");
+        return 0;
+    }
     // Updated stack of old thread
     let saved_stack = cortex.get_sp();
     // ok , old thread has been saved, now restore new thread
     // restore registers
-    cortex.read_registers_from_addr(new_stack);
+    if !cortex.read_registers_from_addr(new_stack) {
+        bmpwarning!("freertos_switch: read_registers_from_addr(0x{:x}) failed\n", new_stack);
+        return 0;
+    }
     // update actual reg from copy in cortex
-    cortex.write_cur_registers();
+    if !cortex.write_cur_registers() {
+        bmpwarning!("freertos_switch: write_cur_registers failed\n");
+        return 0;
+    }
     saved_stack
 }
 /*

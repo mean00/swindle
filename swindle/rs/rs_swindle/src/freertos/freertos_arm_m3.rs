@@ -31,8 +31,11 @@ The gpr.push call will *FIRST* decrease the stack and then push the registers
 */
 use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_trait::freertos_switch_handler;
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
+
+/// EXC_RETURN value for thread mode, no FPU, using PSP.
+const EXC_RETURN: u32 = 0xFFFFFFFD;
 
 /*
  *
@@ -79,6 +82,7 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
         //
         //   Low address (top_of_stack):
         //     R4..R11     (manual save, stmdb {r4-r11})
+        //     EXC_RETURN  (r14 in PendSV handler, saved by stmdb)
         //     R0,R1,R2,R3 (exception frame, hardware auto-stack)
         //     R12
         //     LR (R14)
@@ -93,6 +97,8 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
         self.gpr.push_ascending(14, 16); // LR, PC
         self.gpr.push_ascending(12, 13); // R12
         self.gpr.push_ascending(0, 4);   // R0,R1,R2,R3
+        // EXC_RETURN: real PendSV saves r14 (EXC_RETURN value) between R11 and exception frame
+        self.gpr.write_ascending(EXC_RETURN);
         self.gpr.push_ascending(4, 12);  // R4..R11 (lowest address = top_of_stack)
         // FPU IF NEEDED TODO
         // Update SP to the final pointer value (lowest address = first pushed register)
@@ -107,8 +113,10 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
         bmplog!("Reading registers from  0x{:x}\n", address);
         self.gpr.pointer = address;
         // Read registers from the stack in the same order as they were written
-        // (matching real FreeRTOS: R4..R11 first, then exception frame)
+        // (matching real FreeRTOS: R4..R11 first, then EXC_RETURN, then exception frame)
         self.gpr.pop_ascending(4, 12); // r4..r11
+        // Skip EXC_RETURN word (saved by PendSV stmdb {r4-r11, r14})
+        self.gpr.pointer += 4;
         // FPU TODO
         self.gpr.pop_ascending(0, 4); // r0..r3
         self.gpr.pop_ascending(12, 13); // R12
