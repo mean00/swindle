@@ -7,7 +7,7 @@ use crate::encoder::encoder;
 
 use crate::parsing_util;
 
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
 
 use crate::freertos::freertos_symbols::freertos_running;

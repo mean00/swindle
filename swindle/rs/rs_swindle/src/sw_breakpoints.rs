@@ -11,7 +11,7 @@
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 
-crate::setup_log!(false);
+setup_log!(false);
 use crate::bmp;
 //use crate::bmplog;
 

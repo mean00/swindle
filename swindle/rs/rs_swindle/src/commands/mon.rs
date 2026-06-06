@@ -29,7 +29,7 @@ use rust_esprit::delay_ms;
 fn delay_ms(_a: u32) {}
 
 //
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 //use crate::{bmplog, bmpwarning, gdb_print};
 //

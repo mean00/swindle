@@ -10,7 +10,7 @@ use core::mem::MaybeUninit;
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::tick_count;
 //crate::gdb_print_init!();
-//crate::setup_log!(false);
+//setup_log!(false);
 
 const RTT_SIGNATURE: &[u8] = b"SEGGER RTT\0";
 const RTT_SIGNATURE_LEN: usize = 11;

@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 use core::convert::Infallible;
-use core::sync::atomic::AtomicBool;
 use ufmt::uWrite;
 
 //---------------------------------
@@ -9,15 +8,6 @@ use ufmt::uWrite;
 
 use ufmt::uwrite;
 pub struct G;
-
-/// Global log enabled flag, set by setup_log!
-pub static LOG_ENABLED: AtomicBool = AtomicBool::new(false);
-
-/// Check if logging is enabled (used by bmplog! macro)
-#[inline(always)]
-pub fn is_log_enabled() -> bool {
-    LOG_ENABLED.load(core::sync::atomic::Ordering::Relaxed)
-}
 
 impl uWrite for G {
     type Error = Infallible;
@@ -151,39 +141,53 @@ impl ToLog for usize {
 }
 
 // ── bmplog! / bmpwarning! / setup_log! macros ──
-// These are defined here (in a #[macro_use] module) so they're
-// automatically available crate-wide without explicit imports.
-// The underlying logger! / logger_init! come from the feature-gated
-// native::logger_native or hosted::logger_hosted modules.
+//
+// bmplog! is a compile-time toggle: setup_log!(true) makes it active,
+// setup_log!(false) makes it a no-op (zero cost).
+// bmpwarning! is always active (no guard).
 
 #[macro_export]
 macro_rules! bmplog {
-    ($x:expr) => {
-        if $crate::bmplogger::LOG_ENABLED.load(core::sync::atomic::Ordering::Relaxed) {
-            $crate::gdb_print!($x)
-        }
-    };
-    ($x:expr, $($y:expr),+) => {
-        if $crate::bmplogger::LOG_ENABLED.load(core::sync::atomic::Ordering::Relaxed) {
-            $crate::gdb_print!($x, $($y),+)
+    ($($args:tt)*) => {
+        if bmplog_enabled!() {
+            $crate::logger!($($args)*);
         }
     };
 }
 
+/// bmpwarning! — always active, no guard.
+/// Routes through logger! (which goes to rust_esprit::logger! on native,
+/// or std::print! on hosted) — NOT through gdb_print!, to avoid corrupting
+/// the GDB protocol stream.
 #[macro_export]
 macro_rules! bmpwarning {
-    ($x:expr) => {
-        $crate::gdb_print!($x)
-    };
-    ($x:expr, $($y:expr),+) => {
-        $crate::gdb_print!($x, $($y),+)
-    };
+    ($x:expr) => {{
+        $crate::logger!($x)
+    }};
+    ($x:expr, $($y:expr),+) => {{
+        $crate::logger!($x, $($y),+)
+    }};
 }
 
+/// setup_log! — compile-time toggle for bmplog! in the calling file.
+///
+/// When called with `true`, bmplog! will be active (calls logger!).
+/// When called with `false`, bmplog! will be a complete no-op (zero cost).
 #[macro_export]
 macro_rules! setup_log {
-    ($x:expr) => {
+    (true) => {
         $crate::logger_init!();
+        #[allow(unused_macros)]
+        macro_rules! bmplog_enabled {
+            () => { true };
+        }
+    };
+    (false) => {
+        $crate::logger_init!();
+        #[allow(unused_macros)]
+        macro_rules! bmplog_enabled {
+            () => { false };
+        }
     };
 }
 
@@ -264,17 +268,17 @@ macro_rules! gdb_print {
     // --- 3. TERMINATION BASE CASES ---
     // Look for Hex first!
     (Hex($val:expr)) => {{
-        $crate::bmplogger::G::print_hex($val as u32)
+        $crate::bmplogger::G::print_hex($val as u32);
     }};
 
     ($label:literal) => {{
-        $crate::bmplogger::G::print_str($label)
+        $crate::bmplogger::G::print_str($label);
     }};
 
     // This is line 269 in your error log. It must stay at the bottom
     // of the termination cases so it doesn't "steal" the Hex match.
     ($val:expr) => {{
-        $crate::bmplogger::ToLog::log($val)
+        $crate::bmplogger::ToLog::log($val);
     }};
 
     // --- 4. FALLBACK ---

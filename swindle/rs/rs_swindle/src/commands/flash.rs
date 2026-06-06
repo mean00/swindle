@@ -8,7 +8,7 @@ use crate::bmp::{bmp_flash_complete, bmp_flash_erase, bmp_flash_write};
 use crate::commands::CallbackType;
 use crate::parsing_util::ascii_string_hex_to_u32;
 
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
 
 const vflash_command_tree: [CommandTree; 3] = [

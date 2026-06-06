@@ -4,7 +4,7 @@ use crate::encoder::encoder;
 use crate::parsing_util;
 use crate::setting_keys::RTT_SETTING_KEY;
 
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 //use crate::bmpwarning;
 //use crate::gdb_print;

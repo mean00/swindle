@@ -45,7 +45,7 @@ pub fn bmp_read_registers() -> Vec<u32> {
     unsafe {
         let n = rn_bmp_cmd_c::bmp_registers_count_c() as usize;
         let mut r: Vec<u32> = vec![0; n];
-        rn_bmp_cmd_c::bmp_read_all_registers_c(r.as_mut_ptr()); // as *mut u32);
+        rn_bmp_cmd_c::bmp_read_all_registers_c(r.as_mut_ptr());
         r
     }
 }

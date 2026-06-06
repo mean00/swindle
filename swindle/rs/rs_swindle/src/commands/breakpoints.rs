@@ -6,7 +6,7 @@ use crate::encoder::encoder;
 
 use crate::parsing_util::ascii_string_hex_to_u32;
 
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
 use crate::sw_breakpoints::{add_mw_breakpoint, remove_mw_breakpoint};
 use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};

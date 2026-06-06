@@ -28,7 +28,7 @@ use core::ptr::addr_of_mut;
 const REPLY_TEMP_BUFFER_SIZE: usize = 1024;
 static mut temp_buffer: [u8; REPLY_TEMP_BUFFER_SIZE] = [0; REPLY_TEMP_BUFFER_SIZE];
 
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::{bmplog, bmpwarning};
 
 pub struct rpc_reply_encoder {

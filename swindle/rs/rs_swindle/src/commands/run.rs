@@ -8,7 +8,7 @@ use numtoa::NumToA;
 
 static running: AtomicBool = AtomicBool::new(false);
 
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 
 //use crate::gdb_print;

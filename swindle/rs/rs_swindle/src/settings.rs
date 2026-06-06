@@ -10,7 +10,7 @@ use core::mem::MaybeUninit;
 use heapless::LinearMap;
 type token = ArrayString<U32>;
 //
-//crate::setup_log!(false);
+//setup_log!(false);
 //use crate::gdb_print;
 //crate::gdb_print_init!();
 

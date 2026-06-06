@@ -4,13 +4,15 @@
 
 #[macro_export]
 macro_rules! logger {
-    ($x:expr) => {
-        $crate::bmplogger::G::print_str($x);
-    };
+    ($x:expr) => {{
+        use ::ufmt::uwrite;
+        uwrite!(&mut rust_esprit::logger::LoggerWriter, "{}", $x).unwrap()
+    }};
 
-    ($x:expr, $($y:expr),+) => {
-        $crate::gdb_print!($x, $($y),+);
-    };
+    ($x:expr, $($y:expr),+) => {{
+        use ::ufmt::uwrite;
+        uwrite!(&mut rust_esprit::logger::LoggerWriter, $x, $($y),+).unwrap()
+    }};
 }
 
 #[macro_export]

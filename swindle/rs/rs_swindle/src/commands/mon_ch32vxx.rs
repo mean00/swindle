@@ -4,7 +4,7 @@ use crate::encoder::encoder;
 use crate::parsing_util::ascii_hex_or_dec_to_u32;
 //
 //
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 //use crate::gdb_print;
 //

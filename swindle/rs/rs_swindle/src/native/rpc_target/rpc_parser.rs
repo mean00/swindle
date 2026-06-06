@@ -2,7 +2,7 @@
 use crate::parsing_util;
 use crate::parsing_util::ascii_octet_to_hex;
 use core::cmp::min;
-//crate::setup_log!(false);
+//setup_log!(false);
 /*
  */
 pub struct rpc_parameter_parser<'a> {

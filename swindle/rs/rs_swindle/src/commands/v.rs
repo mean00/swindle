@@ -11,7 +11,7 @@ use crate::encoder::encoder;
 use crate::freertos::os_detach;
 use crate::sw_breakpoints;
 
-crate::setup_log!(true);
+setup_log!(true);
 use crate::parsing_util::ascii_string_decimal_to_u32;
 
 const v_command_tree: [CommandTree; 3] = [

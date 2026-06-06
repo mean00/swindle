@@ -31,7 +31,7 @@ pub(crate) fn rngdb_send_data(data: &str) { not_usb::rngdb_send_data(data) }
 #[cfg(any(feature = "hosted", feature = "network"))]
 pub(crate) fn rngdb_send_data_u8(data: &[u8]) { not_usb::rngdb_send_data_u8(data) }
 //
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::{bmplog,bmpwarning};
 
 static mut autoauto: MaybeUninit<gdb_stream<INPUT_BUFFER_SIZE>> = MaybeUninit::uninit();

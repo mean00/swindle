@@ -3,7 +3,7 @@ use crate::parsing_util::{ascii_string_hex_to_u32, ascii_string_hex_to_u32_le};
 
 use crate::bmp;
 
-crate::setup_log!(false);
+setup_log!(false);
 // Write reg
 // Pf=123
 //

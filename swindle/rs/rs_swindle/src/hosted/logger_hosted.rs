@@ -5,17 +5,15 @@
 #[macro_export]
 macro_rules! logger {
     ($x:expr) => {
-        print!("{}", $x)
+        ::std::print!("{}", $x)
     };
 
     ($x:expr, $($y:expr),+) => {
-        print!($x, $($y),+)
+        ::std::print!($x, $($y),+)
     };
 }
 
 #[macro_export]
 macro_rules! logger_init {
-    () => {
-        extern crate std;
-    };
+    () => {};
 }

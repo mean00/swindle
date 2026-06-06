@@ -7,6 +7,8 @@
 //
 #[macro_use]
 extern crate alloc;
+#[cfg(feature = "hosted")]
+extern crate std;
 //#![allow(unused_imports)]
 mod bmp;
 #[macro_use]

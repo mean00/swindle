@@ -32,7 +32,7 @@ use run::{_R, _c, _k, _s, _vCont};
 type Callback_raw = fn(command: &str, args: &[u8]) -> bool;
 type Callback_text = fn(command: &str, args: &[&str]) -> bool;
 
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 //use crate::{bmplog, gdb_print};
 

@@ -13,7 +13,7 @@ use crate::parsing_util;
 use crate::rpc_common::*;
 use rpc_parser::rpc_parameter_parser;
 //------------------------------
-crate::setup_log!(false);
+setup_log!(false);
 crate::gdb_print_init!();
 //use crate::{bmplog, bmpwarning};
 //-------------------------------

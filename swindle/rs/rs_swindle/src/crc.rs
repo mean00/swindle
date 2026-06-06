@@ -1,7 +1,7 @@
 /*
  *
  */
-crate::setup_log!(false);
+setup_log!(false);
 use crate::bmp;
 //use crate::bmplog;
 use core::cmp::min;

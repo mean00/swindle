@@ -14,7 +14,7 @@ use crate::packet_symbols::{
 };
 use crate::parsing_util::ascii_octet_to_hex;
 //
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::{bmplog, bmpwarning};
 //
 //

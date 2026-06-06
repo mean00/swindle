@@ -12,7 +12,7 @@
 use crate::commands::mon_rtt as rttsym;
 use crate::freertos::freertos_symbols as fosym;
 use crate::rtt_consts;
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
 crate::gdb_print_init!();
 /**

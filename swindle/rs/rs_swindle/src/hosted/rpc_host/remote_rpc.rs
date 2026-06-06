@@ -7,7 +7,7 @@ use crate::rpc_host::remote_encoder::*;
 use crate::parsing_util::u8s_string_to_u32_le;
 use crate::rpc_common::*;
 
-crate::setup_log!(false);
+setup_log!(false);
 
 crate::gdb_print_init!();
 //use crate::{bmplog, gdb_print};

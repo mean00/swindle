@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-crate::setup_log!(false);
+setup_log!(false);
 //use crate::bmplog;
 //
 //
