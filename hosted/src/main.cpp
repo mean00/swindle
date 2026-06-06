@@ -18,6 +18,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file main.cpp
+ * @brief Main entry point for the Qt-hosted Swindle debugger.
+ *
+ * Initialises subsystems, starts the GDB server thread, and enters
+ * the Qt event loop.
+ */
+
 /* Provides main entry point.  Initialise subsystems and enter GDB
  * protocol loop.
  */
@@ -43,13 +51,14 @@ extern "C"
 //--
 #define LN_ARCH LN_ARCH_ARM
 #include "lnSocketRunner.h"
-// Rust part
-extern "C"
-{
-    void rngdbstub_init();
-    void rngdbstub_shutdown();
-    void rngdbstub_run(uint32_t s, const uint8_t *d);
-}
+
+// Defines expected by bmp_net_gdb.h before inclusion
+#define RUNNER_GDB_PORT 2000
+#define DEBUGME printf
+
+// Use the canonical socketRunnerGdb from the firmware tree
+#include "../../swindle/src/net/bmp_net_gdb.h"
+
 //-----
 
 bool running = true;
@@ -57,125 +66,42 @@ extern void initTcpLayer();
 //
 //
 
+/**
+ * @brief Custom Qt message handler that redirects to stderr.
+ */
 void customHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     QByteArray localMsg = msg.toLocal8Bit();
     fprintf(stderr, "%s", localMsg.constData());
 }
-#define DEBUGME printf
 //
 //
 //
 //
 
+/**
+ * @brief Exit the Qt application (called from BMP core on shutdown).
+ */
 void exit_from_bmp()
 {
     QCoreApplication::exit(0);
 }
 
-extern "C" void rngdbstub_poll();
+/**
+ * @brief Trampoline called periodically to poll the GDB stub.
+ */
 void trampoline()
 {
     rngdbstub_poll();
     // printf("Pending : %d\n",server->hasPendingConnections());
 }
 
-class socketRunnerGdb : public socketRunner
-{
-  public:
-    socketRunnerGdb(lnFastEventGroup &eventGroup, uint32_t shift) : socketRunner(2000, eventGroup, shift)
-    {
-        _connected = false;
-    }
-
-  protected:
-    bool _connected;
-    virtual void hook_connected()
-    {
-        // swindle_reinit_rtt();
-        if (!_connected)
-        {
-            rngdbstub_init();
-            // bmp_io_begin_session();
-            _connected = true;
-        } // ???????
-    }
-    virtual void hook_disconnected()
-    {
-        _connected = false;
-        rngdbstub_shutdown();
-        // bmp_io_end_session();
-    }
-    virtual void hook_poll()
-    {
-        if (_connected) // connected to a debugger
-        {
-            rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
-#if 0
-            if (cur_target)   // and we are connected to a target...
-            {
-                if (swindle_rtt_enabled())
-                {
-                    swindle_run_rtt();
-                }
-                else
-                {
-                    swindle_purge_rtt();
-                }
-            }
-#endif
-        }
-    }
-
-  protected:
-    void process_incoming_data()
-    {
-        uint32_t lp = 0;
-
-        while (1)
-        {
-            uint32_t rd = 0;
-            uint8_t *data;
-            if (readData(rd, &data))
-            {
-                if (!rd)
-                    return;
-                DEBUGME("Processing %d bytes in gdb\n", rd);
-                rngdbstub_run(rd, data);
-                releaseData();
-                DEBUGME("\td%d\n", lp++);
-            }
-        }
-    xit:
-        flushWrite();
-    }
-
-  protected:
-};
-socketRunnerGdb *runnerGdb = NULL;
-
-/**
- * @brief [TODO:description]
- *
- * @param sz [TODO:parameter]
- * @param ptr [TODO:parameter]
- */
-/**
- * @brief [TODO:description]
- */
-
-extern "C" void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
-{
-    runnerGdb->writeData(sz, ptr);
-}
-extern "C" void rngdb_output_flush_c()
-{
-    runnerGdb->flushWrite();
-}
 extern "C" void platform_init(int argc, char **argv);
 
-/*
- *
+/**
+ * @brief lwIP system event callback (stub for hosted build).
+ * @param evt  lwIP event type.
+ * @param arg  User argument.
  */
 void sys_network(lnLwipEvent evt, void *arg)
 {
@@ -183,12 +109,25 @@ void sys_network(lnLwipEvent evt, void *arg)
 }
 
 lnFastEventGroup network_eventGroup;
+
+/**
+ * @brief Process socket events for a given runner.
+ * @param runner   The socket runner to process.
+ * @param global   Global events (Up/Down).
+ * @param locl     Local events (per-runner).
+ */
 static void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
 {
     uint32_t limited = (locl >> runner->shift()) & socketRunner::Mask;
     runner->process_events(limited | global);
 }
 
+/**
+ * @brief GDB server thread.
+ *
+ * Initialises the platform, starts the TCP server, and runs the
+ * event loop that processes socket events for the GDB stub.
+ */
 class gdbThread : public QThread
 {
   protected:
@@ -219,6 +158,15 @@ class gdbThread : public QThread
     }
 };
 
+/**
+ * @brief Application entry point.
+ *
+ * Installs a custom message handler, starts the GDB thread,
+ * and enters the Qt event loop.
+ * @param argc  Argument count.
+ * @param argv  Argument vector.
+ * @return Application exit code.
+ */
 int main(int argc, char **argv)
 {
     qWarning() << "======================";
@@ -233,6 +181,10 @@ int main(int argc, char **argv)
     a.exec();
     return 0;
 }
+
+/**
+ * @brief BMP test stub (unused).
+ */
 extern "C" void rv_test(void);
 extern "C" void bmp_test(void)
 {

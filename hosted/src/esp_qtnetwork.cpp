@@ -1,3 +1,10 @@
+/**
+ * @file esp_qtnetwork.cpp
+ * @brief Synchronous TCP socket server using Qt networking.
+ *
+ * Implements a blocking (synchronous) TCP server on top of Qt's
+ * asynchronous QTcpServer/QTcpSocket by processing events in-line.
+ */
 // syncsocketserver.cpp
 #include "esp_qtnetwork.h"
 #include <QDebug>
@@ -7,6 +14,13 @@
 #define DEBUGME(...)                                                                                                   \
     {                                                                                                                  \
     }
+
+/**
+ * @brief Hex dump helper for debugging (currently disabled).
+ * @param wr  true for write direction, false for read.
+ * @param n   Number of bytes.
+ * @param x   Data pointer.
+ */
 void hexDump(bool wr, int n, const char *x)
 {
     return;
@@ -34,6 +48,12 @@ void hexDump(bool wr, int n, const char *x)
         }                                                                                                              \
     }
 
+/**
+ * @brief Slot called when a new client connects.
+ *
+ * Accepts the connection, moves the socket to the current thread,
+ * and connects readyRead/disconnected signals.
+ */
 void SyncSocketServer::onNewConnection()
 {
     qWarning("New incoming connection..\n");
@@ -52,11 +72,18 @@ void SyncSocketServer::onNewConnection()
     }
 }
 
+/**
+ * @brief Slot called when the client disconnects.
+ */
 void SyncSocketServer::onDisconnect()
 {
     qWarning("Disconnected signal \n");
     _parent->onDisconnect();
 }
+
+/**
+ * @brief Slot called when data becomes available from the client.
+ */
 void SyncSocketServer::dataAvailable()
 {
 
@@ -65,6 +92,10 @@ void SyncSocketServer::dataAvailable()
 }
 //----------------------
 
+/**
+ * @brief Construct a SyncSocketServer.
+ * @param parent  The owning lnSocketQt instance.
+ */
 SyncSocketServer::SyncSocketServer(lnSocketQt *parent)
     : QObject(NULL), server(new QTcpServer(this)), clientSocket(nullptr)
 {
@@ -76,6 +107,9 @@ SyncSocketServer::SyncSocketServer(lnSocketQt *parent)
     }
 }
 
+/**
+ * @brief Destroy the server, disconnecting any active client.
+ */
 SyncSocketServer::~SyncSocketServer()
 {
     if (clientSocket)
@@ -86,6 +120,11 @@ SyncSocketServer::~SyncSocketServer()
     server->close();
 }
 
+/**
+ * @brief Start listening on the given port.
+ * @param port  TCP port number.
+ * @return true if the server started successfully.
+ */
 bool SyncSocketServer::startServer(quint16 port)
 {
     if (!server->listen(QHostAddress::Any, port))
@@ -97,6 +136,11 @@ bool SyncSocketServer::startServer(quint16 port)
     return true;
 }
 
+/**
+ * @brief Read all available bytes from the connected client.
+ * @param maxSize  Maximum number of bytes to read (unused, reads all).
+ * @return Byte array containing the received data.
+ */
 QByteArray SyncSocketServer::readBytes(int maxSize)
 {
     if (!clientSocket)
@@ -108,6 +152,12 @@ QByteArray SyncSocketServer::readBytes(int maxSize)
     return array;
 }
 
+/**
+ * @brief Write data to the connected client.
+ * @param data  Byte array to send.
+ * @param ow    Output: number of bytes actually written.
+ * @return true on success.
+ */
 bool SyncSocketServer::writeBytes(const QByteArray &data, int &ow)
 {
     CHECK_THR();

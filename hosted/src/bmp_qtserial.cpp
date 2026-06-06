@@ -66,13 +66,16 @@ void decoderRequest(int size, const uint8_t *data);
 void decoderReply(int size, const uint8_t *data);
 
 /**
+ * @brief Size of the platform write buffer.
  */
 #define PLATFORM_BUFFER_SIZE 512
 static int plf_write_index = 0;
 static uint8_t platform_buffer[PLATFORM_BUFFER_SIZE];
-/**
- */
 
+/**
+ * @brief Wait until serial data is available on the port.
+ * @return true if data is available, false on error.
+ */
 bool waitData()
 {
     while (1)
@@ -105,6 +108,11 @@ SER_AUTO serial_auto = SERIAL_IDLE;
 int serial_head = 0;
 int serial_tail = 0;
 
+/**
+ * @brief Read a single character from the serial ring buffer, refilling from the port as needed.
+ * @param data  Output byte.
+ * @return true on success, false on error.
+ */
 bool readChar(uint8_t *data)
 {
     // shrink
@@ -145,9 +153,12 @@ bool readChar(uint8_t *data)
         }
     }
 }
+
 /**
- *
- *
+ * @brief Write data to the platform buffer (buffered). Flushes automatically when full.
+ * @param data  Pointer to the data to write.
+ * @param size  Number of bytes to write.
+ * @return Number of bytes written (always equals size on success).
  */
 extern "C" int platform_buffer_write_buffered(const uint8_t *data, int size)
 {
@@ -160,8 +171,9 @@ extern "C" int platform_buffer_write_buffered(const uint8_t *data, int size)
     plf_write_index += size;
     return size;
 }
+
 /**
- *
+ * @brief Flush the platform write buffer, sending all buffered data via platform_buffer_write().
  */
 extern "C" void platform_write_flush()
 {
@@ -172,7 +184,12 @@ extern "C" void platform_write_flush()
 }
 
 /**
+ * @brief Read a remote-procedure-call response from the serial port.
  *
+ * Parses the serial protocol framing (& ... #) and returns only the payload.
+ * @param data     Buffer to receive the payload bytes.
+ * @param maxsize  Maximum number of bytes to read.
+ * @return Number of payload bytes read, or -6 on error/overflow.
  */
 extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
 {
@@ -235,9 +252,13 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
         }
     }
 }
-/**
- */
 
+/**
+ * @brief Write raw bytes directly to the serial port (unbuffered).
+ * @param data  Pointer to the data to write.
+ * @param size  Number of bytes to write.
+ * @return Number of bytes remaining (0 on success).
+ */
 extern "C" int platform_buffer_write(const uint8_t *data, int size)
 {
     int orgsize = size;
@@ -264,9 +285,13 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
     // QBMPLOG("Write %d bytes\n", orgsize);
     return size;
 }
-/**
- */
 
+/**
+ * @brief Enumerate serial ports and find a BMP debugger probe.
+ * @param cl_opts  CLI options (unused).
+ * @param info     Output structure filled with probe information.
+ * @return true if a debugger was found, false otherwise.
+ */
 extern "C" bool find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
 {
 #if 0
@@ -340,9 +365,11 @@ extern "C" bool find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
     xAssert(0);
     return true;
 }
-/**
- */
 
+/**
+ * @brief Clean up the serial port connection (called on exit).
+ * @param info  Probe information (unused).
+ */
 extern "C" void libusb_exit_function(bmda_probe_s *info)
 {
     QBMPERROR("Exiting libusb..\n");
@@ -353,7 +380,10 @@ extern "C" void libusb_exit_function(bmda_probe_s *info)
         qserial = NULL;
     }
 }
+
 /**
+ * @brief Identify and open the serial port for a BMP probe.
+ * @param info  Probe information containing the serial port path.
  */
 extern "C" void bmp_ident(bmda_probe_s *info)
 {
@@ -362,9 +392,13 @@ extern "C" void bmp_ident(bmda_probe_s *info)
     QString port(info->manufacturer);
     qserial = new QSerialPort(port);
 }
-/**
- */
 
+/**
+ * @brief Open and configure the serial port for communication.
+ * @param opt     CLI options (unused).
+ * @param serial  Serial port identifier (unused, port is already set in bmp_ident).
+ * @return true on success, false on failure.
+ */
 extern "C" bool serial_open(const bmda_cli_options_s *opt, const char *serial)
 {
     QBMPLOG("Serial open\n");

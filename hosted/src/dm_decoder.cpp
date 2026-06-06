@@ -41,8 +41,9 @@ void decoderDMReg(int reg, uint32_t value);
 #endif
 
 /**
- * @brief
- *
+ * @brief Convert a hex character to its numeric value.
+ * @param a  Hex character (0-9, a-f, A-F).
+ * @return Numeric value (0-15).
  */
 uint32_t _hex(uint8_t a)
 {
@@ -54,12 +55,12 @@ uint32_t _hex(uint8_t a)
         return a - 'A' + 10;
     return 0;
 }
+
 /**
- * @brief
- *
- * @param data
- * @param nbBytes
- * @return uint32_t
+ * @brief Read a little-endian integer from a hex-encoded byte stream.
+ * @param data     Pointer to hex-encoded bytes (2 chars per byte).
+ * @param nbBytes  Number of bytes to decode.
+ * @return Decoded value.
  */
 uint32_t readLE(const uint8_t *data, const int nbBytes)
 {
@@ -122,6 +123,11 @@ DM_registers dm_regs[] = {
     {0x40, "Halt Summary 0 (haltsum0)"},
 };
 
+/**
+ * @brief Look up the human-readable name of a DM register.
+ * @param reg  Register address.
+ * @return Name string, or "????" if unknown.
+ */
 const char *lookup_dm_reg(int reg)
 {
 #define NB_DM_REG (sizeof(dm_regs) / sizeof(dm_regs[0]))
@@ -136,11 +142,11 @@ const char *lookup_dm_reg(int reg)
     return "????";
 }
 static int last_cmd = 0;
+
 /**
- * @brief
- *
- * @param reg
- * @param value
+ * @brief Decode and log a reply from the debug module.
+ * @param size  Size of the reply data.
+ * @param data  Pointer to the reply data.
  */
 void decoderReply(int size, const uint8_t *data)
 {
@@ -161,6 +167,11 @@ void decoderReply(int size, const uint8_t *data)
     }
 }
 
+/**
+ * @brief Return a category string for a RISC-V register number.
+ * @param reg  Register number.
+ * @return "CSR", "GPR", "FPU", or "?-?".
+ */
 const char *regname(int reg)
 {
     if (reg < 0x1000)
@@ -177,16 +188,20 @@ const char *regname(int reg)
     }
     return "?-?";
 }
+
 /**
+ * @brief Decode a command reply value (stub, currently unused).
+ * @param cmd    Command identifier.
+ * @param value  Reply value.
  */
 void decodeReply(int cmd, uint32_t value)
 {
 }
+
 /**
- * @brief
- *
- * @param reg
- * @param value
+ * @brief Decode and log a Debug Module register value.
+ * @param reg    Register address.
+ * @param value  Register value.
  */
 void decoderDMReg(int reg, uint32_t value)
 {
@@ -244,9 +259,11 @@ void decoderDMReg(int reg, uint32_t value)
         break;
     }
 }
+
 /**
- *
- *
+ * @brief Decode and log a "HL" (high-level) command.
+ * @param size  Size of the command data.
+ * @param data  Pointer to the command data.
  */
 void decodeHL(int size, const uint8_t *data)
 {
@@ -266,6 +283,9 @@ void decodeHL(int size, const uint8_t *data)
 }
 
 /**
+ * @brief Decode and log an SWD command.
+ * @param size  Size of the command data.
+ * @param data  Pointer to the command data.
  */
 void decodeSWD(int size, const uint8_t *data)
 {
@@ -279,7 +299,11 @@ void decodeSWD(int size, const uint8_t *data)
         break;
     }
 }
+
 /**
+ * @brief Decode and log a RISC-V command.
+ * @param size  Size of the command data.
+ * @param data  Pointer to the command data.
  */
 void decodeRV(int size, const uint8_t *data)
 {
@@ -300,7 +324,11 @@ void decodeRV(int size, const uint8_t *data)
         break;
     }
 }
+
 /**
+ * @brief Decode and log a generic command.
+ * @param size  Size of the command data.
+ * @param data  Pointer to the command data.
  */
 void decodeGeneric(int size, const uint8_t *data)
 {
@@ -339,6 +367,12 @@ void decodeGeneric(int size, const uint8_t *data)
         break;
     }
 }
+
+/**
+ * @brief Convert a hex character to its numeric value (internal helper).
+ * @param a  Hex character.
+ * @return Numeric value (0-15).
+ */
 int _c(const uint8_t a)
 {
     if (a >= 'A' && a <= 'F')
@@ -349,11 +383,21 @@ int _c(const uint8_t a)
         return a - '0';
     return 0;
 }
+
+/**
+ * @brief Decode a hex byte from two consecutive characters.
+ * @param a  Pointer to two hex characters.
+ * @return Decoded byte value.
+ */
 int _hex(const uint8_t *a)
 {
-    return _c((a[0]) << 4) + _c(a[1]);
+    return (_c(a[0]) << 4) + _c(a[1]);
 }
+
 /**
+ * @brief Decode and log a monitor command (hex-encoded ASCII).
+ * @param size  Size of the hex-encoded data.
+ * @param data  Pointer to the hex-encoded data.
  */
 void decodeMon(int size, const uint8_t *data)
 {
@@ -365,7 +409,11 @@ void decodeMon(int size, const uint8_t *data)
     }
     QBMPLOG("\n");
 }
+
 /**
+ * @brief Decode and log a "LnADIV5" command.
+ * @param size  Size of the command data.
+ * @param data  Pointer to the command data.
  */
 void decodeLNADIV5(int size, const uint8_t *data)
 {
@@ -388,6 +436,12 @@ void decodeLNADIV5(int size, const uint8_t *data)
         break;
     }
 }
+
+/**
+ * @brief Decode and log an ADIV5 command.
+ * @param size  Size of the command data.
+ * @param data  Pointer to the command data.
+ */
 void decodeADIV5(int size, const uint8_t *data)
 {
     switch (data[0])
@@ -415,8 +469,11 @@ void decodeADIV5(int size, const uint8_t *data)
 }
 
 /**
+ * @brief Decode and log a remote-procedure-call request.
  *
- *
+ * Dispatches to the appropriate sub-decoder based on the command type byte.
+ * @param size  Size of the request data.
+ * @param data  Pointer to the request data.
  */
 static bool first_frame = true;
 void decoderRequest(int size, const uint8_t *data)
@@ -488,52 +545,5 @@ void decoderRequest(int size, const uint8_t *data)
         return;
         break;
     }
-#if 0
-        case 'm':
-            QBMPLOG("Mem read ");
-            break;
-        case 'M':
-            QBMPLOG("Mem write ");
-            break;
-        case 'B': {
-            switch (data[2])
-            {
-            case 'r': {
-                QBMPLOG("DMI READ ");
-                uint32_t reg = readLE(data + 3, 1);
-                QBMPLOG("Reg %s (0x%x) ", lookup_dm_reg(reg), reg);
-                last_cmd = reg;
-            }
-            break;
-
-            case 'w': {
-                QBMPLOG("DMI WRITE ");
-                // What's after is the DMI : Register 8 bits is enough but we use 32 then 32 bits data
-                uint32_t reg = readLE(data + 3, 4);
-                uint32_t value = readLE(data + 3 + 4 * 2, 4);
-                QBMPLOG("Reg %s (0x%x) Data=0x%x ", lookup_dm_reg(reg), reg, value);
-                decoderDMReg(reg, value);
-                last_cmd = 0;
-            }
-            break;
-            default:
-                QBMPLOG("DMI ?? ");
-                break;
-            }
-        }
-        break;
-        default:
-            QBMPLOG(" ???");
-            break;
-        }
-    }
-#endif
 }
-#if 0
-extern "C" int bmda_usb_transfer(usb_link_s *link, const void *tx_buffer, size_t tx_len, void *rx_buffer, size_t rx_len,
-                                 uint16_t timeout)
-{
-    return -1;
-}
-#endif
 // EOF
