@@ -58,7 +58,7 @@ pub struct gdb_stream<const INPUT_BUFFER_SIZE: usize> {
     checksum_received: [u8; 2],
 }
 impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         gdb_stream {
             available: false,
             automaton: PARSER_AUTOMATON::Idle,
@@ -73,6 +73,14 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
     }
     pub fn get_available(&mut self) -> bool {
         self.available
+    }
+    pub fn init(&mut self) {
+        self.available = false;
+        self.automaton = PARSER_AUTOMATON::Idle;
+        self.input_buffer.fill(0);
+        self.indx = 0;
+        self.checksum = 0;
+        self.checksum_received = [0, 0];
     }
     /*
      *

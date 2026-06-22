@@ -50,11 +50,14 @@ pub fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
  * get a human readable attributes  "qThreadExtraInfo,id"
  */
 pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
-    let args: Vec<&str> = command.split(',').collect();
-    if args.len() != 2 {
-        encoder::reply_e01();
-    }
-    let thread_id = parsing_util::ascii_string_hex_to_u32(args[1]);
+    let (_, thread_id_str) = match command.split_once(',') {
+        Some(res) => res,
+        None => {
+            encoder::reply_e01();
+            return true;
+        }
+    };
+    let thread_id = parsing_util::ascii_string_hex_to_u32(thread_id_str);
 
     if !freertos_running() {
         // When FreeRTOS is not enabled, return a default thread

@@ -566,8 +566,7 @@ fn _mon_test2(_command: &str, _args: &[&str]) -> bool {
 fn _boards(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("Support enabled for :\n");
     let boards = bmp::bmp_supported_boards();
-    let b: Vec<&str> = boards.split(':').collect();
-    for i in b {
+    for i in boards.split(':') {
         gdb_println!("\t", i);
     }
     encoder::reply_ok();

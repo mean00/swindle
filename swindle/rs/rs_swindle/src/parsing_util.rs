@@ -164,31 +164,19 @@ pub fn u8_to_ascii_to_buffer(value: u8, out: &mut [u8]) {
 //
 //
 pub fn _take_adress_length(xin: &str) -> Option<(u32, u32)> {
-    let args: Vec<&str> = xin.split(',').collect();
-    if args.len() != 2 {
-        bmplog!("take_adress_length : wrong param");
-        return None;
-    }
-    let address = ascii_string_hex_to_u32(args[0]);
-    let len = ascii_string_hex_to_u32(args[1]);
+    let (addr_str, len_str) = xin.split_once(',')?;
+    let address = ascii_string_hex_to_u32(addr_str);
+    let len = ascii_string_hex_to_u32(len_str);
     Some((address, len))
 }
 //
 //
 //
 pub fn split_command(incoming: &[u8]) -> Option<(&[u8], &[u8])> {
-    let size = incoming.len();
-    // look up for the first ':' if any
-    // and split there
-    for i in 0..size {
-        if incoming[i] == b':' {
-            // split here
-            if i == size - 1 {
-                return Some((&incoming[..i], &incoming[0..0]));
-            }
-            return Some((&incoming[..i], &incoming[(i + 1)..]));
-        }
+    if let Some(pos) = incoming.iter().position(|&b| b == b':') {
+        Some((&incoming[..pos], &incoming[pos + 1..]))
+    } else {
+        Some((incoming, &[]))
     }
-    Some((incoming, &incoming[0..0]))
 }
 //

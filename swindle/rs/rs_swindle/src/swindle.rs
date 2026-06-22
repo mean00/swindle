@@ -10,7 +10,7 @@ use crate::packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 #[cfg(not(feature = "hosted"))]
 use crate::native;
 use crate::settings;
-use core::mem::MaybeUninit;
+
 //
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
 use crate::usb;
@@ -34,12 +34,12 @@ pub(crate) fn rngdb_send_data_u8(data: &[u8]) { not_usb::rngdb_send_data_u8(data
 setup_log!(false);
 //use crate::{bmplog,bmpwarning};
 
-static mut autoauto: MaybeUninit<gdb_stream<INPUT_BUFFER_SIZE>> = MaybeUninit::uninit();
+static mut autoauto: gdb_stream<INPUT_BUFFER_SIZE> = gdb_stream::new();
 /*
  *
  */
 fn get_autoauto() -> &'static mut gdb_stream<INPUT_BUFFER_SIZE> {
-    unsafe { autoauto.assume_init_mut() }
+    unsafe { &mut autoauto }
 }
 fn clear_autoauto() {
     get_autoauto().set_available(false);
@@ -48,7 +48,7 @@ fn clear_autoauto() {
 pub extern "C" fn rngdbstub_init() {
     settings::init_settings();
     unsafe {
-        autoauto.write(gdb_stream::<INPUT_BUFFER_SIZE>::new());
+        autoauto.init();
         get_autoauto().set_available(true);
     }
 }
