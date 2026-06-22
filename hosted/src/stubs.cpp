@@ -497,3 +497,10 @@ extern "C" const uint32_t *lnGetFreeRTOSDebug()
 {
     return NULL;
 }
+//
+extern "C" void bmp_gpio_reset_c();
+extern "C" void bmp_gpio_reset()
+{
+    bmp_gpio_reset_c();
+}
+

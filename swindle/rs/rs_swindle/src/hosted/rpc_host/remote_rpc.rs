@@ -5,7 +5,7 @@
 use crate::rpc_host::remote_encoder::*;
 
 use crate::parsing_util::u8s_string_to_u32_le;
-use crate::rpc_common::*;
+use crate::rpc_common_generated::*;
 
 setup_log!(false);
 
@@ -221,6 +221,23 @@ pub fn remote_adiv5_swd_raw_access_rs(rnw: u8, addr: u16, value: u32, fault: &mu
     }
     *fault = u8s_string_to_u32_le(&reply[9..]);
     u8s_string_to_u32_le(&reply[1..9])
+}
+
+/// Reset SWDIO GPIO state via RPC.
+///
+/// Sends a GEN_GPIO_RESET command to the target probe, which drives the
+/// SWDIO pin high and configures it as an output. Called during target
+/// detach to release the SWD bus to a known idle state.
+#[unsafe(no_mangle)]
+pub fn bmp_gpio_reset_c() {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_GPIO_RESET]);
+    e.end();
+    let reply = remote_get_reply();
+    if !check_reply(reply, 0) {
+        bmplog!("bmp_gpio_reset_c: RPC failed\n");
+    }
 }
 
 //

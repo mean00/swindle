@@ -122,6 +122,15 @@ pub fn remote_gen_pwr_get() -> u8 {
     u8s_string_to_u8(&reply[1..])
 }
 
+pub fn remote_gen_gpio_reset() -> bool {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_GPIO_RESET]);
+    e.end();
+    let reply = remote_get_reply();
+    check_reply(reply, 0)
+}
+
 // ── SWDP commands ──
 pub fn remote_swdp_init() -> bool {
     let mut e = rpc_encoder::new();

@@ -68,3 +68,11 @@ pub fn pwr_set(_enabled: bool) {
 pub fn pwr_get() -> u32 {
     0 // not supported
 }
+
+/// Reset SWDIO GPIO state (set high + output).
+///
+/// Drives the SWDIO pin high and configures it as an output. This is called
+/// during target detach to release the SWD bus to a known idle state.
+pub fn gpio_reset() {
+    bmp::bmp_gpio_reset();
+}

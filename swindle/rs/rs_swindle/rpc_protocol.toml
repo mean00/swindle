@@ -88,6 +88,13 @@ old_name = "RPC_PWR_GET"
 description = "Get target power state"
 reply = { type = "u8" }
 
+[class.GEN.command.GPIO_RESET]
+id = "R"
+old_name = "RPC_GEN_GPIO_RESET"
+description = "Reset SWDIO GPIO state (set high + output)"
+params = []
+reply = "ok"
+
 # ---------------------------------------------------------------------------
 # SWDP — SWD Protocol initialization
 # ---------------------------------------------------------------------------

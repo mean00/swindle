@@ -533,3 +533,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn bmp_get_arch_c() -> cty::c_uint;
 }
+unsafe extern "C" {
+    pub fn bmp_gpio_reset();
+}

@@ -452,8 +452,8 @@ fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
                 rpc_reply_error(RPC_REMOTE_RESP_PARERR);
                 return true;
             }
-            let mut buffer: [u8; 1024] = [0; 1024];
             let l: usize = length as usize;
+            let buffer = get_temp_buffer();
             let fault: i32 = bmp::bmp_adiv5_mem_read(
                 device_index,
                 ap_selection,
@@ -481,8 +481,8 @@ fn rpc_adiv5_packet(parser: &mut rpc_parameter_parser) -> bool {
                 rpc_reply_error(RPC_REMOTE_RESP_PARERR);
                 return true;
             }
-            let mut buffer: [u8; 1024] = [0; 1024];
-            let decoded = parsing_util::u8_hex_string_to_u8s(parser.end(), &mut buffer);
+            let buffer = get_temp_buffer();
+            let decoded = parsing_util::u8_hex_string_to_u8s(parser.end(), buffer);
             let fault: i32 =
                 bmp::bmp_adiv5_mem_write(device_index, ap_selection, csw1, address, align, decoded);
             bmplog!("\t\t fault  :{}\n", fault);

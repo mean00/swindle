@@ -57,6 +57,7 @@ pub mod rpc_gen_impl {
             RPC_GEN_FREQ_GET => cmd_freq_get(parser),
             RPC_GEN_PWR_SET => cmd_pwr_set(parser),
             RPC_GEN_PWR_GET => cmd_pwr_get(parser),
+            RPC_GEN_GPIO_RESET => cmd_gpio_reset(parser),
             _ => {
                 bmplog!("unknown command in {} packet\n", stringify!(GEN));
                 false
@@ -121,6 +122,12 @@ pub mod rpc_gen_impl {
         let val = crate::native::rpc_target_impl::rpc_gen_impl::pwr_get();
         #[allow(clippy::unnecessary_cast)]
         rpc_reply_ok(val as u8);
+        true
+    }
+
+    fn cmd_gpio_reset(parser: &mut rpc_parameter_parser) -> bool {
+        crate::native::rpc_target_impl::rpc_gen_impl::gpio_reset();
+        rpc_reply_encoder::new().end();
         true
     }
 

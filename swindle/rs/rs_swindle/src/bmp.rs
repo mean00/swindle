@@ -547,6 +547,16 @@ pub enum bmp_arch {
     BMP_ARCH_RISCV = crate::rn_bmp_cmd_c::BMP_ARCH_RISCV,
 }
 
+/// Reset SWDIO GPIO state (set high + output).
+///
+/// Drives the SWDIO pin high and configures it as an output. This is used
+/// during target detach to release the SWD bus to a known idle state.
+pub fn bmp_gpio_reset() {
+    unsafe {
+        rn_bmp_cmd_c::bmp_gpio_reset();
+    }
+}
+
 /// Get the target's architecture (ARM or RISC-V).
 pub fn bmp_get_arch() -> bmp_arch {
     unsafe {
