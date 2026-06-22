@@ -58,6 +58,14 @@ extern "C" void swdptap_init()
 /*
  *
  */
+extern "C" void bmp_gpio_reset()
+{
+    rSWDIO->set(1);
+    rSWDIO->output();
+}
+/*
+ *
+ */
 
 static uint32_t ESP_RUN_FAST zread(const size_t size)
 {

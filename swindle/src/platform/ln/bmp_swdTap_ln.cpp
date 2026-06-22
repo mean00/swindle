@@ -70,6 +70,14 @@ static uint32_t zread(uint32_t nbTicks)
 void bmp_gpio_pinmode(bmp_pin_mode pioMode)
 {
 }
+/*
+ *
+ */
+extern "C" void bmp_gpio_reset()
+{
+    rSWDIO->set(1);
+    rSWDIO->output();
+}
 extern "C" void ln_raw_swd_reset(uint32_t pulses)
 {
     rSWDIO->set(1);

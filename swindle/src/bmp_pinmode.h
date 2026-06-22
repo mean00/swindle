@@ -14,3 +14,4 @@ enum bmp_pin_mode
     BMP_PINMODE_RVSWD,
 };
 extern void bmp_gpio_pinmode(bmp_pin_mode pioMode);
+// extern void bmp_gpio_reset();

@@ -28,6 +28,7 @@ extern "C"
     extern "C" bool bmd_crc32(target_s *const target, uint32_t *const result, const uint32_t base, const size_t len);
     extern "C" void poll_rtt(target_s *const cur_target);
     extern "C" void swindle_enable_rtt(bool);
+    extern "C" void bmp_gpio_reset();
     target_s *cur_target;
     target_s *last_target;
     bool shutdown_bmda;
@@ -114,6 +115,7 @@ extern "C" bool bmp_detach_c(uint32_t target)
         TRY(EXCEPTION_ALL)
         {
             swindle_enable_rtt(false);
+            bmp_gpio_reset();
             target_detach(cur_target);
             last_target = cur_target;
         }

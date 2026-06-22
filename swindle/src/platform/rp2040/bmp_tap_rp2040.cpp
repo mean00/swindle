@@ -51,8 +51,7 @@ extern "C"
 #include "lnBMP_reset.h"
 #include "platform_support.h"
 
-extern  void gmp_gpio_init_adc();
-
+extern void gmp_gpio_init_adc();
 
 static bmp_pin_mode currentPioMode;
 uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
@@ -125,6 +124,15 @@ static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight
     lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
     lnPinModePIO(pin_direction, LN_SWD_PIO_ENGINE);
 }
+/*
+ *
+ */
+extern "C" void bmp_gpio_reset()
+{
+    bmp_pin_mode old_mode = currentPioMode;
+    bmp_gpio_pinmode(BMP_PINMODE_NONE);
+    bmp_gpio_pinmode(old_mode);
+}
 /**
  *
  *
@@ -193,4 +201,4 @@ extern "C" void bmp_io_begin_session()
 extern "C" void bmp_io_end_session()
 {
     pReset->off(); // hi-z by default
-}// EOF
+} // EOF
