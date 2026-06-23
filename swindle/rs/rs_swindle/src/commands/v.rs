@@ -1,5 +1,24 @@
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+//! GDB `v` packet handlers (attach, run, must-reply).
+//!
+//! Implements the GDB remote protocol `v` packet family:
+//!
+//! | Packet | Description |
+//! |--------|-------------|
+//! | `vAttach;target` | Attach to a target on the SWD/RISC-V bus |
+//! | `vRun` | Run the program (just replies OK) |
+//! | `vMustReply` | Empty reply (LLDB compatibility) |
+//!
+//! On attach, this module:
+//! 1. Connects to the target
+//! 2. Registers target-specific monitor commands
+//! 3. Resets symbol state for FreeRTOS/RTT lookup
+//! 4. Clears any previous software breakpoints
+//!
+//! ## References
+//!
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/Packets.html>
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html>
+
 
 use super::{CommandTree, exec_one};
 use crate::bmp;
@@ -51,6 +70,7 @@ fn vRun(_command: &str, _args: &[&str]) -> bool {
 //
 //
 
+/// Dispatch `v*` packets to the appropriate handler.
 pub fn _v(command: &str, args: &[u8]) -> bool {
     exec_one(&v_command_tree, command, args)
 }
@@ -58,6 +78,7 @@ pub fn _v(command: &str, args: &[u8]) -> bool {
 //
 //
 //
+/// Handle `vMustReply` — empty reply (LLDB compatibility).
 fn _vMustReply(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("");
     true
@@ -65,6 +86,10 @@ fn _vMustReply(_command: &str, _args: &[&str]) -> bool {
 //
 //
 //
+/// Handle `vAttach;target` — attach to a target on the debug bus.
+///
+/// On success, registers target-specific commands and sends a stop
+/// reply with thread 1 (required for GDB 11/12 compatibility).
 fn _vAttach(_command: &str, args: &[&str]) -> bool {
     // The string is normally vAttach;XXX
     if args.len() != 1 {

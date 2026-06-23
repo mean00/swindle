@@ -1,5 +1,14 @@
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+//! GDB `vFlash` commands — flash programming support.
+//!
+//! Implements the GDB remote protocol flash programming sequence:
+//!
+//! 1. `vFlashErase:addr,length` — erase a region of flash
+//! 2. `vFlashWrite:addr,data` — write data to flash
+//! 3. `vFlashDone` — finalise the flash operation
+//!
+//! The `DISABLE_FLASH` flag can be set to `true` to skip actual flash
+//! operations (useful for testing).
+
 
 use super::{CommandTree, exec_one};
 use crate::encoder::encoder;
@@ -44,12 +53,14 @@ const DISABLE_FLASH: bool = false;
 //
 //
 
+/// Dispatch `vFlash*` commands to the appropriate handler.
 pub fn _flashv(command: &str, args: &[u8]) -> bool {
     exec_one(&vflash_command_tree, command, args)
 }
 
 //
 //vFlashErase:08000000,00005000
+/// Handle `vFlashErase:addr,length` — erase a flash region.
 fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
     if DISABLE_FLASH {
         encoder::reply_ok();
@@ -63,6 +74,9 @@ fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
 }
 //
 //vFlashWrite:08000000,data
+/// Handle `vFlashWrite:addr,data` — write data to flash.
+///
+/// Parses the address and binary data from the raw command string.
 fn _vFlashWrite(command: &str, _args: &[u8]) -> bool {
     if DISABLE_FLASH {
         encoder::reply_ok();
@@ -102,6 +116,7 @@ fn _vFlashWrite(command: &str, _args: &[u8]) -> bool {
     true
 }
 //vFlashDone
+/// Handle `vFlashDone` — finalise the flash operation.
 fn _vFlashDone(_command: &str, _args: &[&str]) -> bool {
     if DISABLE_FLASH {
         encoder::reply_ok();

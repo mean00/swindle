@@ -1,5 +1,10 @@
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+//! GDB memory read/write commands (`m`, `X`).
+//!
+//! Implements the GDB remote protocol memory access commands:
+//!
+//! - `maddr,length` — read memory, return hex-encoded bytes
+//! - `Xaddr,length:data` — write binary data to memory
+
 
 use crate::bmp;
 use crate::encoder::encoder;
@@ -10,8 +15,7 @@ use crate::bmp::bmp_mem_write;
 setup_log!(false);
 //use crate::bmplog;
 
-// memory read m80070f6,4 // m2000000,4
-
+/// Handle `maddr,length` — read memory and return hex-encoded bytes.
 pub fn _m(_command: &str, args: &[&str]) -> bool {
     if !bmp::bmp_attached() {
         encoder::reply_e01();
@@ -42,10 +46,9 @@ pub fn _m(_command: &str, args: &[&str]) -> bool {
     e.end();
     true
 }
-/**
- *  \fn write memory
- *  Xaddr,length:XX(binary)
- */
+/// Find a character in a string starting from `initial`.
+///
+/// Returns `(found, position)`.
 pub fn lookupChar(searched: &str, incoming: &str, initial: usize) -> (bool, usize) {
     match &incoming[initial..].find(searched) {
         Some(x) => (true, x + initial),
@@ -56,6 +59,7 @@ pub fn lookupChar(searched: &str, incoming: &str, initial: usize) -> (bool, usiz
  *
  *
  */
+/// Handle `Xaddr,length:data` — write binary data to memory.
 pub fn _X(command: &str, _args: &[u8]) -> bool {
     let mut ret: bool;
     let coma: usize;

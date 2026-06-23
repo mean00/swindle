@@ -1,6 +1,10 @@
-/*
- *
- */
+//! CRC32 computation for GDB memory verification.
+//!
+//! Implements the GDB `qCRC` command: computes a CRC32 checksum over a
+//! region of target memory. First tries the target's hardware CRC unit
+//! (via `bmp_custom_crc32`), falling back to a software CRC if the
+//! hardware method is unavailable.
+
 setup_log!(false);
 use crate::bmp;
 //use crate::bmplog;
@@ -20,8 +24,11 @@ const GDB_CRC_ALG: crc::Algorithm<u32> = crc::Algorithm {
 };
 const CRC_BUFFER_SIZE: usize = 128;
 const crc32_cksum: crc::Crc<u32> = crc::Crc::<u32>::new(&GDB_CRC_ALG);
-/*
- */
+/// Compute CRC32 in software by reading target memory through BMP.
+///
+/// Reads `length` bytes from `address` in chunks and computes a CRC32
+/// using the GDB-specified polynomial (0x04C11DB7, no reflection).
+/// Returns `(success, crc_value)`.
 pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     let mut digest = crc32_cksum.digest();
     let mut buffer: [u8; CRC_BUFFER_SIZE] = [0; CRC_BUFFER_SIZE]; // should be big enough!
@@ -43,14 +50,14 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
     bmplog!("XXCRC={:x}\n", crc);
     (true, crc)
 }
-/*
-TODO this does not work because we are not attached on the remote BMP
-TODO
- */
-//----------
-// Local
-// In that case we compute the CRC directly on the BMP itself
-//----------
+/// Compute CRC32 over target memory, preferring hardware acceleration.
+///
+/// Tries the target's hardware CRC unit first. Falls back to software CRC
+/// if the hardware method fails or is unavailable. Returns `true` on success
+/// with the CRC written to `crc`.
+///
+/// Note: the hardware CRC path does not work when attached via a remote BMP
+/// (hosted mode), as the probe cannot access the target's CRC peripheral.
 pub fn abstract_crc32(address: u32, len: u32, crc: &mut u32) -> bool {
     let mut status: bool;
     // can we use an optimized version ?

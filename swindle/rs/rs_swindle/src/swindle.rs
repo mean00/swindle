@@ -1,3 +1,23 @@
+//! Main GDB stub loop — packet parsing and command dispatch.
+//!
+//! Implements the core GDB remote protocol loop: receives packets from the
+//! USB/serial transport, decodes them via the state machine in `decoder`,
+//! dispatches to the appropriate command handler, and sends responses back.
+//!
+//! ## Entry points (C-compatible)
+//!
+//! - `rngdbstub_init()`: Initialise the stub and settings.
+//! - `rngdbstub_run()`: Process incoming GDB data (called from C ISR/loop).
+//! - `rngdbstub_shutdown()`: Detach target and clean up.
+//!
+//! ## Flow
+//!
+//! 1. `rngdbstub_run()` receives raw bytes from the transport layer.
+//! 2. The `gdb_stream` state machine (`decoder`) parses GDB packets.
+//! 3. RPC packets are dispatched to `native::rpc_target_generated::rpc_dispatch()`.
+//! 4. GDB command packets are dispatched to `commands::exec()`.
+//! 5. Responses are sent back via `encoder` and the transport layer.
+
 #![allow(static_mut_refs)]
 //
 use crate::bmp;

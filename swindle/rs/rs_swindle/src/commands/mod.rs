@@ -1,5 +1,24 @@
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+//! GDB command dispatch — routes incoming packets to handler functions.
+//!
+//! Implements the main command dispatch table for the GDB remote protocol.
+//! Each GDB packet is matched against a tree of known commands and dispatched
+//! to the appropriate handler.
+//!
+//! ## Command tree
+//!
+//! The `main_command_tree` array defines all supported GDB commands with:
+//!
+//! - The command string (e.g. `"g"`, `"m"`, `"vCont"`)
+//! - Minimum argument count
+//! - Whether a target connection is required
+//! - A callback (text or raw binary)
+//! - Argument separators
+//!
+//! ## References
+//!
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/Packets.html>
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html>
+
 
 use crate::bmp;
 use crate::encoder::encoder;
@@ -36,12 +55,14 @@ setup_log!(false);
 crate::gdb_print_init!();
 //use crate::{bmplog, gdb_print};
 
+/// Type of command callback: text-split or raw binary.
 pub enum CallbackType {
     text(Callback_text),
     raw(Callback_raw),
 }
 //
 //#[derive(Sized)]
+/// A single entry in the GDB command dispatch tree.
 pub struct CommandTree {
     command: &'static str,
     min_args: usize,
@@ -55,6 +76,7 @@ pub struct CommandTree {
     next_separator: u8,
 }
 //
+/// A help entry mapping a command to its description.
 pub struct HelpTree {
     command: &'static str,
     help: &'static str,
@@ -247,6 +269,9 @@ const main_command_tree: [CommandTree; 23] = [
         next_separator: 0,
     },
 ];
+/// Execute a single command by matching it against a dispatch tree.
+///
+/// Returns `true` if the command was recognised and handled.
 #[unsafe(no_mangle)]
 pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
     let connected: bool = bmp::bmp_attached();
@@ -323,6 +348,9 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
     false
 }
 
+/// Main entry point: dispatch a GDB command string to its handler.
+///
+/// If the command is not recognised, sends an empty reply (unsupported).
 #[unsafe(no_mangle)]
 pub fn exec(command: &str) {
     let args: &[u8] = &[];
@@ -337,17 +365,20 @@ pub fn exec(command: &str) {
 }
 //
 //
+/// Handle the extended mode `!` command — always OK.
 fn _extendedMode(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
 // select thread
+/// Handle `Hc` (set thread for continue) — not supported, returns E01.
 fn _Hc(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_e01();
     true
 }
 
 // detach
+/// Handle `D` (detach) — detach from target and reply OK.
 fn _D(_command: &str, _args: &[&str]) -> bool {
     if bmp::bmp_attached() {
         bmp::bmp_detach();
@@ -358,12 +389,14 @@ fn _D(_command: &str, _args: &[&str]) -> bool {
 
 //
 // Request reason for halt
+/// Handle `?` (reason for halt) — always reports `W00` (exited).
 fn _mark(_command: &str, _args: &[&str]) -> bool {
     //NOTARGET
     encoder::simple_send("W00");
     true
 }
 // used by lldb
+/// Handle `QStartNoAckMode` — always OK (used by LLDB).
 fn _qStartNoAckMode(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true

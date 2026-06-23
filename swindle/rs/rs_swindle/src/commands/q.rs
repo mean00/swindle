@@ -1,5 +1,33 @@
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+//! GDB `q` query packet handlers.
+//!
+//! Implements the GDB remote protocol `q` (query) packet family:
+//!
+//! | Packet | Description |
+//! |--------|-------------|
+//! | `qSupported` | Report supported features |
+//! | `qXfer:features:read:target.xml` | Target register description XML |
+//! | `qXfer:memory-map:read` | Target memory map XML |
+//! | `qRcmd` | Execute monitor command |
+//! | `qAttached` | Report whether attached to process |
+//! | `qC` | Current thread ID |
+//! | `qOffsets` | Section relocation offsets |
+//! | `qCRC` | Compute CRC32 over memory region |
+//! | `qSymbol` | Look up symbol value |
+//! | `qfThreadInfo` / `qsThreadInfo` | Thread list iteration |
+//! | `qThreadExtraInfo` | Thread description |
+//! | `qP` | Thread register info |
+//! | `qHostInfo` | Host info (LLDB) |
+//! | `qLaunchGDBServer` | Launch GDB server (LLDB) |
+//! | `qQueryGDBServer` | Query GDB server (LLDB) |
+//! | `qGetWorkingDir` | Get working directory (LLDB) |
+//! | `qRegisterInfo` | Register info (LLDB) |
+//! | `qTStatus` | Trace status |
+//!
+//! ## References
+//!
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/Packets.html>
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html>
+
 
 use alloc::vec::Vec;
 
@@ -177,6 +205,7 @@ const q_command_tree: [CommandTree; 18] = [
 //
 //
 
+/// Dispatch `q*` query packets to the appropriate handler.
 #[unsafe(no_mangle)]
 pub fn _q(command: &str, args: &[u8]) -> bool {
     exec_one(&q_command_tree, command, args)
@@ -184,6 +213,7 @@ pub fn _q(command: &str, args: &[u8]) -> bool {
 //
 //  qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev
 //
+/// Handle `qSupported` — report supported features to GDB.
 fn _qSupported(_command: &str, _args: &[&str]) -> bool {
     let mut buffer: [u8; 20] = [0; 20]; // should be big enough!
 
@@ -212,6 +242,7 @@ fn hex8(digit: u32, buffer: &mut [u8], e: &mut encoder) {
 //
 // qXfer:features:read:target.xml:d9c,83b
 
+/// Handle `qXfer` — read XML data (memory map, target features).
 fn _qXfer(_command: &str, args: &[&str]) -> bool {
     match (args[0], args[1], args[2]) {
         ("memory-map", "read", "") => _qXfer_memory_map(args[3]),
@@ -329,6 +360,7 @@ fn _qXfer_memory_map(arg: &str) -> bool {
 //
 // Trace
 //
+/// Handle `qTStatus` — trace status (not supported).
 fn _qTStatus(_command: &str, _args: &[&str]) -> bool {
     false
 }
@@ -336,6 +368,7 @@ fn _qTStatus(_command: &str, _args: &[&str]) -> bool {
 //
 // Execute command
 //
+/// Handle `qAttached` — report that we are attached to a process.
 fn _qAttached(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("1");
     true
@@ -353,6 +386,7 @@ fn _qAttached(_command: &str, _args: &[&str]) -> bool {
  *
  *
  */
+/// Handle `qHostInfo` — report host CPU info (LLDB).
 #[unsafe(no_mangle)]
 fn _qHostInfo(_command: &str, _args: &[&str]) -> bool {
     let mut e = encoder::new();
@@ -365,26 +399,31 @@ fn _qHostInfo(_command: &str, _args: &[&str]) -> bool {
     e.end();
     true
 }
+/// Handle `qLaunchGDBServer` — report GDB server port (LLDB).
 fn _qLaunchGDBServer(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("pid:1;port:2001");
     true
 }
+/// Handle `qGetWorkingDir` — report working directory (LLDB).
 fn _qGetWorkingDir(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("");
     true
 }
+/// Handle `qRegisterInfo` — report register info (LLDB).
 fn _qRegisterInfo(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send(
         "name:r0;bitsize:32;offset:0;encoding:uint;format:hex;set:General Purpose;generic:arg1;",
     );
     true
 }
+/// Handle `qQueryGDBServer` — query GDB server (LLDB).
 fn _qQueryGDBServer(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("");
     true
 }
 
 // get offset
+/// Handle `qOffsets` — report section relocation offsets.
 fn _qOffsets(_command: &str, _args: &[&str]) -> bool {
     encoder::simple_send("Text=0;Data=0;Bss=0");
     true
@@ -393,6 +432,7 @@ fn _qOffsets(_command: &str, _args: &[&str]) -> bool {
  * compute crc32 over bit of memory
  *  qCRC:0,61b4
  */
+/// Handle `qCRC` — compute CRC32 over a memory region.
 fn _qCRC(_command: &str, args: &[&str]) -> bool {
     if args.len() != 2 {
         encoder::reply_e01();

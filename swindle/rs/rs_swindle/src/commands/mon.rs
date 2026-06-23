@@ -1,3 +1,37 @@
+//! GDB `monitor` command handler — debugger control and diagnostics.
+//!
+//! Implements the GDB `monitor` (aka `qRcmd`) command, providing a rich
+//! set of sub-commands for controlling the debugger probe and inspecting
+//! target state:
+//!
+//! | Command | Description |
+//! |---------|-------------|
+//! | `swdp_scan` | Probe SWD bus for ARM devices |
+//! | `rvswdp_scan` | Probe for RISC-V devices |
+//! | `fq` / `frequency` | Get/set SWD clock frequency |
+//! | `ws` | Get/set SWD wait states |
+//! | `voltage` | Read target supply voltage |
+//! | `reset` | Pulse the target reset pin |
+//! | `reboot` | Reboot the debugger probe |
+//! | `version` | Show firmware version |
+//! | `map` | Show target memory map |
+//! | `ram` | Show debugger heap usage |
+//! | `boards` | List supported target boards |
+//! | `set` / `unset` | Get/set/remove persistent settings |
+//! | `rtt` | RTT control (see `mon_rtt.rs`) |
+//! | `freertos` / `fos` | Enable FreeRTOS task awareness |
+//! | `os_info` | Dump FreeRTOS internal state |
+//! | `redirect` | Redirect logging to USB CDC |
+//! | `bmp` | Forward command to BMP monitor |
+//! | `help` | Show this help |
+//! | `crash` | Force a crash (for testing) |
+//! | `delay` | Wait N milliseconds |
+//! | `breakpoint_info` | Show HW breakpoint/watchpoint count |
+//! | `enable_reset_pin` | Enable/disable reset pin control |
+//! | `set_reset_pin` | Manually set reset pin state |
+//! | `ch32v3_option_byte` | Read/write CH32V3 option bytes |
+//! | `ch32v3_obr` | Read/write CH32V3 read protection |
+
 use core::sync::atomic::{AtomicU32, Ordering};
 
 use crate::bmp;
@@ -76,6 +110,7 @@ unsafe extern "C" {
 /*
  *
  */
+/// Perform a soft system reset of the debugger probe.
 fn systemReset() {
     unsafe {
         _Z17lnSoftSystemResetv();
@@ -587,6 +622,11 @@ pub fn _voltage(_command: &str, _args: &[&str]) -> bool {
 // Execute command
 //
 const MAX_RCMD_SIZE: usize = 128;
+/// Handle `qRcmd` — execute a monitor command (hex-encoded).
+///
+/// Decodes the hex-encoded command string, splits it into command + args,
+/// and dispatches to the appropriate handler (target-specific first, then
+/// generic).
 pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
     if args.len() != 1 {
         gdb_print!("qRCmd : wrong args\n");
@@ -632,6 +672,7 @@ pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
 /*
  *
  */
+/// Handle `mon version` — display firmware version.
 pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
     gdb_println!("", bmp::bmp_get_version());
     encoder::reply_ok();
@@ -642,6 +683,7 @@ pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
    Detect stuff connected to the SWD interface
    Try to use the fastest speed
 */
+/// Handle `mon swdp_scan` — probe SWD bus for ARM devices.
 pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
     bmplog!("swdp_scan:\n");
 
@@ -657,6 +699,7 @@ pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
    Detect stuff connected to the SWD interface
    Try to use the fastest speed
 */
+/// Handle `mon rvswdp_scan` — probe for RISC-V devices.
 pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
     bmplog!("rvswdp_scan:\n");
 
@@ -671,6 +714,7 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
+/// Handle `mon ws` — get/set SWD wait states.
 pub fn _ws(_command: &str, args: &[&str]) -> bool {
     let len = args.len();
     if len > 0 {
@@ -704,6 +748,7 @@ fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
  *
  *
  */
+/// Handle `mon fq` / `mon frequency` — get/set SWD clock frequency.
 #[unsafe(no_mangle)]
 pub fn _fq(_command: &str, args: &[&str]) -> bool {
     if args.is_empty() {
@@ -748,6 +793,10 @@ pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
  *
  *
  */
+/// Register target-specific monitor commands based on the target name.
+///
+/// Currently adds CH32V2/CH32V3-specific commands when those targets
+/// are detected.
 pub fn add_target_commands(target_name: &str) {
     if target_name.starts_with("CH32V2") || target_name.starts_with("CH32V3") {
         set_custom_target_command(
@@ -763,6 +812,7 @@ pub fn add_target_commands(target_name: &str) {
  *
  *
  */
+/// Clear any registered target-specific commands.
 pub fn clear_custom_target_command() {
     targetCommandTree.set(None);
     targetHelpTree.set(None);
@@ -771,6 +821,7 @@ pub fn clear_custom_target_command() {
  *
  *
  */
+/// Register a custom command tree and help tree for the current target.
 pub fn set_custom_target_command(
     commandTree: &'static [CommandTree],
     helpTree: &'static [HelpTree],
@@ -843,6 +894,7 @@ fn _unset(_command: &str, args: &[&str]) -> bool {
  *
  *
  */
+/// Get the currently registered target-specific command tree.
 pub fn get_custom_target_command() -> Option<&'static [CommandTree]> {
     targetCommandTree.get()
 }
@@ -850,6 +902,7 @@ pub fn get_custom_target_command() -> Option<&'static [CommandTree]> {
  *
  *
  */
+/// Get the currently registered target-specific help tree.
 pub fn get_custom_target_help() -> Option<&'static [HelpTree]> {
     targetHelpTree.get()
 }
@@ -857,6 +910,7 @@ pub fn get_custom_target_help() -> Option<&'static [HelpTree]> {
 *
 *
 */
+/// Handle `mon delay` — wait N milliseconds.
 pub fn _delay(_command: &str, args: &[&str]) -> bool {
     let ret: bool;
     let val: u32;
@@ -872,6 +926,7 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 *
 *
 */
+/// Handle `mon set_reset_pin` — manually set reset pin state.
 #[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
@@ -890,6 +945,7 @@ fn set_nrst(set: bool) {
     };
     unsafe { platform_nrst_set_val_internal(d != 0) };
 }
+/// Set the NRST pin value with delay handling (C-callable).
 #[unsafe(no_mangle)]
 #[cfg(not(feature = "hosted"))]
 pub fn platform_nrst_set_val(set: u32) {
@@ -898,6 +954,7 @@ pub fn platform_nrst_set_val(set: u32) {
     }
     swindle_nrst_set_val(set);
 }
+/// Set the NRST pin with configurable pulse/holdoff delays.
 #[unsafe(no_mangle)]
 pub fn swindle_nrst_set_val(set: u32) {
     let delay: u32 = match set {
@@ -918,6 +975,7 @@ pub fn swindle_nrst_set_val(set: u32) {
     };
     delay_ms(delay);
 }
+/// Handle `mon breakpoint_info` — show HW breakpoint/watchpoint count.
 pub fn _breakpoint_count(_command: &str, _args: &[&str]) -> bool {
     let (bkpt, wtch) = bmp::bmp_watchpoint_breakpoint_count();
     gdb_println!("\t HW Breakpoints    : ", bkpt);

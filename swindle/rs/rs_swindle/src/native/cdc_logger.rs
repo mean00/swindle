@@ -104,6 +104,7 @@ pub extern "C" fn rn_logger_cdc_init(instance: u32) {
 
 /// Write to the logger CDC (called from C code via `usbCdc_Logger`).
 #[unsafe(no_mangle)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn rn_usb_cdc_logger(n: i32, data: *const u8) {
     if n <= 0 || !LOGGER_CDC_INITIALIZED.load(Ordering::Relaxed) {
         return;

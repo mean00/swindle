@@ -1,13 +1,27 @@
-/*
- *
- *      Generic get symbol engine from gdb
- *      we call the different symbols group one per one
- *      so each of them can fill their info block
- *
- */
+//! GDB `qSymbol` symbol lookup engine.
+//!
+//! Implements the GDB remote protocol `qSymbol` packet for looking up
+//! symbol values from the target's ELF symbol table.
+//!
+//! The engine iterates through multiple symbol groups (FreeRTOS, RTT, etc.)
+//! and asks GDB for each symbol's value. Each group provides:
+//!
+//! - A list of symbol names to look up
+//! - A processing callback to handle the returned value
+//! - A clear callback to reset previously loaded state
+//!
+//! ## Symbol groups
+//!
+//! | Group | Symbols | Purpose |
+//! |-------|---------|---------|
+//! | FreeRTOS | `FreeRTOSSymbolName` | Locate FreeRTOS kernel structures |
+//! | RTT | `_SEGGER_RTT` | Locate SEGGER RTT control block |
+//!
+//! ## References
+//!
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/Packets.html>
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html>
 
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
 
 use crate::commands::mon_rtt as rttsym;
 use crate::freertos::freertos_symbols as fosym;
@@ -15,9 +29,8 @@ use crate::rtt_consts;
 setup_log!(false);
 //use crate::bmplog;
 crate::gdb_print_init!();
-/**
- * This structure describes a symbol client
- */
+/// Describes a symbol client: a group of symbols to look up and their
+/// processing/clear callbacks.
 struct list_of_symbols {
     /// list of symbols to search for as &[&str]
     symbols: &'static [&'static str],
@@ -39,9 +52,7 @@ const symbols_to_collect: [list_of_symbols; NB_OF_SYMBOL_TABLE] = [
         clear: rttsym::rtt_clear_symbols,
     },
 ];
-/**
- * This is used to do bookkeeping of the symbol parser
- */
+/// Bookkeeping state for the symbol parser iteration.
 use core::cell::UnsafeCell;
 
 // Safe: only accessed from single-threaded embedded context
@@ -102,9 +113,7 @@ fn ask_for_next_symbol(name: &str) -> bool {
     e.end();
     true
 }
-/**
- *  This calls all the clients to clear up previously loaded symbols
- */
+/// Clear all previously loaded symbol values across all groups.
 #[unsafe(no_mangle)]
 pub fn reset_symbols() {
     bmplog!("Clearing symbols\n");
@@ -116,10 +125,11 @@ pub fn reset_symbols() {
         (i.clear)();
     }
 }
-/**
- *  This is the processing function of the gdb qSymbol call
- *
- */
+/// Process a `qSymbol` response from GDB.
+///
+/// If the response is empty (both args empty), starts a new symbol
+/// lookup cycle. Otherwise, stores the returned value and asks for
+/// the next symbol.
 #[unsafe(no_mangle)]
 pub fn q_symbols(args: &[&str]) -> bool {
     let mut indeces = get_index();

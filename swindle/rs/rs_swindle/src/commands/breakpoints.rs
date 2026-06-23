@@ -1,5 +1,19 @@
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+//! GDB `Z`/`z` breakpoint and watchpoint commands.
+//!
+//! Handles the GDB remote protocol breakpoint commands:
+//!
+//! - `Z0,addr,kind` — set software breakpoint
+//! - `Z1,addr,kind` — set hardware breakpoint
+//! - `Z2,addr,kind` — set write watchpoint
+//! - `Z3,addr,kind` — set read watchpoint
+//! - `Z4,addr,kind` — set access watchpoint
+//! - `z0,addr,kind` — remove software breakpoint
+//! - `z1,addr,kind` — remove hardware breakpoint
+//! - etc.
+//!
+//! Falls back to mass-write (flash patching) if the target has no hardware
+//! breakpoint support.
+
 
 use crate::bmp;
 use crate::encoder::encoder;
@@ -11,15 +25,14 @@ setup_log!(false);
 use crate::sw_breakpoints::{add_mw_breakpoint, remove_mw_breakpoint};
 use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};
 
-/*
-Same value as bmp internal
-    TARGET_BREAK_SOFT 0 ,
-    TARGET_BREAK_HARD 1,
-    TARGET_WATCH_WRITE 2,
-    TARGET_WATCH_READ 3,
-    TARGET_WATCH_ACCESS 4,
-
- */
+/// Breakpoint/watchpoint type, matching the GDB remote protocol values.
+///
+/// Same values as BMP internal:
+/// - 0 = TARGET_BREAK_SOFT
+/// - 1 = TARGET_BREAK_HARD
+/// - 2 = TARGET_WATCH_WRITE
+/// - 3 = TARGET_WATCH_READ
+/// - 4 = TARGET_WATCH_ACCESS
 #[derive(PartialEq, Clone, Copy)]
 enum Breakpoints {
     Execute_SW,
@@ -49,10 +62,9 @@ impl Breakpoints {
         }
     }
 }
-// : Z1,776,2
-// if set is true, set breakpoint
-// if false remove
-// [HW/SW/WATCH],address,kind
+/// Common handler for both set (`Z`) and remove (`z`) breakpoint commands.
+///
+/// Args: `[type],address,kind`
 fn common_z(set: bool, args: &[&str]) -> bool {
     // zZ addr kind
     let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_hex_to_u32(args[0]));
@@ -109,6 +121,7 @@ fn common_z(set: bool, args: &[&str]) -> bool {
 /*
  *
  */
+/// Handle `z` (remove breakpoint/watchpoint).
 pub fn _z(_command: &str, args: &[&str]) -> bool {
     bmplog!("remove bkp\n");
     common_z(false, args)
@@ -116,6 +129,7 @@ pub fn _z(_command: &str, args: &[&str]) -> bool {
 /*
  *
  */
+/// Handle `Z` (set breakpoint/watchpoint).
 pub fn _Z(_command: &str, args: &[&str]) -> bool {
     bmplog!("insert bkp\n");
     common_z(true, args)

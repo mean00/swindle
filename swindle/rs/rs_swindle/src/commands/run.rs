@@ -1,3 +1,18 @@
+//! GDB target execution control commands (`c`, `s`, `k`, `R`, `vCont`).
+//!
+//! Implements the GDB remote protocol execution control commands:
+//!
+//! - `c` — continue execution
+//! - `s` — single-step
+//! - `k` — kill (reset target)
+//! - `R` — restart target
+//! - `vCont` — extended continue/step/stop
+//! - `vCont?` — query supported vCont actions
+//!
+//! Also provides the polling infrastructure (`rngdbstub_poll`) that is
+//! called periodically to check if the target has halted and send the
+//! appropriate stop reply packet.
+
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use crate::bmp;
@@ -12,6 +27,8 @@ setup_log!(false);
 crate::gdb_print_init!();
 
 //use crate::gdb_print;
+
+/// Target halt state returned by `bmp_poll()`.
 #[derive(PartialEq, Eq)]
 pub enum HaltState {
     Running,
@@ -22,18 +39,21 @@ pub enum HaltState {
     Watchpoint(u32),
     Fault,
 }
+/// Set the running state and invalidate FreeRTOS TCB cache.
 fn set_running(r: bool) {
     // Invalidate FreeRTOS TCB cache whenever target state changes
     // (resume or halt from poll), so next thread query re-scans.
     freertos_invalidate_cache();
     running.store(r, Ordering::Relaxed);
 }
+/// Halt the target and send a stop reply (`T02` = SIGINT).
 pub fn target_halt() {
     set_running(false);
     bmp::bmp_target_halt();
     reply_2("T", 2);
 }
 
+/// Check if the target is currently running.
 pub fn target_is_running() -> bool {
     running.load(Ordering::Relaxed)
 }
@@ -69,6 +89,10 @@ fn reply_wp(prefix: &str, num: u32, prefix2: &str, num2: u32) {
     e.end();
 }
 
+/// Periodic poll callback — checks if target has halted.
+///
+/// Called from the main loop. If the target was running and has now
+/// halted, sends the appropriate stop reply packet to GDB.
 #[unsafe(no_mangle)]
 extern "C" fn rngdbstub_poll() {
     // this is called regularily
@@ -89,10 +113,12 @@ extern "C" fn rngdbstub_poll() {
 }
 
 //
+/// Handle `R` — restart (reset) the target.
 pub fn _R(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_bool(bmp::bmp_reset_target());
     true
 }
+/// Handle `k` — kill (reset the target, or just reply OK if reset disabled).
 pub fn _k(_command: &str, _args: &[&str]) -> bool {
     if get_enable_reset() != 0 {
         encoder::reply_bool(bmp::bmp_reset_target());
@@ -104,14 +130,23 @@ pub fn _k(_command: &str, _args: &[&str]) -> bool {
 }
 //vCont[;action[:thread-id]]…’
 //
+/// Handle `c` — continue execution.
 pub fn _c(_command: &str, args: &[&str]) -> bool {
     _vCont("vCont", args)
 }
+/// Handle `s` — single-step.
 pub fn _s(_command: &str, args: &[&str]) -> bool {
     _vCont("vCont;s", args)
 }
 
 //#[unsafe(no_mangle)]
+/// Handle `vCont` — extended continue/step/stop.
+///
+/// Supports:
+/// - `vCont?` — query supported actions
+/// - `vCont;c` — continue
+/// - `vCont;s` — single-step
+/// - `vCont;t` — stop (not yet implemented)
 pub fn _vCont(command: &str, args: &[&str]) -> bool {
     if command.starts_with("vCont?") {
         let mut e = encoder::new();

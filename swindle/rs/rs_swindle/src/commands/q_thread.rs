@@ -1,7 +1,28 @@
-// https://sourceware.org/gdb/onlinedocs/gdb/Packets.html
-// https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html
+//! GDB thread-related query packet handlers.
+//!
+//! Implements the GDB remote protocol thread query packets:
+//!
+//! | Packet | Description |
+//! |--------|-------------|
+//! | `qfThreadInfo` | Begin thread list iteration |
+//! | `qsThreadInfo` | Continue thread list iteration |
+//! | `qThreadExtraInfo,id` | Get human-readable thread description |
+//! | `qC` | Get current thread ID |
+//! | `qP` | Get thread register info (deprecated) |
+//! | `qSymbol` | Look up symbol value |
+//! | `Hg` | Set thread for subsequent operations |
+//! | `T` | Test if thread is alive |
+//!
+//! When FreeRTOS support is enabled, these commands interact with the
+//! FreeRTOS task list. Otherwise, a single default thread (ID 1) is
+//! reported.
+//!
+//! ## References
+//!
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/Packets.html>
+//! - <https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html>
 
-use alloc::vec::Vec;
+//use alloc::vec::Vec;
 
 use crate::encoder::encoder;
 
@@ -26,6 +47,7 @@ crate::gdb_print_init!();
 // ‘l’
 // (lower case letter ‘L’) denotes end of list.
 //
+/// Handle `qfThreadInfo` — begin thread list iteration.
 pub fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
     let list = get_threads();
     if list.is_empty() {
@@ -49,6 +71,7 @@ pub fn _qfThreadInfo(_command: &str, _args: &[&str]) -> bool {
 /*
  * get a human readable attributes  "qThreadExtraInfo,id"
  */
+/// Handle `qThreadExtraInfo,id` — get human-readable thread description.
 pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
     let (_, thread_id_str) = match command.split_once(',') {
         Some(res) => res,
@@ -88,6 +111,7 @@ pub fn _qThreadExtraInfo(command: &str, _args: &[&str]) -> bool {
 /*
  *  switch thread
  */
+/// Handle `Hg` — set thread for subsequent operations.
 pub fn _Hg(_command: &str, args: &[&str]) -> bool {
     let thread_id: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
     bmplog!("Thread switch to 0x{:x} \n", thread_id);
@@ -108,6 +132,7 @@ pub fn _Hg(_command: &str, args: &[&str]) -> bool {
 /*
  *  is thread alive ?
  */
+/// Handle `T` — test if a thread is alive.
 pub fn _T(_command: &str, args: &[&str]) -> bool {
     let thread_id: u32 = parsing_util::ascii_string_hex_to_u32(args[0]);
 
@@ -126,6 +151,7 @@ pub fn _T(_command: &str, args: &[&str]) -> bool {
 /*
  * get a human readable attributes  "qThreadExtraInfo,id"
  */
+/// Handle `qP` — get thread register info (deprecated, returns E01).
 pub fn _qP(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_e01();
     true
@@ -134,6 +160,7 @@ pub fn _qP(_command: &str, _args: &[&str]) -> bool {
 //
 //
 //
+/// Handle `qsThreadInfo` — continue thread list iteration (always end).
 pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
     //let list = crate::freertos::freertos_tcb::get_threads();
     // if list.is_empty()  {
@@ -149,6 +176,7 @@ pub fn _qsThreadInfo(_command: &str, _args: &[&str]) -> bool {
  * ‘qC’ Return the current thread ID.
  */
 
+/// Handle `qC` — return the current thread ID.
 pub fn _qC(_command: &str, _args: &[&str]) -> bool {
     let mut current_thread_id = 1;
     if !freertos_running() {
@@ -168,6 +196,7 @@ pub fn _qC(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
+/// Handle `qSymbol` — process a symbol value returned by GDB.
 pub fn _qSymbol(_command: &str, args: &[&str]) -> bool {
     if args.len() != 2 {
         gdb_print!("Malformed reply to qsymbol\n");

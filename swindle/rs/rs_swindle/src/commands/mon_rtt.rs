@@ -1,3 +1,13 @@
+//! RTT monitor sub-commands (`mon rtt`).
+//!
+//! Provides the `mon rtt` sub-command tree for controlling SEGGER RTT
+//! (Real-Time Transfer) on the target:
+//!
+//! - `mon rtt enable` — enable RTT polling
+//! - `mon rtt disable` — disable RTT polling
+//! - `mon rtt status` — show current RTT state
+//! - `mon rtt help` — show RTT help
+
 use crate::commands::mon::{MAX_SPACE, spacebar};
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
@@ -10,10 +20,8 @@ crate::gdb_print_init!();
 //use crate::gdb_print;
 
 use crate::settings;
-/*
- *
- *
- */
+
+/// Clear the stored RTT control block address from settings.
 pub fn rtt_clear_symbols() -> bool {
     settings::remove(RTT_SETTING_KEY);
     true
@@ -21,6 +29,9 @@ pub fn rtt_clear_symbols() -> bool {
 /*
  *
  */
+/// Process an RTT symbol from the target's ELF symbol table.
+///
+/// Stores the RTT control block address in persistent settings.
 pub fn rtt_processing(key: &str, value_str: &str) -> bool {
     bmpwarning!("processing :key {} value {}", key, value_str);
     let value = parsing_util::ascii_hex_to_u32(value_str);
@@ -89,6 +100,7 @@ const rtt_help_tree: [HelpTree; 4] = [
 /*
  * it should start mon rtt xxxx
  */
+/// Dispatch `mon rtt` sub-commands.
 #[unsafe(no_mangle)]
 pub fn _rtt(_command: &str, args: &[&str]) -> bool {
     let as_string = args[0..].join(" ");
@@ -99,6 +111,7 @@ pub fn _rtt(_command: &str, args: &[&str]) -> bool {
 /*
  *
  */
+/// Show RTT help.
 fn _help(_command: &str, _args: &[&str]) -> bool {
     let mut mxsize: usize = 0;
     for i in rtt_help_tree {
@@ -123,6 +136,7 @@ fn _help(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
+/// Enable RTT polling on the target.
 fn _enable(_command: &str, _args: &[&str]) -> bool {
     crate::rtt::swindle_enable_rtt(true);
     encoder::reply_ok();
@@ -131,6 +145,7 @@ fn _enable(_command: &str, _args: &[&str]) -> bool {
 /*
  *
  */
+/// Disable RTT polling on the target.
 fn _disable(_command: &str, _args: &[&str]) -> bool {
     crate::rtt::swindle_enable_rtt(false);
     encoder::reply_ok();
@@ -146,6 +161,7 @@ fn TrueFalse(onoff: u32) -> &'static str {
 /*
  *
  */
+/// Show current RTT status (enabled/disabled, control block address).
 fn _status(_command: &str, _args: &[&str]) -> bool {
     crate::rtt::swindle_rtt_print_info();
     encoder::reply_ok();

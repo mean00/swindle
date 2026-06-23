@@ -1,6 +1,17 @@
-/*
- *
- */
+//! SEGGER RTT (Real-Time Transfer) support.
+//!
+//! Implements the SEGGER RTT protocol for reading/writing RTT channels on
+//! the target. RTT allows bidirectional communication with the target via
+//! shared memory buffers, without requiring a dedicated serial port.
+//!
+//! ## Key features
+//!
+//! - Polls RTT control block at configurable intervals
+//! - Reads up-channel data (target → host) and sends to GDB
+//! - Tracks down-channel write room (host → target)
+//! - Automatically halts/resumes the target for RTT access when needed
+//! - Cortex-M targets can read RTT without halting (no-stop mode)
+
 use crate::bmp;
 use crate::commands::run::HaltState;
 //use crate::gdb_print;
@@ -64,17 +75,15 @@ const HEADER_SIZE: u32 = core::mem::size_of::<RttControlBlock>() as u32;
 // To read the RTT info, should the chip be stopped
 //
 static mut need_stop_flag: bool = true;
-/*
- * Return true if the target must be stopped to read/write RTT buffers
- *
- */
+/// Check if the target must be halted for RTT buffer access.
+///
+/// Cortex-M targets can read RTT without halting. Other architectures
+/// (e.g. RISC-V) require the target to be stopped.
 fn need_stop() -> bool {
     unsafe { need_stop_flag }
 }
 
-/*
-*
-*/
+/// Result of attempting to halt the target for RTT access.
 #[derive(PartialEq, Eq)]
 enum RttHalt {
     AlreadyHalted,
@@ -91,6 +100,9 @@ fn get_tick() -> u32 {
     0
 }
 
+/// Halt the target (if needed) for RTT buffer access.
+///
+/// Returns the halt state so the caller can resume the target later.
 fn swindle_rtt_access_to_target() -> RttHalt {
     if !need_stop() {
         return RttHalt::Halted;
@@ -139,9 +151,7 @@ fn swindle_rtt_access_to_target() -> RttHalt {
           //}
     }
 }
-/*
-*
-*/
+/// Resume the target after RTT access, if it was halted by us.
 fn swindle_rtt_release_target(halt: RttHalt) -> bool {
     if !need_stop() {
         return true;
@@ -161,11 +171,9 @@ fn swindle_rtt_release_target(halt: RttHalt) -> bool {
         }
     }
 }
-/*
-*
-*/
-
+/// Read the RTT control block from target memory.
 impl RttControlBlock {
+    /// Read the RTT control block from target memory at `address`.
     pub fn read(address: u32) -> Self {
         let mut block: RttControlBlock = RttControlBlock {
             id: [0; 16],
@@ -179,6 +187,7 @@ impl RttControlBlock {
         }
         block
     }
+    /// Check if the control block has a valid SEGGER RTT signature.
     pub fn is_valid(&self) -> bool {
         if self.max_num_up_buffers == 0 || self.max_num_up_buffers > 4 {
             return false;
@@ -191,10 +200,7 @@ impl RttControlBlock {
     }
 }
 
-/*
-*
-*
-*/
+/// Internal RTT state: enabled flag, last poll time, and write room per channel.
 struct SeggerRTT {
     enabled: bool,
     last_time: u32,
@@ -223,41 +229,40 @@ fn swindle_get_rtt() -> &'static mut SeggerRTT {
         RTT.assume_init_mut()
     }
 }
-/*
-*
-*/
+/// Initialise the RTT subsystem (currently a no-op).
 #[unsafe(no_mangle)]
 pub fn swindle_init_rtt() {}
+/// Reinitialise RTT: reset write room counters.
 #[unsafe(no_mangle)]
 pub fn swindle_reinit_rtt() {
     swindle_get_rtt().write_room = [0, 0, 0, 0];
 }
 
-/*
-*
-*/
+/// Check if RTT is currently enabled.
 #[unsafe(no_mangle)]
 pub fn swindle_rtt_enabled() -> bool {
     swindle_get_rtt().enabled
 }
-/*
-*
-*
-*/
+/// Poll RTT channels and transfer data (called periodically from C).
+///
+/// Returns `true` if any data was transferred.
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_run_rtt() -> bool {
     swindle_get_rtt().process()
 }
 
+/// Purge RTT buffers (currently a no-op).
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_purge_rtt() -> bool {
     // swindle_run_rtt();
     false
 }
 
-/*
-*
-*/
+/// Enable or disable RTT polling.
+///
+/// When enabling, reads the RTT control block address from settings.
+/// Determines whether the target needs to be halted for RTT access
+/// based on the architecture (Cortex-M can do no-stop RTT).
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_enable_rtt(enable: bool) {
     if enable {
@@ -286,10 +291,12 @@ pub extern "C" fn swindle_enable_rtt(enable: bool) {
     }
     swindle_get_rtt().enabled = enable;
 }
+/// Get the available write room on a down-channel.
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_rtt_write_available(channel: u32) -> u32 {
     swindle_get_rtt().write_room[channel as usize]
 }
+/// Print RTT control block and buffer information to the GDB console.
 #[unsafe(no_mangle)]
 pub fn swindle_rtt_print_info() {
     let adr = settings::get_or_default(RTT_SETTING_KEY, 0);
@@ -353,10 +360,9 @@ pub fn swindle_rtt_print_info() {
         adr_buf += BUFFER_SIZE;
     }
 }
-/*
-*
-*
-*/
+/// Write data to an RTT down-channel (host → target).
+///
+/// Currently a stub — always returns `true` without writing.
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_write_rtt_channel(_channel: u32, _size: u32, _data: *const u8) -> bool {
     /*
@@ -416,10 +422,11 @@ pub extern "C" fn swindle_write_rtt_channel(_channel: u32, _size: u32, _data: *c
     */
     true
 }
-/*
-*
-*
-*/
+/// Read data from an RTT up-channel (target → host).
+///
+/// Reads available data from the target's RTT buffer and sends it to
+/// the host via `swindle_rtt_send_data_to_host`. Handles buffer wrap-around
+/// and alignment.
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_read_rtt_channel(
     index: usize,
@@ -480,6 +487,10 @@ pub extern "C" fn swindle_read_rtt_channel(
     true
 }
 impl SeggerRTT {
+    /// Poll all RTT channels and transfer data.
+    ///
+    /// Called periodically from `swindle_run_rtt()`. Respects the polling
+    /// period setting to avoid excessive target access.
     fn process(&mut self) -> bool {
         if !self.enabled {
             self.last_time = 0;
@@ -541,6 +552,7 @@ impl SeggerRTT {
         }
         true
     }
+    /// Read an RTT buffer descriptor from target memory.
     pub fn read_buffer(address: u32, buffer: &mut RttBuffer) -> bool {
         let halted = swindle_rtt_access_to_target();
         if halted == RttHalt::Failure {

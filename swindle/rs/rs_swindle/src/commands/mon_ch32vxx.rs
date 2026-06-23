@@ -1,3 +1,15 @@
+//! CH32V2/CH32V3-specific monitor commands.
+//!
+//! Provides target-specific `monitor` sub-commands for WCH CH32V2 and
+//! CH32V3 RISC-V MCUs:
+//!
+//! - `mon ch32v3_option_byte [value]` — read/write the user option byte
+//!   (controls flash/RAM split, e.g. 256/64 → 0x9f, 192/128 → 0x1f)
+//! - `mon ch32v3_obr [value]` — read/write the read protection (OBR) status
+//!
+//! These commands are registered dynamically by `mon.rs::add_target_commands()`
+//! when a CH32V2 or CH32V3 target is detected.
+
 use crate::bmp;
 use crate::commands::{CallbackType, CommandTree, HelpTree};
 use crate::encoder::encoder;
@@ -48,6 +60,7 @@ const CH32V3XX_OBR_ERROR: u32 = 1 << 0;
 const CH32V3XX_OBR_RDP_VALID: u32 = 1 << 1;
 //
 //
+/// Handle `mon ch32v3_obr` — read/write the read protection status.
 pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
     let mut value: [u32; 1] = [0];
     if !bmp::bmp_read_mem32(CH32V3XX_FLASH_WPR_ADR, &mut value) {
@@ -99,6 +112,7 @@ pub fn _ch32v3_obr(_command: &str, args: &[&str]) -> bool {
     false
 }
 
+/// Handle `mon ch32v3_option_byte` — read/write the user option byte.
 pub fn _ch32v3_option_byte(_command: &str, args: &[&str]) -> bool {
     let mut value: [u32; 1] = [0];
     if args.is_empty() {

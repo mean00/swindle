@@ -1,7 +1,18 @@
-/*
-   Small automaton to parse gdb mii string protocol
-
-*/
+//! GDB packet decoder — state machine for parsing the GDB remote protocol.
+//!
+//! Implements a finite-state automaton that parses the GDB remote serial
+//! protocol byte-by-byte. It handles:
+//!
+//! - GDB command packets (`$...` with checksum)
+//! - RPC packets (`!...!`)
+//! - Escape sequences (`}`)
+//! - Checksum verification
+//!
+//! The automaton states are:
+//! - `Idle`: waiting for `$` (GDB) or `!` (RPC) start character
+//! - `Body`/`RpcBody`: accumulating packet bytes
+//! - `End1`/`End2`: reading the 2-hex-digit checksum
+//! - `Done`/`RpcDone`: complete packet ready for dispatch
 
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
@@ -33,12 +44,13 @@ enum PARSER_AUTOMATON {
     Rpc2Head1, // alternat RPC starting by a '+'
     Error,
 }
-/*
- * This returns the state of the internal automaton
- * Continue : Need more data
- * Read     : Decoded packet available
- * Reset    : A reset has been received
- */
+/// Result of a single `parse()` call.
+///
+/// - `Continue`: need more data
+/// - `Ready`: a complete GDB packet is available
+/// - `RpcReady`: a complete RPC packet is available
+/// - `Reset`: a reset character was received
+/// - `Error`: checksum mismatch or buffer overflow
 #[derive(PartialEq)]
 pub enum RESULT_AUTOMATON {
     Continue,
@@ -48,7 +60,11 @@ pub enum RESULT_AUTOMATON {
     Error,
 }
 
-//
+/// GDB packet stream decoder.
+///
+/// A state machine that processes incoming bytes and extracts complete
+/// GDB or RPC packets. Generic over `INPUT_BUFFER_SIZE` to allow
+/// compile-time buffer sizing.
 pub struct gdb_stream<const INPUT_BUFFER_SIZE: usize> {
     available: bool,
     automaton: PARSER_AUTOMATON,
@@ -58,6 +74,7 @@ pub struct gdb_stream<const INPUT_BUFFER_SIZE: usize> {
     checksum_received: [u8; 2],
 }
 impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
+    /// Create a new decoder in the `Idle` state.
     pub const fn new() -> Self {
         gdb_stream {
             available: false,
@@ -68,12 +85,15 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
             checksum_received: [0, 0], // 2 Hex digits
         }
     }
+    /// Mark the decoder as available or unavailable.
     pub fn set_available(&mut self, state: bool) {
         self.available = state;
     }
+    /// Check if the decoder is available for use.
     pub fn get_available(&mut self) -> bool {
         self.available
     }
+    /// Reset the decoder to its initial idle state.
     pub fn init(&mut self) {
         self.available = false;
         self.automaton = PARSER_AUTOMATON::Idle;
@@ -82,23 +102,27 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
         self.checksum = 0;
         self.checksum_received = [0, 0];
     }
-    /*
-     *
-     */
+    /// Reset the automaton to `Idle` without clearing the buffer.
     pub fn reset(&mut self) {
         self.automaton = PARSER_AUTOMATON::Idle;
     }
-    /*
-     *
-     */
+    /// Get the decoded packet and reset for the next one.
+    ///
+    /// Returns a slice of the internal buffer containing the complete packet
+    /// body (without start/end markers or checksum).
     pub fn get_result(&mut self) -> &[u8] {
         self.automaton = PARSER_AUTOMATON::Idle;
         &self.input_buffer[0..self.indx]
     }
 
-    /*
-     *
-     */
+    /// Feed bytes into the decoder state machine.
+    ///
+    /// Processes `data` byte-by-byte through the automaton. Returns
+    /// `(consumed, result)` where `consumed` is the number of bytes
+    /// processed and `result` indicates the outcome.
+    ///
+    /// When `result` is `Ready` or `RpcReady`, call `get_result()` to
+    /// retrieve the decoded packet.
     pub fn parse(&mut self, data: &[u8]) -> (usize, RESULT_AUTOMATON) {
         let mut dex = 0;
         let mut sz = data.len();

@@ -154,6 +154,7 @@ pub fn bmp_raw_swd_write(tick: u32, value: u32) {
     unsafe { rn_bmp_cmd_c::bmp_raw_swd_write_c(tick, value) }
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn bmp_adiv5_swd_raw_access(rnw: u8, addr: u16, value: u32, fault: *mut u32) -> u32 {
     unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_raw_access_c(rnw, addr, value, fault) }
 }
