@@ -12,7 +12,7 @@ extern "C"
 #include "target.h"
 #include "version.h"
 }
-#include "lnLWIP.h"
+#include "bmp_net.h"
 //
 //
 //
@@ -33,72 +33,6 @@ extern "C" uint32_t swindle_rtt_write_available(uint32_t channel);
  *
  *
  */
-/*
- *
- *
- */
-class socketRunnerRtt : public socketRunner
-{
-  public:
-    socketRunnerRtt(lnFastEventGroup &eventGroup, uint32_t shift) : socketRunner(RUNNER_RTT_PORT, eventGroup, shift)
-    {
-        Logger("RunnerRtt...\n");
-        _connected = false;
-        swindle_init_rtt();
-    }
-
-  protected:
-    bool _connected;
-    virtual void hook_connected()
-    {
-        swindle_reinit_rtt();
-        _connected = true;
-    }
-    virtual void hook_disconnected()
-    {
-        _connected = false;
-    }
-    virtual void hook_poll()
-    {
-        if (_connected) // connected to a debugger
-        {
-            if (cur_target) // and we are connected to a target...
-            {
-                if (swindle_rtt_enabled())
-                {
-                    swindle_run_rtt();
-                }
-                else
-                {
-                    swindle_purge_rtt();
-                }
-            }
-        }
-    }
-
-  protected:
-    // drop all data incoming for rtt
-    void process_incoming_data()
-    {
-        uint32_t lp = 0;
-
-        while (1)
-        {
-            uint32_t rd = 0;
-            uint8_t *data;
-            if (readData(rd, &data))
-            {
-                if (!rd)
-                    return;
-                releaseData();
-            }
-        }
-    }
-
-  protected:
-};
-/**/
-socketRunnerRtt *runnerRtt = NULL;
 /**
  * @brief [TODO:description]
  *

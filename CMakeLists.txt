@@ -12,6 +12,7 @@ option(USE_CH32V3x "Target USE_CH32V3x chip with 256 flash" OFF)
 option(USE_RP_ZERO "Change RGB LED to map RP2040 board" OFF)
 option(USE_RP_CARRIER "Use RP2040 carrier board" OFF)
 option(USE_WS2812 "Use WS2812 RGB LED " OFF)
+option(USE_RTT "Use RTT as logger " OFF)
 option(USE_INVERTED_NRST "Inverted Reset signal (with a mosfet)" OFF)
 option(USE_48PIN_PACKAGE "Use bluepill chip in 48 pins package (GD3/CH32)" OFF)
 option(USE_64PIN_PACKAGE "Use bluepill chip in 64 pins package (GD3/CH32)" OFF)
@@ -31,6 +32,9 @@ if(CCACHE_FOUND)
   set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_FOUND})
   set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_FOUND})
 endif()
+if(USE_RTT)
+  add_definitions("-DUSE_RTT=1")
+endif()
 
 # -------------
 # Options
@@ -47,20 +51,19 @@ if(NOT LN_EXTERNAL_GENERATE)
     message(FATAL_ERROR "Please Select usb or network")
   endif()
   if(SWINDLE_USE_NETWORK)
-    set(LWIP_DIR
-        ${CMAKE_CURRENT_SOURCE_DIR}/lwip
-        CACHE INTERNAL "")
-    set(LN_ENABLE_ETH
-        TRUE
-        CACHE INTERNAL "")
+    if(USE_CH32V3x)
+      set(LWIP_DIR
+          ${CMAKE_CURRENT_SOURCE_DIR}/lwip
+          CACHE INTERNAL "")
+      set(LN_ENABLE_ETH
+          TRUE
+          CACHE INTERNAL "")
+    endif()
   endif()
 endif()
 # ----------------
 # Option loaded
 # ----------------
-if(USE_WS2812)
-  set(EXTRA_WS2812 "_ws2812")
-endif()
 # USB..
 if(SWINDLE_USE_USB)
   if(USE_CH32V3x)
@@ -105,8 +108,6 @@ if(NOT LN_EXTERNAL_GENERATE)
 endif()
 
 # ___________________________________________________
-
-# set(USE_RP2040_PURE_RAM True CACHE INTERNAL "") ___________________________________________________
 set(ESPRIT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/esprit)
 include(./mcuSelect.cmake)
 set(CMAKE_TOOLCHAIN_FILE ${ESPRIT_ROOT}/esprit.cmake)
@@ -159,37 +160,30 @@ endmacro()
 #
 
 set(BMP ${CMAKE_CURRENT_SOURCE_DIR}/blackmagic)
+#
 if(LN_SWINDLE_AS_EXTERNAL)
   add_definitions("-DLN_SWINDLE_AS_EXTERNAL")
 else()
 
-  if(USE_RP2040 OR USE_RP2350)
-    rp_pio_generate(${CMAKE_CURRENT_SOURCE_DIR}/src/ws.pio ${CMAKE_BINARY_DIR}/ws.h)
-    if(USE_RP_ZERO)
-      tune_name(USE_RP_ZERO zero)
-      set(ZERO_FLAGS _zero)
-    endif()
-    if(USE_RP_CARRIER)
-      tune_name(USE_RP_CARRIER carrier)
-    endif()
-    set(SOURCES src/swindle_rp2040${ZERO_FLAGS}.cpp ${CMAKE_BINARY_DIR}/ws.h)
-  else()
-    set(SOURCES src/swindle${EXTRA_WS2812}.cpp)
+  if(USE_RTT)
+    use_library(ln-rtt)
   endif()
-endif()
 
-if(NOT LN_EXTERNAL_GENERATE)
+  if(SWINDLE_USE_W5500)
+    use_library(w5500)
+  endif()
+
   if(USE_WS2812)
     use_library(WS2812B)
   endif()
+  add_subdirectory(src)
+  set(SWINDLE_MAIN swindle_main )
   generate_gd32_firmware(swindle ${SOURCES})
   hash_gd32_firmware(swindle)
-else()
-  add_library(swindle STATIC src/swindle_empty.cpp)
 endif()
 
 add_subdirectory(swindle)
-target_link_libraries(swindle PUBLIC swindle_interface)
+target_link_libraries(swindle PUBLIC swindle_interface ${SWINDLE_MAIN})
 # rsbmp_wrapper references symbols from swindleio_impl (via libswindle). Put rsbmp_wrapper before libswindle so the
 # linker resolves its undefined symbols against the C++ platform library that follows.
 target_link_libraries(swindle PUBLIC rsbmp_wrapper)
@@ -197,13 +191,16 @@ target_link_libraries(swindle PUBLIC libswindle)
 # lnarduino_c_bindings is an OBJECT library; its objects are added to libswindle via swindle_target.cmake (see
 # BRIDGE_SRCS). TARGET_LINK_LIBRARIES(swindle PUBLIC lnarduino_c_bindings) FIXME TODO this should be automatic
 if(SWINDLE_USE_NETWORK)
-  target_link_libraries(swindle PUBLIC lwipcore lnEth_wch)
+  if(SWINDLE_USE_W5500)
+    target_link_libraries(swindle_main PUBLIC w5500)
+    target_include_directories(swindle PRIVATE ${CMAKE_SOURCE_DIR}/src/net ${CMAKE_SOURCE_DIR}/swindle/include ${CMAKE_SOURCE_DIR}/swindle/src ${CMAKE_SOURCE_DIR}/swindle/src/net)
+    target_include_directories(swindle PRIVATE ${BMP}/src/include ${BMP}/src ${BMP}/src/target)
+  else()
+    target_link_libraries(swindle PUBLIC lwipcore lnEth_wch)
+  endif()
 endif()
 #
-tune_name(USE_CH32V3x CH32V3x)
-tune_name(USE_GD32F3 GD32F3)
-tune_name(USE_RP2040 RP2040)
-tune_name(USE_RP2350 RP2350)
+#
 #
 if(NOT LN_EXTERNAL_GENERATE)
   #
@@ -216,12 +213,18 @@ if(NOT LN_EXTERNAL_GENERATE)
   message(STATUS "Built for ${LN_ARCH}/${LN_MCU} with ${LN_MCU_FLASH_SIZE} flash / ${LN_MCU_RAM_SIZE} ram")
   message(STATUS "          MCU running at ${MCU_SPEED_M} Mhz")
 
+  tune_name(USE_CH32V3x CH32V3x)
+  tune_name(USE_GD32F3 GD32F3)
+  tune_name(USE_RP2040 RP2040)
+  tune_name(USE_RP2350 RP2350)
   tune_name(TRUE ${MCU_SPEED_M}Mhz)
   tune_name(USE_WS2812 WS2812)
   tune_name(USE_INVERTED_NRST INVRST)
   tune_name(USE_CLANG CLANG)
   tune_name(USE_64PIN_PACKAGE 64pins)
   tune_name(USE_48PIN_PACKAGE 48pins)
+  tune_name(SWINDLE_USE_W5500 W5500)
+  tune_name(USE_RTT lnrtt)
 
   tune_name(SWINDLE_USE_USB usb)
   tune_name(SWINDLE_USE_NETWORK network)

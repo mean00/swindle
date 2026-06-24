@@ -8,8 +8,13 @@ else()
   set(EXTRA _ln)
 endif()
 set(BRIDGE_SRCS
-    ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_jtagstubs.cpp ${B}/bmp_reset_pin.cpp
-    CACHE INTERNAL "")
+      ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_jtagstubs.cpp ${B}/bmp_reset_pin.cpp
+      CACHE INTERNAL "")
+if(SWINDLE_USE_W5500)
+  # W5500 builds provide their own user_init() and don't need bridge.cpp
+  # Also include lnSocketRunner.cpp directly (not compiled via ln_utils when LN_ENABLE_ETH=OFF)
+  set(BRIDGE_SRCS ${BRIDGE_SRCS}   ${ESPRIT_ROOT}/src/lnSocketRunner.cpp CACHE INTERNAL "")
+endif()
 if(SWINDLE_USE_USB)
   if(NOT LN_SWINDLE_AS_EXTERNAL)
     list(APPEND BRIDGE_SRCS # ${B}/bmp_serial.cpp
@@ -18,8 +23,14 @@ if(SWINDLE_USE_USB)
   endif()
 endif()
 if(SWINDLE_USE_NETWORK)
-  list(APPEND BRIDGE_SRCS ${B}/net/bmp_net.cpp)
-  include_directories(${CMAKE_CURRENT_SOURCE}/net)
+  if(USE_RP2040 OR USE_RP2350)
+    # RP2040 + W5500: include bmp_net.cpp for socketRunner implementation
+    include_directories(${CMAKE_SOURCE_DIR}/src/net)
+    list(APPEND BRIDGE_SRCS ${B}/net/bmp_net.cpp)
+  else()
+    list(APPEND BRIDGE_SRCS ${B}/net/bmp_net.cpp)
+    include_directories(${CMAKE_CURRENT_SOURCE}/net)
+  endif()
 endif()
 
 # #
