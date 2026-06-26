@@ -18,7 +18,9 @@
 #include "lnGPIO.h"
 #include "stdint.h"
 #include "lowlevel_w5500.h"
+//
 
+#define PIN_TO_USE GPIO23
 // W5500 pin mapping (full-size RP2040)
 const lnW5500SPI w5500Pins = {
     .miso = GPIO16,
@@ -31,8 +33,5 @@ const lnW5500SPI w5500Pins = {
 
 // MAC address (unique per device — customise per build)
 const uint8_t mac[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
-
-// WS2812 LED pin
-#define PIN_TO_USE GPIO23
 
 #include "swindle_rp2040_w5500_common.cpp"

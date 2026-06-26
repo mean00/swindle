@@ -21,12 +21,12 @@
 
 // W5500 pin mapping (RP2040-Zero)
 const lnW5500SPI w5500Pins = {
-    .miso  = GPIO4,
-    .mosi  = GPIO3,
-    .clk   = GPIO2,
-    .cs    = GPIO5,
+    .miso = GPIO4,
+    .mosi = GPIO3,
+    .clk = GPIO2,
+    .cs = GPIO5,
     .reset = GPIO6,
-    .intr  = GPIO7,
+    .intr = GPIO7,
 };
 
 // MAC address (unique per device — customise per build)

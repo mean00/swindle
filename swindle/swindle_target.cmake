@@ -7,17 +7,13 @@ if(USE_RP2040 OR USE_RP2350)
 else()
   set(EXTRA _ln)
 endif()
+set(BRIDGE_SRCS
+      ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_jtagstubs.cpp ${B}/bmp_reset_pin.cpp
+      CACHE INTERNAL "")
 if(SWINDLE_USE_W5500)
   # W5500 builds provide their own user_init() and don't need bridge.cpp
   # Also include lnSocketRunner.cpp directly (not compiled via ln_utils when LN_ENABLE_ETH=OFF)
-  set(BRIDGE_SRCS
-      ${B}/bmp_gpio.cpp ${B}/bmp_jtagstubs.cpp ${B}/bmp_reset_pin.cpp
-      ${ESPRIT_ROOT}/src/lnSocketRunner.cpp
-      CACHE INTERNAL "")
-else()
-  set(BRIDGE_SRCS
-      ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_jtagstubs.cpp ${B}/bmp_reset_pin.cpp
-      CACHE INTERNAL "")
+  set(BRIDGE_SRCS ${BRIDGE_SRCS}   ${ESPRIT_ROOT}/src/lnSocketRunner.cpp CACHE INTERNAL "")
 endif()
 if(SWINDLE_USE_USB)
   if(NOT LN_SWINDLE_AS_EXTERNAL)

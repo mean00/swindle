@@ -187,7 +187,7 @@ else()
       set(SOURCES ${SOURCES} src/swindle_rp2040${ZERO_FLAGS}.cpp )
     endif()
   else()
-    set(SOURCES ${SOURCES} src/swindle${EXTRA_WS2812}.cpp)
+    set(SOURCES ${SOURCES} src/swindle_gd32${EXTRA_WS2812}.cpp)
   endif()
 endif()
 

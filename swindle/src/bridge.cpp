@@ -69,13 +69,6 @@ extern "C"
 
     /**
      */
-    void user_init(void)
-    {
-        lnCreateTask(&gdb_task, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
-    }
-
-    /**
-     */
     void platform_max_frequency_set(uint32_t freq)
     {
     }
