@@ -131,6 +131,31 @@
         "USE_HW_FPU": "True",
         "USE_64PIN_PACKAGE": "true"
       }
+    },
+    {
+      "name": "rp2040_w5500",
+      "displayName": "RP2040 + W5500 (full size)",
+      "inherits": "base_net",
+      "cacheVariables": {
+        "USE_RP2040": "true",
+        "USE_RP_CARRIER": "true",
+        "SWINDLE_USE_W5500": "1",
+        "SWINDLE_USE_USB": "False",
+        "SWINDLE_USE_NETWORK": "True",
+        "USE_RTT": "True"
+      }
+    },
+    {
+      "name": "rp2040_zero_w5500",
+      "displayName": "RP2040 zero + W5500",
+      "inherits": "base_net",
+      "cacheVariables": {
+        "USE_RP2040": "true",
+        "USE_RP_ZERO": "true",
+        "SWINDLE_USE_W5500": "1",
+        "SWINDLE_USE_USB": "False",
+        "SWINDLE_USE_NETWORK": "True"
+      }
     }
   ]
 }

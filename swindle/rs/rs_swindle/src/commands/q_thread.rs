@@ -200,10 +200,12 @@ pub fn _qC(_command: &str, _args: &[&str]) -> bool {
 pub fn _qSymbol(_command: &str, args: &[&str]) -> bool {
     if args.len() != 2 {
         gdb_print!("Malformed reply to qsymbol\n");
+        encoder::reply_ok();
     } else {
-        crate::commands::symbols::q_symbols(args);
+        if !crate::commands::symbols::q_symbols(args) {
+            encoder::reply_ok();
+        }
     }
-    encoder::reply_ok();
     true
 }
 

@@ -142,7 +142,7 @@ pub fn q_symbols(args: &[&str]) -> bool {
     }
     if indeces.table_index >= NB_OF_SYMBOL_TABLE {
         // all done
-        return true;
+        return false;
     }
     let key = symbols_to_collect[indeces.table_index].symbols[indeces.line_index];
     let value: &str = if args.is_empty() { "" } else { args[0] };
@@ -152,9 +152,10 @@ pub fn q_symbols(args: &[&str]) -> bool {
     if update_indeces(&mut indeces) {
         set_index(indeces);
         ask_for_next_symbol(symbols_to_collect[indeces.table_index].symbols[indeces.line_index]);
+        true
     } else {
         set_index(indeces);
+        false
     }
-    true
 }
 // EOF
