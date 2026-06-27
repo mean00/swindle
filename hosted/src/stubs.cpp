@@ -503,4 +503,6 @@ extern "C" void bmp_gpio_reset()
 {
     bmp_gpio_reset_c();
 }
-
+void ln_set_connected_state(bool connected)
+{
+}

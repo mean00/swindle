@@ -2,7 +2,14 @@
 #include "xsin_table.h"
 #include "../swindle/src/platform/rp2040/lnRP2040_pio.h"
 #include "ln_rp_pio.h"
-
+static uint32_t colorShift = 0;
+void ln_set_connected_state(bool state)
+{
+    if (state)
+        colorShift = 16;
+    else
+        colorShift = 0;
+}
 // loop() — called repeatedly by rp.cpp's initTask
 // Runs the WS2812 LED breathing animation (same as USB builds).
 void loop()
@@ -34,7 +41,7 @@ void loop()
     int inc = STEP;
     while (1)
     {
-        uint32_t wait = (xsin[pix] >> 4) << 16;
+        uint32_t wait = (xsin[pix] >> 4) << colorShift;
         xsm->write(1, &wait);
         pix += inc;
         if (inc == STEP)
