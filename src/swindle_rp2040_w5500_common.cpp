@@ -7,7 +7,7 @@
  * @copyright (C) 2025
  * @license  See license file
  */
-
+#include "lnCpuID.h"
 #include "../private_include/w5500_gdb_task.h"
 #include "lnBmpTask.h"
 
@@ -23,7 +23,6 @@ extern void bmp_gpio_init_once();
 
 // w5500Pins and PIN_TO_USE must be defined in the including file
 extern const lnW5500SPI w5500Pins;
-extern const uint8_t mac[6];
 
 // Socket runner task — runs the GDB/RTT event loop
 static void socket_task(void *parameters)
@@ -55,8 +54,17 @@ void setup()
 #endif
 
     // Initialise the W5500 Ethernet controller
+    uint32_t id = lnCpuID::getSerialID();
+    uint8_t *p = (uint8_t *)&id;
+    uint8_t mymac[6];
+    mymac[0] = 0x0;
+    mymac[1] = 0x08;
+    mymac[2] = 0xdc;
+    mymac[3] = p[0];
+    mymac[4] = p[1];
+    mymac[5] = p[2];
     W5500LowLevel::init(0, &w5500Pins);
-    W5500LowLevel::setMac(mac);
+    W5500LowLevel::setMac(mymac);
     W5500LowLevel::start(NetCb_c, NULL);
 }
 
