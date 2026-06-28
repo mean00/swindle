@@ -1,3 +1,8 @@
+/**
+ * @file bmp_pinout.h
+ * @brief ESP32 WROOM pin mapping table
+ */
+
 #pragma once
 
 // mapping of BMP gpio to the GPIO we use

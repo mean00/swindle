@@ -1,7 +1,12 @@
-#include "ws.h"
-#include "xsin_table.h"
+/**
+ * @file swindle_common_rp2040.cpp
+ * @brief Common RP2040 board initialisation shared across variants
+ */
+
 #include "../swindle/src/platform/rp2040/lnRP2040_pio.h"
 #include "ln_rp_pio.h"
+#include "ws.h"
+#include "xsin_table.h"
 static uint32_t colorShift = 0;
 void ln_set_connected_state(bool state)
 {

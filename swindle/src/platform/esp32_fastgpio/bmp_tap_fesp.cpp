@@ -1,8 +1,13 @@
 /*
  *
  */
-#include "stdint.h"
+/**
+ * @file bmp_tap_fesp.cpp
+ * @brief ESP32 TAP initialisation and frequency control (fast GPIO)
+ */
+
 #include "bmp_pinout.h"
+#include "stdint.h"
 //
 #include "hal/gpio_types.h"
 //
@@ -21,7 +26,8 @@ SwdDirectionPin *rSWDIO;
 SwdWaitPin *rSWCLK;
 SwdReset *pReset;
 /**
- *
+ * @brief Set the SWD wait-state (number of NOPs per bit-clock).
+ * @param ws Wait-state count.
  */
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
@@ -29,8 +35,10 @@ extern "C" void bmp_set_wait_state_c(uint32_t ws)
     return;
 }
 /**
- * @brief
+ * @brief Set the SWD clock frequency on ESP32 (dedicated GPIO).
  *
+ * Converts Hz to wait-state count using 12.5 MHz calibration.
+ * @param fq Desired SWCLK frequency in Hz.
  */
 extern "C" void bmp_set_frequency_c(uint32_t fq)
 {
@@ -55,16 +63,19 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
     bmp_set_wait_state_c((uint32_t)ws);
 }
 /**
- * @brief
- *
+ * @brief Get the current SWD wait-state count.
+ * @return Number of NOPs per bit-clock.
  */
 extern "C" uint32_t bmp_get_wait_state_c()
 {
     return swd_delay_cnt;
 }
 /**
-
-*/
+ * @brief Initialise SWD GPIOs once at startup (dedicated GPIO bundle).
+ *
+ * Creates a two-pin dedicated-GPIO bundle for SWCLK and SWDIO,
+ * enabling near-1-cycle bit-banging on ESP32.
+ */
 static dedic_gpio_bundle_handle_t bundle = NULL;
 void bmp_gpio_init_once()
 {
@@ -115,8 +126,7 @@ void bmp_gpio_init_once()
     gmp_gpio_init_adc();
 }
 /**
- * @brief
- *
+ * @brief Begin an SWD session on ESP32 (dedicated GPIO).
  */
 void bmp_io_begin_session()
 {
@@ -127,8 +137,7 @@ void bmp_io_begin_session()
     pReset->off(); // hi-z by default
 }
 /**
- * @brief
- *
+ * @brief End an SWD session on ESP32 (dedicated GPIO).
  */
 void bmp_io_end_session()
 {
@@ -136,8 +145,9 @@ void bmp_io_end_session()
     rSWDIO->hiZ();
     pReset->off(); // hi-z by default
 }
-/*
- *
+/**
+ * @brief Get the WS2812 data pin number for ESP32.
+ * @return GPIO pin number.
  */
 uint8_t ln_get_ws2812_pin()
 {

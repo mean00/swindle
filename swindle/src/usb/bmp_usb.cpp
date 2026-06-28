@@ -1,12 +1,16 @@
-/*
-
+/**
+ * @file bmp_usb.cpp
+ * @brief USB GDB task for USB-enabled boards.
+ *
+ * Implements gdb_task() for USB-CDC targets. Uses the Rust-owned
+ * CDC-ACM (GDB stub over USB), logger CDC, and USB↔UART bridge.
  */
+#include "bmp_devices.h"
 #include "esprit.h"
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbDFUrt.h"
 #include "include/lnUsbStack.h"
 #include "lnBMP_usb_descriptor.h"
-#include "bmp_devices.h"
 
 extern "C"
 {
@@ -103,8 +107,7 @@ extern void lnSoftSystemReset(void);
 #if defined(USE_RP2040) || defined(USE_RP2350)
 extern void Rp2040ResetToFwUpload();
 #endif
-/**
- */
+/** @brief Reboot into DFU mode (USB bootloader). */
 void goDfu()
 {
     Logger("Rebooting to DFU...\n");
@@ -125,8 +128,7 @@ void goDfu()
 #endif
 }
 
-/**
- */
+/** @brief Initialise the USB GDB interface (CDC-ACM + optional logger + bridge). @return 0 on success. */
 extern "C" int gdb_if_init(void)
 {
     Logger("Starting CDC \n");
@@ -148,13 +150,17 @@ extern "C" int gdb_if_init(void)
     usb->start();
     return 0;
 }
-/**
- */
+/** @brief Stub — FreeRTOS init not needed (tasks managed by the RTOS). */
 void initFreeRTOS()
 {
 }
 
-/*
+/**
+ * @brief Main GDB task for USB targets.
+ *
+ * Initialises USB stack, CDC classes, then delegates the event loop
+ * to the Rust GDB stub (rngdb_gdb_task).
+ * @param parameters FreeRTOS task parameters (unused).
  */
 void gdb_task(void *parameters)
 {
@@ -171,10 +177,8 @@ void gdb_task(void *parameters)
     xAssert(0);
 }
 
-//
-//
-//
+/** @brief Forward debug serial output to the logger. */
 void debug_serial_send_stdout(const uint8_t *const data, const size_t len)
 {
-    Logger("%s", data); // ???
+    Logger("%s", data);
 }

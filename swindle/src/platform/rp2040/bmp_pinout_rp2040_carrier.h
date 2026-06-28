@@ -1,5 +1,11 @@
-#pragma once
+/**
+ * @file bmp_pinout_rp2040_carrier.h
+ * @brief RP2040 carrier board pin mapping table
+ */
 
+#pragma once
+#include "lnGPIO.h"
+//
 const lnPin _mapping[9] = {
     GPIO24, // 0 TMS_PIN
     GPIO24, // 1 TDI_PIN

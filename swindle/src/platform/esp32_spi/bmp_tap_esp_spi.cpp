@@ -1,12 +1,16 @@
-/*
- *
+/**
+ * @file      bmp_tap_esp_spi.cpp
+ * @brief     ESP32 SPI-based TAP initialisation and clock control.
+ * @details   Initialises the SPI2 bus in half-duplex, LSB-first mode
+ *            for SWD signalling. Provides frequency and wait-state
+ *            control stubs.
  */
-#include "esprit.h"
+#include "bmp_tap_esp_spi.h"
 #include "bmp_pinout.h"
 #include "bmp_swdio_esp_spi.h"
+#include "esprit.h"
 #include "lnCpuID.h"
 #include "math.h"
-#include "bmp_tap_esp_spi.h"
 //
 #include "driver/spi_master.h"
 #include "hal/gpio_types.h"
@@ -17,31 +21,34 @@ extern void gmp_gpio_init_adc();
 uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
 SwdReset *pReset;
 /**
- *
+ * @brief Set wait-state (stub — SPI hardware handles timing).
+ * @param ws Ignored for SPI-based TAP.
  */
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
     return;
 }
 /**
- * @brief
- *
+ * @brief Set the SWD clock frequency (used by SPI host).
+ * @param fq Desired SWCLK frequency in Hz.
  */
 extern "C" void bmp_set_frequency_c(uint32_t fq)
 {
     swd_frequency = fq;
 }
 /**
- * @brief
- *
+ * @brief Get wait-state (always 1 for SPI-based TAP).
+ * @return Always 1.
  */
 extern "C" uint32_t bmp_get_wait_state_c()
 {
     return 1;
 }
 /**
-
-*/
+ * @brief Initialise SPI bus for SWD signalling.
+ *
+ * Sets up SPI2 as a half-duplex master on SWDIO/SWCLK.
+ */
 void bmp_gpio_init_once()
 {
     pReset = new SwdReset(TRESET_PIN); // automatically add delay after toggle
@@ -71,15 +78,13 @@ void bmp_gpio_init_once()
     gmp_gpio_init_adc();
 }
 /**
- * @brief
- *
+ * @brief Begin SWD session (no-op for SPI-based TAP).
  */
 void bmp_io_begin_session()
 {
 }
 /**
- * @brief
- *
+ * @brief End SWD session (no-op for SPI-based TAP).
  */
 void bmp_io_end_session()
 {

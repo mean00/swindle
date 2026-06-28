@@ -1,3 +1,8 @@
+/**
+ * @file esp_rvTap.cpp
+ * @brief ESP32 RISC-V DMI bit-bang transport (direct GPIO)
+ */
+
 /*
   lnBMP: Gpio driver for Rvswd
   This code is derived from the blackmagic one but has been modified

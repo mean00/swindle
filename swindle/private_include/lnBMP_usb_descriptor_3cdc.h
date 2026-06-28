@@ -1,3 +1,15 @@
+/**
+ * @file lnBMP_usb_descriptor_3cdc.h
+ * @brief USB configuration descriptor for 3 CDC + DFU (FS/HS).
+ *
+ * Provides device descriptor and FS/HS configuration descriptors for:
+ *   - CDC 0: GDB server
+ *   - CDC 1: UART bridge
+ *   - CDC 2: debug log
+ *   - DFU runtime
+ *
+ * Used when USE_3_CDC is defined.
+ */
 #pragma once
 const tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),

@@ -1,3 +1,8 @@
+/**
+ * @file bmp_swdio_ln.h
+ * @brief SWDIO/SWCLK pin abstraction with wait-state support (LN targets)
+ */
+
 #pragma once
 /**
  */

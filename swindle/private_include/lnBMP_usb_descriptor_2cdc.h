@@ -1,3 +1,12 @@
+/**
+ * @file lnBMP_usb_descriptor_2cdc.h
+ * @brief USB configuration descriptor for 2 CDC + DFU (FS/HS).
+ *
+ * Provides device descriptor and FS/HS configuration descriptors for:
+ *   - CDC 0: GDB server
+ *   - CDC 1: UART bridge
+ *   - DFU runtime
+ */
 #pragma once
 #include "dfu/dfu.h"
 const tusb_desc_device_t desc_device = {
@@ -53,7 +62,7 @@ const uint8_t desc_fs_configuration[] = {
 
     // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
-    // 3rd CDC Logg
+    // DFU runtime descriptor.
     TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 7, 0x0d, 1000, 4096),
 
 };

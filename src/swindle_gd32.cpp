@@ -1,3 +1,8 @@
+/**
+ * @file swindle_gd32.cpp
+ * @brief GD32F303 board initialisation and GPIO setup
+ */
+
 /*
     On the RP2040 gum stick boards the led is driven by GPIO26, it is NOT open drain
 */

@@ -1,3 +1,8 @@
+/**
+ * @file bmp_rvTap_esp.cpp
+ * @brief ESP32 RISC-V DMI transport (standard GPIO)
+ */
+
 /*
   lnBMP: Gpio driver for Rvswd
   This code is derived from the blackmagic one but has been modified
@@ -49,18 +54,20 @@ extern "C"
 #ifndef __clang__
 #pragma GCC optimize("Ofast")
 #endif
-#include "bmp_rvTap.h"
-#include "esprit.h"
-#include "lnBMP_reset.h"
 #include "bmp_pinout.h"
+#include "bmp_rvTap.h"
 #include "bmp_swdio_esp.h"
 #include "bmp_tap_esp.h"
+#include "esprit.h"
+#include "lnBMP_reset.h"
 #include "lnbmp_parity.h"
 //--
 extern void bmp_gpio_init();
 
 /**
- *
+ * @brief Write @p n bits MSB-first on SWDIO.
+ * @param n     Number of bits (1..32).
+ * @param value Bits left-aligned in 32-bit word.
  */
 static void rv_write_nbits(int n, uint32_t value)
 {
@@ -75,7 +82,7 @@ static void rv_write_nbits(int n, uint32_t value)
     }
 }
 /**
- * do a falling edge on SWDIO with CLK high (assumed) => start bit
+ * @brief Emit DMI start bit (SWDIO falling edge, CLK high).
  */
 static void rv_start_bit()
 {
@@ -83,8 +90,7 @@ static void rv_start_bit()
     rSWDIO->set(0);
 }
 /**
- *
- * do a rising edge on SWDIO with CLK high (assumed) => stop bit
+ * @brief Emit DMI stop bit (SWDIO rising edge, CLK high).
  */
 static void rv_stop_bit()
 {
@@ -95,7 +101,9 @@ static void rv_stop_bit()
     rSWDIO->set(1);
 }
 /**
- *
+ * @brief Read @p n bits MSB-first from SWDIO.
+ * @param n Number of bits.
+ * @return Sampled bits, MSB-aligned.
  */
 static uint32_t rv_read_nbits(int n)
 {
@@ -110,10 +118,8 @@ static uint32_t rv_read_nbits(int n)
     return out;
 }
 /**
- * @brief
- *
- * @return true
- * @return false
+ * @brief Reset RISC-V DM via DMI line reset.
+ * @return true (always succeeds).
  */
 bool rv_dm_reset()
 {

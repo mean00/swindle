@@ -1,4 +1,10 @@
-/*
+/**
+ * @file platform.h
+ * @brief Hosted-mode platform configuration for swindle (Linux/x86_64).
+ *
+ * Defines GPIO pin mapping, SWD signal macros, and printf/stub overrides
+ * for the hosted (non-embedded) build target.
+ *
  * This file is part of the Black Magic Debug project.
  *
  * Copyright (C) 2011  Black Sphere Technologies Ltd.
@@ -49,13 +55,20 @@
     {                                                                                                                  \
     } while (0)
 
-#define TMS_PIN (8 + 0)      //
-#define TDI_PIN (8 + 1)      //
-#define TDO_PIN (8 + 2)      //
-#define TCK_PIN (8 + 3)      //
-#define TRACESWO_PIN (8 + 4) //
-#define SWDIO_PIN (8 + 5)    //
-#define SWCLK_PIN (8 + 6)    //
+/** Virtual TMS pin (SWD/JTAG). */
+#define TMS_PIN (8 + 0)
+/** Virtual TDI pin (JTAG). */
+#define TDI_PIN (8 + 1)
+/** Virtual TDO pin (JTAG). */
+#define TDO_PIN (8 + 2)
+/** Virtual TCK pin (JTAG/SWD clock). */
+#define TCK_PIN (8 + 3)
+/** Virtual TRACESWO pin (SWO trace capture). */
+#define TRACESWO_PIN (8 + 4)
+/** Virtual SWDIO pin (SWD bidirectional data). */
+#define SWDIO_PIN (8 + 5)
+/** Virtual SWCLK pin (SWD clock). */
+#define SWCLK_PIN (8 + 6)
 
 #define SWCLK_PORT 0
 #define SWDIO_PORT 0

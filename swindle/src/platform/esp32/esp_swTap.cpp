@@ -1,3 +1,8 @@
+/**
+ * @file esp_swTap.cpp
+ * @brief ESP32 SWD bit-bang transport (direct GPIO)
+ */
+
 #include "esprit.h"
 #include "lnBMP_pinout.h"
 extern "C"
@@ -10,8 +15,8 @@ extern "C"
 #include "lnBMP_pinout.h"
 #include "lnBMP_swdio.h"
 //
-#include "driver/spi_master.h"
 #include "driver/gpio.h"
+#include "driver/spi_master.h"
 //
 #include "lnbmp_parity.h"
 //
@@ -56,11 +61,10 @@ static uint32_t extract_bits(uint8_t *buf, uint32_t start_bit, uint8_t len)
     return res;
 }
 /**
- * @brief [TODO:description]
- *
- * @param addr [TODO:parameter]
- * @param data [TODO:parameter]
- * @return [TODO:return]
+ * @brief Write 32 bits over SWD via SPI (no ACK/status check).
+ * @param addr AP/DP register address.
+ * @param data Value to write.
+ * @return false (always succeeds, no ACK verification).
  */
 extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
@@ -86,8 +90,9 @@ extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t 
 }
 
 /**
-        \fn ln_adiv5_swd_read_no_chgck
-
+ * @brief Read 32 bits over SWD via SPI (no ACK/status check).
+ * @param addr AP/DP register address.
+ * @return 32-bit read value.
  */
 extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
@@ -112,8 +117,12 @@ extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
     return extract_bits(rxBuffer, 12, 32);
 }
 /**
-        \fn ln_adiv5_swd_raw_access
-
+ * @brief Full SWD transaction (request+ACK retry+data) over SPI.
+ * @param dp   ADIv5 debug port state.
+ * @param rnw  Read (1) or write (0).
+ * @param addr AP/DP register address.
+ * @param value Write value (ignored for reads).
+ * @return Read data, or 0 on fault.
  */
 extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
                                             const uint32_t value)

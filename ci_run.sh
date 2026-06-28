@@ -4,6 +4,11 @@ export PATH=/home/${USER}/.cargo/bin:/home/${USER}/.local/bin:$PATH
 export PICO_SDK=/opt/pico/pico-sdk
 export ROOT=$PWD
 
+fail() {
+  echo "**** FAILURE ${1} ***"
+  exit -1
+}
+
 runbuild() {
   local cur_dir=$PWD
   local folder_name="build${1}"
@@ -12,7 +17,7 @@ runbuild() {
   mkdir $cur_dir/$folder_name
   cd $folder_name
   cmake --preset $@ ..
-  make -j 4
+  make -j 4 || fail ${1}
   cd $cur_dir
 }
 

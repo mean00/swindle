@@ -1,10 +1,15 @@
 
+/**
+ * @file bmp_adc_esp.cpp
+ * @brief ESP32 ADC driver for target voltage measurement
+ */
+
+#include "adc_cali_schemes.h"
+#include "bmp_pinout.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_oneshot.h"
 #include "esprit.h"
 #include "lnADC.h"
-#include "bmp_pinout.h"
-#include "esp_adc/adc_oneshot.h"
-#include "esp_adc/adc_cali.h"
-#include "adc_cali_schemes.h"
 #define CHANNELX (adc_channel_t)(ADC_CHANNEL_0 + PIN_ADC_NRESET_DIV_BY_TWO - 1)
 static adc_cali_handle_t cali_handle = NULL;
 static adc_oneshot_unit_handle_t adc1_handle;

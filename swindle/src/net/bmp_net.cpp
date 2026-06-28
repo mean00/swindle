@@ -1,5 +1,9 @@
-/*
-
+/**
+ * @file bmp_net.cpp
+ * @brief Network GDB task for Ethernet-enabled boards (W5500 / LWIP).
+ *
+ * Implements gdb_task(), socket runner classes (GDB + RTT), and the
+ * LLP (LwIP) callback that translates network events into runner events.
  */
 #include "esprit.h"
 
@@ -23,10 +27,7 @@ extern void serialInit();
 extern "C" void bmp_io_begin_session();
 extern "C" void bmp_io_end_session();
 //--
-/**
- *
- */
-
+/** @cond DOXYGEN_SKIP */
 #if 0
 #define DEBUGME Logger
 #else
@@ -34,6 +35,7 @@ extern "C" void bmp_io_end_session();
     {                                                                                                                  \
     }
 #endif
+/** @endcond */
 #define RUNNER_GDB_PORT 2000
 #define RUNNER_RTT_PORT 2001
 
@@ -41,28 +43,23 @@ extern "C" void bmp_io_end_session();
 #include "bmp_net_rtt.h"
 
 /**
- * @brief [TODO:description]
- *
- * @return [TODO:return]
+ * @brief Initialise the GDB network interface (no-op for LWIP builds
+ *        where init happens inside gdb_task).
+ * @return 0 (success).
  */
 extern "C" int gdb_network_init(void)
 {
     return 0;
 }
-/**
- * @brief [TODO:description]
- */
+/** @brief Stub — FreeRTOS init (not used here; task is managed by the runner). */
 void initFreeRTOS()
 {
 }
+/** @brief Stub — GDB interface init is done inside gdb_task(). */
 void gdb_if_init()
 {
 }
-/**
- * @brief [TODO:description]
- *
- * @param parameters [TODO:parameter]
- */
+/** @brief Slot number for GDB socket runner. */
 #define MAIN_GDB_SLOT 0
 #define MAIN_RTT_SLOT 6
 #define MAIN_SERIAL_SLOT 12
@@ -70,9 +67,9 @@ void gdb_if_init()
 lnFastEventGroup network_eventGroup;
 
 /**
- *
- * @param evt [TODO:parameter]
- * @param arg [TODO:parameter]
+ * @brief LWIP event callback — translates network stack events to runner events.
+ * @param evt Network event (LwipDown / LwipReady).
+ * @param arg User-supplied argument (unused).
  */
 void NetCb_c(lnLwipEvent evt, void *arg)
 {
@@ -92,9 +89,13 @@ void NetCb_c(lnLwipEvent evt, void *arg)
     network_eventGroup.setEvents(revt);
 }
 /**
- * @brief [TODO:description]
+ * @brief Main GDB task for Ethernet targets.
  *
- * @param parameters [TODO:parameter]
+ * Initialises GPIO, LWIP, and sets up two socket runners:
+ *   - RunnerGDB (port 2000) for the GDB stub protocol
+ *   - RunnerRTT (port 2001) for RTT data streaming
+ *
+ * @param parameters FreeRTOS task parameters (unused).
  */
 void gdb_task(void *parameters)
 {
@@ -127,21 +128,17 @@ void gdb_task(void *parameters)
 }
 
 /**
- * @brief [TODO:description]
- *
- * @param data [TODO:parameter]
- * @param len [TODO:parameter]
+ * @brief Forward debug serial output to the logger.
+ * @param data Data buffer.
+ * @param len  Number of bytes.
  */
 void debug_serial_send_stdout(const uint8_t *const data, const size_t len)
 {
-    Logger("%s", data); // ???
+    Logger("%s", data);
 }
 //----
 
-/*
- *
- *
- */
+/** @brief Construct an RTT socket runner. */
 socketRunnerRtt::socketRunnerRtt(lnFastEventGroup &eventGroup, uint32_t shift)
     : socketRunner(RUNNER_RTT_PORT, eventGroup, shift)
 {
@@ -177,7 +174,7 @@ void socketRunnerRtt::hook_poll()
     }
 }
 
-// drop all data incoming for rtt
+/** @brief Drop all inbound data (RTT is host-to-host; we don't write to target). */
 void socketRunnerRtt::process_incoming_data()
 {
     uint32_t lp = 0;
@@ -194,9 +191,10 @@ void socketRunnerRtt::process_incoming_data()
         }
     }
 }
-/**/
+/** @brief Global pointer to the RTT socket runner instance. */
 socketRunnerRtt *runnerRtt = NULL;
 
+/** @brief Construct a GDB socket runner. */
 socketRunnerGdb::socketRunnerGdb(lnFastEventGroup &eventGroup, uint32_t shift)
     : socketRunner(RUNNER_GDB_PORT, eventGroup, shift)
 {
@@ -245,6 +243,7 @@ xit:
     flushWrite();
 }
 
+/** @brief Global pointer to the GDB socket runner instance. */
 socketRunnerGdb *runnerGdb = NULL;
 
 /**

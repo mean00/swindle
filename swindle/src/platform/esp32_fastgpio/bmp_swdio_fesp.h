@@ -1,4 +1,9 @@
-/*
+/**
+ * @file bmp_swdio_fesp.h
+ * @brief ESP32 fast (dedicated-GPIO) SWDIO bit-banging classes.
+ *
+ * Uses dedic_gpio_cpu_ll_* for near-single-cycle bit-banging
+ * on ESP32-S3 and similar cores.
  */
 #pragma once
 #include "lnBMP_reset.h"
@@ -12,12 +17,19 @@ extern "C"
 #include "hal/dedic_gpio_cpu_ll.h"
 }
 // clang-format on
-//
-//
+
 extern uint32_t swd_delay_cnt;
+
+/** Write 1 to pin via SET register. */
 #define FAST_SET() REG_WRITE(GPIO_OUT_W1TS_REG, (1 << _me))
+/** Write 0 to pin via CLEAR register. */
 #define FAST_CLEAR() REG_WRITE(GPIO_OUT_W1TC_REG, (1 << _me))
+/** Read pin level from GPIO_IN_REG. */
 #define FAST_READ() ((REG_READ(GPIO_IN_REG) & (1 << _me)) != 0)
+
+/**
+ * @brief Simple output-only GPIO pin (no direction control).
+ */
 class SwdOutputPin
 {
   public:
@@ -51,8 +63,10 @@ class SwdOutputPin
     gpio_num_t _me;
 };
 /**
- * IO
+ * @brief Bidirectional SWDIO pin using dedicated GPIO LL.
  *
+ * Bit position within the dedicated-GPIO bundle determines
+ * which pin is driven/sampled.
  */
 class SwdDirectionPin
 {
@@ -119,8 +133,10 @@ class SwdDirectionPin
     uint32_t _bit;
 };
 
-/*
+/**
+ * @brief SWCLK output using dedicated GPIO LL with wait-state delay.
  *
+ * Each toggle calls swait() to honour the SWD frequency.
  */
 class SwdWaitPin
 {

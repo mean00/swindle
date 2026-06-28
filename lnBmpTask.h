@@ -1,3 +1,8 @@
+/**
+ * @file lnBmpTask.h
+ * @brief FreeRTOS task configuration for the BMP project
+ */
+
 #pragma once
 
 #define TASK_BMP_SERIAL_PRIORITY 4

@@ -1,3 +1,8 @@
+/**
+ * @file swindle_rp2040.cpp
+ * @brief RP2040 board initialisation entry point
+ */
+
 #include "../swindle/src/platform/rp2040/lnRP2040_pio.h"
 #include "lnGPIO.h"
 #include "stdint.h"

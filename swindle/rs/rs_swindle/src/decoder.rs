@@ -183,7 +183,7 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
                                                                         },
                                                 RPC_START /*'#'*/       => {self.indx=0;PARSER_AUTOMATON::RpcBody},  // restart ? wtf ?
                                                 _                       => {
-                                                                        if self.indx > INPUT_BUFFER_SIZE
+                                                                        if self.indx >= INPUT_BUFFER_SIZE
                                                                         {
                                                                             bmplog!("RPC input buffer overflow\n");
                                                                             PARSER_AUTOMATON::Error
@@ -210,23 +210,33 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
                                                 _                       => {
                                                                         bmplog!("T:<{}>",c);
                                                                         self.checksum+=c as usize;
-                                                                        self.input_buffer[self.indx] = c;
+                                                                        if self.indx >= INPUT_BUFFER_SIZE {
+                                                                            bmplog!("GDB input buffer overflow\n");
+                                                                            PARSER_AUTOMATON::Error
+                                                                        } else {
+                                                                            self.input_buffer[self.indx] = c;
 //                                                                        self.input_buffer[self.indx]= match c
 //                                                                        {
 //                                                                            b'\t' => b' ',
 //                                                                            _     => c,
 //                                                                        };
-                                                                        self.indx+=1;
-                                                                        PARSER_AUTOMATON::Body
+                                                                            self.indx+=1;
+                                                                            PARSER_AUTOMATON::Body
+                                                                        }
                                                                     },
                                             }
                 }
                 PARSER_AUTOMATON::Escape => {
                     self.checksum += CHAR_ESCAPE as usize;
                     self.checksum += c as usize;
-                    self.input_buffer[self.indx] = c ^ 0x20;
-                    self.indx += 1;
-                    PARSER_AUTOMATON::Body
+                    if self.indx >= INPUT_BUFFER_SIZE {
+                        bmplog!("GDB input buffer overflow\n");
+                        PARSER_AUTOMATON::Error
+                    } else {
+                        self.input_buffer[self.indx] = c ^ 0x20;
+                        self.indx += 1;
+                        PARSER_AUTOMATON::Body
+                    }
                 }
                 PARSER_AUTOMATON::End1 => {
                     bmplog!("CHK1\n");

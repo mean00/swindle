@@ -1,3 +1,8 @@
+/**
+ * @file bmp_rvTap_rp2040.cpp
+ * @brief RISC-V DMI transport over esprit GPIO (RP2040)
+ */
+
 /*
   swindle: Gpio driver for Rvswd
   This code is derived from the blackmagic one but has been modified
@@ -18,9 +23,9 @@ extern "C"
 }
 #pragma GCC optimize("Ofast")
 #include "bmp_pinmode.h"
+#include "bmp_pinout.h"
 #include "bmp_rvTap.h"
 #include "esprit.h"
-#include "bmp_pinout.h"
 #include "lnRP2040_pio.h"
 #include "ln_rp_pio.h"
 #include "lnbmp_parity.h"
@@ -56,7 +61,7 @@ static inline void send_command(uint32_t cmd, uint32_t param)
 }
 
 /**
- * do a falling edge on SWDIO with CLK high (assumed) => start bit
+ * @brief Emit DMI start bit (SWDIO falling edge while CLK high).
  */
 static void rv_start_bit()
 {
@@ -65,8 +70,7 @@ static void rv_start_bit()
 }
 
 /**
- *
- * do a rising edge on SWDIO with CLK high (assumed) => stop bit
+ * @brief Emit DMI stop bit (SWDIO rising edge while CLK high).
  */
 static void rv_stop_bit()
 {
@@ -75,7 +79,9 @@ static void rv_stop_bit()
     xsm->waitTxEmpty();
 }
 /**
- *
+ * @brief Read @p n bits MSB-first from SWDIO via PIO.
+ * @param n Number of bits to read.
+ * @return Sampled bits, MSB-aligned.
  */
 static uint32_t rv_read_nbits(int n)
 {
@@ -88,7 +94,9 @@ static uint32_t rv_read_nbits(int n)
 }
 
 /**
- *
+ * @brief Write @p n bits MSB-first on SWDIO via PIO.
+ * @param n     Number of bits to write.
+ * @param value Bits to write (MSB-aligned in 32-bit word).
  */
 static void rv_write_nbits(int n, uint32_t value)
 {
@@ -98,10 +106,8 @@ static void rv_write_nbits(int n, uint32_t value)
     xsm->write(1, &value);
 }
 /**
- * @brief
- *
- * @return true
- * @return false
+ * @brief Reset RISC-V DM via PIO (100 × 1-bit pulses).
+ * @return true (always succeeds).
  */
 bool rv_dm_reset()
 {
@@ -113,7 +119,7 @@ bool rv_dm_reset()
     return true;
 }
 /**
- * \fn this is a test function
+ * @brief Test function: write a known pattern over DMI.
  */
 void rv_write_write(uint32_t value)
 {

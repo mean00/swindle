@@ -1,6 +1,11 @@
-/*
-  lnBMP:  Completely disable jtag to gain a bit of flash real estate
-Original license header
+/**
+ * @file bmp_jtagstubs.cpp
+ * @brief JTAG stubs — disable JTAG to save flash space.
+ *
+ * Provides empty implementations of the JTAG-DP interface so that
+ * the linker can discard the real JTAG code. Only SWD/RVSWD is used.
+ *
+ * Original license header:
 
  * This file is part of the Black Magic Debug project.
  *
@@ -21,11 +26,9 @@ Original license header
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
- This file implements the SW-DP interface.
-
  */
 #include "esprit.h"
-//#include "lnBMP_pinout.h"
+// #include "lnBMP_pinout.h"
 extern "C"
 {
 #include "adiv5.h"
@@ -34,38 +37,47 @@ extern "C"
 #include "jtagtap.h"
 #include "timing.h"
 
+    /** @brief JTAG procedure table — all NULL (JTAG disabled). */
     extern jtag_proc_s jtag_proc = {NULL, NULL, NULL, NULL, NULL};
+
+    /** @brief JTAG tap init stub — no-op when JTAG is disabled. */
     void jtagtap_init()
     {
         return;
     }
-    // uint32_t jtag_scan(const uint8_t *irlens)
+
+    /** @brief JTAG scan stub. @return false (no devices found). */
     bool jtag_scan()
     {
         return false;
     }
+
+    /** @brief JTAG-DP abort stub — no-op. */
     void adiv5_jtagdp_abort(adiv5_debug_port_s *dp, uint32_t abort)
     {
     }
+
+    /** @brief JTAG-DP read stub. @return 0. */
     uint32_t fw_adiv5_jtagdp_read(adiv5_debug_port_s *dp, uint16_t addr)
     {
         return 0;
     }
-    // uint32_t fw_adiv5_jtagdp_read(ADIv5_DP_t *dp, uint16_t addr)
-    //{
-    //   return 0;
-    // }
+
+    /** @brief JTAG-DP low-access stub — raises EXCEPTION_ERROR.
+     * @return 0 (unreachable). */
     uint32_t fw_adiv5_jtagdp_low_access(adiv5_debug_port_s *dp, uint8_t RnW, uint16_t addr, uint32_t value)
     {
         raise_exception(EXCEPTION_ERROR, "JTAG-DP disabled");
-        return 0; //
+        return 0;
     }
+
+    /** @brief JTAG add-device stub — no-op. */
     void jtag_add_device(const uint32_t dev_index, const jtag_dev_s *jtag_dev)
     {
     }
 }
 
+/** @brief Debug test stub — empty. */
 extern "C" void resetTest2()
 {
-
 }

@@ -1,12 +1,17 @@
 /*
  *
  */
-#include "esprit.h"
+/**
+ * @file bmp_tap_esp.cpp
+ * @brief ESP32 TAP initialisation (standard GPIO)
+ */
+
+#include "bmp_tap_esp.h"
 #include "bmp_pinout.h"
 #include "bmp_swdio_esp.h"
+#include "esprit.h"
 #include "lnCpuID.h"
 #include "math.h"
-#include "bmp_tap_esp.h"
 
 extern void gmp_gpio_init_adc();
 
@@ -16,7 +21,8 @@ SwdDirectionPin *rSWDIO;
 SwdWaitPin *rSWCLK;
 SwdReset *pReset;
 /**
- *
+ * @brief Set the SWD wait-state (number of NOPs per bit-clock).
+ * @param ws Wait-state count.
  */
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
@@ -24,8 +30,10 @@ extern "C" void bmp_set_wait_state_c(uint32_t ws)
     return;
 }
 /**
- * @brief
+ * @brief Set the SWD clock frequency.
  *
+ * Converts Hz to wait-state count using ESP32-specific calibration.
+ * @param fq Desired SWCLK frequency in Hz.
  */
 extern "C" void bmp_set_frequency_c(uint32_t fq)
 {
@@ -50,16 +58,16 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
     bmp_set_wait_state_c((uint32_t)wf);
 }
 /**
- * @brief
- *
+ * @brief Get the current SWD wait-state count.
+ * @return Number of NOPs per bit-clock.
  */
 extern "C" uint32_t bmp_get_wait_state_c()
 {
     return swd_delay_cnt;
 }
 /**
-
-*/
+ * @brief Initialise SWD GPIOs once at startup.
+ */
 void bmp_gpio_init_once()
 {
     rSWDIO = new SwdDirectionPin(TSWDIO_PIN);
@@ -73,8 +81,7 @@ void bmp_gpio_init_once()
     gmp_gpio_init_adc();
 }
 /**
- * @brief
- *
+ * @brief Begin an SWD session: drive SWDIO/SWCLK.
  */
 void bmp_io_begin_session()
 {
@@ -85,8 +92,7 @@ void bmp_io_begin_session()
     pReset->off(); // hi-z by default
 }
 /**
- * @brief
- *
+ * @brief End an SWD session: return SWDIO to Hi-Z.
  */
 void bmp_io_end_session()
 {

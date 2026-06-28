@@ -1,5 +1,10 @@
 
 
+/**
+ * @file bmp_logger.h
+ * @brief Hosted BMP logging macros and stubs
+ */
+
 #pragma once
 #include "stdarg.h"
 #include "stdio.h"

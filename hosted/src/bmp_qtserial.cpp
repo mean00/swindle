@@ -1,3 +1,8 @@
+/**
+ * @file bmp_qtserial.cpp
+ * @brief Qt serial port abstraction for the hosted (PC) debugger
+ */
+
 #include "stdarg.h"
 #include "stdint.h"
 #include "stdio.h"

@@ -1,4 +1,11 @@
+/**
+ * @file bmp_pinout.h
+ * @brief ESP32 pin mapping lookup function
+ */
+
 #pragma once
+#include "lnGPIO.h"
+//
 #include "lnGPIO_pins.h"
 
 #ifdef LN_ESP_MINI
