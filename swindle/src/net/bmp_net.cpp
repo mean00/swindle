@@ -74,7 +74,7 @@ lnFastEventGroup network_eventGroup;
  * @param evt [TODO:parameter]
  * @param arg [TODO:parameter]
  */
-static void NetCb_c(lnLwipEvent evt, void *arg)
+void NetCb_c(lnLwipEvent evt, void *arg)
 {
     socketRunner::RunnerEvent revt;
     switch (evt)
@@ -91,19 +91,6 @@ static void NetCb_c(lnLwipEvent evt, void *arg)
     }
     network_eventGroup.setEvents(revt);
 }
-/**
- * @brief [TODO:description]
- *
- * @param runner [TODO:parameter]
- * @param global [TODO:parameter]
- * @param locl [TODO:parameter]
- */
-static void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
-{
-    uint32_t limited = (locl >> runner->shift()) & socketRunner::Mask;
-    runner->process_events(limited | global);
-}
-
 /**
  * @brief [TODO:description]
  *
@@ -149,4 +136,128 @@ void debug_serial_send_stdout(const uint8_t *const data, const size_t len)
 {
     Logger("%s", data); // ???
 }
+//----
+
+/*
+ *
+ *
+ */
+socketRunnerRtt::socketRunnerRtt(lnFastEventGroup &eventGroup, uint32_t shift)
+    : socketRunner(RUNNER_RTT_PORT, eventGroup, shift)
+{
+    Logger("RunnerRtt...\n");
+    _connected = false;
+    swindle_init_rtt();
+}
+
+void socketRunnerRtt::hook_connected()
+{
+    swindle_reinit_rtt();
+    _connected = true;
+}
+void socketRunnerRtt::hook_disconnected()
+{
+    _connected = false;
+}
+void socketRunnerRtt::hook_poll()
+{
+    if (_connected) // connected to a debugger
+    {
+        if (cur_target) // and we are connected to a target...
+        {
+            if (swindle_rtt_enabled())
+            {
+                swindle_run_rtt();
+            }
+            else
+            {
+                swindle_purge_rtt();
+            }
+        }
+    }
+}
+
+// drop all data incoming for rtt
+void socketRunnerRtt::process_incoming_data()
+{
+    uint32_t lp = 0;
+
+    while (1)
+    {
+        uint32_t rd = 0;
+        uint8_t *data;
+        if (readData(rd, &data))
+        {
+            if (!rd)
+                return;
+            releaseData();
+        }
+    }
+}
+/**/
+socketRunnerRtt *runnerRtt = NULL;
+
+socketRunnerGdb::socketRunnerGdb(lnFastEventGroup &eventGroup, uint32_t shift)
+    : socketRunner(RUNNER_GDB_PORT, eventGroup, shift)
+{
+    _connected = false;
+    Logger("RunnerGdb..\n");
+}
+
+void socketRunnerGdb::hook_connected()
+{
+    rngdbstub_init();
+    bmp_io_begin_session();
+    _connected = true;
+}
+void socketRunnerGdb::hook_disconnected()
+{
+    _connected = false;
+    rngdbstub_shutdown();
+    bmp_io_end_session();
+}
+void socketRunnerGdb::hook_poll()
+{
+    if (_connected) // connected to a debugger
+    {
+        rngdbstub_poll(); // if we are un run mode, check if the target reached a breakpoint/watchpoint/...
+    }
+}
+
+void socketRunnerGdb::process_incoming_data()
+{
+    uint32_t lp = 0;
+
+    while (1)
+    {
+        uint32_t rd = 0;
+        uint8_t *data;
+        if (readData(rd, &data))
+        {
+            if (!rd)
+                return;
+            rngdbstub_run(rd, data);
+            releaseData();
+            DEBUGME("\td%d\n", lp++);
+        }
+    }
+xit:
+    flushWrite();
+}
+
+socketRunnerGdb *runnerGdb = NULL;
+
+/**
+ * @brief Process pending events for a single socket runner.
+ *
+ * @param runner  Pointer to the socket runner instance.
+ * @param global  Global events (Up/Down).
+ * @param locl    Local events (per-slot bitmask).
+ */
+void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
+{
+    uint32_t limited = (locl >> runner->shift()) & socketRunner::Mask;
+    runner->process_events(limited | global);
+}
+
 // EOF

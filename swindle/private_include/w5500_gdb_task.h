@@ -118,19 +118,6 @@ static void NetCb_c(lnLwipEvent evt, void *arg)
 }
 
 /**
- * @brief Process pending events for a single socket runner.
- *
- * @param runner  Pointer to the socket runner instance.
- * @param global  Global events (Up/Down).
- * @param locl    Local events (per-slot bitmask).
- */
-static void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
-{
-    uint32_t limited = (locl >> runner->shift()) & socketRunner::Mask;
-    runner->process_events(limited | global);
-}
-
-/**
  * @brief Debug serial output stub.
  *
  * @param data  Data to output.

@@ -116,7 +116,7 @@ lnFastEventGroup network_eventGroup;
  * @param global   Global events (Up/Down).
  * @param locl     Local events (per-runner).
  */
-static void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
+void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
 {
     uint32_t limited = (locl >> runner->shift()) & socketRunner::Mask;
     runner->process_events(limited | global);

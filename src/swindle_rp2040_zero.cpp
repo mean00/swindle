@@ -1,4 +1,6 @@
 
+#include "esprit.h"
+//
 #include "../swindle/src/platform/rp2040/lnRP2040_pio.h"
 #include "lnGPIO.h"
 #include "stdint.h"

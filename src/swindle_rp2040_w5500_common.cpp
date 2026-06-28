@@ -7,12 +7,17 @@
  * @copyright (C) 2025
  * @license  See license file
  */
+#include "esprit.h"
+//
 #include "lnCpuID.h"
-#include "../private_include/w5500_gdb_task.h"
+// #include "w5500_gdb_task.h"
 #include "lnBmpTask.h"
 
 #include "stdint.h"
 #include "lnGPIO.h"
+//
+#include "swindle_w5500.h"
+#include "bmp_net.h"
 #define PICO_NO_HARDWARE 1
 
 #ifdef USE_RTT
