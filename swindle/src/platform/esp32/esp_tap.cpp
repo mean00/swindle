@@ -1,6 +1,9 @@
 /**
- * @file
- * @brief [TODO:description]
+ * @file esp_tap.cpp
+ * @brief ESP32 SPI-based TAP initialisation.
+ *
+ * Configures the SPI bus for SWD signalling and provides
+ * frequency / wait-state accessors.
  */
 
 // TAP
@@ -8,8 +11,8 @@
 #include "esprit.h"
 //
 #include "bmp_pinmode.h"
-#include "driver/spi_master.h"
 #include "driver/gpio.h"
+#include "driver/spi_master.h"
 //
 #include "lnBMP_pinout.h"
 spi_device_handle_t esp_spi_handle = NULL;

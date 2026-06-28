@@ -1,4 +1,8 @@
-/*
+/**
+ * @file bmp_swdTap_esp.cpp
+ * @brief SWD bit-bang I/O over esprit GPIO (ESP32, GPIO-driven)
+ *
+ * Original license from Black Magic Debug project:
  * This file is part of the Black Magic Debug project.
  *
  * Copyright (C) 2011  Black Sphere Technologies Ltd.
@@ -18,10 +22,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* This file implements the SW-DP interface. */
-
-#include "esprit.h"
 #include "bmp_pinout.h"
+#include "esprit.h"
 extern "C"
 {
 #include "adiv5.h"
@@ -37,14 +39,17 @@ extern "C"
 #include "swd_tap_stubs.cpp"
 
 extern "C" void swdptap_init_stubs();
-/*
- *
+
+/**
+ * @brief Set pin mode (stub — not implemented for ESP32 GPIO).
  */
 void bmp_gpio_pinmode(bmp_pin_mode pioMode)
 {
+    (void)pioMode;
 }
-/*
- *
+
+/**
+ * @brief Initialise the SWD TAP for ESP32 GPIO.
  */
 extern "C" void swdptap_init()
 {
@@ -54,6 +59,11 @@ extern "C" void swdptap_init()
  *
  */
 
+/**
+ * @brief Read @p size bits LSB-first from SWDIO (IRAM-safe).
+ * @param size Number of bits to read.
+ * @return Sampled bits, LSB first.
+ */
 static uint32_t IRAM_ATTR zread(const size_t size)
 {
     xAssert(!rSWDIO->dir());
@@ -70,6 +80,11 @@ static uint32_t IRAM_ATTR zread(const size_t size)
     }
     return value;
 }
+/**
+ * @brief Write @p size bits LSB-first on SWDIO (IRAM-safe).
+ * @param size Number of bits to write.
+ * @param value Bits to write (only low @p size bits are used).
+ */
 static void IRAM_ATTR zwrite(const uint32_t size, uint32_t value)
 {
     xAssert(rSWDIO->dir());

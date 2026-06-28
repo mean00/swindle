@@ -1,3 +1,8 @@
+/**
+ * @file bmp_swdTap_rp2040.cpp
+ * @brief SWD bit-bang I/O over esprit GPIO (RP2040)
+ */
+
 /*
   lnBMP: Gpio driver for SWD
   This code is derived from the blackmagic one but has been modified
@@ -59,8 +64,8 @@ extern void gmp_gpio_init_adc();
 extern rpPIO *swdpio;
 extern rpPIO_SM *xsm;
 extern "C" void swdptap_init_stubs();
-/*
- *
+/**
+ * @brief Initialise SWD TAP via PIO (RP2040).
  */
 extern "C" void swdptap_init()
 {
@@ -69,7 +74,9 @@ extern "C" void swdptap_init()
 }
 
 /**
- *  write size bits over PIO
+ * @brief Write @p size bits over PIO to SWDIO.
+ * @param size  Number of bits to write.
+ * @param value Bits to write (LSB-aligned).
  */
 static void zwrite(uint32_t size, uint32_t value)
 {
@@ -78,7 +85,9 @@ static void zwrite(uint32_t size, uint32_t value)
     xsm->write(1, &value);
 }
 /**
- *  read size bits over PIO
+ * @brief Read @p size bits over PIO from SWDIO.
+ * @param size Number of bits to read.
+ * @return Bits read (MSB-aligned in 32-bit word).
  */
 static uint32_t zread(uint32_t size)
 {

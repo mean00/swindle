@@ -1,3 +1,8 @@
+/**
+ * @file swd_tap_stubs.cpp
+ * @brief SWD TAP stub initialisation (shared across platforms)
+ */
+
 /*
   lnBMP: Gpio driver for SWD
   This code is derived from the blackmagic one but has been modified

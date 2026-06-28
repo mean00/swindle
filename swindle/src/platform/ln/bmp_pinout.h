@@ -1,14 +1,22 @@
+/**
+ * @file bmp_pinout.h
+ * @brief LN platform pin mapping lookup (runtime-selectable)
+ */
+
 #pragma once
 #define SWD_IO_SPEED 10 // programmed max speed of the gpio, 10 Mhz is  more than enough
 #include "lnBMP_pins.h"
+//
+#include "lnGPIO.h"
+//
 #ifdef USE_48PIN_PACKAGE
-  #include "bmp_pinout_48pins.h"
+#include "bmp_pinout_48pins.h"
 #else
- #ifdef USE_64PIN_PACKAGE
-  #include "bmp_pinout_64pins.h"
- #else
-  #error Select 48 or 64 pins package.
- #endif
+#ifdef USE_64PIN_PACKAGE
+#include "bmp_pinout_64pins.h"
+#else
+#error Select 48 or 64 pins package.
+#endif
 #endif
 
 extern uint32_t swd_delay_cnt;
@@ -18,6 +26,5 @@ extern uint32_t swd_delay_cnt;
         for (int lop = swd_delay_cnt; lop > 0; lop--)                                                                  \
             __asm__("nop");                                                                                            \
     }
-
 
 // EOF

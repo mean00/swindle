@@ -1,3 +1,8 @@
+/**
+ * @file bmp_disabledBoard.cpp
+ * @brief Stub initialisation for disabled/unsupported board targets
+ */
+
 #include "lnBMPArduino.h"
 extern "C"
 {
@@ -12,43 +17,36 @@ extern "C"
 
 #include "ln_board_stubs.h"
     /**
-     * @brief
-     *
-     * @return const char*
+     * @brief Return a comma-separated list of enabled board names.
+     * @return String literal from LN_BOARDS_ENABLED.
      */
     const char *list_enabled_boards()
     {
         return LN_BOARDS_ENABLED;
     }
     /**
-     * @brief
-     *
-     * @param target
-     * @return true
-     * @return false
+     * @brief GD32VF1 probe stub — always returns false (disabled board).
+     * @param target Target descriptor.
+     * @return false (not probed).
      */
     bool __xx__gd32vf1_probe(target_s *const target)
     {
         return false;
     }
     /**
-     * @brief
-     *
-     * @param target
-     * @return true
-     * @return false
+     * @brief RISC-V 64-bit probe stub — always returns false (disabled board).
+     * @param target Target descriptor.
+     * @return false (not probed).
      */
     bool riscv64_probe(target_s *const target)
     {
         return false;
     }
     /**
-     * @brief
-     *
-     * @param apb
-     * @param debug_base
-     * @return true
-     * @return false
+     * @brief Cortex-A probe stub — always returns false (disabled board).
+     * @param apb        ADIv5 access port.
+     * @param debug_base Debug register base address.
+     * @return false (not probed).
      */
     bool cortexa_probe(adiv5_access_port_s *apb, uint32_t debug_base)
     {

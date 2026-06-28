@@ -1,3 +1,8 @@
+/**
+ * @file bmp_adc_rp2040.cpp
+ * @brief RP2040 ADC driver for target voltage measurement
+ */
+
 /*
   lnBMP: Gpio driver for SWD
   This code is derived from the blackmagic one but has been modified
@@ -28,8 +33,8 @@ Original license header
  This file implements the SW-DP interface.
 
  */
-#include "esprit.h"
 #include "bmp_pinout.h"
+#include "esprit.h"
 #include "lnGPIO.h"
 extern "C"
 {
@@ -39,10 +44,13 @@ extern "C"
 }
 #include "lnADC.h"
 /**
- * @brief
- *
+ * @brief ADC handle for target voltage measurement.
  */
 static lnSimpleADC *adc = NULL;
+/**
+ * @brief One-time init of the ADC peripheral for target voltage sensing.
+ * Uses the NRST/2 divider pin.
+ */
 void gmp_gpio_init_adc()
 {
     if (!adc)
@@ -51,7 +59,10 @@ void gmp_gpio_init_adc()
     }
 }
 
-/*
+/**
+ * @brief Read target MCU voltage through the ADC.
+ * Averages 16 samples and converts the 12-bit reading to volts.
+ * @return Target VCC voltage in volts.
  */
 extern "C" float bmp_get_target_voltage_c()
 {

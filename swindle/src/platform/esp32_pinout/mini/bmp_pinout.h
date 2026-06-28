@@ -1,3 +1,8 @@
+/**
+ * @file bmp_pinout.h
+ * @brief ESP32 mini-board pin mapping table
+ */
+
 #pragma once
 #include "lnGPIO_pins.h"
 // mapping of BMP gpio to the GPIO we use

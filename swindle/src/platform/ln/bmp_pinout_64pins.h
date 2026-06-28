@@ -1,3 +1,8 @@
+/**
+ * @file bmp_pinout_64pins.h
+ * @brief GD32F303 64-pin variant pin mapping table
+ */
+
 #pragma once
 
 // mapping of BMP gpio to the GPIO we use

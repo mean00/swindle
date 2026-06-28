@@ -1,19 +1,30 @@
-/*
+/**
+ * @file bmp_swdio_esp.h
+ * @brief ESP32 GPIO-level SWDIO bit-banging classes.
+ *
+ * Provides SwdOutputPin, SwdDirectionPin, and SwdWaitPin
+ * that drive SWDIO/SWCLK via direct register writes for speed.
  */
 #pragma once
 #include "lnBMP_reset.h"
 extern "C"
 {
+#include "driver/gpio.h"
 #include "soc/gpio_reg.h"
 #include "soc/gpio_struct.h"
-#include "driver/gpio.h"
 }
 // clang-format on
-//
-//
+
+/** Write 1 to pin via SET register. */
 #define FAST_SET() REG_WRITE(GPIO_OUT_W1TS_REG, (1 << _me))
+/** Write 0 to pin via CLEAR register. */
 #define FAST_CLEAR() REG_WRITE(GPIO_OUT_W1TC_REG, (1 << _me))
+/** Read pin level from GPIO_IN_REG. */
 #define FAST_READ() ((REG_READ(GPIO_IN_REG) & (1 << _me)) != 0)
+
+/**
+ * @brief Simple output-only GPIO pin (no direction control).
+ */
 class SwdOutputPin
 {
   public:
@@ -47,8 +58,10 @@ class SwdOutputPin
     gpio_num_t _me;
 };
 /**
+ * @brief Bidirectional open-drain SWDIO pin with pull-up.
  *
- *
+ * Switches between input (Hi-Z, pull-up keeps line high) and
+ * output (drives low for logic-0, Hi-Z for logic-1).
  */
 class SwdDirectionPin
 {
@@ -135,8 +148,11 @@ class SwdDirectionPin
     gpio_num_t _me;
 };
 
-/*
+/**
+ * @brief SWCLK output with built-in wait-state delay.
  *
+ * Each toggle (on/off) automatically calls swait()
+ * to honour the configured SWD frequency.
  */
 class SwdWaitPin
 {

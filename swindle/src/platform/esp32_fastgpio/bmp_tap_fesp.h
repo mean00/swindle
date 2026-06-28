@@ -1,5 +1,6 @@
-/*
- *
+/**
+ * @file bmp_tap_fesp.h
+ * @brief ESP32 fast-GPIO TAP globals.
  */
 #pragma once
 #include "bmp_pinout.h"

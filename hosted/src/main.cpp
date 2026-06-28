@@ -1,4 +1,8 @@
-/*
+/**
+ * @file main.cpp
+ * @brief Hosted-mode entry point: GDB server loop over TCP or RTT
+ *
+ * Original license from Black Magic Debug project:
  * This file is part of the Black Magic Debug project.
  *
  * Copyright (C) 2011  Black Sphere Technologies Ltd.
@@ -18,22 +22,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/**
- * @file main.cpp
- * @brief Main entry point for the Qt-hosted Swindle debugger.
- *
- * Initialises subsystems, starts the GDB server thread, and enters
- * the Qt event loop.
- */
-
-/* Provides main entry point.  Initialise subsystems and enter GDB
- * protocol loop.
- */
 #include <QCoreApplication>
 #include <QDebug>
 #include <QObject>
-#include <QTimer>
 #include <QThread>
+#include <QTimer>
 #include <QtGlobal>
 //
 #include "lnLWIP.h"

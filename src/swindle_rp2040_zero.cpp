@@ -1,10 +1,15 @@
 
+/**
+ * @file swindle_rp2040_zero.cpp
+ * @brief RP2040 Zero board initialisation
+ */
+
 #include "esprit.h"
 //
 #include "../swindle/src/platform/rp2040/lnRP2040_pio.h"
+#include "lnBmpTask.h"
 #include "lnGPIO.h"
 #include "stdint.h"
-#include "lnBmpTask.h"
 #define PICO_NO_HARDWARE 1
 
 extern "C" void user_init();

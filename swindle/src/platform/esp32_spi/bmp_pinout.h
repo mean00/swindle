@@ -1,3 +1,8 @@
+/**
+ * @file bmp_pinout.h
+ * @brief ESP32 SPI-based SWD pin mapping
+ */
+
 #pragma once
 
 // mapping of BMP gpio to the GPIO we use

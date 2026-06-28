@@ -1,17 +1,20 @@
-/*
- * Reconfingiure the pins to swich to the given mode
-  This code is derived from the blackmagic one but has been modified
-  to aim at simplicity at the expense of performances (does not matter much though)
-  (The compiler may mitigate that by inlining)
-
+/**
+ * @file bmp_pinmode.h
+ * @brief Pin mode selection for SWD/JTAG GPIO reconfiguration.
+ *
+ * Derived from the Black Magic Debug project but simplified to focus on
+ * the subset actually used (SWD, RVSWD, GPIO).
  */
 #pragma once
+
+/** @brief Available pin operating modes. */
 enum bmp_pin_mode
 {
-    BMP_PINMODE_NONE,
-    BMP_PINMODE_GPIO,
-    BMP_PINMODE_SWD,
-    BMP_PINMODE_RVSWD,
+    BMP_PINMODE_NONE,  /**< Pin not configured (default / safe state). */
+    BMP_PINMODE_GPIO,  /**< Standard digital GPIO mode. */
+    BMP_PINMODE_SWD,   /**< ARM SWD protocol (SWDIO + SWCLK). */
+    BMP_PINMODE_RVSWD, /**< RISC-V RVSWD protocol (variant of SWD). */
 };
+
+/** @brief Reconfigure debug pins to the specified operating mode. */
 extern void bmp_gpio_pinmode(bmp_pin_mode pioMode);
-// extern void bmp_gpio_reset();

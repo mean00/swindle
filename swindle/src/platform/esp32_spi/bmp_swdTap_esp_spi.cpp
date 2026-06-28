@@ -1,4 +1,11 @@
-/*
+/**
+ * @file      bmp_swdTap_esp_spi.cpp
+ * @brief     SW-DP (SWD) TAP driver for ESP32 using SPI peripheral.
+ * @details   Implements the SW-DP interface on ESP32 by bit-banging
+ *            SWD protocol through the SPI master peripheral. SPI is
+ *            configured in half-duplex mode with LSB-first bit order
+ *            to match the SWD wire protocol.
+ *
  * This file is part of the Black Magic Debug project.
  *
  * Copyright (C) 2011  Black Sphere Technologies Ltd.
@@ -18,10 +25,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* This file implements the SW-DP interface. */
-
-#include "esprit.h"
 #include "bmp_pinout.h"
+#include "esprit.h"
 extern "C"
 {
 #include "adiv5.h"
@@ -42,14 +47,14 @@ extern "C"
 
 extern spi_device_handle_t swd_spi;
 extern "C" void swdptap_init_stubs();
-/*
- *
+/**
+ * @brief Set pin mode (stub — no-op for SPI-based TAP).
  */
 void bmp_gpio_pinmode(bmp_pin_mode pioMode)
 {
 }
-/*
- *
+/**
+ * @brief Initialise SWD TAP for SPI-based ESP32.
  */
 extern "C" void swdptap_init()
 {
@@ -60,9 +65,12 @@ extern "C" void swdptap_init()
 #define SWD_WAIT_PERIOD() swait()
 #define SWINDLE_FAST_IO IRAM_ATTR
 
-//____________________________________________
-//____________________________________________
-//____________________________________________
+/**
+ * @brief SWD write without ACK/retry (IRAM-safe).
+ * @param addr Register address (including RnW/APnDP bits).
+ * @param data 32-bit value to write.
+ * @return true on ACK_OK, false on WAIT/FAULT.
+ */
 extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
     const uint8_t req = make_packet_request(ADIV5_LOW_WRITE, addr);
@@ -101,6 +109,11 @@ extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr,
 }
 //
 uint8_t rx_buf[6] = {0}; // To hold ACK (3) + Data (32) + Parity (1)
+/**
+ * @brief SWD read without retry (IRAM-safe).
+ * @param addr Register address.
+ * @return 32-bit read value (parity checked).
+ */
 extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
     const uint8_t req = make_packet_request(ADIV5_LOW_WRITE, addr);
@@ -128,6 +141,13 @@ extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t ad
     return data;
 }
 //
+/**
+ * @brief Send SWD request header and wait for ACK (with retry).
+ * @param request 8-bit packet request.
+ * @param dp      Debug port state (for fault/abort handling).
+ * @param cycles  Unused (kept for API compatibility).
+ * @return true if ACK_OK received within timeout.
+ */
 static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s *dp, const uint32_t cycles)
 {
     platform_timeout_s timeout;
@@ -196,6 +216,14 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
     return true;
 }
 //
+/**
+ * @brief Full SWD transaction (request + ack + data + parity).
+ * @param dp    Debug port state.
+ * @param rnw   ADIV5_LOW_READ or ADIV5_LOW_WRITE.
+ * @param addr  Register address.
+ * @param value Write data (ignored for reads).
+ * @return Read data, or 0 on write/error.
+ */
 extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw,
                                                             const uint16_t addr, const uint32_t value)
 {
@@ -250,6 +278,11 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
 }
 //
 static uint32_t tx1;
+/**
+ * @brief Raw SPI write of @p tick bits.
+ * @param tick  Number of CLK cycles.
+ * @param value Data to transmit (LSB first).
+ */
 extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
 {
     tx1 = value;

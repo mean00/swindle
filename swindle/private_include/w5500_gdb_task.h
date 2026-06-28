@@ -29,7 +29,17 @@
  * @license  See license file
  */
 
+/**
+ * @file w5500_gdb_task.h
+ * @brief GDB server task using W5500 TCP/IP stack
+ */
+
 #pragma once
+
+/**
+ * @file w5500_gdb_task.h
+ * @brief GDB over W5500 TCP task
+ */
 
 #include "esprit.h"
 
@@ -52,10 +62,10 @@ extern "C"
 #define RUNNER_GDB_PORT 2000
 #define RUNNER_RTT_PORT 2001
 
-#include "lowlevel_w5500.h"
-#include "lnSocketRunner.h"
 #include "bmp_net_gdb.h"
 #include "bmp_net_rtt.h"
+#include "lnSocketRunner.h"
+#include "lowlevel_w5500.h"
 
 extern "C" void pins_init();
 extern void serialInit();
@@ -63,7 +73,10 @@ extern "C" void bmp_io_begin_session();
 extern "C" void bmp_io_end_session();
 
 /**
- * @brief Dummy stub required by the BMP GDB layer.
+ * @brief Stub required by the BMP GDB layer.
+ *
+ * Network-level GDB initialisation is handled by the socket runner instead.
+ * @return 0 (success, no-op).
  */
 extern "C" int gdb_network_init(void)
 {
@@ -71,23 +84,25 @@ extern "C" int gdb_network_init(void)
 }
 
 /**
- * @brief Dummy stub — no FreeRTOS init needed for W5500.
+ * @brief Stub — no FreeRTOS initialisation needed for W5500 targets.
  */
 void initFreeRTOS()
 {
 }
 
 /**
- * @brief Dummy stub — no GDB interface init needed for W5500.
+ * @brief Stub — no GDB interface initialisation needed for W5500 targets.
  */
 void gdb_if_init()
 {
 }
 
+/** Slot index for GDB socket runner. */
 #define MAIN_GDB_SLOT 0
+/** Slot index for RTT socket runner. */
 #define MAIN_RTT_SLOT 6
 
-/** @brief Event group used to signal socketRunner events. */
+/** @brief Event group used to signal socketRunner events (Up/Down). */
 lnFastEventGroup network_eventGroup;
 
 /**

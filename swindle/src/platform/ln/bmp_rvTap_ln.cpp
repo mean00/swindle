@@ -1,3 +1,8 @@
+/**
+ * @file bmp_rvTap_ln.cpp
+ * @brief RISC-V DMI transport over esprit GPIO (LN targets)
+ */
+
 /*
   lnBMP: Gpio driver for Rvswd
   This code is derived from the blackmagic one but has been modified
@@ -35,8 +40,11 @@ IO is sampled when clock goes ___---
 
  */
 /**
- * This is similar to the non rp2040 except we switch to bit banging dynamically
+ * @file bmp_rvTap_ln.cpp
+ * @brief RISC-V DMI debug transport over bit-banged GPIO (esprit).
  *
+ * Implements the WCH DMI serial protocol (start/stop framing, parity).
+ * Derived from Blackmagic Probe RISC-V tap, rewritten for esprit GPIO.
  */
 #include "esprit.h"
 
@@ -49,18 +57,23 @@ extern "C"
 #ifndef __clang__
 #pragma GCC optimize("Ofast")
 #endif
-#include "bmp_rvTap.h"
-#include "esprit.h"
-#include "lnBMP_reset.h"
 #include "bmp_pinout.h"
+#include "bmp_rvTap.h"
 #include "bmp_swdio_ln.h"
 #include "bmp_tap_ln.h"
+#include "esprit.h"
+#include "lnBMP_reset.h"
 #include "lnbmp_parity.h"
 //--
 extern void bmp_gpio_init();
 
 /**
+ * @brief Write @p n bits MSB-first on SWDIO.
  *
+ * Bits are shifted out MSB first (bit 31 of the 32-bit value).
+ * Each bit: CLK low, set data, CLK high.
+ * @param n     Number of bits to write (1..32).
+ * @param value Bits to write (left-aligned in 32-bit word).
  */
 static void rv_write_nbits(int n, uint32_t value)
 {
@@ -75,7 +88,7 @@ static void rv_write_nbits(int n, uint32_t value)
     }
 }
 /**
- * do a falling edge on SWDIO with CLK high (assumed) => start bit
+ * @brief Emit a DMI start bit (SWDIO falling edge while CLK high).
  */
 static void rv_start_bit()
 {
@@ -83,8 +96,7 @@ static void rv_start_bit()
     rSWDIO->set(0);
 }
 /**
- *
- * do a rising edge on SWDIO with CLK high (assumed) => stop bit
+ * @brief Emit a DMI stop bit (SWDIO rising edge while CLK high).
  */
 static void rv_stop_bit()
 {
@@ -95,7 +107,11 @@ static void rv_stop_bit()
     rSWDIO->set(1);
 }
 /**
+ * @brief Read @p n bits MSB-first from SWDIO.
  *
+ * Bits are sampled on the rising edge of CLK.
+ * @param n Number of bits to read.
+ * @return Sampled bits, MSB-aligned.
  */
 static uint32_t rv_read_nbits(int n)
 {
@@ -110,10 +126,10 @@ static uint32_t rv_read_nbits(int n)
     return out;
 }
 /**
- * @brief
+ * @brief Reset the RISC-V debug module via DMI line reset.
  *
- * @return true
- * @return false
+ * Clock out 100 ones, then emit a stop bit and wait 10 ms.
+ * @return true (always succeeds).
  */
 bool rv_dm_reset()
 {

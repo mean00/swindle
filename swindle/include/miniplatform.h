@@ -1,4 +1,10 @@
-/*
+/**
+ * @file miniplatform.h
+ * @brief Minimal platform abstraction for swindle targets.
+ *
+ * Provides logging, debug macros, and printf/stub overrides
+ * pulled from the embedded_printf library.
+ *
  * This file is part of the Black Magic Debug project.
  *
  * Copyright (C) 2011  Black Sphere Technologies Ltd.
@@ -22,7 +28,10 @@
 extern "C"
 {
 #endif
+    /** @brief Log a formatted message (platform-specific output). */
     extern void Logger(const char *fmt, ...);
+
+    /** @brief Halt execution with an error code (non-returning). */
     extern void deadEnd(int err);
 #define PLATFORM_HAS_DEBUG 1
 #define ENABLE_DEBUG 1

@@ -1,3 +1,8 @@
+/**
+ * @file rvswd_template.h
+ * @brief RISC-V DMI serial protocol template (included by platform files)
+ */
+
 /*
   lnBMP: Gpio driver for Rvswd
   This code is derived from the blackmagic one but has been modified

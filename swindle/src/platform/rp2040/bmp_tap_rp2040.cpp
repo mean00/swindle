@@ -1,3 +1,8 @@
+/**
+ * @file bmp_tap_rp2040.cpp
+ * @brief SWD TAP initialisation and PIO-based clock control (RP2040)
+ */
+
 /*
   lnBMP: Gpio driver for SWD
   This code is derived from the blackmagic one but has been modified
@@ -36,8 +41,8 @@ extern "C"
 #include "timing.h"
 }
 
-#include "lnBMP_pins.h"
 #include "bmp_pinout.h"
+#include "lnBMP_pins.h"
 #include "ln_rp_pio.h"
 // clang-format on
 #include "bmp_pinmode.h"
@@ -59,6 +64,8 @@ rpPIO *swdpio = NULL;
 rpPIO_SM *xsm = NULL;
 SwdReset *pReset;
 /**
+ * @brief Set the RP2040 PIO state machine clock frequency for SWD.
+ * @param fq Desired frequency in Hz.
  */
 static void rp2040_swd_pio_change_clock(uint32_t fq)
 {
@@ -68,7 +75,8 @@ static void rp2040_swd_pio_change_clock(uint32_t fq)
 }
 
 /**
- *
+ * @brief Set the SWD frequency (public API).
+ * @param fq Desired frequency in Hz.
  */
 extern "C" void bmp_set_frequency_c(uint32_t fq)
 {
@@ -76,8 +84,7 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
     rp2040_swd_pio_change_clock(fq * 4);
 }
 /**
- *
- *
+ * @brief One-time init of GPIO, PIO engine, ADC, and reset pin.
  */
 void bmp_gpio_init_once()
 {
@@ -89,9 +96,13 @@ void bmp_gpio_init_once()
     gmp_gpio_init_adc();
 }
 /**
- *
- *
- *
+ * @brief Upload and configure PIO program for SWD/RVSWD.
+ * @param prgSizeInHalfWord Program size in half-words.
+ * @param prg               PIO instruction array.
+ * @param inputRight        Bit shift direction for input (true=LSB).
+ * @param outputRight       Bit shift direction for output (true=LSB).
+ * @param wrapTarget        Wrap target address.
+ * @param wrap              Wrap address.
  */
 static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight, bool outputRight, int wrapTarget,
                      int wrap)
@@ -124,8 +135,8 @@ static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight
     lnPinModePIO(pin_clk, LN_SWD_PIO_ENGINE);
     lnPinModePIO(pin_direction, LN_SWD_PIO_ENGINE);
 }
-/*
- *
+/**
+ * @brief Reset GPIO to default state by cycling through pin modes.
  */
 extern "C" void bmp_gpio_reset()
 {
@@ -134,8 +145,8 @@ extern "C" void bmp_gpio_reset()
     bmp_gpio_pinmode(old_mode);
 }
 /**
- *
- *
+ * @brief Switch GPIO/PIO mode (SWD, RVSWD, or bit-bang GPIO).
+ * @param pioMode Desired pin mode.
  */
 void bmp_gpio_pinmode(bmp_pin_mode pioMode)
 {
@@ -171,7 +182,8 @@ void bmp_gpio_pinmode(bmp_pin_mode pioMode)
     }
 }
 /**
- *
+ * @brief Set SWD wait-state count (no-op for PIO mode).
+ * @param ws Ignored.
  */
 extern "C" void bmp_set_wait_state_c(uint32_t ws)
 {
@@ -179,24 +191,23 @@ extern "C" void bmp_set_wait_state_c(uint32_t ws)
     return;
 }
 /**
- *
+ * @brief Get SWD wait-state count (always 0 for PIO mode).
+ * @return 0.
  */
 extern "C" uint32_t bmp_get_wait_state_c()
 {
     Logger("Unsupported call in PIO mode\n");
     return 0;
 }
-/*
- *
- *
+/**
+ * @brief Begin SWD session: release target reset (Hi-Z).
  */
 extern "C" void bmp_io_begin_session()
 {
     pReset->off(); // hi-z by default
 }
 /**
- * @brief
- *
+ * @brief End SWD session: release target reset (Hi-Z).
  */
 extern "C" void bmp_io_end_session()
 {

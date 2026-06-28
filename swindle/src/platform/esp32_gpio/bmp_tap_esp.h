@@ -1,6 +1,11 @@
 /*
  *
  */
+/**
+ * @file bmp_tap_esp.h
+ * @brief Globals header for standard-GPIO TAP
+ */
+
 #pragma once
 #include "bmp_pinout.h"
 #include "bmp_swdio_esp.h"

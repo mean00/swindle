@@ -1,3 +1,8 @@
+/**
+ * @file bmp_rvTap.h
+ * @brief RISC-V DMI debug transport over bit-banged GPIO (platform-agnostic)
+ */
+
 /*
   lnBMP: Gpio driver for Rvswd
   This code is derived from the blackmagic one but has been modified
@@ -38,21 +43,17 @@ IO is sampled when clock goes ___---
 #pragma once
 
 /**
- * @brief
- *
- * @param adr
- * @param val
- * @return true
- * @return false
+ * @brief Write a 32-bit value to a RISC-V Debug Module register via the DMI interface.
+ * @param adr  Address of the DM register to write.
+ * @param val  32-bit value to write.
+ * @return true on success, false on DMI bus error.
  */
 bool rv_dm_write(uint32_t adr, uint32_t val);
 /**
- * @brief
- *
- * @param adr
- * @param output
- * @return true
- * @return false
+ * @brief Read a 32-bit value from a RISC-V Debug Module register via the DMI interface.
+ * @param adr    Address of the DM register to read.
+ * @param output Pointer to a uint32_t receiving the read value.
+ * @return true on success, false on DMI bus error.
  */
 bool rv_dm_read(uint32_t adr, uint32_t *output);
 

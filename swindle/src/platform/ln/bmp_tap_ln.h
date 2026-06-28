@@ -1,3 +1,7 @@
+/**
+ * @file bmp_tap_ln.h
+ * @brief LN platform SWD tap globals (esprit GPIO bit-bang).
+ */
 #pragma once
 #include "bmp_pinout.h"
 #include "bmp_swdio_ln.h"

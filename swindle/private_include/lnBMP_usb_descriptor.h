@@ -1,3 +1,11 @@
+/**
+ * @file lnBMP_usb_descriptor.h
+ * @brief USB device descriptor definitions for the swindle debug probe.
+ *
+ * Defines VID/PID, string descriptors, and includes the correct
+ * configuration descriptor (2 CDC + DFU or 3 CDC + DFU) based on
+ * USE_3_CDC compile flag.
+ */
 #pragma once
 #include "dfu/dfu.h"
 #define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
@@ -6,9 +14,7 @@
 
 #define USB_BCD 0x0200
 
-/**
- *
- */
+/** Select PID based on MCU family (RP2040/RP2350 vs others). */
 // RP2040
 #if defined(USE_RP2040) || defined(USE_RP2350)
 #define USB_PID 0x6050
@@ -35,6 +41,12 @@ const char *descriptor[] = {
 #include "lnBMP_usb_descriptor_2cdc.h"
 #endif
 
+/**
+ * @brief Device qualifier descriptor.
+ *
+ * Mostly identical to device descriptor since we don't change
+ * configuration based on speed.
+ */
 // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
 const tusb_desc_device_qualifier_t desc_device_qualifier = {.bLength = sizeof(tusb_desc_device_t),
                                                             .bDescriptorType = TUSB_DESC_DEVICE,

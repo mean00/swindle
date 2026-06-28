@@ -1,3 +1,8 @@
+/**
+ * @file bmp_devices.h
+ * @brief Device declarations for LN (GD32/WCH) platform
+ */
+
 #pragma once
 #define LN_USB_INSTANCE 1
 #define LN_SERIAL_INSTANCE 2

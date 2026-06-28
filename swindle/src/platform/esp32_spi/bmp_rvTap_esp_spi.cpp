@@ -1,11 +1,13 @@
-/*
-  lnBMP: Gpio driver for Rvswd
-  This code is derived from the blackmagic one but has been modified
-  to aim at simplicity at the expense of performances (does not matter much though)
-  (The compiler may mitigate that by inlining)
-
-Original license header
-
+/**
+ * @file      bmp_rvTap_esp_spi.cpp
+ * @brief     RISC-V TAP (RVSWD) driver stub for ESP32 SPI-based debug probe.
+ * @details   Derived from the Black Magic Debug project.
+ *            All bit-bang operations are stubbed out because the ESP32
+ *            uses the SPI peripheral for SWD signalling; RVSWD is not
+ *            supported over the SPI path.
+ *
+ * Original license header:
+ *
  * This file is part of the Black Magic Debug project.
  *
  * Copyright (C) 2011  Black Sphere Technologies Ltd.
@@ -23,20 +25,14 @@ Original license header
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
- This file implements the WCH DMI/Serial interface.
-
-CLK **HIGH**
-        IO --___  START
-        IO __---  STOP
-
-IO is sampled when clock goes ___---
-
- */
-/**
- * This is similar to the non rp2040 except we switch to bit banging dynamically
  *
+ * This file implements the WCH DMI/Serial interface.
+ *
+ * CLK **HIGH**
+ *         IO --___  START
+ *         IO __---  STOP
+ *
+ * IO is sampled when clock goes ___---
  */
 #include "esprit.h"
 
@@ -49,18 +45,18 @@ extern "C"
 #ifndef __clang__
 #pragma GCC optimize("Ofast")
 #endif
-#include "bmp_rvTap.h"
-#include "esprit.h"
-#include "lnBMP_reset.h"
 #include "bmp_pinout.h"
+#include "bmp_rvTap.h"
 #include "bmp_swdio_esp_spi.h"
 #include "bmp_tap_esp_spi.h"
+#include "esprit.h"
+#include "lnBMP_reset.h"
 #include "lnbmp_parity.h"
 //--
 extern void bmp_gpio_init();
 
 /**
- *
+ * @brief Write @p n bits (stub — RVSWD not supported over SPI).
  */
 static void rv_write_nbits(int n, uint32_t value)
 {
@@ -75,7 +71,7 @@ static void rv_write_nbits(int n, uint32_t value)
     //}
 }
 /**
- * do a falling edge on SWDIO with CLK high (assumed) => start bit
+ * @brief Emit DMI start bit (stub — RVSWD not supported over SPI).
  */
 static void rv_start_bit()
 {
@@ -83,8 +79,7 @@ static void rv_start_bit()
     // rSWDIO->set(0);
 }
 /**
- *
- * do a rising edge on SWDIO with CLK high (assumed) => stop bit
+ * @brief Emit DMI stop bit (stub — RVSWD not supported over SPI).
  */
 static void rv_stop_bit()
 {
@@ -95,7 +90,8 @@ static void rv_stop_bit()
     // rSWDIO->set(1);
 }
 /**
- *
+ * @brief Read @p n bits (stub — RVSWD not supported over SPI).
+ * @return Always 0.
  */
 static uint32_t rv_read_nbits(int n)
 {
@@ -111,10 +107,8 @@ static uint32_t rv_read_nbits(int n)
     return 0;
 }
 /**
- * @brief
- *
- * @return true
- * @return false
+ * @brief Reset RISC-V DM (stub — always returns true).
+ * @return true.
  */
 bool rv_dm_reset()
 {

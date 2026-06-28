@@ -1,6 +1,11 @@
 //____________________________________________
 //____________________________________________
 //____________________________________________
+/**
+ * @file swd_template.h
+ * @brief SWD bit-bang protocol template (included by platform files)
+ */
+
 extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);

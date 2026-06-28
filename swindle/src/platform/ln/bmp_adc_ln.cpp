@@ -1,11 +1,15 @@
 
+/**
+ * @file bmp_adc_ln.cpp
+ * @brief GD32/WCH ADC driver for target voltage measurement
+ */
+
+#include "bmp_pinout.h"
 #include "esprit.h"
 #include "lnADC.h"
-#include "bmp_pinout.h"
 static lnSimpleADC *adc = NULL;
 /**
- * @brief
- *
+ * @brief Initialise the ADC peripheral for target voltage sensing.
  */
 void gmp_gpio_init_adc()
 {
@@ -16,8 +20,10 @@ void gmp_gpio_init_adc()
 }
 
 /**
- * @brief
+ * @brief Measure target MCU voltage through the ADC.
  *
+ * Averages 16 ADC samples and converts to millivolts.
+ * @return Target voltage in millivolts, or 0.0 if Vref is invalid.
  */
 extern "C" float bmp_get_target_voltage_c()
 {

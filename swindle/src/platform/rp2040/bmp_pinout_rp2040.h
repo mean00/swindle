@@ -1,3 +1,8 @@
+/**
+ * @file bmp_pinout_rp2040.h
+ * @brief RP2040 standard pin mapping table
+ */
+
 #pragma once
 
 const lnPin _mapping[9] = {
