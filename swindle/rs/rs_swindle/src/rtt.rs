@@ -79,8 +79,11 @@ static mut need_stop_flag: bool = true;
 ///
 /// Cortex-M targets can read RTT without halting. Other architectures
 /// (e.g. RISC-V) require the target to be stopped.
-fn need_stop() -> bool {
+fn get_stop_flag() -> bool {
     unsafe { need_stop_flag }
+}
+fn set_stop_flag(en: bool) {
+    unsafe { need_stop_flag = en }
 }
 
 /// Result of attempting to halt the target for RTT access.
@@ -104,7 +107,7 @@ fn get_tick() -> u32 {
 ///
 /// Returns the halt state so the caller can resume the target later.
 fn swindle_rtt_access_to_target() -> RttHalt {
-    if !need_stop() {
+    if !get_stop_flag() {
         return RttHalt::Halted;
     }
 
@@ -153,7 +156,7 @@ fn swindle_rtt_access_to_target() -> RttHalt {
 }
 /// Resume the target after RTT access, if it was halted by us.
 fn swindle_rtt_release_target(halt: RttHalt) -> bool {
-    if !need_stop() {
+    if !get_stop_flag() {
         return true;
     }
     match halt {
@@ -272,22 +275,20 @@ pub extern "C" fn swindle_enable_rtt(enable: bool) {
             return;
         }
     }
+    //
+    let can_do: bool = !(crate::bmp::bmp_get_arch() == crate::bmp::bmp_arch::BMP_ARCH_ARM);
     // For the moment we use a very simple scheme
     // No need to stop for all cortexM
     // stop for all others
     if enable {
-        unsafe {
-            need_stop_flag = !(crate::bmp::bmp_get_arch() == crate::bmp::bmp_arch::BMP_ARCH_ARM);
-        }
-        if unsafe { need_stop_flag } {
+        set_stop_flag(can_do);
+        if can_do {
             gdb_print!("RTT needs to stop the CPU to read \n");
         } else {
             gdb_print!("RTT does NOT need to stop the CPU to read \n");
         }
     } else {
-        unsafe {
-            need_stop_flag = true;
-        }
+        set_stop_flag(false);
     }
     swindle_get_rtt().enabled = enable;
 }
