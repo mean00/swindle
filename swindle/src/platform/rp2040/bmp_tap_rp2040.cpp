@@ -141,7 +141,7 @@ static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight
 extern "C" void bmp_gpio_reset()
 {
     bmp_pin_mode old_mode = currentPioMode;
-    bmp_gpio_pinmode(BMP_PINMODE_NONE);
+    bmp_gpio_pinmode(BMP_PINMODE_SWD);
     bmp_gpio_pinmode(old_mode);
 }
 /**
