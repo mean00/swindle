@@ -107,6 +107,7 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
 extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw,
                                                             const uint16_t addr, const uint32_t value)
 {
+    DIR_OUTPUT();
     if ((addr & ADIV5_APnDP) && dp->fault)
         return 0;
 
