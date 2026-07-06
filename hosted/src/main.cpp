@@ -52,8 +52,10 @@ extern "C"
 // Use the canonical socketRunnerGdb from the firmware tree
 #include "../../swindle/src/net/bmp_net_gdb.h"
 
+//
 //-----
 
+//
 bool running = true;
 extern void initTcpLayer();
 //
@@ -183,3 +185,5 @@ extern "C" void bmp_test(void)
 {
     //    rv_test();
 }
+
+#include "bmp_net_gdb.cpp"

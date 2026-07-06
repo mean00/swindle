@@ -115,6 +115,7 @@ add_subdirectory(../swindle lnswindle)
 
 set(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(SRC
+    ${H}/timeout.cpp
     ${H}/main.cpp
     ${H}/lnDebug.cpp
     ${H}/stubs.cpp
@@ -129,7 +130,7 @@ set(SRC
 # ${H}/bmp_remote_rv.cpp)
 
 add_executable(swindle_hosted ${SRC})
-
+include_directories(../swindle/src/net)
 target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
 target_link_libraries(swindle_hosted PRIVATE rsbmp_wrapper)
 target_link_libraries(swindle_hosted PRIVATE esprit_dev)
