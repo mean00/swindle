@@ -31,6 +31,7 @@
 //
 #include "lnLWIP.h"
 //
+//
 extern "C"
 {
 #include "exception.h"
@@ -59,6 +60,8 @@ extern "C"
 bool running = true;
 extern void initTcpLayer();
 //
+extern "C" void platform_timeout_init();
+
 //
 
 /**
@@ -172,6 +175,7 @@ int main(int argc, char **argv)
 
     // go!
     gdbThread *t = new gdbThread;
+    platform_timeout_init();
     t->start();
     a.exec();
     return 0;
