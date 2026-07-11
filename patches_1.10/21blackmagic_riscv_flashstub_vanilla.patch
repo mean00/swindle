@@ -99,7 +99,7 @@ index b993805d..343c24b5 100644
 +		reason = target->halt_poll(target, NULL);
 +	}
 +	switch (reason) {
-+	case TARGET_HALT_REQUEST:
++	case TARGET_HALT_BREAKPOINT:
 +		ret = true;
 +		break;
 +	case TARGET_HALT_ERROR: // room left here for more detailed handling
