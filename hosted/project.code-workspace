@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "name": "📦 MAIN PROJECT (Hosted)",
+      "path": "."
+    },
+    {
+      "name": "📁 PARENT COMPONENT (Includes Siblings)",
+      "path": ".."
+    }
+  ],
+  "settings": {
+    "explorer.compactFolders": false
+  }
+}
