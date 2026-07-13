@@ -1,0 +1,54 @@
+diff --git a/src/target/target_flash.c b/src/target/target_flash.c
+index 82738f50..51cb1dea 100644
+--- a/src/target/target_flash.c
++++ b/src/target/target_flash.c
+@@ -161,6 +161,19 @@ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len)
+ 
+ 		/* Align the start address to the erase block size */
+ 		const target_addr_t local_start_addr = addr & ~(flash->blocksize - 1U);
++		size_t best_blocksize = flash->blocksize;
++		size_t padded_len = len + (addr - local_start_addr);
++
++		if (flash->erasesizes) {
++			for (int i = 0; flash->erasesizes[i] != 0; i++) {
++				size_t S = flash->erasesizes[i];
++				if ((local_start_addr & (S - 1U)) == 0 && padded_len >= S) {
++					if (S > best_blocksize) {
++						best_blocksize = S;
++					}
++				}
++			}
++		}
+ 
+ 		/* Check if we can use mass erase, i.e. if the erase range covers the entire flash address space */
+ 		const bool can_use_mass_erase =
+@@ -168,7 +181,7 @@ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len)
+ 
+ 		/* Calculate the address at the end of the erase block */
+ 		const target_addr_t local_end_addr =
+-			can_use_mass_erase ? flash->start + flash->length : local_start_addr + flash->blocksize;
++			can_use_mass_erase ? flash->start + flash->length : local_start_addr + best_blocksize;
+ 
+ 		if (!flash_prepare(flash, can_use_mass_erase ? FLASH_OPERATION_MASS_ERASE : FLASH_OPERATION_ERASE))
+ 			return false;
+@@ -176,7 +189,7 @@ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len)
+ 		DEBUG_TARGET("%s: %08" PRIx32 "+%" PRIu32 "\n", __func__, local_start_addr, local_end_addr - local_start_addr);
+ 		/* Erase flash, either a single aligned block size or a full mass erase */
+ 		result &= can_use_mass_erase ? flash->mass_erase(flash, NULL) :
+-									   flash->erase(flash, local_start_addr, flash->blocksize);
++									   flash->erase(flash, local_start_addr, best_blocksize);
+ 		if (!result) {
+ 			DEBUG_ERROR("Erase failed at %" PRIx32 "\n", local_start_addr);
+ 			break;
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+index d792799a..26662904 100644
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -63,6 +63,7 @@ struct target_flash {
+ 	target_addr32_t start;            /* Start address of flash */
+ 	size_t length;                    /* Flash length */
+ 	size_t blocksize;                 /* Erase block size */
++	const size_t *erasesizes;         /* Optional 0-terminated array of additional erase block sizes */
+ 	size_t writesize;                 /* Write operation size, must be <= blocksize/writebufsize */
+ 	size_t writebufsize;              /* Size of write buffer, this is calculated and not set in target code */
+ 	uint8_t erased;                   /* Byte erased state */

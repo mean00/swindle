@@ -58,6 +58,10 @@ apply_patch_if_needed5(patched51 51blackmagic_add_sw_breakpoint_framework.patch
                        "hook in the data needed to attach sw breakpoints to target")
 apply_patch_if_needed5(patched53 53blackmagic_abort_on_flash_error.patch
                        "abort buffered flash write as soon as there is one error")
+
+apply_patch_if_needed5(patched55 55blackmagic_variable_erase_size.patch
+                       "use variable size erase block to speed up erasee on ch32vxx")
+
 # merged with another patch apply_patch_if_needed5(patched54 54blackmagic_dont_doubly_define_rvswd.patch
 #"avoid doubly definit have_rvswd in hosted mode")
 apply_patch_if_needed5(patched82 82blackmagic_export_arch.patch "Export the cpu arch (ARM/RISCV) ")
