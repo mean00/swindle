@@ -10,10 +10,11 @@
 /** @brief Available pin operating modes. */
 enum bmp_pin_mode
 {
-    BMP_PINMODE_NONE,  /**< Pin not configured (default / safe state). */
-    BMP_PINMODE_GPIO,  /**< Standard digital GPIO mode. */
-    BMP_PINMODE_SWD,   /**< ARM SWD protocol (SWDIO + SWCLK). */
-    BMP_PINMODE_RVSWD, /**< RISC-V RVSWD protocol (variant of SWD). */
+    BMP_PINMODE_NONE,      /**< Pin not configured (default / safe state). */
+    BMP_PINMODE_GPIO,      /**< Standard digital GPIO mode. */
+    BMP_PINMODE_SWD,       /**< ARM SWD protocol (SWDIO + SWCLK). */
+    BMP_PINMODE_RVSWD,     /**< RISC-V RVSWD protocol (variant of SWD). */
+    BMP_PINMODE_RVSWD_RAW, /**< RISC-V RVSWD RAW (no start/stop bits). */
 };
 
 /** @brief Reconfigure debug pins to the specified operating mode. */

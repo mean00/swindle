@@ -169,6 +169,11 @@ void bmp_gpio_pinmode(bmp_pin_mode pioMode)
         setupPIO(sizeof(rvswd_program_instructions) / 2, rvswd_program_instructions, false, false, rvswd_wrap_target,
                  rvswd_wrap);
         break;
+    case BMP_PINMODE_RVSWD_RAW:
+        Logger(">>GPIO:Switching to PIO-RVSWD-RAW mode\n");
+        setupPIO(sizeof(rvswd_raw_program_instructions) / 2, rvswd_raw_program_instructions, false, false,
+                 rvswd_raw_wrap_target, rvswd_raw_wrap);
+        break;
     case BMP_PINMODE_GPIO:
         Logger(">>GPIO:Switching to bitbanging mode\n");
         lnDigitalWrite(pin_swd, 1);

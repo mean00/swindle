@@ -34,88 +34,82 @@ extern void bmp_gpio_init();
 extern rpPIO *swdpio;
 extern rpPIO_SM *xsm;
 
-#define PIO_BEGIN_INSTRUCTION 2
-#define LN_PIO_WRITE_PC (PIO_BEGIN_INSTRUCTION + 0)
-#define LN_PIO_STOP_PC (PIO_BEGIN_INSTRUCTION + 1)
-#define LN_PIO_START_PC (PIO_BEGIN_INSTRUCTION + 2)
-#define LN_PIO_READ_PC (PIO_BEGIN_INSTRUCTION + 3)
-//
-#define LN_ADDRESS_SHIFT 5
-#define rreevv(x) x
+uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
+{
+    // Command word: [tx_bits:16][rx_bits:16]
+    uint32_t cmd = ((uint32_t)tx_bits << 16) | (rx_bits & 0xFFFF);
+    xsm->write(1, &cmd);
 
-#define CMD(x) (rreevv((x)) << (32 - LN_ADDRESS_SHIFT))
-#define PARAM(x) (rreevv((x)) << (32 - LN_ADDRESS_SHIFT - LN_ADDRESS_SHIFT))
-//
-#if 0
-#define Debug Logger
-#else
-#define Debug(...)                                                                                                     \
-    {                                                                                                                  \
+    // TX Data: shift to MSB alignment
+    if (tx_bits > 0)
+    {
+        uint64_t aligned_tx = tx_data;
+        if (tx_bits < 64)
+        {
+            aligned_tx <<= (64 - tx_bits);
+        }
+        uint32_t w0 = aligned_tx >> 32;
+        xsm->write(1, &w0);
+        if (tx_bits > 32)
+        {
+            uint32_t w1 = aligned_tx & 0xFFFFFFFF;
+            xsm->write(1, &w1);
+        }
     }
-#endif
 
-static inline void send_command(uint32_t cmd, uint32_t param)
-{
-    uint32_t zsize = CMD(cmd) | PARAM(param);
-    xsm->write(1, &zsize);
-}
+    // RX Data
+    uint64_t rx_data = 0;
+    if (rx_bits > 0)
+    {
+        uint32_t w0 = 0;
+        xsm->waitRxReady();
+        xsm->read(1, &w0);
 
-/**
- * @brief Emit DMI start bit (SWDIO falling edge while CLK high).
- */
-static void rv_start_bit()
-{
-    Debug("Start bit \n");
-    send_command(LN_PIO_START_PC, 0);
-}
-
-/**
- * @brief Emit DMI stop bit (SWDIO rising edge while CLK high).
- */
-static void rv_stop_bit()
-{
-    Debug("Stop bit \n");
-    send_command(LN_PIO_STOP_PC, 0);
-    xsm->waitTxEmpty();
-}
-/**
- * @brief Read @p n bits MSB-first from SWDIO via PIO.
- * @param n Number of bits to read.
- * @return Sampled bits, MSB-aligned.
- */
-static uint32_t rv_read_nbits(int n)
-{
-    Debug("Reading %d bits\n", n);
-    send_command(LN_PIO_READ_PC, n - 1);
-    uint32_t value = 0;
-    xsm->waitRxReady();
-    xsm->read(1, &value);
-    return value;
+        int expected_words = (rx_bits / 32) + 1;
+        if (expected_words == 1)
+        {
+            rx_data = w0;
+        }
+        else if (expected_words == 2)
+        {
+            uint32_t w1 = 0;
+            xsm->waitRxReady();
+            xsm->read(1, &w1);
+            if (rx_bits == 32)
+            {
+                rx_data = w0;
+            }
+            else
+            {
+                int rem_bits = rx_bits - 32;
+                rx_data = ((uint64_t)w0 << rem_bits) | w1;
+            }
+        }
+    }
+    return rx_data;
 }
 
-/**
- * @brief Write @p n bits MSB-first on SWDIO via PIO.
- * @param n     Number of bits to write.
- * @param value Bits to write (MSB-aligned in 32-bit word).
- */
-static void rv_write_nbits(int n, uint32_t value)
-{
-    Debug("Writing %d bits\n", n);
-    send_command(LN_PIO_WRITE_PC, n - 1);
-    value <<= (32 - n);
-    xsm->write(1, &value);
-}
 /**
  * @brief Reset RISC-V DM via PIO (100 × 1-bit pulses).
  * @return true (always succeeds).
  */
 bool rv_dm_reset()
 {
-    xsm->setPinsValue(1);
-    // 12*8+4=100 pulses
-    for (int i = 0; i < 12; i++)
-        rv_write_nbits(8, 0xff);
-    rv_write_nbits(4, 0xff);
+    bmp_gpio_pinmode(BMP_PINMODE_RVSWD_RAW);
+
+    uint32_t count = 100;
+    xsm->write(1, &count);
+
+    int words = (100 + 31) / 32;
+    for (int i = 0; i < words; i++)
+    {
+        uint32_t ones = 0xFFFFFFFF;
+        xsm->write(1, &ones);
+    }
+    xsm->waitTxEmpty();
+    lnDelayMs(1); // Wait for PIO to finish shifting
+
+    bmp_gpio_pinmode(BMP_PINMODE_RVSWD);
     return true;
 }
 /**
@@ -123,13 +117,8 @@ bool rv_dm_reset()
  */
 void rv_write_write(uint32_t value)
 {
-    Debug("Write Write\n");
-    rv_start_bit();
-    rv_write_nbits(8, 0xaa55);
-    //  rv_write_nbits(8, 0xaa55);
-    //  rv_write_nbits(8, 0xaa55);
-    //   rv_read_nbits(8);
-    rv_stop_bit();
+    Logger("Write Write\n");
+    rvswd_write_then_read(0xaa55, 16, 0);
     lnDelayMs(1);
 }
 #include "rvswd_template.h"

@@ -58,4 +58,11 @@ bool rv_dm_write(uint32_t adr, uint32_t val);
 bool rv_dm_read(uint32_t adr, uint32_t *output);
 
 // bool rv_dm_reset();
+
+/**
+ * @brief Unified DMI transaction API.
+ * Shifts out `tx_bits` from `tx_data` (MSB first), then shifts in `rx_bits` and returns them.
+ */
+uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits);
+
 //  EOF

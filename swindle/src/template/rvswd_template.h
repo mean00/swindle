@@ -100,64 +100,30 @@ extern "C" void rv_dm_start_c()
 }
 
 /**
- * @brief
- *
- * @param adr
- * @param status
- * @return true
- * @return false
- */
-static bool LN_FAST_CODE rv_start_frame(uint32_t adr, uint32_t *status, bool wr)
-{
-    rv_start_bit();
-    adr = (adr << 1) + wr;
-    int parity = lnOddParity(adr);
-    adr = adr << 2 | (parity + parity + parity);
-    rv_write_nbits(10, adr);
-    return true;
-}
-/**
- * @brief read 4 status bit then send a stop bit
- *
- * @return uint32_t
- */
-static bool LN_FAST_CODE rv_end_frame(uint32_t *status)
-{
-    uint32_t out = 0;
-    uint8_t bit;
-
-    // now get the reply - 4 bits
-    out = rv_read_nbits(4);
-    rv_stop_bit();
-
-    *status = out;
-    if (out != 3 && out != 7)
-    {
-        Logger("Status error : 0x%x\n", out);
-        return false;
-    }
-    return out;
-}
-
-/**
  */
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
 {
-    uint32_t status = 0;
-    rv_start_frame(adr, &status, true);
+    uint64_t tx = (adr << 1) + 1; // 1 = write
+    int parity1 = lnOddParity(tx);
+    tx = (tx << 2) | (parity1 ? 3 : 0);
 
-    rv_write_nbits(4, 0);
-    // Now data
+    // Padding: 4 bits of 0
+    tx = (tx << 4) | 0;
+
+    // Data phase: 32 bits
+    tx = (tx << 32) | val;
+
+    // Data parity: 2 bits
     int parity2 = lnOddParity(val);
-    rv_write_nbits(32, val);
+    tx = (tx << 2) | (parity2 ? 3 : 0);
 
-    // data parity (twice)
-    rv_write_nbits(2, parity2 + parity2 + parity2);
+    // TX total = 10 + 4 + 32 + 2 = 48 bits
+    // RX total = 4 bits (status)
+    uint64_t rx = rvswd_write_then_read(tx, 48, 4);
 
-    uint32_t st = 0;
-    if (!rv_end_frame(&st))
+    if (rx != 3 && rx != 7)
     {
-        Logger("Write failed Adr=0x%x Value=0x%x status=0x%x\n", adr, val, st);
+        Logger("Write failed Adr=0x%x Value=0x%x status=0x%x\n", adr, val, (uint32_t)rx);
         return false;
     }
     return true;
@@ -172,16 +138,23 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
  */
 bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 {
-    uint32_t status;
-    rv_start_frame(adr, &status, false);
-    rv_write_nbits(4, 1); // 000 1
-    *output = rv_read_nbits(32);
-    rv_read_nbits(2); // parity
+    uint64_t tx = (adr << 1) + 0; // 0 = read
+    int parity1 = lnOddParity(tx);
+    tx = (tx << 2) | (parity1 ? 3 : 0);
 
-    uint32_t st = 0;
-    if (!rv_end_frame(&st))
+    // Padding: 4 bits of 1 (0001)
+    tx = (tx << 4) | 1;
+
+    // TX total = 14 bits
+    // RX total = 32 (data) + 2 (parity) + 4 (status) = 38 bits
+    uint64_t rx = rvswd_write_then_read(tx, 14, 38);
+
+    uint32_t status = rx & 0xF;
+    *output = (rx >> 6) & 0xFFFFFFFF;
+
+    if (status != 3 && status != 7)
     {
-        Logger("Read failed Adr=0x%x Value=0x%x status=0x%x\n", adr, *output, st);
+        Logger("Read failed Adr=0x%x Value=0x%x status=0x%x\n", adr, *output, status);
         return false;
     }
     return true;

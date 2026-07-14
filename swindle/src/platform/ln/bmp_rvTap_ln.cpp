@@ -67,64 +67,89 @@ extern "C"
 //--
 extern void bmp_gpio_init();
 
-/**
- * @brief Write @p n bits MSB-first on SWDIO.
- *
- * Bits are shifted out MSB first (bit 31 of the 32-bit value).
- * Each bit: CLK low, set data, CLK high.
- * @param n     Number of bits to write (1..32).
- * @param value Bits to write (left-aligned in 32-bit word).
- */
-static void rv_write_nbits(int n, uint32_t value)
+uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
 {
-    value <<= (uint32_t)(32 - n);
-    const uint32_t mask = 0x80000000UL;
-    for (int i = 0; i < n; i++)
-    {
-        rSWCLK->clockOff();
-        rSWDIO->set(value & mask);
-        rSWCLK->clockOn();
-        value <<= 1;
-    }
-}
-/**
- * @brief Emit a DMI start bit (SWDIO falling edge while CLK high).
- */
-static void rv_start_bit()
-{
+    // Start bit: SWDIO falling edge while CLK high
     rSWDIO->dir_output();
     rSWDIO->set(0);
-}
-/**
- * @brief Emit a DMI stop bit (SWDIO rising edge while CLK high).
- */
-static void rv_stop_bit()
-{
+
+    // TX Data: shift out MSB first
+    if (tx_bits > 32)
+    {
+        int hi_bits = tx_bits - 32;
+        uint32_t tx_hi = (uint32_t)(tx_data >> 32);
+        uint32_t hi_mask = 1UL << (hi_bits - 1);
+        for (int i = 0; i < hi_bits; i++)
+        {
+            rSWCLK->clockOff();
+            rSWDIO->set(tx_hi & hi_mask ? 1 : 0);
+            rSWCLK->clockOn();
+            hi_mask >>= 1;
+        }
+        tx_bits = 32;
+    }
+
+    if (tx_bits > 0)
+    {
+        uint32_t tx_lo = (uint32_t)tx_data;
+        uint32_t lo_mask = 1UL << (tx_bits - 1);
+        for (int i = 0; i < tx_bits; i++)
+        {
+            rSWCLK->clockOff();
+            rSWDIO->set(tx_lo & lo_mask ? 1 : 0);
+            rSWCLK->clockOn();
+            lo_mask >>= 1;
+        }
+    }
+
+    // RX Data: shift in MSB first
+    uint64_t rx_data = 0;
+    if (rx_bits > 0)
+    {
+        rSWDIO->dir_input();
+        uint32_t rx_hi = 0;
+        uint32_t rx_lo = 0;
+        int hi_bits = 0;
+
+        if (rx_bits > 32)
+        {
+            hi_bits = rx_bits - 32;
+            for (int i = 0; i < hi_bits; i++)
+            {
+                rSWCLK->clockOff();
+                rSWCLK->clockOn();
+                rx_hi = (rx_hi << 1) | (rSWDIO->read() ? 1 : 0);
+            }
+            rx_bits = 32;
+        }
+
+        for (int i = 0; i < rx_bits; i++)
+        {
+            rSWCLK->clockOff();
+            rSWCLK->clockOn();
+            rx_lo = (rx_lo << 1) | (rSWDIO->read() ? 1 : 0);
+        }
+
+        if (hi_bits > 0)
+        {
+            rx_data = ((uint64_t)rx_hi << 32) | rx_lo;
+        }
+        else
+        {
+            rx_data = rx_lo;
+        }
+    }
+
+    // Stop bit: SWDIO rising edge while CLK high
     rSWCLK->clockOff();
     rSWDIO->dir_output();
     rSWDIO->set(0);
     rSWCLK->clockOn();
     rSWDIO->set(1);
+
+    return rx_data;
 }
-/**
- * @brief Read @p n bits MSB-first from SWDIO.
- *
- * Bits are sampled on the rising edge of CLK.
- * @param n Number of bits to read.
- * @return Sampled bits, MSB-aligned.
- */
-static uint32_t rv_read_nbits(int n)
-{
-    rSWDIO->dir_input();
-    uint32_t out = 0;
-    for (int i = 0; i < n; i++)
-    {
-        rSWCLK->clockOff();
-        rSWCLK->clockOn();
-        out = (out << 1) + rSWDIO->read(); // read bit on rising edge
-    }
-    return out;
-}
+
 /**
  * @brief Reset the RISC-V debug module via DMI line reset.
  *
@@ -136,9 +161,10 @@ bool rv_dm_reset()
     // toggle the clock 100 times
     rSWDIO->dir_output();
     rSWDIO->set(1);
-    for (int i = 0; i < 5; i++) // 100 bits to 1
+    for (int i = 0; i < 100; i++)
     {
-        rv_write_nbits(20, 0xfffff);
+        rSWCLK->clockOff();
+        rSWCLK->clockOn();
     }
     rSWDIO->set(0); // going low high with CLK = high => stop bit
     rSWDIO->set(1);

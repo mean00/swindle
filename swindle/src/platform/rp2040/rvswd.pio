@@ -1,5 +1,3 @@
-;
-;
 .define READ_DIR_DOWN 0b00
 .define READ_DIR_UP 0b10
 .define WRITE_DIR_DOWN 0b01
@@ -7,50 +5,55 @@
 
 .program rvswd
 .side_set 2 opt
+
 begin:
-    pull
-    out pc,5
-    jmp wr
-    jmp stop
-    jmp start
-    ;jmp rd
-;--------------
-rd:
-;____
-    out  y,5              ; size  as 5 bits 1..32
-    set pindirs,0         ; SWDIO as input 
-lprd:
-    nop          side READ_DIR_DOWN
-    nop          side READ_DIR_UP
-    in  pins,1            ; pop one LSB bit
-    jmp y-- lprd  
+    pull block          ; Command word: [TX_BITS:16][RX_BITS:16]
+    out x, 16           ; x = TX bit count
+    out y, 16           ; y = RX bit count
+    
+    ; Start bit (SWDIO falls while CLK high)
+    set pindirs, 1 side WRITE_DIR_UP
+    set pins, 0    side WRITE_DIR_UP
+
+tx_loop:
+    jmp !x rx_start
+    pull ifempty
+    out pins, 1 side WRITE_DIR_DOWN
+    nop         side WRITE_DIR_UP
+    jmp x-- tx_loop
+
+rx_start:
+    jmp !y stop_bit
+    set pindirs, 0
+rx_loop:
+    jmp !y rx_end
+    nop         side READ_DIR_DOWN
+    nop         side READ_DIR_UP
+    in pins, 1
+    push iffull
+    jmp y-- rx_loop
+rx_end:
     push
+
+stop_bit:
+    ; Stop bit (SWDIO rises while CLK high)
+    set pindirs, 1 side WRITE_DIR_DOWN
+    set pins, 0    side WRITE_DIR_DOWN
+    nop            side WRITE_DIR_UP
+    set pins, 1    side WRITE_DIR_UP
     jmp begin
-;
-wr:
-;____
-    out  y,5              ; size  as 8 bits 1..32
-    set pindirs,1         ; output
-    pull
-lpwr:
-    out x,1      side WRITE_DIR_DOWN   ; pop one LSB bit
-    mov pins, x  side WRITE_DIR_DOWN   ; out data
-    nop          side WRITE_DIR_UP
-    jmp y-- lpwr side WRITE_DIR_UP   ; and clock out
+
+.program rvswd_raw
+.side_set 2 opt
+
+begin:
+    pull block
+    out x, 32
+tx_loop:
+    jmp !x done
+    pull ifempty
+    out pins, 1 side WRITE_DIR_DOWN
+    nop         side WRITE_DIR_UP
+    jmp x-- tx_loop
+done:
     jmp begin
-;
-stop:
-;-----
-    nop            side WRITE_DIR_DOWN ; clock off
-    set pindirs,1         ; output
-    set pins,0            ; set 0
-    nop            side WRITE_DIR_UP ; clock on
-    set pins,1            ; set 1
-    jmp begin
-;
-start:
-;-----
-    set pindirs 1  side WRITE_DIR_UP ; Clock High / SDIO high
-    set pins, 0    side WRITE_DIR_UP ; Clock High / SDIO Low
-    jmp begin
-; EOF
