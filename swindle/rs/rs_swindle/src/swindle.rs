@@ -26,30 +26,42 @@ use crate::commands::run;
 use crate::decoder::RESULT_AUTOMATON;
 use crate::decoder::gdb_stream;
 use crate::encoder;
-use crate::packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 #[cfg(not(feature = "hosted"))]
 use crate::native;
+use crate::packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
 use crate::settings;
 
 //
-#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-use crate::usb;
 #[cfg(any(feature = "hosted", feature = "network"))]
 use crate::not_usb;
+#[cfg(all(not(feature = "hosted"), not(feature = "network")))]
+use crate::usb;
 //
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-pub(crate) fn rngdb_output_flush() { usb::rngdb_output_flush() }
+pub(crate) fn rngdb_output_flush() {
+    usb::rngdb_output_flush()
+}
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-pub(crate) fn rngdb_send_data(data: &str) { usb::rngdb_send_data(data) }
+pub(crate) fn rngdb_send_data(data: &str) {
+    usb::rngdb_send_data(data)
+}
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
-pub(crate) fn rngdb_send_data_u8(data: &[u8]) { usb::rngdb_send_data_u8(data) }
+pub(crate) fn rngdb_send_data_u8(data: &[u8]) {
+    usb::rngdb_send_data_u8(data)
+}
 #[cfg(any(feature = "hosted", feature = "network"))]
-pub(crate) fn rngdb_output_flush() { not_usb::rngdb_output_flush() }
+pub(crate) fn rngdb_output_flush() {
+    not_usb::rngdb_output_flush()
+}
 #[cfg(any(feature = "hosted", feature = "network"))]
 #[allow(dead_code)]
-pub(crate) fn rngdb_send_data(data: &str) { not_usb::rngdb_send_data(data) }
+pub(crate) fn rngdb_send_data(data: &str) {
+    not_usb::rngdb_send_data(data)
+}
 #[cfg(any(feature = "hosted", feature = "network"))]
-pub(crate) fn rngdb_send_data_u8(data: &[u8]) { not_usb::rngdb_send_data_u8(data) }
+pub(crate) fn rngdb_send_data_u8(data: &[u8]) {
+    not_usb::rngdb_send_data_u8(data)
+}
 //
 setup_log!(false);
 //use crate::{bmplog,bmpwarning};
@@ -61,21 +73,18 @@ static mut autoauto: gdb_stream<INPUT_BUFFER_SIZE> = gdb_stream::new();
 fn get_autoauto() -> &'static mut gdb_stream<INPUT_BUFFER_SIZE> {
     unsafe { &mut autoauto }
 }
-fn clear_autoauto() {
-    get_autoauto().set_available(false);
-}
 #[unsafe(no_mangle)]
 pub extern "C" fn rngdbstub_init() {
     settings::init_settings();
     unsafe {
         autoauto.init();
-        get_autoauto().set_available(true);
+        get_autoauto().set_ready();
     }
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn rngdbstub_shutdown() {
     bmp::bmp_detach();
-    clear_autoauto();
+    get_autoauto().set_not_ready();
 }
 /// # Safety
 /// the pointer is expected to be valid !
@@ -94,12 +103,13 @@ pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
         }
         return;
     }
-    // the target is stopped
-    // we can parse the incoming commands
+    get_autoauto().check();
     if !get_autoauto().get_available() {
-        panic!("noauto");
+        return;
     }
     run_parser(data_as_slice);
+    // We can switch state here
+    get_autoauto().check();
 }
 //
 //

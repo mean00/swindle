@@ -65,8 +65,16 @@ pub enum RESULT_AUTOMATON {
 /// A state machine that processes incoming bytes and extracts complete
 /// GDB or RPC packets. Generic over `INPUT_BUFFER_SIZE` to allow
 /// compile-time buffer sizing.
+///
+///
+#[derive(PartialEq)]
+pub enum GDB_STREAM_STATE {
+    None,
+    Ready,
+    Cleaning,
+}
 pub struct gdb_stream<const INPUT_BUFFER_SIZE: usize> {
-    available: bool,
+    state: GDB_STREAM_STATE,
     automaton: PARSER_AUTOMATON,
     input_buffer: [u8; INPUT_BUFFER_SIZE],
     indx: usize,
@@ -77,7 +85,7 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
     /// Create a new decoder in the `Idle` state.
     pub const fn new() -> Self {
         gdb_stream {
-            available: false,
+            state: GDB_STREAM_STATE::None,
             automaton: PARSER_AUTOMATON::Idle,
             input_buffer: [0; INPUT_BUFFER_SIZE],
             indx: 0,
@@ -86,16 +94,22 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
         }
     }
     /// Mark the decoder as available or unavailable.
-    pub fn set_available(&mut self, state: bool) {
-        self.available = state;
+    pub fn set_ready(&mut self) {
+        self.state = GDB_STREAM_STATE::Ready;
+    }
+    pub fn set_not_ready(&mut self) {
+        self.state = GDB_STREAM_STATE::Cleaning;
+    }
+    pub fn check(&mut self) {
+        if self.state == GDB_STREAM_STATE::Cleaning {}
     }
     /// Check if the decoder is available for use.
     pub fn get_available(&mut self) -> bool {
-        self.available
+        self.state == GDB_STREAM_STATE::Ready
     }
     /// Reset the decoder to its initial idle state.
     pub fn init(&mut self) {
-        self.available = false;
+        self.state = GDB_STREAM_STATE::None;
         self.automaton = PARSER_AUTOMATON::Idle;
         self.input_buffer.fill(0);
         self.indx = 0;
