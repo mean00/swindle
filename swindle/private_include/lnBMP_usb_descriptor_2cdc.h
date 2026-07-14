@@ -63,7 +63,7 @@ const uint8_t desc_fs_configuration[] = {
     // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
     // DFU runtime descriptor.
-    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 7, 0x0d, 1000, 4096),
+    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 6, 0x0d, 1000, 4096),
 
 };
 
@@ -78,5 +78,5 @@ const uint8_t desc_hs_configuration[] = {
 
     // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
-    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 7, 0x0d, 1000, 4096),
+    TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 6, 0x0d, 1000, 4096),
 };
