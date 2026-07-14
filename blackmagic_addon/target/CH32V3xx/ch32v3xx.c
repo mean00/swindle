@@ -198,8 +198,9 @@ const uint32_t write_size = 4096;
 
 // FLASH_CTLR register bits (at CH32V3XX_FLASH_CONTROLLER_ADDRESS + 0x10)
 // (uses the existing CH32V3XX_FLASH_CONTROLLER_ADDRESS define)
-#define CH32VXX_FMC_CTL_EHMOD (1U << 24)  // Enhanced read mode enable
-#define CH32VXX_FMC_CTL_SCKMOD (1U << 25) // Flash access clock: 1=SYSCLK, 0=SYSCLK/2
+#define CH32VXX_FMC_CTL_RSENACT (1U << 22) // RSEN_ACT bit
+#define CH32VXX_FMC_CTL_EHMOD (1U << 24)   // Enhanced read mode enable
+#define CH32VXX_FMC_CTL_SCKMOD (1U << 25)  // Flash access clock: 1=SYSCLK, 0=SYSCLK/2
 
 /**
  * \brief Poll a target register until a given bit mask is set, with timeout.
@@ -250,6 +251,15 @@ static bool CH32VXX_wait_clear(target_s *target, uint32_t addr, uint32_t mask, u
  */
 static void revert_to_internal_8M(target_s *target)
 {
+    /* 0. Enable HSI and wait for it to be ready */
+    uint32_t ctl = target_mem32_read32(target, CH32VXX_RCC_CTLR_ADR);
+    ctl |= CH32VXX_RCC_CTLR_HSION;
+    target_mem32_write32(target, CH32VXX_RCC_CTLR_ADR, ctl);
+    if (!CH32VXX_wait_bit(target, CH32VXX_RCC_CTLR_ADR, CH32VXX_RCC_CTLR_HSIRDY, CH32VXX_RCC_WAIT_TIMEOUT))
+    {
+        DEBUGME("CH32: HSI failed to stabilise\n");
+    }
+
     /* 1. Switch system clock to HSI (SW = 00) */
     uint32_t cfg0 = target_mem32_read32(target, CH32VXX_RCC_CFGR0_ADR);
     cfg0 &= ~CH32VXX_RCC_CFGR0_SW_MASK;
@@ -260,7 +270,7 @@ static void revert_to_internal_8M(target_s *target)
     CH32VXX_wait_clear(target, CH32VXX_RCC_CFGR0_ADR, CH32VXX_RCC_CFGR0_SWS_MASK, CH32VXX_RCC_WAIT_TIMEOUT);
 
     /* 3. Disable PLL */
-    uint32_t ctl = target_mem32_read32(target, CH32VXX_RCC_CTLR_ADR);
+    ctl = target_mem32_read32(target, CH32VXX_RCC_CTLR_ADR);
     ctl &= ~CH32VXX_RCC_CTLR_PLLON;
     target_mem32_write32(target, CH32VXX_RCC_CTLR_ADR, ctl);
 
@@ -288,6 +298,45 @@ static void revert_to_internal_8M(target_s *target)
  *
  * \param target  Target to operate on
  */
+static void switch_to_60_hsi(target_s *target)
+{
+    /* 1. Reset to clean state: HSI active, PLL off, HSE off */
+    revert_to_internal_8M(target);
+
+    /* 2. Configure CFGR0 for 60 MHz operation using HSI */
+    uint32_t cfg0 = CH32VXX_RCC_CFGR0_SW_HSI           /* still on HSI for now */
+                    | CH32VXX_RCC_CFGR0_HPRE_DIV1      /* HCLK = SYSCLK /1 */
+                    | CH32VXX_RCC_CFGR0_PPRE1_DIV1     /* PCLK1 = HCLK /1 */
+                    | CH32VXX_RCC_CFGR0_PPRE2_DIV1     /* PCLK2 = HCLK /1 */
+                    | CH32VXX_RCC_CFGR0_PLLSRC_HSI     /* PLL source = HSI/2 (4 MHz) */
+                    | CH32VXX_RCC_CFGR0_PLLMUL(0x0DU); /* ×15 = 60 MHz */
+
+    target_mem32_write32(target, CH32VXX_RCC_CFGR0_ADR, cfg0);
+
+    /* 3. Enable PLL, wait for lock */
+    uint32_t ctl = target_mem32_read32(target, CH32VXX_RCC_CTLR_ADR);
+    ctl |= CH32VXX_RCC_CTLR_PLLON;
+    target_mem32_write32(target, CH32VXX_RCC_CTLR_ADR, ctl);
+
+    if (!CH32VXX_wait_bit(target, CH32VXX_RCC_CTLR_ADR, CH32VXX_RCC_CTLR_PLLRDY, CH32VXX_RCC_WAIT_TIMEOUT))
+    {
+        DEBUGME("CH32: PLL failed to lock\n");
+        return;
+    }
+
+    /* 4. Switch system clock to PLL (SW = 10) */
+    cfg0 = target_mem32_read32(target, CH32VXX_RCC_CFGR0_ADR);
+    cfg0 &= ~CH32VXX_RCC_CFGR0_SW_MASK;
+    cfg0 |= CH32VXX_RCC_CFGR0_SW_PLL;
+    target_mem32_write32(target, CH32VXX_RCC_CFGR0_ADR, cfg0);
+
+    /* 5. Confirm PLL is now the system clock */
+    if (!CH32VXX_wait_bit(target, CH32VXX_RCC_CFGR0_ADR, CH32VXX_RCC_CFGR0_SWS_PLL, CH32VXX_RCC_WAIT_TIMEOUT))
+    {
+        DEBUGME("CH32: Failed to switch SYSCLK to PLL\n");
+    }
+}
+
 static void switch_to_144(target_s *target)
 {
     /* 1. Reset to clean state: HSI active, PLL off, HSE off */
@@ -359,7 +408,7 @@ static void switch_to_144(target_s *target)
  */
 static void set_wait_state(target_s *target, uint32_t clock_mhz)
 {
-    uint32_t ctl = target_mem32_read32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, CTLR));
+    uint32_t ctl = READ_FLASH_REG(target, CTLR);
 
     /* Apply SCKMOD based on the 60 MHz flash clock ceiling */
     if (clock_mhz <= 60U)
@@ -374,9 +423,18 @@ static void set_wait_state(target_s *target, uint32_t clock_mhz)
     }
 
     /* Disable enhanced read mode — required before FPEC operations */
-    ctl &= ~CH32VXX_FMC_CTL_EHMOD;
-
-    target_mem32_write32(target, CH32V3XX_FLASH_CONTROLLER_ADDRESS + offsetof(ch32_flash_s, CTLR), ctl);
+    /* To exit, first clear the ENHANCE_MOD bit to 0, and then set RSEN_ACT to 1. */
+    if (ctl & CH32VXX_FMC_CTL_EHMOD)
+    {
+        ctl &= ~CH32VXX_FMC_CTL_EHMOD;
+        WRITE_FLASH_REG(target, CTLR, ctl);
+        ctl |= CH32VXX_FMC_CTL_RSENACT;
+        WRITE_FLASH_REG(target, CTLR, ctl);
+    }
+    else
+    {
+        WRITE_FLASH_REG(target, CTLR, ctl);
+    }
 }
 
 /*
@@ -384,15 +442,21 @@ static void set_wait_state(target_s *target, uint32_t clock_mhz)
 static bool ch32v3x_fast_unlock(target_s *target)
 {
     uint32_t ctl = READ_FLASH_REG(target, CTLR);
-    if (!(ctl & CH32V3XX_FMC_CTL_LK)) // already unlocked
-        return true;
-    // send unlock sequence
-    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY1);
-    WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY2);
+    if (ctl & CH32V3XX_FMC_CTL_LK)
+    {
+        // send standard unlock sequence
+        WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY1);
+        WRITE_FLASH_REG(target, KEYR, CH32V3XX_KEY2);
+    }
 
-    // send fast unlock sequence
-    WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY1);
-    WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY2);
+    // Always check if fast programming is locked, as it might be locked even if LK is 0
+    ctl = READ_FLASH_REG(target, CTLR);
+    if (ctl & CH32V3XX_FMC_CTL_CH32_FASTUNLOCK)
+    {
+        // send fast unlock sequence
+        WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY1);
+        WRITE_FLASH_REG(target, MODEKEYR, CH32V3XX_KEY2);
+    }
 
     uint32_t v = READ_FLASH_REG(target, CTLR);
     return !(v & CH32V3XX_FMC_CTL_CH32_FASTUNLOCK);
@@ -496,12 +560,11 @@ static bool ch32v3x_flash_prepare_flashstub(target_flash_s *flash)
     target_mem32_write(flash->t, STUB_CODE_LOCATION_ERASE, ch32v3x_erase_bin, sizeof(ch32v3x_erase_bin));
     target_mem32_write(flash->t, STUB_CODE_LOCATION_WRITE, ch32v3x_write_bin, sizeof(ch32v3x_write_bin));
     ch32v3x_fast_unlock(flash->t);
-#ifdef CHANGE_SYSCLOCK
-    DEBUGME("CH32 Switching to 144 MHz\n");
-    switch_to_144(flash->t);
-    set_wait_state(flash->t, 144U);
-    DEBUGME("Switched \n");
-#endif
+
+    DEBUGME("CH32 Switching to 60 MHz (HSI+PLL) for safe flash operations\n");
+    switch_to_60_hsi(flash->t);
+    set_wait_state(flash->t, 60U);
+
     return true;
 }
 
@@ -512,10 +575,9 @@ static bool ch32v3x_flash_done_flashstub(target_flash_s *flash)
 {
     DEBUGME("CH32 Closing flashstub\n");
     flash->t->halt_request(flash->t);
-#ifdef CHANGE_SYSCLOCK
-    DEBUGME("CH32 Reverting to internal 8 MHz\n");
+    DEBUGME("CH32 Reverting to 8 MHz (HSI) after flash operations\n");
     revert_to_internal_8M(flash->t);
-#endif
+    set_wait_state(flash->t, 8U);
     return true;
 }
 /*
@@ -540,7 +602,7 @@ static bool small_ch32v3x_write_few_bytes(target_s *target, uint32_t addr, const
         src += 2;
         small_ch32v3x_wait_not_busy(target);
     }
-    small_set_ctl(target, ctl);
+    WRITE_FLASH_REG(target, CTLR, ctl);
     // and flush
     return true;
 }
