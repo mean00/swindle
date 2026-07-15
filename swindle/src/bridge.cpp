@@ -50,9 +50,9 @@ extern "C"
     const char *platform_target_voltage(void)
     {
         float v = bmp_get_target_voltage_c();
-        uint32_t by_10 = (uint32_t)(v * 10.f);
-        uint32_t left = by_10 / 10;
-        uint32_t right = by_10 - (left * 10);
+        uint32_t by_100 = (uint32_t)(v * 100.f);
+        uint32_t left = by_100 / 100;
+        uint32_t right = by_100 - (left * 100);
         snprintf(buffer, 9, "%d.%02d v", left, right);
         return buffer;
     }
@@ -87,9 +87,9 @@ extern "C"
     /** @brief Check if a platform timeout has expired. */
     bool platform_timeout_is_expired(const platform_timeout_s *t)
     {
-        // #warning Take care of wrapping !
         uint32_t now = lnGetMs();
-        if (now > t->time)
+        // Use signed arithmetic to handle 32-bit wrap around correctly.
+        if ((int32_t)(now - t->time) >= 0)
             return true;
         return false;
     }
