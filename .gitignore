@@ -44,4 +44,11 @@ build_default.cmake
 lnBlackmagic/rs/lnbmp/target/
 swindle/rs/target
 devpodup.sh
-.history
+.history  
+*.md
+*.html
+.cline*
+.*history*
+GD32F30x_User_Manual_Rev3.2.txt
+ch32v307_datasheet_v1.7.txt
+__pycache__/
