@@ -485,18 +485,25 @@ pub fn bmp_raise_exception() {
         rn_bmp_cmd_c::bmp_raise_exception_c();
     }
 }
-/// Begin a try block for BMP exception handling.
-///
-/// Returns `true` if no exception is pending. Used with `bmp_catch()` to
-/// detect stray exceptions during GDB command execution.
-pub fn bmp_try() -> bool {
-    unsafe { rn_bmp_cmd_c::bmp_try_c() }
+extern "C" fn trampoline<F: FnMut()>(ctx: *mut core::ffi::c_void) {
+    let closure = unsafe { &mut *(ctx as *mut F) };
+    closure();
 }
-/// End a try block and check for BMP exceptions.
+
+/// Execute a closure within a BMP exception handling context.
 ///
-/// Returns non-zero if an exception occurred since the last `bmp_try()` call.
-pub fn bmp_catch() -> i32 {
-    unsafe { rn_bmp_cmd_c::bmp_catch_c() }
+/// Returns `Ok(())` if execution succeeds, or `Err(exception_type)` if a
+/// longjmp/exception occurs in the underlying C code.
+pub fn bmp_try<F: FnMut()>(mut f: F) -> Result<(), i32> {
+    let ctx = &mut f as *mut _ as *mut core::ffi::c_void;
+    let result = unsafe {
+        rn_bmp_cmd_c::bmp_execute_with_catch_c(Some(trampoline::<F>), ctx)
+    };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(result as i32)
+    }
 }
 /// Enable or disable the target reset pin control.
 pub fn _bmp_enable_reset_pin(enabled: bool) {

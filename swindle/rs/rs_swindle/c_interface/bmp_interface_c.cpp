@@ -507,23 +507,37 @@ extern "C" void bmp_raise_exception_c()
  *
  *
  */
-static exception_s global_exception_frame;
+typedef void (*exec_callback_t)(void *ctx);
 
-extern "C" bool bmp_try_c()
+static int exception_nesting_level = 0;
+
+extern "C" int bmp_execute_with_catch_c(exec_callback_t callback, void *ctx)
 {
-    global_exception_frame.type = 0U;
-    global_exception_frame.mask = 1;
-    global_exception_frame.outer = innermost_exception;
-    innermost_exception = &global_exception_frame;
-    return setjmp(global_exception_frame.jmpbuf) == 0;
-}
-/*
- *
- */
-extern "C" int bmp_catch_c()
-{
-    innermost_exception = global_exception_frame.outer;
-    return (global_exception_frame.type);
+    exception_nesting_level++;
+    if (exception_nesting_level > 1)
+    {
+        char msg[64];
+        snprintf(msg, sizeof(msg), "WARNING: Exception recursion level %d\n", exception_nesting_level);
+        Logger(msg);
+    }
+
+    exception_s local_exception_frame;
+    local_exception_frame.type = 0U;
+    local_exception_frame.mask = 1;
+    local_exception_frame.outer = innermost_exception;
+    innermost_exception = &local_exception_frame;
+
+    int result = setjmp(local_exception_frame.jmpbuf);
+    if (result == 0)
+    {
+        callback(ctx);
+    }
+
+    int ret = local_exception_frame.type;
+    innermost_exception = local_exception_frame.outer;
+
+    exception_nesting_level--;
+    return ret;
 }
 /*
  *

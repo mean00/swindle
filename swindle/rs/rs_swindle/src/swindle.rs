@@ -153,13 +153,11 @@ fn run_parser(data_as_slice: &[u8]) {
                     bmplog!("Exec..:");
                     bmplog!(as_string);
                     bmplog!("\n");
-                    if bmp::bmp_try() {
-                        commands::exec(as_string);
-                        bmplog!("Exec done\n");
-                    }
-                    if bmp::bmp_catch() != 0 {
+                    if let Err(_e) = bmp::bmp_try(|| commands::exec(as_string)) {
                         gdb_print!("Stray exception\n");
                         encoder::encoder::reply_e01();
+                    } else {
+                        bmplog!("Exec done\n");
                     }
                 }
             }

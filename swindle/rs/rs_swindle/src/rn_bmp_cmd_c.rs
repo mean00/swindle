@@ -507,10 +507,10 @@ unsafe extern "C" {
     pub fn bmp_raise_exception_c();
 }
 unsafe extern "C" {
-    pub fn bmp_try_c() -> bool;
-}
-unsafe extern "C" {
-    pub fn bmp_catch_c() -> cty::c_int;
+    pub fn bmp_execute_with_catch_c(
+        callback: Option<unsafe extern "C" fn(ctx: *mut core::ffi::c_void)>,
+        ctx: *mut core::ffi::c_void,
+    ) -> core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn bmp_enable_reset_pin_c(enabled: bool);

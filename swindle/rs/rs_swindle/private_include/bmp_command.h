@@ -128,8 +128,7 @@ void bmp_rtt_get_info_c(rttInfo *info);
 void bmp_rtt_set_info_c(rttField field, const rttInfo *info);
 //
 void bmp_raise_exception_c();
-bool bmp_try_c();
-int bmp_catch_c();
+int bmp_execute_with_catch_c(void (*callback)(void *), void *ctx);
 void bmp_enable_reset_pin_c(bool enabled);
 void bmp_breakpoint_watchpoint_count_c(uint32_t *brk, uint32_t *wtch);
 bool bmp_has_hw_breakpoint_c();
