@@ -207,8 +207,8 @@ const q_command_tree: [CommandTree; 18] = [
 
 /// Dispatch `q*` query packets to the appropriate handler.
 #[unsafe(no_mangle)]
-pub fn _q(command: &str, args: &[u8]) -> bool {
-    exec_one(&q_command_tree, command, args)
+pub fn _q(command: &[u8]) -> bool {
+    exec_one(&q_command_tree, command)
 }
 //
 //  qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev

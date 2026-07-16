@@ -48,7 +48,7 @@ use v::_v;
 
 use run::{_R, _c, _k, _s, _vCont};
 
-type Callback_raw = fn(command: &str, args: &[u8]) -> bool;
+type Callback_raw = fn(command: &[u8]) -> bool;
 type Callback_text = fn(command: &str, args: &[&str]) -> bool;
 
 setup_log!(false);
@@ -273,15 +273,10 @@ const main_command_tree: [CommandTree; 23] = [
 ///
 /// Returns `true` if the command was recognised and handled.
 #[unsafe(no_mangle)]
-pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
+pub fn exec_one(tree: &[CommandTree], command: &[u8]) -> bool {
     let connected: bool = bmp::bmp_attached();
-    //bmplog!(command);
-    //bmplog!("\n");
     for c in tree {
-        // let c = &tree[i];
-        if command.starts_with(c.command)
-        // if the expected command begins with the receive command..
-        {
+        if command.starts_with(c.command.as_bytes()) {
             if !connected && c.require_connected {
                 gdb_print!(
                     "The following command  cannot be used while not connected :<",
@@ -292,56 +287,33 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
                 encoder::reply_e01();
                 return true;
             } else {
-                // Is it a regular callback or binary callback
                 return match c.cb {
                     CallbackType::text(y) => {
-                        // split args by splitter
-                        let as_string = command;
-                        // do we have a start separator ?
+                        let as_string = unsafe { core::str::from_utf8_unchecked(command) };
                         let prefix_size = c.command.len() + if c.start_separator != 0 { 1 } else { 0 };
                         let mut conf: Vec<&str>;
                         if as_string.len() > prefix_size && c.next_separator != 0 {
-                            //} && !c.next_separator.is_empty() {
                             conf = as_string[prefix_size..].split(c.next_separator as char).collect();
                         } else {
-                            // no extra data
-                            bmplog!("command : {} \n", command);
                             if as_string.len() > prefix_size {
                                 conf = vec![&as_string[prefix_size..]];
                             } else {
                                 conf = vec![];
                             }
                         }
-                        // Remove starting " "
                         for i in conf.iter_mut() {
                             *i = parsing_util::chomp(i);
                         }
-                        bmplog!(command);
-                        bmplog!("\n");
-                        bmplog!("unpacked command : <{}> \n", command);
-                        for i in &conf {
-                            bmplog!("\t<{}>\n", i);
-                        }
-                        bmplog!("\n");
                         if conf.len() < c.min_args {
                             bmplog!("Wrong number of parameters\n");
                             return false;
                         }
-                        (y)(command, &conf)
+                        (y)(as_string, &conf)
                     }
                     CallbackType::raw(x) => {
-                        bmplog!(c.command);
-                        bmplog!("\n");
-                        let prefix_size = c.command.len() + if c.start_separator != 0 { 1 } else { 0 };
-                        if command.len() > prefix_size && c.next_separator != 0 {
-                            return (x)(command, &command.as_bytes()[prefix_size..]);
-                        } else {
-                            // no extra data
-                            return (x)(command, &[]);
-                        }
+                        (x)(command)
                     }
                 };
-                // return (c.cb)(command, args);
             }
         }
     }
@@ -352,15 +324,10 @@ pub fn exec_one(tree: &[CommandTree], command: &str, _args: &[u8]) -> bool {
 ///
 /// If the command is not recognised, sends an empty reply (unsupported).
 #[unsafe(no_mangle)]
-pub fn exec(command: &str) {
-    let args: &[u8] = &[];
-    if !exec_one(&main_command_tree, command, args) {
-        {
-            encoder::simple_send(""); // unsupported
-            bmplog!("Unsupported cmd :{} \n", command);
-            gdb_print!("!!! The following command  is not supported : <", command);
-            gdb_print!(">\n");
-        }
+pub fn exec(command: &[u8]) {
+    if !exec_one(&main_command_tree, command) {
+        encoder::simple_send(""); // unsupported
+        bmplog!("Unsupported cmd\n");
     }
 }
 //

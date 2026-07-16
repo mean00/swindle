@@ -146,14 +146,8 @@ fn run_parser(data_as_slice: &[u8]) {
                     bmplog!("--> ACK\n");
                     rngdb_send_data_u8(&[CHAR_ACK]);
                     rngdb_output_flush();
-                    let as_string: &str;
-                    unsafe {
-                        as_string = core::str::from_utf8_unchecked(s);
-                    }
-                    bmplog!("Exec..:");
-                    bmplog!(as_string);
-                    bmplog!("\n");
-                    if let Err(_e) = bmp::bmp_try(|| commands::exec(as_string)) {
+                    bmplog!("Exec raw packet\n");
+                    if let Err(_e) = bmp::bmp_try(|| commands::exec(s)) {
                         gdb_print!("Stray exception\n");
                         encoder::encoder::reply_e01();
                     } else {

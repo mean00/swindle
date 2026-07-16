@@ -46,38 +46,30 @@ pub fn _m(_command: &str, args: &[&str]) -> bool {
     e.end();
     true
 }
-/// Find a character in a string starting from `initial`.
-///
-/// Returns `(found, position)`.
-pub fn lookupChar(searched: &str, incoming: &str, initial: usize) -> (bool, usize) {
-    match &incoming[initial..].find(searched) {
-        Some(x) => (true, x + initial),
-        None => (false, 0),
-    }
-}
 /*
  *
  *
  */
 /// Handle `Xaddr,length:data` — write binary data to memory.
-pub fn _X(command: &str, _args: &[u8]) -> bool {
-    let mut ret: bool;
-    let coma: usize;
-    let semicolumn: usize;
-
-    (ret, coma) = lookupChar(",", command, 1);
-    if !ret {
+pub fn _X(command: &[u8]) -> bool {
+    let coma = command.iter().position(|&x| x == b',').unwrap_or(0);
+    if coma == 0 {
         return false;
     }
-    (ret, semicolumn) = lookupChar(":", command, coma);
-    if !ret {
+    
+    let semicolumn_offset = command[coma..].iter().position(|&x| x == b':').unwrap_or(0);
+    if semicolumn_offset == 0 {
         return false;
     }
-    let address = ascii_string_hex_to_u32(&command[1..coma]);
-    let mut length = ascii_string_hex_to_u32(&command[coma + 1..semicolumn]) as usize;
+    let semicolumn = coma + semicolumn_offset;
 
-    let as_byte = command.as_bytes();
-    let data = &as_byte[(semicolumn + 1)..];
+    let addr_str = unsafe { core::str::from_utf8_unchecked(&command[1..coma]) };
+    let len_str = unsafe { core::str::from_utf8_unchecked(&command[(coma + 1)..semicolumn]) };
+
+    let address = ascii_string_hex_to_u32(addr_str);
+    let mut length = ascii_string_hex_to_u32(len_str) as usize;
+
+    let data = &command[(semicolumn + 1)..];
     bmplog!("buffer size :  {} bytes\n", data.len());
 
     bmplog!("Adress : 0x{:x} Len: {}\n", address, length);

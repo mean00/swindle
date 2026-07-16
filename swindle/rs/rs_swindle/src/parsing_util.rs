@@ -169,14 +169,4 @@ pub fn _take_adress_length(xin: &str) -> Option<(u32, u32)> {
     let len = ascii_string_hex_to_u32(len_str);
     Some((address, len))
 }
-/// Split a command string at the first `:` separator.
-///
-/// Returns `(command, arguments)` where arguments may be empty.
-pub fn split_command(incoming: &[u8]) -> Option<(&[u8], &[u8])> {
-    if let Some(pos) = incoming.iter().position(|&b| b == b':') {
-        Some((&incoming[..pos], &incoming[pos + 1..]))
-    } else {
-        Some((incoming, &[]))
-    }
-}
 //

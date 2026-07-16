@@ -104,8 +104,7 @@ const rtt_help_tree: [HelpTree; 4] = [
 #[unsafe(no_mangle)]
 pub fn _rtt(_command: &str, args: &[&str]) -> bool {
     let as_string = args[0..].join(" ");
-    let as_str: &str = &as_string;
-    exec_one(&rtt_command_tree, as_str, &[])
+    exec_one(&rtt_command_tree, as_string.as_bytes())
 }
 
 /*

@@ -71,8 +71,8 @@ fn vRun(_command: &str, _args: &[&str]) -> bool {
 //
 
 /// Dispatch `v*` packets to the appropriate handler.
-pub fn _v(command: &str, args: &[u8]) -> bool {
-    exec_one(&v_command_tree, command, args)
+pub fn _v(command: &[u8]) -> bool {
+    exec_one(&v_command_tree, command)
 }
 
 //

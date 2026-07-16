@@ -54,8 +54,8 @@ const DISABLE_FLASH: bool = false;
 //
 
 /// Dispatch `vFlash*` commands to the appropriate handler.
-pub fn _flashv(command: &str, args: &[u8]) -> bool {
-    exec_one(&vflash_command_tree, command, args)
+pub fn _flashv(command: &[u8]) -> bool {
+    exec_one(&vflash_command_tree, command)
 }
 
 //
@@ -77,13 +77,13 @@ fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
 /// Handle `vFlashWrite:addr,data` — write data to flash.
 ///
 /// Parses the address and binary data from the raw command string.
-fn _vFlashWrite(command: &str, _args: &[u8]) -> bool {
+fn _vFlashWrite(command: &[u8]) -> bool {
     if DISABLE_FLASH {
         encoder::reply_ok();
         return true;
     }
 
-    let block: &[u8] = &command.as_bytes()[12..];
+    let block: &[u8] = &command[12..];
     let len = block.len();
 
     if len < 4 {
