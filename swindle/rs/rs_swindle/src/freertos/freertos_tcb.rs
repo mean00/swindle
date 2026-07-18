@@ -1,3 +1,8 @@
+//! FreeRTOS Task Control Block (TCB) Management
+//!
+//! Handles extracting and parsing task information (TCB) from target memory,
+//! building the thread list for GDB, and caching the OS thread state.
+
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
@@ -80,10 +85,7 @@ pub fn freertos_invalidate_cache() {
 }
 
 //--
-/*
- *
- */
-
+/// Reads and parses a single FreeRTOS TCB from target memory into a `freertos_task_info`.
 fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> {
     let off = get_debug_offsets();
     let mut data: [u32; 16] = [0; 16];
@@ -128,9 +130,8 @@ fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> 
     })
 }
 
-/*
- *
- */
+/// Scans all OS lists in target memory to collect all tasks.
+/// Results are cached until the target resumes execution.
 pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
     let cache = get_cache();
     if !cache.dirty {
@@ -192,9 +193,7 @@ pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
     cache.dirty = false;
     &cache.data
 }
-/*
- *
- */
+/// Returns a list of all detected FreeRTOS thread IDs (not raw addresses).
 pub fn get_threads() -> Vec<u32> {
     bmplog!("get_threads\n");
     let mut output: Vec<u32> = Vec::new();
@@ -209,9 +208,8 @@ pub fn get_threads() -> Vec<u32> {
     }
     output
 }
-/*
- *
- */
+
+/// Retrieves the thread ID of the currently executing FreeRTOS task.
 pub fn get_current_thread_id() -> Option<u32> {
     bmplog!("get_current_thread\n");
     let symbol = get_symbols();
@@ -233,9 +231,7 @@ pub fn get_current_thread_id() -> Option<u32> {
     None
 }
 
-/*
- *
- */
+/// Retrieves the cached `freertos_task_info` for a specific thread ID.
 pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
     bmplog!("get_tcb_info_from\n");
     let t = freertos_collect_information();
@@ -254,9 +250,7 @@ pub fn get_tcb_info_from_id(id: u32) -> Option<freertos_task_info> {
     None
 }
 
-/*
- * \fn return a copy of pxCurrentTCB
- */
+/// Reads the raw pointer value stored in `pxCurrentTCB` on the target.
 pub fn get_pxCurrentTCB() -> Option<u32> {
     bmplog!("get_pxCurrentTCB\n");
     let px_adr = get_current_tcb_address();
@@ -267,9 +261,8 @@ pub fn get_pxCurrentTCB() -> Option<u32> {
     }
     Some(data[0])
 }
-/*
- *
- */
+
+/// Writes a new raw pointer value to `pxCurrentTCB` on the target.
 pub fn set_pxCurrentTCB(tcb: u32) -> bool {
     bmplog!("set_pxCurrentTCB\n");
     let px_adr = get_current_tcb_address();
@@ -277,10 +270,8 @@ pub fn set_pxCurrentTCB(tcb: u32) -> bool {
     data[0] = tcb;
     bmp_write_mem32(px_adr, &data)
 }
-/*
- *
- *
- */
+
+/// Checks if a given thread ID exists in the cached OS task list.
 pub fn freertos_is_thread_present(thread_id: u32) -> bool {
     let new_info = get_tcb_info_from_id(thread_id);
     if new_info.is_some() {
@@ -289,11 +280,9 @@ pub fn freertos_is_thread_present(thread_id: u32) -> bool {
     bmplog!("thread {} not present\n", thread_id);
     false
 }
-/*
- *
- *
- *
- */
+
+/// Modifies target memory and hardware registers to simulate a context switch
+/// into the specified FreeRTOS thread ID, allowing GDB to inspect its state.
 pub fn freertos_switch_task(thread_id: u32) -> bool {
     // if we cant switch no need to go further
     bmplog!("switch_task\n");

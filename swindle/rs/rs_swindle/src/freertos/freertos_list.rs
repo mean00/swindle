@@ -1,6 +1,8 @@
-/*
-    https://aosabook.org/en/v2/freertos.html
-*/
+//! FreeRTOS Linked List Parsing
+//!
+//! Provides utilities to traverse FreeRTOS internal doubly linked lists
+//! (e.g., ready lists, delayed lists, suspended lists) directly from target memory.
+//! Reference: <https://aosabook.org/en/v2/freertos.html>
 
 use alloc::vec::Vec;
 
@@ -10,7 +12,7 @@ setup_log!(false);
 crate::gdb_print_init!();
 //use crate::bmplog;
 
-/// Default hardcoded list offsets used as fallback.
+/// Default hardcoded list offsets used as fallback if `freeRTOSDebug` is missing.
 const FALLBACK_LIST_OFFSETS: FreeRTOSDebugOffsets = FreeRTOSDebugOffsets {
     magic: 0,
     list_size: 0,
@@ -25,14 +27,14 @@ const FALLBACK_LIST_OFFSETS: FreeRTOSDebugOffsets = FreeRTOSDebugOffsets {
     offset_task_num: 68,
 };
 
+/// Retrieves the current `FreeRTOSDebugOffsets` to locate list node pointers.
 fn get_list_offsets() -> FreeRTOSDebugOffsets {
     get_symbols().debug_offsets.unwrap_or(FALLBACK_LIST_OFFSETS)
 }
 
-/**
- * \fn freertos_crawl_list
- * \brief returns a list of items, in out case TCB *
- */
+/// Crawls a FreeRTOS `List_t` starting at `address` and returns a `Vec` of TCB pointers.
+/// 
+/// Skips the `xListEnd` marker node and collects exactly `NumberOfItems` TCBs.
 pub fn freertos_crawl_list(address: u32) -> Vec<u32> {
     let off = get_list_offsets();
     let mut v: Vec<u32> = Vec::new();

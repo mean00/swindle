@@ -1,8 +1,7 @@
-/*
-    Here we dispatch to get the correct task switching code depending on the
-    ARM core / FreeRTOS implementation
-
-*/
+//! ARM Cortex-M FreeRTOS Switch Handler Dispatch
+//!
+//! This module resolves the specific ARM Cortex-M core based on CPUID and
+//! instantiates the corresponding FreeRTOS context switch handler (`m3` or `m33`).
 setup_log!(false);
 //use crate::bmplog;
 crate::gdb_print_init!();
@@ -25,6 +24,11 @@ const ARM_CM33: u32 = 0xd210;
 
 const mul: u32 = 0;
 
+/// Instantiates the appropriate ARM Cortex-M context switch handler.
+///
+/// If `core` is `LN_MCU_AUTO`, it inspects the hardware `cpuid` and masks it against
+/// `ARM_PARTNO_MASK` to determine the exact Cortex-M variant (e.g. M0, M3, M4, M33).
+/// Returns a boxed handler implementation, or `None` if the core is unsupported.
 pub fn create_arm_switch_handler(
     mut core: LN_MCU_CORE,
     cpu: u32,

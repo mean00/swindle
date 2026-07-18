@@ -1,3 +1,9 @@
+//! FreeRTOS Symbol Resolution and Extraction
+//!
+//! This module handles resolving critical FreeRTOS internal state from the ELF
+//! debug symbols, such as `pxCurrentTCB` and list headers, allowing the debugger
+//! to inspect OS state dynamically.
+
 use crate::bmp;
 use crate::parsing_util;
 use core::mem::MaybeUninit;
@@ -61,17 +67,25 @@ pub const LAYOUT_RV_STD_FPU: u32 = 3;
 pub const LAYOUT_CH32: u32 = 4;
 pub const LAYOUT_CH32_FPU: u32 = 5;
 
+/// Global cache of resolved FreeRTOS symbol addresses and OS context configuration.
 pub struct FreeRTOSSymbols {
+    /// True if FreeRTOS context switching is running
     pub running: bool,
+    /// True if all mandatory FreeRTOS symbols have been found
     pub valid: bool,
+    /// Cached memory addresses for each `freeRtosSymbolIndex`
     pub addresses: [Option<u32>; NB_FREERTOS_SYMBOLS],
+    /// CPU ID detected from hardware
     pub cpuid: u32,
+    /// MCU core type layout detected
     pub mcu_handler: LN_MCU_CORE,
+    /// Detailed offset mapping extracted from `freeRTOSDebug`
     pub debug_offsets: Option<FreeRTOSDebugOffsets>,
 }
 // SAFETY: FreeRTOSSymbols is only used in a single-threaded debugger context.
 unsafe impl Sync for FreeRTOSSymbols {}
 
+/// Retrieves a mutable reference to the global `FreeRTOSSymbols` cache.
 pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
     static mut SYMBOLS: MaybeUninit<FreeRTOSSymbols> = MaybeUninit::uninit();
     static mut SYMBOLS_INIT: bool = false;
@@ -90,10 +104,8 @@ pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
         SYMBOLS.assume_init_mut()
     }
 }
-/*
- * \brief : clear the loaded symbols
- */
 
+/// Clears all loaded FreeRTOS symbols and marks the context as invalid.
 pub fn freertos_clear_symbols() -> bool {
     let all_symbols = get_symbols();
     all_symbols.running = false;
@@ -102,10 +114,8 @@ pub fn freertos_clear_symbols() -> bool {
     all_symbols.debug_offsets = None;
     true
 }
-/*
- *
- *
- */
+
+/// Helper to convert a string symbol name to the `freeRtosSymbolIndex`.
 fn lookup_name(key: &str) -> freeRtosSymbolIndex {
     for i in freeRtosSymbolIndex::iter() {
         if i == freeRtosSymbolIndex::invalid {
@@ -118,24 +128,18 @@ fn lookup_name(key: &str) -> freeRtosSymbolIndex {
     }
     freeRtosSymbolIndex::invalid
 }
-/*
- *
- *
- */
+
+/// Re-evaluates whether all mandatory symbols have been located.
 fn update_valid(symbols: &mut FreeRTOSSymbols) {
     let mut missing: bool = false;
     for ref i in symbols.addresses {
-        //if let Some(x) = i {
         if i.is_none() {
             missing = true;
         }
     }
     symbols.valid = !missing;
 }
-/*
- *
- *
- */
+
 /// Magic value from C `LN_FREERTOS_MAGIC` to validate the debug struct.
 const LN_FREERTOS_MAGIC: u32 = 0x1FEEBAE;
 
@@ -181,6 +185,10 @@ fn freertos_read_debug_offsets() {
     bmplog!("freeRTOSDebug offsets loaded from target\n");
 }
 
+/// Processes incoming symbol definitions from GDB and stores them in the cache.
+/// 
+/// Once the `freeRTOSDebug` symbol is received, this automatically triggers
+/// `freertos_read_debug_offsets` to pull the detailed struct layout from memory.
 #[unsafe(no_mangle)]
 pub fn freertos_processing(key: &str, value_str: &str) -> bool {
     let all_symbols = get_symbols();
@@ -205,25 +213,19 @@ pub fn freertos_processing(key: &str, value_str: &str) -> bool {
     update_valid(all_symbols);
     true
 }
-/*
- *
- */
+
+/// Retrieves the cached address of the `pxCurrentTCB` pointer.
 pub fn get_current_tcb_address() -> u32 {
     let all_symbols = get_symbols();
     all_symbols.addresses[freeRtosSymbolIndex::pxCurrentTCB as usize].unwrap()
 }
-/*
- *
- *
- */
+
+/// Returns whether all mandatory FreeRTOS symbols have been correctly resolved.
 pub fn freertos_symbol_valid() -> bool {
     get_symbols().valid
 }
-/*
- *
- *
- */
+
+/// Returns whether the FreeRTOS OS plugin is currently active and running.
 pub fn freertos_running() -> bool {
     get_symbols().running
 }
-// EOF

@@ -1,34 +1,37 @@
-/*
-High address
- |
- |
- \/ decreasing
-+-------------------------------+  <-- PSP point before exception
-|  xPSR                         |
-|  Return PC (from task)        |  \
-|  LR (R14)                     |  | Core
-|  R12                          |  | Registers
-|  R3,
-|  R2
-|  R1
-|  R0               |  / (Auto)
-+-------------------------------+  <-- PSP after exception
-|  S0
-|  S1
-|   ...
-|  S14
-|  S15
-|  FPSCR
-+-------------------------------+
-|  R4                          |  \
-|  R5                          |  |
-|  ...                         |  | Extra Registers
-|  R11                         |  | (Saved by FreeRTOS)
-+-------------------------------+  <-- PSP after manual save
-
-The gpr.push call will *FIRST* decrease the stack and then push the registers
-
-*/
+//! ARM Cortex-M3/M4 FreeRTOS Switch Handler
+//! 
+//! Implements `freertos_switch_handler` for Cortex-M3/M4 cores without FPU stack framing.
+//!
+//! Stack Layout (Descending):
+//! ```text
+//! High address
+//!  |
+//!  |
+//!  \/ decreasing
+//! +-------------------------------+  <-- PSP point before exception
+//! |  xPSR                         |
+//! |  Return PC (from task)        |  \
+//! |  LR (R14)                     |  | Core
+//! |  R12                          |  | Registers
+//! |  R3,
+//! |  R2
+//! |  R1
+//! |  R0               |  / (Auto)
+//! +-------------------------------+  <-- PSP after exception
+//! |  S0
+//! |  S1
+//! |   ...
+//! |  S14
+//! |  S15
+//! |  FPSCR
+//! +-------------------------------+
+//! |  R4                          |  \
+//! |  R5                          |  |
+//! |  ...                         |  | Extra Registers
+//! |  R11                         |  | (Saved by FreeRTOS)
+//! +-------------------------------+  <-- PSP after manual save
+//! ```
+//! The `gpr.push` call will *FIRST* decrease the stack and then push the registers.
 use crate::freertos::freertos_arm_core::freertos_cortexm_core;
 use crate::freertos::freertos_trait::freertos_switch_handler;
 setup_log!(false);
@@ -37,16 +40,13 @@ setup_log!(false);
 /// EXC_RETURN value for thread mode, no FPU, using PSP.
 const EXC_RETURN: u32 = 0xFFFFFFFD;
 
-/*
- *
- */
+/// Context switcher for ARM Cortex-M3/M4 standard FreeRTOS ports.
 pub struct freertos_switch_handler_m3 {
     gpr: freertos_cortexm_core,
 }
-/*
- *
- */
+
 impl freertos_switch_handler_m3 {
+    /// Instantiates a new M3 context switcher.
     pub fn new() -> Self {
         freertos_switch_handler_m3 {
             gpr: freertos_cortexm_core::new(),
@@ -54,13 +54,7 @@ impl freertos_switch_handler_m3 {
     }
 }
 
-/*
- *
- */
 impl freertos_switch_handler for freertos_switch_handler_m3 {
-    /*
-     * write internal to actual registers
-     */
     fn write_cur_registers(&self) -> bool {
         self.gpr.write_current_gpr_registers()
     }

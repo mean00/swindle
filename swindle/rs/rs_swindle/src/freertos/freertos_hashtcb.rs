@@ -1,8 +1,8 @@
-/*
- *  Hold a hashMap so that a given tcb address always gives the same task id
- *   whatever freertos compilation options are.
- *
- */
+//! FreeRTOS TCB to Thread ID Mapping
+//! 
+//! Maintains a persistent hash map mapping raw TCB memory addresses to deterministic,
+//! sequential integer Thread IDs for GDB. This ensures that even if FreeRTOS 
+//! compilation options change, the debugger presents stable thread IDs.
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 setup_log!(false);
@@ -11,39 +11,36 @@ setup_log!(false);
 crate::gdb_print_init!();
 use crate::bmp;
 
+/// Maps a raw Task Control Block memory address to an artificial integer Thread ID.
 pub struct tcb_to_tid {
     tcb: u32,
     tid: u32,
 }
+
+/// Global registry of known OS tasks.
 pub struct hashed_tcb {
     list: Vec<tcb_to_tid>,
     index: u32,
 }
 // SAFETY: hashed_tcb is only used in a single-threaded debugger context.
 unsafe impl Sync for hashed_tcb {}
-/*
- *
- */
+
 impl hashed_tcb {
-    /*
-     *
-     */
+    /// Creates a new empty `hashed_tcb` starting at index 1.
     pub fn new() -> Self {
         hashed_tcb {
             list: Vec::new(),
             index: 1,
         }
     }
-    /*
-     *
-     */
+    
+    /// Clears the thread map, resetting the index counter back to 1.
     pub fn clear(&mut self) {
         self.list.clear();
         self.index = 1;
     }
-    /*
-     *
-     */
+    
+    /// Retrieves the Thread ID for a given TCB address, assigning a new one if unseen.
     pub fn get(&mut self, tcb: u32) -> u32 {
         for i in &self.list {
             if i.tcb == tcb {
