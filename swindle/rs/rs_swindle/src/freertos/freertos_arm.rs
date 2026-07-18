@@ -6,9 +6,12 @@ setup_log!(false);
 //use crate::bmplog;
 crate::gdb_print_init!();
 
+use crate::bmp::bmp_read_mem32;
 use crate::freertos::LN_MCU_CORE;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
+use crate::freertos::freertos_arm_m4f::freertos_switch_handler_m4f;
 use crate::freertos::freertos_arm_m33::freertos_switch_handler_m33;
+use crate::freertos::freertos_symbols::{LAYOUT_ARM_FPU, LAYOUT_ARM_NOFPU, get_symbols};
 use crate::freertos::freertos_trait::freertos_switch_handler;
 use alloc::boxed::Box;
 
@@ -33,6 +36,15 @@ pub fn create_arm_switch_handler(
     mut core: LN_MCU_CORE,
     cpu: u32,
 ) -> Option<Box<dyn freertos_switch_handler>> {
+    // First, if the firmware exported a layout type via freeRTOSDebug, trust it completely.
+    if let Some(offsets) = get_symbols().debug_offsets {
+        if offsets.layout_type == LAYOUT_ARM_NOFPU {
+            return Some(Box::new(freertos_switch_handler_m3::new()));
+        } else if offsets.layout_type == LAYOUT_ARM_FPU {
+            return Some(Box::new(freertos_switch_handler_m4f::new()));
+        }
+    }
+
     if core == LN_MCU_CORE::LN_MCU_AUTO {
         core = match (mul * ARM_CM33 + (1 - mul) * cpu) & ARM_PARTNO_MASK {
             ARM_CM0 | ARM_CM0P => LN_MCU_CORE::LN_MCU_CM0,
@@ -48,7 +60,22 @@ pub fn create_arm_switch_handler(
     match core {
         LN_MCU_CORE::LN_MCU_CM0 => Some(Box::new(freertos_switch_handler_m3::new())),
         LN_MCU_CORE::LN_MCU_CM3 => Some(Box::new(freertos_switch_handler_m3::new())),
-        LN_MCU_CORE::LN_MCU_CM4 => Some(Box::new(freertos_switch_handler_m3::new())),
+        LN_MCU_CORE::LN_MCU_CM4 => {
+            // Check if FPU is enabled via CPACR (0xE000ED88)
+            let mut cpacr = [0u32; 1];
+            let mut has_fpu = false;
+            if bmp_read_mem32(0xE000ED88, &mut cpacr) {
+                // Bits 20-23 indicate FPU access privileges
+                if (cpacr[0] & (0xF << 20)) != 0 {
+                    has_fpu = true;
+                }
+            }
+            if has_fpu {
+                Some(Box::new(freertos_switch_handler_m4f::new()))
+            } else {
+                Some(Box::new(freertos_switch_handler_m3::new()))
+            }
+        }
         LN_MCU_CORE::LN_MCU_CM33 => Some(Box::new(freertos_switch_handler_m33::new())),
         _ => None,
     }

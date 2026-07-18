@@ -325,6 +325,15 @@ pub fn freertos_switch_task(thread_id: u32) -> bool {
     let item: [u32; 1] = [old_stack];
     bmp_write_mem32(old_current_tcb_adr, &item);
 
+    // Update the cache so that if we switch back, we use the correct top_of_stack!
+    let cache = get_cache();
+    for t in cache.data.iter_mut() {
+        if t.tcb_addr == old_current_tcb_adr {
+            t.top_of_stack = old_stack;
+            break;
+        }
+    }
+
     // switch to that thread..
     set_pxCurrentTCB(new_tcb.tcb_addr);
     true

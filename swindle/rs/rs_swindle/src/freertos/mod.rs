@@ -10,6 +10,7 @@
 pub mod freertos_arm;
 pub mod freertos_arm_core;
 pub mod freertos_arm_m3;
+pub mod freertos_arm_m4f;
 pub mod freertos_arm_m33;
 pub mod freertos_hashtcb;
 mod freertos_list;
