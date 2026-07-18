@@ -101,6 +101,7 @@ typedef struct
 #define CH32V3XX_FMC_CTL_CH32_FASTPROGRAM (1 << 16)
 #define CH32V3XX_FMC_CTL_CH32_FASTERASE (1 << 17)
 #define CH32V3XX_FMC_CTL_CH32_BER32 (1 << 18)
+#define CH32V3XX_FMC_CTL_CH32_BER64 (1 << 19)
 #define CH32V3XX_FMC_CTL_CH32_FASTSTART (1 << 21)
 
 #define CH32V3XX_FMC_STAT_BUSY (1 << 0)
@@ -521,7 +522,20 @@ static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t a
     while (len)
     {
         uint32_t chunk = len;
-        if (chunk >= 32768)
+        if (chunk >= 65536)
+        {
+            chunk = 65536;
+            DEBUGME("CH32 Erasing 64K Block at 0x%x\n", addr);
+            ch32v3x_fast_unlock(flash->t);
+            uint32_t ctl = READ_FLASH_REG(flash->t, CTLR);
+            small_set_ctl(flash->t, CH32V3XX_FMC_CTL_CH32_BER64);
+            WRITE_FLASH_REG(flash->t, ADDR, addr);
+            small_set_ctl(flash->t, CH32V3XX_FMC_CTL_START);
+            if (!small_ch32v3x_wait_not_busy(flash->t))
+                return false;
+            WRITE_FLASH_REG(flash->t, CTLR, ctl);
+        }
+        else if (chunk >= 32768)
         {
             chunk = 32768;
             DEBUGME("CH32 Erasing 32K Block at 0x%x\n", addr);
@@ -732,7 +746,7 @@ static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t d
     return true;
 }
 
-static const size_t ch32v3x_erasesizes[] = {4096, 32768, 0};
+static const size_t ch32v3x_erasesizes[] = {4096, 32768, 65536, 0};
 
 static void ch32v3x_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize, size_t writesize)
 {
