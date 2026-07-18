@@ -14,6 +14,13 @@ setup_log!(false);
  */
 //use crate::bmpwarning;
 use crate::freertos::freertos_trait::freertos_switch_handler;
+use crate::freertos::freertos_symbols::{get_symbols, LAYOUT_CH32, LAYOUT_CH32_FPU, LAYOUT_RV_STD, LAYOUT_RV_STD_FPU};
+
+fn get_current_layout() -> u32 {
+    get_symbols()
+        .debug_offsets
+        .map_or(LAYOUT_CH32, |offsets| offsets.layout_type)
+}
 
 const RV32_GPRS_REGISTER: usize = 28;
 const RV32_TOP_REGISTER: usize = 2;
@@ -98,15 +105,15 @@ impl rv32_gprs {
 /*
  *
  */
-pub struct freertos_switch_handler_rv32 {
+pub struct FreeRTOSSwitchHandlerCH32 {
     gprs: rv32_gprs,
 }
 /*
  *
  */
-impl freertos_switch_handler_rv32 {
+impl FreeRTOSSwitchHandlerCH32 {
     pub fn new() -> Self {
-        freertos_switch_handler_rv32 {
+        FreeRTOSSwitchHandlerCH32 {
             gprs: rv32_gprs::new(),
         }
     }
@@ -115,7 +122,7 @@ impl freertos_switch_handler_rv32 {
 /*
  *
  */
-impl freertos_switch_handler for freertos_switch_handler_rv32 {
+impl freertos_switch_handler for FreeRTOSSwitchHandlerCH32 {
     /*
      * write internal to actual registers
      */
@@ -133,7 +140,7 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
     fn read_cur_registers(&mut self) -> bool {
         let regs = bmp_read_registers();
         if regs.len() < 33 {
-            bmpwarning!("Incorrect # of registers {}", regs.len());
+            crate::bmpwarning!("Incorrect # of registers {}", regs.len());
             return false;
         }
         self.gprs.gprs[1..32].copy_from_slice(&regs[1..32]);
@@ -144,14 +151,15 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
     }
     /*
      * write register dump to adr, careful the register are out of order
-     * We write them as if it was a freertos task switch
      */
     fn write_registers_to_stack(&mut self) -> bool {
+        // For write, we only provide a basic integer stack frame for now.
+        // We'll write the frame without FPU dirty flag set.
         self.gprs.sp -= STACKED_REGISTER_SIZE as u32; // adjust stack to be at the beginning
         self.gprs.pointer = self.gprs.sp;
 
         self.gprs.push32(self.gprs.pc);
-        self.gprs.push32(self.gprs.mstatus);
+        self.gprs.push32(self.gprs.mstatus & !(3 << 13)); // clear FS bits to indicate FPU not dirty
 
         self.gprs.push(1, 2); // x1
         self.gprs.push(5, 32); // x5..x31
@@ -161,12 +169,22 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
      * read register dump from adr, careful the register are out of order
      */
     fn read_registers_from_addr(&mut self, address: u32) -> bool {
-        self.gprs.sp = address + (STACKED_REGISTER_SIZE as u32);
+        let layout = get_current_layout();
         self.gprs.pointer = address;
         self.gprs.pc = self.gprs.pop32(); // PC
         self.gprs.mstatus = self.gprs.pop32(); // mstatus
-        self.gprs.gprs[1] = self.gprs.pop32(); // ra//x1
-        self.gprs.pop(5, 32); // t0 1 t2
+        
+        if layout == LAYOUT_CH32_FPU {
+            // Check if FPU is dirty (bit 14 of mstatus)
+            if (self.gprs.mstatus & (1 << 14)) != 0 {
+                self.gprs.pointer += 128; // Skip FPU registers (32 * 4)
+            }
+        }
+        
+        self.gprs.gprs[1] = self.gprs.pop32(); // ra/x1
+        self.gprs.pop(5, 32); // x5..x31
+        
+        self.gprs.sp = self.gprs.pointer;
         true
     }
 
@@ -174,5 +192,72 @@ impl freertos_switch_handler for freertos_switch_handler_rv32 {
         self.gprs.sp
     }
 
+}
+
+pub struct FreeRTOSSwitchHandlerRV32Std {
+    gprs: rv32_gprs,
+}
+
+impl FreeRTOSSwitchHandlerRV32Std {
+    pub fn new() -> Self {
+        FreeRTOSSwitchHandlerRV32Std {
+            gprs: rv32_gprs::new(),
+        }
+    }
+}
+
+impl freertos_switch_handler for FreeRTOSSwitchHandlerRV32Std {
+    fn write_cur_registers(&self) -> bool {
+        for i in 1..31 {
+            bmp_write_register(i as u32, self.gprs.gprs[i]);
+        }
+        bmp_write_register(32, self.gprs.pc);
+        true
+    }
+    fn read_cur_registers(&mut self) -> bool {
+        let regs = bmp_read_registers();
+        if regs.len() < 33 {
+            crate::bmpwarning!("Incorrect # of registers {}", regs.len());
+            return false;
+        }
+        self.gprs.gprs[1..32].copy_from_slice(&regs[1..32]);
+        self.gprs.sp = regs[2];
+        self.gprs.pc = regs[32];
+        true
+    }
+    fn write_registers_to_stack(&mut self) -> bool {
+        self.gprs.sp -= 124; // 31 words
+        self.gprs.pointer = self.gprs.sp;
+        
+        self.gprs.push32(self.gprs.pc); // mepc
+        self.gprs.push(1, 2); // x1
+        self.gprs.push(5, 32); // x5..x31
+        self.gprs.push32(0); // xCriticalNesting
+        self.gprs.push32(self.gprs.mstatus); // mstatus
+        true
+    }
+    fn read_registers_from_addr(&mut self, address: u32) -> bool {
+        // In standard RV32, stack is 31 words.
+        self.gprs.pointer = address;
+        self.gprs.pc = self.gprs.pop32(); // mepc (offset 0)
+        self.gprs.gprs[1] = self.gprs.pop32(); // x1 (offset 4)
+        self.gprs.pop(5, 32); // x5..x31 (offsets 8..112)
+        
+        let _critical_nesting = self.gprs.pop32(); // xCriticalNesting (offset 116)
+        self.gprs.mstatus = self.gprs.pop32(); // mstatus (offset 120)
+        
+        self.gprs.sp = self.gprs.pointer;
+        true
+    }
+    fn get_sp(&self) -> u32 {
+        self.gprs.sp
+    }
+}
+
+pub fn create_rv32_switch_handler() -> alloc::boxed::Box<dyn freertos_switch_handler> {
+    match get_current_layout() {
+        LAYOUT_RV_STD | LAYOUT_RV_STD_FPU => alloc::boxed::Box::new(FreeRTOSSwitchHandlerRV32Std::new()),
+        _ => alloc::boxed::Box::new(FreeRTOSSwitchHandlerCH32::new()),
+    }
 }
 // EOF

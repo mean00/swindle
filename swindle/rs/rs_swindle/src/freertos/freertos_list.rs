@@ -19,7 +19,7 @@ const FALLBACK_LIST_OFFSETS: FreeRTOSDebugOffsets = FreeRTOSDebugOffsets {
     offset_list_number_of_item: 0,
     offset_list_index: 4,
     nb_of_priorities: 16,
-    mpu_enabled: 0,
+    layout_type: 0,
     max_task_name_len: 16,
     offset_task_name: 52,
     offset_task_num: 68,

@@ -48,11 +48,18 @@ pub struct FreeRTOSDebugOffsets {
     pub offset_list_number_of_item: u32,
     pub offset_list_index: u32,
     pub nb_of_priorities: u32,
-    pub mpu_enabled: u32,
+    pub layout_type: u32,
     pub max_task_name_len: u32,
     pub offset_task_name: u32,
     pub offset_task_num: u32,
 }
+
+pub const LAYOUT_ARM_NOFPU: u32 = 0;
+pub const LAYOUT_ARM_FPU: u32 = 1;
+pub const LAYOUT_RV_STD: u32 = 2;
+pub const LAYOUT_RV_STD_FPU: u32 = 3;
+pub const LAYOUT_CH32: u32 = 4;
+pub const LAYOUT_CH32_FPU: u32 = 5;
 
 pub struct FreeRTOSSymbols {
     pub running: bool,
@@ -166,7 +173,7 @@ fn freertos_read_debug_offsets() {
         offset_list_number_of_item: raw[4],
         offset_list_index: raw[5],
         nb_of_priorities: raw[6],
-        mpu_enabled: raw[7],
+        layout_type: raw[7],
         max_task_name_len: raw[8],
         offset_task_name: raw[9],
         offset_task_num: raw[10],
