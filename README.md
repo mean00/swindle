@@ -1,3 +1,9 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/web/swindle_logo3.png">
+  <img alt="Swindle Debug Probe" src="assets/web/swindle_logo3.png" width="100%">
+</picture>
+
+
 <h1 align="center">🔧 SWINDLE — ARM / RISC-V Debug Probe</h1>
 
 <p align="center">
