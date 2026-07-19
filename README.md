@@ -166,24 +166,16 @@ Full documentation is available on the **[Swindle Wiki](https://github.com/mean0
 ## 🏗️ Project Architecture
 
 ```
-swindle/
-├── rs/                        # Rust GDB interface (rs_swindle / rsbmp)
-│   ├── rs_swindle/            # Core GDB logic
-│   └── rs_swindle_wrapper/    # C → Rust bridge
-├── swindle/                   # C++ Black Magic engine + wrapper
-├── esprit/                    # C++ SDK / HAL framework
-├── include/                   # Shared headers
-├── mcus/                      # MCU-specific code
-│   ├── arm_rp2040/            # RP2040 support
-│   ├── arm_rp2350/            # RP2350 support
-│   ├── arm_gd32fx/            # GD32 ARM support
-│   ├── riscv_gd32fx/          # GD32 RISC-V support
-│   ├── riscv_ch32v3x/         # CH32V RISC-V support
-│   └── common_bluepill/       # Shared ARM peripheral drivers
-├── cmake/                     # CMake helpers and toolchains
-├── libraries/                 # Extra libraries (RTT, WS2812, etc.)
-├── demoProject/               # Example projects
-└── assets/                    # Images and media
+swindle/                    # Debug probe wrapper
+├── rs/                     # Rust GDB interface (rs_swindle / rsbmp)
+│   ├── rs_swindle/         # Core GDB logic
+│   └── rs_swindle_wrapper/ # C → Rust bridge
+└── swindle/                # C++ Black Magic Probe engine + wrapper
+
+esprit/                     # C++ / Rust SDK framework (HAL + RTOS + MCU drivers)
+
+assets/                     # Images and media
+cmake/                      # Project-level CMake utilities
 ```
 
 ---
