@@ -9,16 +9,6 @@
   <b>Turn any cheap dev board into a full-featured debug probe.</b>
 </p>
 
-<p align="center">
-  <a href="https://github.com/mean00/swindle/wiki">
-    <img alt="Wiki" src="https://img.shields.io/badge/docs-wiki-blue?style=flat-square&logo=github">
-  </a>
-  <img alt="License" src="https://img.shields.io/badge/license-GPL--3.0-green?style=flat-square">
-  <img alt="Platforms" src="https://img.shields.io/badge/targets-RP2040%20|%20RP2350%20|%20GD32%20|%20CH32V-orange?style=flat-square">
-  <img alt="GDB" src="https://img.shields.io/badge/interface-GDB%20|%20Rust-blueviolet?style=flat-square">
-  <img alt="SWD" src="https://img.shields.io/badge/protocol-SWD%20|%20RVSWD-critical?style=flat-square">
-</p>
-
 <blockquote>
   <strong>TL;DR</strong> — Got an RP2040 board lying around? You've got a debug probe.<br>
   Swindle is a <strong>multi-platform debug probe</strong> for embedded devices, supporting <strong>SWD</strong> (ARM Cortex-M) and <strong>RVSWD</strong> (RISC-V CH32V2xx/CH32V3xx). It's powered by the incredible <a href="https://black-magic.org/index.html">Black Magic Probe</a> engine with a custom Rust-based GDB interface.
