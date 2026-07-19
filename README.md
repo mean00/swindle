@@ -1,8 +1,3 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/web/swindle_demo2.png">
-  <img alt="Swindle Debug Probe in action" src="assets/web/swindle_demo2.png" width="100%">
-</picture>
-
 <h1 align="center">🔧 SWINDLE — ARM / RISC-V Debug Probe</h1>
 
 <p align="center">
@@ -13,14 +8,6 @@
   <strong>TL;DR</strong> — Got an RP2040 board lying around? You've got a debug probe.<br>
   Swindle is a <strong>multi-platform debug probe</strong> for embedded devices, supporting <strong>SWD</strong> (ARM Cortex-M) and <strong>RVSWD</strong> (RISC-V CH32V2xx/CH32V3xx). It's powered by the incredible <a href="https://black-magic.org/index.html">Black Magic Probe</a> engine with a custom Rust-based GDB interface.
 </blockquote>
-
----
-
-<p align="center">
-  <img src="assets/web/swindle_pic.png" alt="A tiny RP2040-Zero debugging a full-sized RP2040" width="600">
-  <br>
-  <em>A tiny RP2040-Zero debugging a full-sized RP2040</em>
-</p>
 
 ---
 
@@ -175,6 +162,11 @@ cmake/                      # Project-level CMake utilities
 | Small probe, big target | RP2040 + CH32V |
 |:------------------------:|:--------------:|
 | <img src="assets/web/swindle_pic.png" alt="RP2040-Zero debugging RP2040" width="300"> | <img src="assets/web/rp2040_ch32.png" alt="RP2040 debugging CH32V" width="300"> |
+|:------------------------:|:--------------:|
+
+---
+
+
 
 ---
 
