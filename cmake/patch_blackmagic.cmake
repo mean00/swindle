@@ -63,7 +63,7 @@ apply_patch_if_needed5(patched55 55blackmagic_variable_erase_size.patch
                        "use variable size erase block to speed up erasee on ch32vxx")
 #
 apply_patch_if_needed5(patched56 56blackmagic_fix_rp2320_flash_cache.patch "Fix aligned check for cache flush (RP2350) ")
-
+apply_patch_if_needed5(patched57 57blackmagic_fix_rp2040_core1_flash.patch "When flashing through flashstub, disable interrupt, that helps the RP2040 ")
 # merged with another patch apply_patch_if_needed5(patched54 54blackmagic_dont_doubly_define_rvswd.patch
 #"avoid doubly definit have_rvswd in hosted mode")
 apply_patch_if_needed5(patched82 82blackmagic_export_arch.patch "Export the cpu arch (ARM/RISCV) ")
