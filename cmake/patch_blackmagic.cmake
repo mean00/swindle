@@ -61,6 +61,8 @@ apply_patch_if_needed5(patched53 53blackmagic_abort_on_flash_error.patch
 
 apply_patch_if_needed5(patched55 55blackmagic_variable_erase_size.patch
                        "use variable size erase block to speed up erasee on ch32vxx")
+#
+apply_patch_if_needed5(patched56 56blackmagic_fix_rp2320_flash_cache.patch "Fix aligned check for cache flush (RP2350) ")
 
 # merged with another patch apply_patch_if_needed5(patched54 54blackmagic_dont_doubly_define_rvswd.patch
 #"avoid doubly definit have_rvswd in hosted mode")

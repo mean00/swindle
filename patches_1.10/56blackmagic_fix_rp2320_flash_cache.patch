@@ -1,0 +1,11 @@
+--- a/src/target/rp2350.c
++++ b/src/target/rp2350.c
+@@ -441,7 +441,7 @@
+ 			RP2350_QMI_DIRECT_TX_MODE_SINGLE | RP2350_QMI_DIRECT_TX_DATA_16BIT | RP2350_QMI_DIRECT_TX_NOPUSH_RX |
+ 				read_le2(data, i));
+ 		/* Every 8 bytes when page programming, invalidate the associated cache line */
+-		if (command == SPI_FLASH_CMD_PAGE_PROGRAM && (i & 7U) == 7U)
++		if (command == SPI_FLASH_CMD_PAGE_PROGRAM && (i & 7U) == 6U)
+ 			target_mem32_write32(
+ 				target, RP2350_XIP_CACHE_BASE + RP2350_XIP_CACHE_INVALIDATE_BY_ADDRESS + address + (i & ~7U), 0U);
+ 	}
