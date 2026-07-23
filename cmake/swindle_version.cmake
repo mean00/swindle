@@ -1,6 +1,6 @@
 
 set(LNBMP_VERSION_MAJOR "0")
-set(LNBMP_VERSION_MINOR "600")
+set(LNBMP_VERSION_MINOR "700")
 
 macro(GEN_VERSION_FILE)
   # Gen version for swindle ____________________________
