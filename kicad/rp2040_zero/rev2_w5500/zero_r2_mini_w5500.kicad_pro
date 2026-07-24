@@ -40,8 +40,8 @@
         "other_text_upright": false,
         "pads": {
           "drill": 0.0,
-          "height": 0.65,
-          "width": 1.22
+          "height": 0.95,
+          "width": 0.8
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
@@ -78,47 +78,7 @@
       ],
       "drc_exclusions": [
         [
-          "hole_clearance|149035025|88074975|bd705e1b-b25b-4823-8d21-3b2e6acf12d5|8c59092e-370b-415c-83b2-cbe248348c67",
-          ""
-        ],
-        [
-          "hole_clearance|149035025|88074975|dc8f8e4e-bdd2-48a8-9f87-eca8bb34d1b6|8c59092e-370b-415c-83b2-cbe248348c67",
-          ""
-        ],
-        [
-          "hole_clearance|149035025|88274975|3f98cc30-d47f-4c49-b91d-52a1e359e3c0|8c59092e-370b-415c-83b2-cbe248348c67",
-          ""
-        ],
-        [
-          "hole_clearance|149035025|88274975|550f97fe-3313-4894-9ac5-ab81b0822862|8c59092e-370b-415c-83b2-cbe248348c67",
-          ""
-        ],
-        [
-          "hole_clearance|149035025|93674975|24f44262-6b41-4d23-8e14-d48c12ed00a6|438367fa-e1e0-44a8-9fa0-87743dbefcfd",
-          ""
-        ],
-        [
-          "hole_clearance|149035025|93674975|fb7abb8f-d221-42b0-aa3d-0251d7ddff45|438367fa-e1e0-44a8-9fa0-87743dbefcfd",
-          ""
-        ],
-        [
-          "hole_clearance|149035025|93874975|456ed133-2275-4bff-bcc0-d42ace39e616|438367fa-e1e0-44a8-9fa0-87743dbefcfd",
-          ""
-        ],
-        [
-          "hole_clearance|149035025|93874975|e88db1a9-fe77-48b4-947f-5f1d13add10d|438367fa-e1e0-44a8-9fa0-87743dbefcfd",
-          ""
-        ],
-        [
-          "net_conflict|150965025|90974975|f426d6dc-f145-4d05-8613-48e5c2a32969|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "starved_thermal|148455025|94174975|e2aeda1a-289f-44e9-9c5b-c81df07cbc23|456ed133-2275-4bff-bcc0-d42ace39e616|F.Cu",
-          ""
-        ],
-        [
-          "starved_thermal|148455025|94174975|e2aeda1a-289f-44e9-9c5b-c81df07cbc23|e88db1a9-fe77-48b4-947f-5f1d13add10d|F.Cu",
+          "silk_edge_clearance|150023025|77958579|744f32e9-386e-40c1-93c9-4e31a9a6c6d2|36cfbc4b-f42d-439b-8181-1e7d6efc5ed3",
           ""
         ]
       ],
@@ -153,7 +113,7 @@
         "items_not_allowed": "error",
         "length_out_of_range": "error",
         "lib_footprint_issues": "warning",
-        "lib_footprint_mismatch": "ignore",
+        "lib_footprint_mismatch": "warning",
         "malformed_courtyard": "error",
         "microvia_drill_out_of_range": "error",
         "mirrored_text_on_front_layer": "warning",
@@ -166,13 +126,13 @@
         "padstack": "warning",
         "pth_inside_courtyard": "ignore",
         "shorting_items": "error",
-        "silk_edge_clearance": "ignore",
+        "silk_edge_clearance": "warning",
         "silk_over_copper": "warning",
         "silk_overlap": "warning",
         "skew_out_of_range": "error",
         "solder_mask_bridge": "error",
         "starved_thermal": "error",
-        "text_height": "ignore",
+        "text_height": "warning",
         "text_on_edge_cuts": "error",
         "text_thickness": "warning",
         "through_hole_pad_without_hole": "error",
@@ -196,17 +156,17 @@
         "min_connection": 0.0,
         "min_copper_edge_clearance": 0.0,
         "min_groove_width": 0.0,
-        "min_hole_clearance": 0.25,
-        "min_hole_to_hole": 0.25,
+        "min_hole_clearance": 0.254,
+        "min_hole_to_hole": 0.254,
         "min_microvia_diameter": 0.2,
         "min_microvia_drill": 0.1,
         "min_resolved_spokes": 2,
         "min_silk_clearance": 0.0,
         "min_text_height": 0.8,
-        "min_text_thickness": 0.08,
-        "min_through_hole_diameter": 0.3,
-        "min_track_width": 0.0,
-        "min_via_annular_width": 0.1,
+        "min_text_thickness": 0.15,
+        "min_through_hole_diameter": 0.2,
+        "min_track_width": 0.1016,
+        "min_via_annular_width": 0.1016,
         "min_via_diameter": 0.5,
         "solder_mask_clearance": 0.0,
         "solder_mask_min_width": 0.0,
@@ -301,7 +261,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": "H"
+      "sch_revision": "0"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -552,14 +512,14 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "swindle_ch32_revJ.kicad_pro",
+    "filename": "zero_r2_mini_w5500.kicad_pro",
     "version": 3
   },
   "net_settings": {
     "classes": [
       {
         "bus_width": 12,
-        "clearance": 0.2,
+        "clearance": 0.15,
         "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.2,
@@ -710,30 +670,22 @@
     "subpart_id_separator": 0,
     "top_level_sheets": [
       {
-        "filename": "swindle_ch32_revJ.kicad_sch",
-        "name": "swindle_ch32_revJ",
+        "filename": "zero_r2_mini_w5500.kicad_sch",
+        "name": "zero_r2_mini_w5500",
         "uuid": "fbe443d6-6d74-4abc-9dee-16e0160553bc"
       }
     ],
-    "used_designators": "#PWR37",
+    "used_designators": "R12-59,P2-4,L1-3,C15-67,Y2-4,#PWR6-19,#PWR21-75,J1,U2-5",
     "variants": []
   },
   "sheets": [
     [
       "fbe443d6-6d74-4abc-9dee-16e0160553bc",
-      "swindle_ch32_revJ"
+      "zero_r2_mini_w5500"
     ],
     [
-      "ed84c662-1e11-4141-9b01-0918066453ad",
-      "Connectors"
-    ],
-    [
-      "987b18c5-39d2-44f2-a01c-25fb187a732e",
-      "voltage_translators"
-    ],
-    [
-      "9ae6e029-7457-493b-8bae-ed725714055d",
-      "usb"
+      "076b98fa-943b-4240-b1fc-02fcdab82f61",
+      "w5500b"
     ]
   ],
   "text_variables": {},

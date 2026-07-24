@@ -32,7 +32,6 @@
     },
     "visible_items": [
       "vias",
-      "footprint_text",
       "footprint_anchors",
       "ratsnest",
       "grid",
@@ -60,7 +59,7 @@
     "ssh_key": ""
   },
   "meta": {
-    "filename": "zero_r2.kicad_prl",
+    "filename": "zero_r2_mini_w5500.kicad_prl",
     "version": 5
   },
   "net_inspector_panel": {

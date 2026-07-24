@@ -1,0 +1,2 @@
+the w5500 schematic is taken from here : https://github.com/Wiznet/Hardware-Files-of-WIZnet/blob/master/02_iEthernet/W5500/W5500-EVB-Pico_V100/Schematic/W5500-EVB-Pico_V100.zip
+(c) Wiznet

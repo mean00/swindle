@@ -3321,6 +3321,12 @@
 		(uuid "c15561fa-cd74-434d-9ef1-6e28d91a4138")
 	)
 	(junction
+		(at 48.26 72.39)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "c3629362-b066-4de5-a79b-59ad1c44c21e")
+	)
+	(junction
 		(at 66.04 62.23)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3464,6 +3470,16 @@
 	)
 	(wire
 		(pts
+			(xy 115.57 115.57) (xy 115.57 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3b388bb3-29ae-43c8-98d7-b82877129812")
+	)
+	(wire
+		(pts
 			(xy 86.36 67.31) (xy 87.63 67.31)
 		)
 		(stroke
@@ -3511,6 +3527,16 @@
 			(type default)
 		)
 		(uuid "41711d73-16dd-4784-96d0-f1ff4e6a14bf")
+	)
+	(wire
+		(pts
+			(xy 39.37 72.39) (xy 48.26 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "41a8a071-f349-442f-a959-bcbd5d6dcc0c")
 	)
 	(wire
 		(pts
@@ -3844,6 +3870,16 @@
 	)
 	(wire
 		(pts
+			(xy 86.36 115.57) (xy 115.57 115.57)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8f085147-074f-4a79-b917-e6dcdeff7c0b")
+	)
+	(wire
+		(pts
 			(xy 25.4 97.79) (xy 25.4 100.33)
 		)
 		(stroke
@@ -3911,6 +3947,16 @@
 			(type default)
 		)
 		(uuid "a003e193-ebec-4536-a379-905df83924d5")
+	)
+	(wire
+		(pts
+			(xy 115.57 109.22) (xy 118.11 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a00c165b-3e26-4082-96a2-642f62bf2aab")
 	)
 	(wire
 		(pts
@@ -4011,6 +4057,16 @@
 			(type default)
 		)
 		(uuid "b3a5c6aa-256d-48a1-9f6f-c675d11a9642")
+	)
+	(wire
+		(pts
+			(xy 30.48 72.39) (xy 36.83 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bad12ef7-a144-45c2-9db4-6543275eb37d")
 	)
 	(wire
 		(pts
@@ -5604,6 +5660,85 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:Conn_01x02_Pin")
+		(at 36.83 77.47 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "1fb64bff-560e-4ce5-98fe-9cb945fd6fe3")
+		(property "Reference" "J3_BL1"
+			(at 36.576 70.358 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "con2"
+			(at 35.814 69.088 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Connector_PinHeader_1.27mm:PinHeader_1x02_P1.27mm_Vertical"
+			(at 36.83 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 36.83 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x02, script generated"
+			(at 36.83 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "340c1f1d-bf53-4dc0-9daf-38661d444bad")
+		)
+		(pin "2"
+			(uuid "7f9a96bf-2326-40b2-91a7-3de3c4fe68f1")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "J3_BL1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "LED:WS2812B")
 		(at 173.99 142.24 0)
 		(unit 1)
@@ -6922,6 +7057,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 118.11 109.22 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "84d8cc5d-1b88-4980-b7b4-562b1aa99105")
+		(property "Reference" "#PWR026"
+			(at 118.11 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 118.11 114.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 118.11 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 118.11 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 118.11 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "143113ab-d05f-43df-adf4-cbbf3132e62e")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "#PWR026")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C_Small")
 		(at 99.06 26.67 0)
 		(unit 1)
@@ -6997,6 +7210,84 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "C6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3.3V")
+		(at 30.48 72.39 0)
+		(mirror y)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "8bc3c815-8117-4e27-8539-9088f87f6e76")
+		(property "Reference" "#PWR025"
+			(at 30.48 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 30.48 67.31 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 30.48 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 30.48 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 30.48 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "4126b4f3-3317-4f1a-8a7d-9287602e02fd")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "#PWR025")
 					(unit 1)
 				)
 			)

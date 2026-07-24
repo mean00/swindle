@@ -791,16 +791,6 @@
 	)
 	(wire
 		(pts
-			(xy 107.95 87.63) (xy 114.3 87.63)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "003007cb-43dd-47c6-a63b-7b476a9ab686")
-	)
-	(wire
-		(pts
 			(xy 118.11 63.5) (xy 119.38 63.5)
 		)
 		(stroke
@@ -831,16 +821,6 @@
 	)
 	(wire
 		(pts
-			(xy 107.95 90.17) (xy 114.3 90.17)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "225f3213-db46-46a0-804b-fb842bcc2c08")
-	)
-	(wire
-		(pts
 			(xy 118.11 66.04) (xy 119.38 66.04)
 		)
 		(stroke
@@ -858,16 +838,6 @@
 			(type default)
 		)
 		(uuid "45acc8d5-e19c-4d42-ae57-ccbfc40be71c")
-	)
-	(wire
-		(pts
-			(xy 107.95 85.09) (xy 114.3 85.09)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "4962b644-a4f0-4ed1-9b9e-b55e2c278f2b")
 	)
 	(wire
 		(pts
@@ -1349,54 +1319,6 @@
 			)
 		)
 	)
-	(global_label "PB3"
-		(shape input)
-		(at 107.95 85.09 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "5496ef93-0b23-406a-bbe9-88cab41e5ec9")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 101.2153 85.09 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-	)
-	(global_label "PB5"
-		(shape input)
-		(at 107.95 90.17 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "7192c917-7f94-4c11-b0ce-850accde7388")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 101.2153 90.17 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-	)
 	(global_label "OUT_SWDCLK"
 		(shape input)
 		(at 49.53 34.29 180)
@@ -1530,30 +1452,6 @@
 		(uuid "d5e82b93-87b8-4cc5-9035-3975931e6d84")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 79.6253 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-	)
-	(global_label "PB4"
-		(shape input)
-		(at 107.95 87.63 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "d82ef6ee-ab09-4d17-9972-7f97dfe20bc6")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 101.2153 87.63 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2028,89 +1926,6 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/ed84c662-1e11-4141-9b01-0918066453ad"
 					(reference "J3")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector:Conn_01x03_Pin")
-		(at 109.22 87.63 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "779cf380-4d46-42c2-a26f-4dbc10c2b040")
-		(property "Reference" "J9"
-			(at 109.855 80.01 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "Conn_01x03_Pin"
-			(at 109.855 82.55 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Connector_PinSocket_1.27mm:PinSocket_1x03_P1.27mm_Vertical"
-			(at 109.22 87.63 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 109.22 87.63 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
-			(at 109.22 87.63 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "3"
-			(uuid "32bda822-841b-480c-8f7b-9a98181f487a")
-		)
-		(pin "2"
-			(uuid "e0e7d14b-ea38-4f02-b810-fec236be6534")
-		)
-		(pin "1"
-			(uuid "bb396d79-7c89-4b88-81aa-86334f98e4ed")
-		)
-		(instances
-			(project "swindle_ch32_revJ_mini"
-				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc/ed84c662-1e11-4141-9b01-0918066453ad"
-					(reference "J9")
 					(unit 1)
 				)
 			)
