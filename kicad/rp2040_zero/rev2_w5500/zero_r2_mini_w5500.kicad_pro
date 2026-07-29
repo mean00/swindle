@@ -39,9 +39,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.0,
-          "height": 0.95,
-          "width": 0.8
+          "drill": 1.63,
+          "height": 2.5,
+          "width": 2.5
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
@@ -78,7 +78,11 @@
       ],
       "drc_exclusions": [
         [
-          "silk_edge_clearance|150023025|77958579|744f32e9-386e-40c1-93c9-4e31a9a6c6d2|36cfbc4b-f42d-439b-8181-1e7d6efc5ed3",
+          "lib_footprint_issues|138429525|84104975|eb621cf1-e4f5-41b9-bd2e-121c09ea61de|00000000-0000-0000-0000-000000000000",
+          ""
+        ],
+        [
+          "silk_edge_clearance|150023025|78241460|8a0d9b8b-8019-479b-b8d3-d98f0b607d22|36cfbc4b-f42d-439b-8181-1e7d6efc5ed3",
           ""
         ]
       ],
@@ -675,7 +679,7 @@
         "uuid": "fbe443d6-6d74-4abc-9dee-16e0160553bc"
       }
     ],
-    "used_designators": "R12-59,P2-4,L1-3,C15-67,Y2-4,#PWR6-19,#PWR21-75,J1,U2-5",
+    "used_designators": "R12-59,P2-4,L1-3,C15-67,Y2-4,#PWR6-19,#PWR21-76,J1,U2-5",
     "variants": []
   },
   "sheets": [

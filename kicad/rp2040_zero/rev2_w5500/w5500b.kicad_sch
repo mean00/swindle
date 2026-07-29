@@ -2836,10 +2836,10 @@
 		(uuid "2b35a77b-6883-48aa-add3-79e127933984")
 	)
 	(junction
-		(at 113.03 101.6)
+		(at 114.3 101.6)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "2b99cfef-2b36-4f32-a4a4-189a0dd407e7")
+		(uuid "2c7a04ee-3b18-4b75-90f2-bae8d6ea5e4d")
 	)
 	(junction
 		(at 264.16 99.06)
@@ -3361,7 +3361,7 @@
 	)
 	(wire
 		(pts
-			(xy 110.49 116.84) (xy 113.03 116.84)
+			(xy 110.49 116.84) (xy 114.3 116.84)
 		)
 		(stroke
 			(width 0)
@@ -3408,6 +3408,16 @@
 			(type default)
 		)
 		(uuid "2595bdd8-3747-4566-8f50-c9c454cabaa5")
+	)
+	(wire
+		(pts
+			(xy 190.5 73.66) (xy 194.31 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "26139df3-5b77-4674-aa2c-fe89cfb94d4b")
 	)
 	(wire
 		(pts
@@ -3821,16 +3831,6 @@
 	)
 	(wire
 		(pts
-			(xy 194.31 73.66) (xy 191.77 73.66)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "60488d34-f999-49fc-a47e-6e478b88dbb7")
-	)
-	(wire
-		(pts
 			(xy 85.09 99.06) (xy 87.63 99.06)
 		)
 		(stroke
@@ -4191,7 +4191,7 @@
 	)
 	(wire
 		(pts
-			(xy 113.03 116.84) (xy 113.03 111.76)
+			(xy 114.3 116.84) (xy 114.3 111.76)
 		)
 		(stroke
 			(width 0)
@@ -4341,7 +4341,7 @@
 	)
 	(wire
 		(pts
-			(xy 118.11 101.6) (xy 113.03 101.6)
+			(xy 118.11 101.6) (xy 114.3 101.6)
 		)
 		(stroke
 			(width 0)
@@ -4481,7 +4481,7 @@
 	)
 	(wire
 		(pts
-			(xy 113.03 101.6) (xy 113.03 104.14)
+			(xy 114.3 101.6) (xy 114.3 104.14)
 		)
 		(stroke
 			(width 0)
@@ -4541,7 +4541,7 @@
 	)
 	(wire
 		(pts
-			(xy 113.03 101.6) (xy 105.41 101.6)
+			(xy 105.41 101.6) (xy 114.3 101.6)
 		)
 		(stroke
 			(width 0)
@@ -25362,7 +25362,7 @@
 			)
 		)
 	)
-	(global_label "RSTn"
+	(global_label "W5RSTn"
 		(shape input)
 		(at 181.61 66.04 0)
 		(fields_autoplaced yes)
@@ -25374,7 +25374,7 @@
 		)
 		(uuid "a97ac9d7-28b6-4a3e-a5d2-ddfbc8334363")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 189.1913 66.04 0)
+			(at 191.8522 66.04 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -25434,7 +25434,7 @@
 			)
 		)
 	)
-	(global_label "INTn"
+	(global_label "W5INTn"
 		(shape output)
 		(at 214.63 88.9 0)
 		(fields_autoplaced yes)
@@ -25446,7 +25446,7 @@
 		)
 		(uuid "dc745c33-ccec-4e43-a04d-10b58d7d2a5d")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 221.6671 88.9 0)
+			(at 224.328 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -25812,7 +25812,7 @@
 				(justify right bottom)
 			)
 		)
-		(property "Footprint" "IND-0603"
+		(property "Footprint" "Inductor_SMD:L_0603_1608Metric"
 			(at 153.67 25.4 0)
 			(hide yes)
 			(show_name no)
@@ -26034,7 +26034,7 @@
 		(dnp no)
 		(uuid "1402957b-fa18-4fb0-9fd6-5e5fee403d0e")
 		(property "Reference" "R49"
-			(at 110.49 104.14 90)
+			(at 111.252 104.14 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -26045,7 +26045,7 @@
 			)
 		)
 		(property "Value" "49.9R"
-			(at 110.49 109.22 90)
+			(at 111.252 109.22 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -27051,7 +27051,7 @@
 				)
 			)
 		)
-		(property "Value" "CHGND"
+		(property "Value" "SH"
 			(at 54.61 135.89 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -30220,7 +30220,7 @@
 	)
 	(symbol
 		(lib_id "Scott_lib:RES-0402")
-		(at 113.03 109.22 180)
+		(at 114.3 109.22 180)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -30230,7 +30230,7 @@
 		(dnp no)
 		(uuid "d2d297d1-7860-4696-a5c5-0283a3b64dec")
 		(property "Reference" "R50"
-			(at 113.03 104.14 90)
+			(at 115.57 104.394 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -30241,7 +30241,7 @@
 			)
 		)
 		(property "Value" "49.9R"
-			(at 113.03 109.22 90)
+			(at 115.57 109.22 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -30252,7 +30252,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 113.03 109.22 0)
+			(at 114.3 109.22 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -30263,7 +30263,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 113.03 109.22 0)
+			(at 114.3 109.22 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -30274,7 +30274,7 @@
 			)
 		)
 		(property "Description" "RES-0402"
-			(at 113.03 109.22 0)
+			(at 114.3 109.22 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -30404,6 +30404,7 @@
 		)
 		(property "Value" "25MHz"
 			(at 247.65 116.84 90)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -30413,7 +30414,7 @@
 				(justify right bottom)
 			)
 		)
-		(property "Footprint" "OSC-82J0626"
+		(property "Footprint" "Crystal:Crystal_SMD_TXC_7M-4Pin_3.2x2.5mm"
 			(at 248.92 111.76 0)
 			(hide yes)
 			(show_name no)
