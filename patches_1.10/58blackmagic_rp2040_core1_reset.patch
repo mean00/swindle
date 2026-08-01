@@ -1,0 +1,33 @@
+diff --git a/src/target/rp2040.c b/src/target/rp2040.c
+index a591670685b69deeca2d92ef3669dbf01c2d753f..92c1c1b211874e0a38acfeeb6395f5c8c9c924f6 100644
+--- a/src/target/rp2040.c
++++ b/src/target/rp2040.c
+@@ -155,6 +155,10 @@
+ #define RP_RESETS_RESET_IO_QSPI_BITS   0x00000040U
+ #define RP_RESETS_RESET_PADS_QSPI_BITS 0x00000200U
+ 
++#define RP_PSM_BASE_ADDR               0x40010000U
++#define RP_PSM_FRCE_OFF                (RP_PSM_BASE_ADDR + 0x04U)
++#define RP_PSM_FRCE_OFF_PROC1_BITS     (1U << 16U)
++
+ #define RP_BOOTROM_FUNC_TABLE_ADDR      0x00000014U
+ #define RP_BOOTROM_FUNC_TABLE_TAG(x, y) ((uint8_t)(x) | ((uint8_t)(y) << 8U))
+ 
+@@ -328,6 +332,8 @@
+ static bool rp_flash_prepare(target_s *const target)
+ {
+ 	DEBUG_TARGET("%s\n", __func__);
++	/* Hold core 1 in reset so it can't execute from flash (or anything else) while we reprogram it */
++	target_mem32_write32(target, RP_PSM_FRCE_OFF | RP_REG_ACCESS_WRITE_ATOMIC_BITSET, RP_PSM_FRCE_OFF_PROC1_BITS);
+ 	/* Suspend the cache, come out of XIP */
+ 	rp_flash_connect_internal(target);
+ 	rp_flash_exit_xip(target);
+@@ -345,6 +351,8 @@
+ 	/* Flush the cache and resume XIP */
+ 	rp_flash_flush_cache(target);
+ 	rp_flash_enter_xip(target);
++	/* Release core 1 from reset now that the flash is back in XIP mode */
++	target_mem32_write32(target, RP_PSM_FRCE_OFF | RP_REG_ACCESS_WRITE_ATOMIC_BITCLR, RP_PSM_FRCE_OFF_PROC1_BITS);
+ 	target_mem32_write32(target, CORTEXM_AIRCR, CORTEXM_AIRCR_VECTKEY | CORTEXM_AIRCR_SYSRESETREQ);
+ 	return true;
+ }
