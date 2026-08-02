@@ -6,12 +6,12 @@
 macro_rules! logger {
     ($x:expr) => {{
         use ::ufmt::uwrite;
-        uwrite!(&mut rust_esprit::logger::LoggerWriter, "{}", $x).unwrap()
+        uwrite!(&mut rust_esprit::LoggerWriter, "{}", $x).unwrap()
     }};
 
     ($x:expr, $($y:expr),+) => {{
         use ::ufmt::uwrite;
-        uwrite!(&mut rust_esprit::logger::LoggerWriter, $x, $($y),+).unwrap()
+        uwrite!(&mut rust_esprit::LoggerWriter, $x, $($y),+).unwrap()
     }};
 }
 

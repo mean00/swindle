@@ -6,10 +6,10 @@
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use rust_esprit::cdc::{CdcAcm, CdcEvent, CdcEventHandler};
-use rust_esprit::event::EventGroup;
-use rust_esprit::serial::{SerialEvent, SerialEventHandler, SerialRxTx};
-use rust_esprit::task::delay_ms;
+use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
+use rust_esprit::EventGroup;
+use rust_esprit::{Serial, SerialEvent, SerialEventHandler};
+use rust_esprit::delay_ms;
 
 // ---------------------------------------------------------------------------
 //  Constants
@@ -106,8 +106,8 @@ impl Pump {
 ///
 /// Lives in a `static mut` (pinned for life) so the handler cookies stay valid.
 pub struct UsbSerialBridge {
-    cdc: CdcAcm,
-    serial: SerialRxTx,
+    cdc: Cdc,
+    serial: Serial,
     event_group: EventGroup,
     connected: AtomicBool,
     usb2serial: Pump,
@@ -132,7 +132,7 @@ impl UsbSerialBridge {
         unsafe {
             BRIDGE.write(UsbSerialBridge {
                 cdc: core::mem::zeroed(),
-                serial: SerialRxTx::new(serial_instance, BRIDGE_BUFFER_SIZE as u32, true),
+                serial: Serial::new(serial_instance, BRIDGE_BUFFER_SIZE as u32, true),
                 event_group: EventGroup::new(),
                 connected: AtomicBool::new(false),
                 usb2serial: Pump::new(),
@@ -155,7 +155,7 @@ impl UsbSerialBridge {
 
         // Create CDC with event handler
         let cdc_handler = Box::new(BridgeCdcHandler { bridge: bridge_ptr });
-        bridge.cdc = CdcAcm::new(usb_instance, cdc_handler);
+        bridge.cdc = Cdc::new(usb_instance, cdc_handler);
 
         BRIDGE_INITIALIZED.store(true, Ordering::Relaxed);
     }

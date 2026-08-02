@@ -6,7 +6,7 @@
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use rust_esprit::cdc::{CdcAcm, CdcEvent, CdcEventHandler};
+use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
 
 // ---------------------------------------------------------------------------
 //  Logger CDC event handler
@@ -38,7 +38,7 @@ impl CdcEventHandler for LoggerCdcHandler {
 
 /// Simple logger that writes to a dedicated CDC instance.
 pub struct UsbLogger {
-    cdc: CdcAcm,
+    cdc: Cdc,
     connected: AtomicBool,
 }
 
@@ -65,7 +65,7 @@ impl UsbLogger {
         // Now use pointer to the static location (stable, never moves)
         let logger_ptr: *mut UsbLogger = unsafe { LOGGER_CDC.as_mut_ptr() };
         let handler = Box::new(LoggerCdcHandler { logger: logger_ptr });
-        unsafe { &mut *logger_ptr }.cdc = CdcAcm::new(instance, handler);
+        unsafe { &mut *logger_ptr }.cdc = Cdc::new(instance, handler);
 
         LOGGER_CDC_INITIALIZED.store(true, Ordering::Relaxed);
     }
@@ -85,7 +85,7 @@ impl UsbLogger {
 
     /// Returns the number of bytes available for writing.
     pub fn write_available() -> u32 {
-        // The CdcAcm doesn't expose writeAvailable directly,
+        // The Cdc doesn't expose writeAvailable directly,
         // but we can approximate by trying to write a small amount.
         // For now, return a reasonable default.
         64

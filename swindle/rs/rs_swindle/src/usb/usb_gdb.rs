@@ -1,16 +1,16 @@
 //! Rust-owned GDB CDC (USB virtual serial port) handler.
 //!
 //! This module replaces the C++ `BufferGdb` class in `bmp_usb.cpp`.
-//! It owns the `CdcAcm` instance for the GDB interface, handles
+//! It owns the `Cdc` instance for the GDB interface, handles
 //! session events, and provides read/write primitives for the
 //! GDB stub.
 
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use rust_esprit::cdc::{CdcAcm, CdcEvent, CdcEventHandler};
-use rust_esprit::event::EventGroup;
-use rust_esprit::task::delay_ms;
+use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
+use rust_esprit::EventGroup;
+use rust_esprit::delay_ms;
 
 use crate::bmp;
 use crate::rtt;
@@ -77,7 +77,7 @@ impl CdcEventHandler for GdbCdcHandler {
 /// All fields are plain owned values.  Lives in a `static mut` (pinned for
 /// life) so the `GdbCdcHandler` cookie's raw pointer stays valid.
 pub struct GdbCdc {
-    cdc: CdcAcm,
+    cdc: Cdc,
     event_group: EventGroup,
     in_session: AtomicBool,
     buffer: [u8; GDB_BUFFER_SIZE],
@@ -113,9 +113,9 @@ impl GdbCdc {
         let gdb_ptr: *mut GdbCdc = unsafe { GDB_CDC.as_mut_ptr() };
 
         // Build the handler (which points back to the GdbCdc) and create
-        // the real CdcAcm.
+        // the real Cdc.
         let handler = Box::new(GdbCdcHandler { gdb: gdb_ptr });
-        unsafe { &mut *gdb_ptr }.cdc = CdcAcm::new(instance, handler);
+        unsafe { &mut *gdb_ptr }.cdc = Cdc::new(instance, handler);
 
         GDB_CDC_INITIALIZED.store(true, Ordering::Relaxed);
     }
