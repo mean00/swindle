@@ -22,7 +22,15 @@ use crate::rtt;
 const GDB_CDC_DATA_AVAILABLE: u32 = 1 << 0;
 const GDB_SESSION_START: u32 = 1 << 1;
 const GDB_SESSION_END: u32 = 1 << 2;
+const GDB_CDC_WRITE_AVAILABLE: u32 = 1 << 3;
 const GDB_MAX_POLLING_PERIOD_MS: u32 = 20;
+/// Wait time for the `GDB_CDC_WRITE_AVAILABLE` event (fired once per DCD
+/// transfer completion) before retrying a full-FIFO write.
+const GDB_WRITE_EVENT_WAIT_MS: u32 = 50;
+/// Consecutive full `GDB_WRITE_EVENT_WAIT_MS` timeouts (no TX-complete at all,
+/// i.e. the host stopped polling the IN endpoint) before GdbCdc::write drops
+/// the remaining bytes instead of keeping the gdb task blocked forever.
+const GDB_WRITE_MAX_TIMED_OUT_WAITS: u32 = 40;
 const GDB_BUFFER_SIZE: usize = 1024;
 
 // ---------------------------------------------------------------------------
@@ -45,7 +53,9 @@ impl CdcEventHandler for GdbCdcHandler {
                 gdb.event_group.set_events(GDB_CDC_DATA_AVAILABLE);
             }
             CdcEvent::WriteAvailable => {
-                // Ignored for GDB CDC
+                // A DCD transfer completed (tud_cdc_tx_complete_cb): TX FIFO
+                // space was freed. Wake any task blocked in write().
+                gdb.event_group.set_events(GDB_CDC_WRITE_AVAILABLE);
             }
             CdcEvent::SessionStart => {
                 unsafe {
@@ -151,17 +161,40 @@ impl GdbCdc {
     }
 
     /// Write data to the CDC (blocking).
+    ///
+    /// Uses the non-blocking `write_no_block` and sleeps on
+    /// `GDB_CDC_WRITE_AVAILABLE` when the TX FIFO is full. That event is
+    /// signalled once per DCD transfer completion by `tud_cdc_tx_complete_cb`,
+    /// so the wake is immediate when a healthy host drains at full transfer
+    /// speed. A host that stops polling (dead session) produces consecutive
+    /// event timeouts; after `GDB_WRITE_MAX_TIMED_OUT_WAITS` of them the
+    /// remaining bytes are dropped rather than wedging the gdb task.
+    ///
+    /// The event group is owned by the gdb task (`GdbCdc::take_ownership` is
+    /// called once from `rngdb_gdb_task`, before this is ever invoked).
     pub fn write(data: &[u8]) {
         let this = Self::instance();
         let mut remaining = data;
+        let mut timed_out_waits: u32 = 0;
         while !remaining.is_empty() {
-            let n = this.cdc.write(remaining);
-            if n <= 0 {
-                // No space available, yield briefly
-                delay_ms(5);
+            let n = this.cdc.write_no_block(remaining);
+            if n > 0 {
+                remaining = &remaining[n as usize..];
                 continue;
             }
-            remaining = &remaining[n as usize..];
+            // FIFO is full: make sure a transfer is running, then sleep until
+            // the next TX-complete instead of polling.
+            this.cdc.flush();
+            let ev = this.event_group.wait_events(
+                GDB_CDC_WRITE_AVAILABLE,
+                GDB_WRITE_EVENT_WAIT_MS as i32,
+            );
+            if ev == 0 {
+                timed_out_waits += 1;
+                if timed_out_waits >= GDB_WRITE_MAX_TIMED_OUT_WAITS {
+                    break;
+                }
+            }
         }
     }
 

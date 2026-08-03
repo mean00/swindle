@@ -273,7 +273,11 @@ impl UsbSerialBridge {
                         return true;
                     }
                     let ptr = &this.serial2usb.buffer[this.serial2usb.dex..this.serial2usb.limit];
-                    let consumed = this.cdc.write(ptr);
+                    // Non-blocking on purpose: when the TX FIFO is full this
+                    // returns 0 immediately and the main loop sleeps on
+                    // USB_EVENT_WRITE instead of blocking up to the C++ write
+                    // timeout.
+                    let consumed = this.cdc.write_no_block(ptr);
                     if consumed <= 0 {
                         return false; // wait for write available
                     }

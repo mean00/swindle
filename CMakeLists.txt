@@ -84,8 +84,8 @@ if(SWINDLE_USE_USB)
       CACHE INTERNAL "")
 
   set(LN_USB_BUFFER_SIZE
-      256
-      CACHE INTERNAL "") # increase usb cdc buffer size
+      1024
+      CACHE INTERNAL "") # increase usb cdc buffer size (RX/TX FIFO per CDC; pairs with CFG_TUD_CDC_EP_BUFSIZE)
 else()
   set(LN_ENABLE_USBD
       FALSE
