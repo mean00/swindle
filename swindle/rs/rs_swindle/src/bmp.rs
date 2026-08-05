@@ -145,6 +145,10 @@ pub fn bmp_attached() -> bool {
 /// `target` is the zero-based index from the SWD scan results. Returns `true`
 /// if attachment succeeded.
 pub fn bmp_attach(target: u32) -> bool {
+    // A different target may now own this address space: a cached line filled
+    // while a previous target was attached must never be served on the next
+    // attach (the line's RAM/flash map region is target-specific).
+    crate::mem_cache::invalidate();
     unsafe { rn_bmp_cmd_c::bmp_attach_c(target) }
 }
 /// Write a single target register.
@@ -221,6 +225,8 @@ pub fn bmp_get_target_name() -> &'static str {
 /// Writes `data` to the target's memory space at `address`. Unlike flash
 /// writes, this does not require erase or complete operations.
 pub fn bmp_mem_write(address: u32, data: &[u8]) -> bool {
+    // Target memory is about to change: the read-ahead line cache is stale.
+    crate::mem_cache::invalidate();
     unsafe {
         let ptr: *const u8 = data.as_ptr();
         rn_bmp_cmd_c::bmp_mem_write_c(address, data.len() as u32, ptr)
@@ -232,6 +238,8 @@ pub fn bmp_mem_write(address: u32, data: &[u8]) -> bool {
 /// Convenience wrapper around `bmp_mem_write` that writes an array of `u32`
 /// values. The data is written as raw bytes (4 bytes per word).
 pub fn bmp_write_mem32(address: u32, data: &[u32]) -> bool {
+    // Target memory is about to change: the read-ahead line cache is stale.
+    crate::mem_cache::invalidate();
     unsafe {
         // mem_read_c returns flase if ok (WTF)
         rn_bmp_cmd_c::bmp_mem_write_c(address, (data.len() as u32) * 4, data.as_ptr() as *const u8)
@@ -300,6 +308,28 @@ pub fn bmp_read_mem32(address: u32, data: &mut [u32]) -> bool {
             data.as_mut_ptr() as *mut u8,
         )
     }
+}
+/// Enable/disable the per-call memory-access instrumentation log (Phase 0).
+///
+/// When enabled, every `bmp_mem_read_c`/`bmp_mem_write_c` call emits a
+/// `[MEMLOG]` line with (op, addr, len, SWD tx delta, RV tx delta, elapsed µs).
+pub fn bmp_set_mem_log(enable: bool) {
+    unsafe { rn_bmp_cmd_c::bmp_set_mem_log_c(enable) }
+}
+/// Snapshot the global SWD/RVSWD wire-transaction counters.
+///
+/// Returns `(swd_tx, rv_tx)` absolute counts since power-up / last reset.
+pub fn bmp_mem_counts() -> (u32, u32) {
+    unsafe {
+        let mut swd: u32 = 0;
+        let mut rv: u32 = 0;
+        rn_bmp_cmd_c::bmp_mem_counts_c(&mut swd, &mut rv);
+        (swd, rv)
+    }
+}
+/// Zero the global SWD/RVSWD wire-transaction counters (Phase 0).
+pub fn bmp_mem_counts_reset() {
+    unsafe { rn_bmp_cmd_c::bmp_mem_counts_reset_c() }
 }
 /// Reset the target MCU.
 ///

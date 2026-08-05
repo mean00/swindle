@@ -335,6 +335,15 @@ unsafe extern "C" {
     pub fn bmp_mem_write_c(address: cty::c_uint, len: cty::c_uint, data: *const u8) -> bool;
 }
 unsafe extern "C" {
+    pub fn bmp_set_mem_log_c(enable: bool);
+}
+unsafe extern "C" {
+    pub fn bmp_mem_counts_c(swd: *mut cty::c_uint, rv: *mut cty::c_uint);
+}
+unsafe extern "C" {
+    pub fn bmp_mem_counts_reset_c();
+}
+unsafe extern "C" {
     pub fn bmp_adiv5_full_dp_read_c(
         device_index: cty::c_uint,
         ap_selection: cty::c_uint,

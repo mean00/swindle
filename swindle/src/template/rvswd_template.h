@@ -70,6 +70,13 @@ extern "C" uint32_t bmp_get_wait_state_c();
 #define RV_DMI_SUCCESS 0U
 #define RV_DMI_FAILURE 2U
 
+// ---------------------------------------------------------------
+// Phase 0 instrumentation: global RVSWD (DMI) transaction counter.
+// Incremented once per complete DMI request/response exchange.
+// Definition lives in bmp_interface_c.cpp (single TU).
+// ---------------------------------------------------------------
+extern "C" volatile uint32_t ln_rv_tx_count;
+
 #define BMP_MIN_WS 1
 
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val);
@@ -103,6 +110,7 @@ extern "C" void rv_dm_start_c()
  */
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
 {
+    ln_rv_tx_count++;
     uint64_t tx = (adr << 1) + 1; // 1 = write
     int parity1 = lnOddParity(tx);
     tx = (tx << 2) | (parity1 ? 3 : 0);
@@ -138,6 +146,7 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
  */
 bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 {
+    ln_rv_tx_count++;
     uint64_t tx = (adr << 1) + 0; // 0 = read
     int parity1 = lnOddParity(tx);
     tx = (tx << 2) | (parity1 ? 3 : 0);

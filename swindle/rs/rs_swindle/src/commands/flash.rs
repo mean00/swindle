@@ -69,6 +69,8 @@ fn _vFlashErase(_command: &str, args: &[&str]) -> bool {
     let address = ascii_string_hex_to_u32(args[0]);
     let length = ascii_string_hex_to_u32(args[1]);
 
+    // Flash contents are about to change: drop cached read-ahead lines.
+    crate::mem_cache::invalidate();
     encoder::reply_bool(bmp_flash_erase(address, length));
     true
 }
@@ -112,6 +114,8 @@ fn _vFlashWrite(command: &[u8]) -> bool {
     bmplog!("adr:0x{:x} en:{}\n", adr, data.len());
     bmplog!("write : Adr 0x{:x} len {}\n", adr, len);
 
+    // Flash contents are about to change: drop cached read-ahead lines.
+    crate::mem_cache::invalidate();
     encoder::reply_bool(bmp_flash_write(adr, data));
     true
 }

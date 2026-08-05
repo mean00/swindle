@@ -118,7 +118,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 28] = [
+const mon_command_tree: [CommandTree; 29] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -199,6 +199,14 @@ const mon_command_tree: [CommandTree; 28] = [
         start_separator: b' ',
         next_separator: b' ',
     },
+    CommandTree {
+        command: "memlog",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_memlog),
+        start_separator: b' ',
+        next_separator: b' ',
+    }, //
     CommandTree {
         command: "fos",
         min_args: 0,
@@ -345,7 +353,7 @@ const mon_command_tree: [CommandTree; 28] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 25] = [
+const help_tree: [HelpTree; 26] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -381,6 +389,10 @@ const help_tree: [HelpTree; 25] = [
     HelpTree {
         command: "fq or frequency",
         help: "set/get SWD frequency.",
+    },
+    HelpTree {
+        command: "memlog on|off|reset",
+        help: "Phase 0 instrumentation: enable/disable per-call [MEMLOG] lines; reset SWD/RVSWD tx counters.",
     },
     HelpTree {
         command: "fos",
@@ -465,6 +477,8 @@ fn _redirect(_command: &str, args: &[&str]) -> bool {
  *
  */
 fn _target_reset(_command: &str, _args: &[&str]) -> bool {
+    // Target is being reset: cached memory lines are stale.
+    crate::mem_cache::invalidate();
     swindle_nrst_set_val(1);
     swindle_nrst_set_val(0);
     encoder::reply_ok();
@@ -673,6 +687,9 @@ pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
 /// Handle `mon swdp_scan` — probe SWD bus for ARM devices.
 pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
     bmplog!("swdp_scan:\n");
+    // The scan may detach from the current target and attach a different one:
+    // cached lines are target-specific and must be dropped.
+    crate::mem_cache::invalidate();
 
     if !bmp::swdp_scan() {
         bmpwarning!("swdp failed!\n");
@@ -689,6 +706,9 @@ pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
 /// Handle `mon rvswdp_scan` — probe for RISC-V devices.
 pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
     bmplog!("rvswdp_scan:\n");
+    // The scan may detach from the current target and attach a different one:
+    // cached lines are target-specific and must be dropped.
+    crate::mem_cache::invalidate();
 
     if !bmp::rvswdp_scan() {
         bmpwarning!("rvswdp_scan failed!\n");
@@ -757,6 +777,42 @@ pub fn _fq(_command: &str, args: &[&str]) -> bool {
     }
     let w: u32 = bmp::bmp_get_frequency();
     gdb_println!("frequency is now ", w);
+    encoder::reply_ok();
+    true
+}
+/**
+ * Phase 0 instrumentation: `mon memlog [on|off|reset]`.
+ * - no arg       -> print current counters and note the log state
+ * - `on` / `off` -> enable/disable per-call [MEMLOG] lines
+ * - `reset`      -> zero the SWD/RVSWD wire-transaction counters
+ */
+fn _memlog(_command: &str, args: &[&str]) -> bool {
+    let (swd, rv) = bmp::bmp_mem_counts();
+    if args.is_empty() {
+        gdb_println!(
+            "MEMLOG: swd_tx=",
+            swd,
+            " rv_tx=",
+            rv,
+            " (use 'mon memlog on' to enable per-call logging)"
+        );
+    } else {
+        match args[0] {
+            "on" => {
+                bmp::bmp_set_mem_log(true);
+                gdb_println!("MEMLOG on (swd_tx=", swd, " rv_tx=", rv, ")");
+            }
+            "off" => {
+                bmp::bmp_set_mem_log(false);
+                gdb_println!("MEMLOG off (swd_tx=", swd, " rv_tx=", rv, ")");
+            }
+            "reset" => {
+                bmp::bmp_mem_counts_reset();
+                gdb_println!("MEMLOG counters reset");
+            }
+            _ => gdb_println!("unknown memlog arg: ", args[0]),
+        }
+    }
     encoder::reply_ok();
     true
 }
@@ -917,6 +973,8 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
 #[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
+    // Asserting NRST may reset the target: drop cached lines to be safe.
+    crate::mem_cache::invalidate();
     unsafe { platform_nrst_set_val_internal(ret) };
     encoder::reply_ok();
     gdb_println!("reset pin is now ", ret);

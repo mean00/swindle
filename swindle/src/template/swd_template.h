@@ -6,8 +6,16 @@
  * @brief SWD bit-bang protocol template (included by platform files)
  */
 
+// ---------------------------------------------------------------
+// Phase 0 instrumentation: global SWD transaction counter.
+// Incremented once per complete SWD DP/AP wire transaction.
+// Definition lives in bmp_interface_c.cpp (single TU).
+// ---------------------------------------------------------------
+extern "C" volatile uint32_t ln_swd_tx_count;
+
 extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
+    ln_swd_tx_count++;
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     zwrite(8, request);
     DIR_INPUT();
@@ -24,6 +32,7 @@ extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr,
 //
 extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
+    ln_swd_tx_count++;
     const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
     zwrite(8, request);
     DIR_INPUT();
@@ -110,6 +119,7 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
     DIR_OUTPUT();
     if ((addr & ADIV5_APnDP) && dp->fault)
         return 0;
+    ln_swd_tx_count++;
 
     const uint8_t request = make_packet_request(rnw, addr);
     // read

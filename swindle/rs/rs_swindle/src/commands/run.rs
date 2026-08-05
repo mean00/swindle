@@ -44,6 +44,10 @@ fn set_running(r: bool) {
     // Invalidate FreeRTOS TCB cache whenever target state changes
     // (resume or halt from poll), so next thread query re-scans.
     freertos_invalidate_cache();
+    if r {
+        // Target is about to execute: the read-ahead memory cache is stale.
+        crate::mem_cache::invalidate();
+    }
     running.store(r, Ordering::Relaxed);
 }
 /// Halt the target and send a stop reply (`T02` = SIGINT).
@@ -115,12 +119,14 @@ extern "C" fn rngdbstub_poll() {
 //
 /// Handle `R` — restart (reset) the target.
 pub fn _R(_command: &str, _args: &[&str]) -> bool {
+    crate::mem_cache::invalidate();
     encoder::reply_bool(bmp::bmp_reset_target());
     true
 }
 /// Handle `k` — kill (reset the target, or just reply OK if reset disabled).
 pub fn _k(_command: &str, _args: &[&str]) -> bool {
     if get_enable_reset() != 0 {
+        crate::mem_cache::invalidate();
         encoder::reply_bool(bmp::bmp_reset_target());
     } else {
         gdb_print!("reset disabled by mon enablereset\n");

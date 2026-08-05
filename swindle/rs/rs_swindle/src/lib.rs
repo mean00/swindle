@@ -56,6 +56,7 @@ mod decoder;
 mod encoder;
 mod freertos;
 mod glue;
+mod mem_cache;
 mod packet_symbols;
 mod parsing_util;
 mod rn_bmp_cmd_c;

@@ -350,6 +350,9 @@ fn _D(_command: &str, _args: &[&str]) -> bool {
     if bmp::bmp_attached() {
         bmp::bmp_detach();
     }
+    // Next attach may target a different chip: never serve lines from a
+    // previous target's address space.
+    crate::mem_cache::invalidate();
     encoder::reply_ok();
     true
 }

@@ -33,8 +33,40 @@ extern "C"
     target_s *last_target;
     bool shutdown_bmda;
 
+    // ---------------------------------------------------------------
+    // Phase 0 instrumentation: global wire-transaction counters.
+    // Incremented by the swd_template.h / rvswd_template.h hot loops.
+    // ---------------------------------------------------------------
+    volatile uint32_t ln_swd_tx_count = 0;
+    volatile uint32_t ln_rv_tx_count = 0;
+    // When true, bmp_mem_read_c/bmp_mem_write_c log (len, tx delta, us).
+    bool bmp_mem_log_enabled = false;
+
 #define STUB_BUFFER_SIZE 256
     static uint8_t stub_buffer[STUB_BUFFER_SIZE];
+}
+/**
+ * @brief Enable/disable per-call memory access logging (Phase 0).
+ */
+extern "C" void bmp_set_mem_log_c(bool enable)
+{
+    bmp_mem_log_enabled = enable;
+}
+/**
+ * @brief Snapshot the global wire-transaction counters.
+ */
+extern "C" void bmp_mem_counts_c(uint32_t *swd, uint32_t *rv)
+{
+    *swd = ln_swd_tx_count;
+    *rv = ln_rv_tx_count;
+}
+/**
+ * @brief Zero the global wire-transaction counters.
+ */
+extern "C" void bmp_mem_counts_reset_c()
+{
+    ln_swd_tx_count = 0;
+    ln_rv_tx_count = 0;
 }
 extern "C" void *bmp_get_temporary_buffer(uint32_t asked)
 {
@@ -362,9 +394,17 @@ extern "C" bool bmp_mem_write_c(const unsigned int addr, const unsigned int leng
 {
     if (!bmp_attached_c())
         return false;
-    if (target_mem32_write(cur_target, addr, data, length))
-        return false;
-    return true;
+    if (!bmp_mem_log_enabled)
+        return target_mem32_write(cur_target, addr, data, length) ? false : true;
+    // Phase 0 instrumentation: per-call (len, tx delta, elapsed us) log.
+    const uint32_t t0 = lnGetUs();
+    const uint32_t swd0 = ln_swd_tx_count;
+    const uint32_t rv0 = ln_rv_tx_count;
+    const bool ok = !target_mem32_write(cur_target, addr, data, length);
+    const uint32_t elapsed = lnGetUs() - t0;
+    Logger("[MEMLOG] W addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length,
+           ln_swd_tx_count - swd0, ln_rv_tx_count - rv0, (long)elapsed);
+    return ok;
 }
 //
 extern "C" bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
@@ -404,9 +444,17 @@ extern "C" bool bmp_mem_read_c(const unsigned int addr, const unsigned int lengt
 {
     if (!bmp_attached_c())
         return false;
-    if (target_mem32_read(cur_target, data, addr, length))
-        return false;
-    return true;
+    if (!bmp_mem_log_enabled)
+        return target_mem32_read(cur_target, data, addr, length) ? false : true;
+    // Phase 0 instrumentation: per-call (len, tx delta, elapsed us) log.
+    const uint32_t t0 = lnGetUs();
+    const uint32_t swd0 = ln_swd_tx_count;
+    const uint32_t rv0 = ln_rv_tx_count;
+    const bool ok = !target_mem32_read(cur_target, data, addr, length);
+    const uint32_t elapsed = lnGetUs() - t0;
+    Logger("[MEMLOG] R addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length,
+           ln_swd_tx_count - swd0, ln_rv_tx_count - rv0, (long)elapsed);
+    return ok;
 }
 
 /*
