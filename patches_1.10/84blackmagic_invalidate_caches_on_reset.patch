@@ -1,0 +1,140 @@
+diff --git a/src/target/adiv5.h b/src/target/adiv5.h
+--- a/src/target/adiv5.h
++++ b/src/target/adiv5.h
+@@ -280,6 +280,11 @@
+ /* Write DP-SELECT for the given AP register bank, skipping the write when the
+  * last written value is unchanged (BMP 83). */
+ void adiv5_ap_select(adiv5_access_port_s *ap, uint16_t addr);
++/* Invalidate the DP-SELECT and AP-CSW write caches after an event that may have
++ * reset the debug domain (nRST, power cycle, ...): the real registers revert to
++ * their reset values while the caches still claim to be valid, so the next
++ * access rewrites SELECT and CSW unconditionally (BMP 83). */
++void adiv5_ap_invalidate_caches(adiv5_access_port_s *ap);
+ 
+ /* ADIv5 DP logical operation function for reading DPIDR safely */
+ uint32_t adiv5_dp_read_dpidr(adiv5_debug_port_s *dp);
+
+diff --git a/src/target/adiv5.c b/src/target/adiv5.c
+--- a/src/target/adiv5.c
++++ b/src/target/adiv5.c
+@@ -198,6 +198,9 @@
+ 	platform_timeout_set(&reset_timeout, cortexm_wait_timeout);
+ 	/* Deassert the physical reset line */
+ 	platform_nrst_set_val(false);
++	/* Releasing the core from reset may have reset the debug domain: drop the
++	 * SELECT/CSW write caches built up during probing (BMP 83). */
++	adiv5_ap_invalidate_caches(ap);
+ 	while (true) {
+ 		/* Read back DHCSR and check if the reset status bit is still set */
+ 		dhcsr = adi_mem_read32(ap, CORTEXM_DHCSR);
+@@ -369,6 +372,12 @@
+ 	 * We have to initialise the DP routines up front before any adiv5_* functions are called or
+ 	 * bad things happen under BMDA (particularly CMSIS-DAP)
+ 	 */
++	/* Drop the SELECT/CSW write caches: the DP may have been re-initialized
++	 * after a target reset or power cycle (or cloned from another DP in
++	 * multi-drop), which would have reverted DP-SELECT and the AP CSW
++	 * registers to their reset values (BMP 83). */
++	dp->select_cache = 0;
++	dp->select_cached = 0;
+ 	dp->ap_write = adiv5_ap_reg_write;
+ 	dp->ap_read = adiv5_ap_reg_read;
+ 	dp->mem_read = adiv5_mem_read_bytes;
+@@ -708,6 +717,16 @@
+ 	}
+ }
+ 
++/* Clear the DP-SELECT/AP-CSW write caches after an event that may have reset the
++ * debug domain (nRST, power cycle, ...). The shadow caches still claim to hold
++ * the last written values, but the real registers have reverted to their reset
++ * values, so the next access re-writes SELECT and CSW unconditionally (BMP 83). */
++void adiv5_ap_invalidate_caches(adiv5_access_port_s *const ap)
++{
++	ap->dp->select_cached = 0;
++	ap->csw_cached = 0;
++}
++
+ void adiv5_ap_reg_write(adiv5_access_port_s *ap, uint16_t addr, uint32_t value)
+ {
+ 	adiv5_ap_select(ap, addr);
+
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -892,6 +892,11 @@
+ 			dp->ensure_idle(dp);
+ 	}
+ 
++	/* The debug domain may have been reset along with the core (nRST is a hard
++	 * reset, and some parts also reset the debug logic on SYSRESETREQ): drop
++	 * the SELECT/CSW write caches so the next access rewrites them (BMP 83). */
++	adiv5_ap_invalidate_caches(ap);
++
+ 	/* If target needs to do something extra (see Atmel SAM4L for example) */
+ 	if (target->extended_reset != NULL)
+ 		target->extended_reset(target);
+
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -121,6 +121,10 @@
+ 	void (*quiesce)(target_s *target);
+ 	bool (*read)(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
+ 	bool (*write)(riscv_dmi_s *dmi, uint32_t address, uint32_t value);
++	/* Invalidate any AP CSW / DP-SELECT write caches held by the DMI bus
++	 * implementation, after a reset that may have cleared the debug domain
++	 * (BMP 83). NULL if the bus holds no such caches. */
++	void (*invalidate_caches)(riscv_dmi_s *dmi);
+ };
+ 
+ /* This structure represent a DMI bus that is accessed via an ADI AP */
+
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -1281,6 +1281,10 @@
+ 	}
+ 	/* Acknowledge the reset */
+ 	riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HART_ACK_RESET);
++	/* The debug domain may have been reset by nRST or ndmreset: invalidate any
++	 * AP CSW / DP-SELECT write caches held by the DMI bus (BMP 83). */
++	if (hart->dbg_module->dmi_bus->invalidate_caches)
++		hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
+ 	riscv_halt_request(target);
+ 	target_check_error(target);
+ }
+
+diff --git a/src/target/riscv_adi_dtm.c b/src/target/riscv_adi_dtm.c
+--- a/src/target/riscv_adi_dtm.c
++++ b/src/target/riscv_adi_dtm.c
+@@ -36,6 +36,7 @@
+ 
+ static bool riscv_adi_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
+ static bool riscv_adi_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value);
++static void riscv_adi_invalidate_caches(riscv_dmi_s *dmi);
+ 
+ void riscv_adi_dtm_handler(adiv5_access_port_s *const ap)
+ {
+@@ -56,6 +57,7 @@
+ 
+ 	dmi_ap->dmi.read = riscv_adi_dmi_read;
+ 	dmi_ap->dmi.write = riscv_adi_dmi_write;
++	dmi_ap->dmi.invalidate_caches = riscv_adi_invalidate_caches;
+ 	riscv_dmi_init(&dmi_ap->dmi);
+ 
+ 	/* If we failed to find any DMs or Harts, free the structure */
+@@ -72,6 +74,13 @@
+ 	return adiv5_dp_error(ap->dp) == 0U;
+ }
+ 
++static void riscv_adi_invalidate_caches(riscv_dmi_s *const dmi)
++{
++	/* DMI accesses go through adiv5_mem_read/write, which may skip CSW/SELECT
++	 * writes based on the shadow caches (BMP 83). Drop them after a reset. */
++	adiv5_ap_invalidate_caches(((riscv_dmi_ap_s *)dmi)->ap);
++}
++
+ static bool riscv_adi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+ {
+ 	adiv5_access_port_s *const ap = ((riscv_dmi_ap_s *)dmi)->ap;
+

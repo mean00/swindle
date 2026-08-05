@@ -68,6 +68,8 @@ apply_patch_if_needed5(patched58 58blackmagic_rp2040_core1_reset.patch "Hold RP2
 # merged with another patch apply_patch_if_needed5(patched54 54blackmagic_dont_doubly_define_rvswd.patch
 #"avoid doubly definit have_rvswd in hosted mode")
 apply_patch_if_needed5(patched82 82blackmagic_export_arch.patch "Export the cpu arch (ARM/RISCV) ")
+apply_patch_if_needed5(patched83 83blackmagic_select_csw_cache.patch "cache DP-SELECT and AP-CSW writes (skip unchanged)")
+apply_patch_if_needed5(patched84 84blackmagic_invalidate_caches_on_reset.patch "invalidate SELECT/CSW write caches on target reset")
 
 string(JOIN " " pretty ${already_patched})
 message(STATUS "Patch already applied ${pretty} already done")
@@ -84,3 +86,4 @@ message(STATUS "Patch already applied ${pretty} already done")
 # ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_warning2.patch      ${LNBMP_TOP_FOLDER}   "remove a warning because we
 # ovveride printf") APPLY_PATCH_IF_NEEDED3(patched35 ${BMP_PATCH_FOLDER}/blackmagic_remove_printf_warning.patch
 # ${LNBMP_TOP_FOLDER}   "remove a warning because we ovveride printf")
+# SELECT/CSW caching for the ARM AP/DP hot path (skip unchanged DP-SELECT and AP-CSW writes)
