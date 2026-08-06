@@ -23,6 +23,7 @@
 //! | `os_info` | Dump FreeRTOS internal state |
 //! | `redirect` | Redirect logging to USB CDC |
 //! | `bmp` | Forward command to BMP monitor |
+//! | `riscv_benchmark` | Run the RISC-V memory-access benchmark (abstract, progbuf, sysbus) |
 //! | `help` | Show this help |
 //! | `crash` | Force a crash (for testing) |
 //! | `delay` | Wait N milliseconds |
@@ -118,7 +119,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 29] = [
+const mon_command_tree: [CommandTree; 30] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -304,6 +305,14 @@ const mon_command_tree: [CommandTree; 29] = [
         next_separator: 0,
     }, //
     CommandTree {
+        command: "riscv_benchmark",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_riscv_benchmark),
+        start_separator: 0,
+        next_separator: 0,
+    }, //
+    CommandTree {
         command: "set_reset_pin",
         min_args: 1,
         require_connected: false,
@@ -353,7 +362,7 @@ const mon_command_tree: [CommandTree; 29] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 26] = [
+const help_tree: [HelpTree; 27] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -413,6 +422,10 @@ const help_tree: [HelpTree; 26] = [
     HelpTree {
         command: "reboot",
         help: "Reboot the debugger.",
+    },
+    HelpTree {
+        command: "riscv_benchmark",
+        help: "Benchmark the RISC-V memory access methods (abstract, progbuf, sysbus).",
     },
     HelpTree {
         command: "redirect 0|1",
@@ -538,6 +551,20 @@ fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
     // the input is bmp actual_bmp_mon_command
     // we have to remove the bmp
     encoder::reply_bool(bmp::bmp_mon(&command[4..]));
+    true
+}
+/*
+ *
+ *
+ */
+/// Handle `mon riscv_benchmark` — run the RISC-V memory-access benchmark.
+///
+/// The benchmark is implemented on the BMP side as a RISC-V target command
+/// (`riscv32_cmd_list` entry `riscv_benchmark`). Forward it straight through —
+/// same as `mon bmp riscv_benchmark`. Requires a connected RISC-V (CH32)
+/// target; BMP reports an error otherwise.
+fn _riscv_benchmark(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_bool(bmp::bmp_mon("riscv_benchmark"));
     true
 }
 //
