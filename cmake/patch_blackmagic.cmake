@@ -72,6 +72,7 @@ apply_patch_if_needed5(patched83 83blackmagic_select_csw_cache.patch "cache DP-S
 apply_patch_if_needed5(patched84 84blackmagic_invalidate_caches_on_reset.patch "invalidate SELECT/CSW write caches on target reset")
 apply_patch_if_needed5(patched85 85blackmagic_rv_sysbus_fast_path.patch "RV sysbus fast path: direct DATA0 with busy-in-status retry + per-call fault check")
 apply_patch_if_needed5(patched86 86blackmagic_rv_progbuf_stream_fast_path.patch "RV progbuf fast path: abstractauto streaming (CH32: 50->~13 tx/16B)")
+apply_patch_if_needed5(patched87 87blackmagic_nostop_mem_io.patch "non-halting memory I/O API (nostop): target_mem_read/write_nostop + riscv32 sysbus impl")
 
 string(JOIN " " pretty ${already_patched})
 message(STATUS "Patch already applied ${pretty} already done")
