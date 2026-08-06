@@ -406,6 +406,36 @@ extern "C" bool bmp_mem_write_c(const unsigned int addr, const unsigned int leng
            ln_swd_tx_count - swd0, ln_rv_tx_count - rv0, (long)elapsed);
     return ok;
 }
+
+/*
+ * Non-halting memory I/O: RTT (and friends) use these to read/write target
+ * memory while the CPU keeps executing, without knowing which chip it is.
+ */
+extern "C" bool bmp_mem_read_nostop_c(const unsigned int addr, const unsigned int length, uint8_t *data)
+{
+    if (!bmp_attached_c())
+        return false;
+    return target_mem_read_nostop(cur_target, data, addr, length);
+}
+/*
+ *
+ */
+extern "C" bool bmp_mem_write_nostop_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
+{
+    if (!bmp_attached_c())
+        return false;
+    return target_mem_write_nostop(cur_target, addr, data, length);
+}
+/*
+ * Generic capability query: does memory access on the current target require
+ * halting the CPU first?
+ */
+extern "C" bool bmp_mem_access_needs_halt_c()
+{
+    if (!bmp_attached_c())
+        return true; /* safest: assume halting is required */
+    return target_mem_access_needs_halt(cur_target);
+}
 //
 extern "C" bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
 {

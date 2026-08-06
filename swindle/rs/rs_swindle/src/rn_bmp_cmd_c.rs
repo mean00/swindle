@@ -277,6 +277,15 @@ unsafe extern "C" {
     pub fn bmp_mem_read_c(addr: cty::c_uint, length: cty::c_uint, data: *mut u8) -> bool;
 }
 unsafe extern "C" {
+    pub fn bmp_mem_read_nostop_c(addr: cty::c_uint, length: cty::c_uint, data: *mut u8) -> bool;
+}
+unsafe extern "C" {
+    pub fn bmp_mem_write_nostop_c(addr: cty::c_uint, length: cty::c_uint, data: *const u8) -> bool;
+}
+unsafe extern "C" {
+    pub fn bmp_mem_access_needs_halt_c() -> bool;
+}
+unsafe extern "C" {
     pub fn bmp_crc32_c(address: cty::c_uint, length: cty::c_uint, crc: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {

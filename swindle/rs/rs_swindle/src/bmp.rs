@@ -285,6 +285,28 @@ pub fn bmp_read_mem_ptr(address: u32, size: u32, data: *mut u8) -> bool {
         rn_bmp_cmd_c::bmp_mem_read_c(address, size, data)
     }
 }
+/// Ask the target whether memory access requires halting the CPU first.
+///
+/// This is the generic capability query RTT (and friends) use: it returns
+/// true when the target must be stopped for memory I/O, without the caller
+/// needing to know which chip/architecture is attached.
+pub fn bmp_mem_access_needs_halt() -> bool {
+    unsafe { rn_bmp_cmd_c::bmp_mem_access_needs_halt_c() }
+}
+/// Read target memory without halting the CPU.
+///
+/// Returns `true` on success, `false` if the target cannot perform non-halting
+/// reads (callers should then halt the target and use the regular read path).
+pub fn bmp_mem_read_nostop(address: u32, size: u32, data: *mut u8) -> bool {
+    unsafe { rn_bmp_cmd_c::bmp_mem_read_nostop_c(address, size, data) }
+}
+/// Write target memory without halting the CPU.
+///
+/// Returns `true` on success, `false` if the target cannot perform non-halting
+/// writes.
+pub fn bmp_mem_write_nostop(address: u32, size: u32, data: *const u8) -> bool {
+    unsafe { rn_bmp_cmd_c::bmp_mem_write_nostop_c(address, size, data) }
+}
 /// Read target memory into a byte slice.
 ///
 /// Reads `data.len()` bytes from `address` into the provided buffer.
@@ -576,6 +598,9 @@ pub fn bmp_get_mw_page_size() -> u32 {
 /// Target architecture enum.
 ///
 /// Identifies whether the attached target is ARM, RISC-V, or unknown.
+/// Kept for callers that still want the coarse architecture; RTT no longer
+/// uses it (it asks the target whether memory I/O needs halting instead).
+#[allow(dead_code)]
 #[derive(PartialEq)]
 #[repr(u32)]
 pub enum bmp_arch {
@@ -595,6 +620,7 @@ pub fn bmp_gpio_reset() {
 }
 
 /// Get the target's architecture (ARM or RISC-V).
+#[allow(dead_code)]
 pub fn bmp_get_arch() -> bmp_arch {
     unsafe {
         match rn_bmp_cmd_c::bmp_get_arch_c() {

@@ -65,6 +65,11 @@ bool bmp_rpc_swd_out_par_c(const uint32_t value, const unsigned int nb_bits);
 //
 bool bmp_mem_read_c(uint32_t address, uint32_t len, uint8_t *data);
 bool bmp_mem_write_c(uint32_t address, uint32_t len, const uint8_t *data);
+// Non-halting memory I/O (used by RTT): perform reads/writes while the CPU runs.
+bool bmp_mem_read_nostop_c(uint32_t address, uint32_t len, uint8_t *data);
+bool bmp_mem_write_nostop_c(uint32_t address, uint32_t len, const uint8_t *data);
+// Generic capability query: does memory access require halting the CPU first?
+bool bmp_mem_access_needs_halt_c();
 // Phase 0 instrumentation: memory-access wire-transaction counters/logging
 void bmp_set_mem_log_c(bool enable);
 void bmp_mem_counts_c(uint32_t *swd, uint32_t *rv);

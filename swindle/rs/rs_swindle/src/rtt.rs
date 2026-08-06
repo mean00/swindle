@@ -10,7 +10,8 @@
 //! - Reads up-channel data (target → host) and sends to GDB
 //! - Tracks down-channel write room (host → target)
 //! - Automatically halts/resumes the target for RTT access when needed
-//! - Cortex-M targets can read RTT without halting (no-stop mode)
+//! - Targets that support non-halting memory I/O (eg. RISC-V system bus)
+//!   can read RTT without halting (no-stop mode)
 
 use crate::bmp;
 use crate::commands::run::HaltState;
@@ -74,16 +75,37 @@ const HEADER_SIZE: u32 = core::mem::size_of::<RttControlBlock>() as u32;
 //
 // To read the RTT info, should the chip be stopped
 //
-static mut need_stop_flag: bool = true;
-/// Check if the target must be halted for RTT buffer access.
+/// Check whether memory access on the current target requires halting the CPU.
 ///
-/// Cortex-M targets can read RTT without halting. Other architectures
-/// (e.g. RISC-V) require the target to be stopped.
+/// This is the only information RTT needs: the target itself decides whether it
+/// can perform memory I/O while the CPU keeps running (eg. a RISC-V hart with a
+/// verified system bus), so RTT never needs to know which chip it is attached to.
 fn get_stop_flag() -> bool {
-    unsafe { need_stop_flag }
+    bmp::bmp_mem_access_needs_halt()
 }
-fn set_stop_flag(en: bool) {
-    unsafe { need_stop_flag = en }
+
+/// Read target memory, using the non-halting path when the target supports it.
+///
+/// Returns `true` on success. When the target advertised non-halting I/O but the
+/// access fails, this reports the failure rather than falling back to the halting
+/// path: the next access will re-evaluate and halt if necessary.
+fn rtt_mem_read_ptr(address: u32, size: u32, data: *mut u8) -> bool {
+    if !get_stop_flag() {
+        return bmp::bmp_mem_read_nostop(address, size, data);
+    }
+    bmp::bmp_read_mem_ptr(address, size, data)
+}
+
+/// Write target memory, using the non-halting path when the target supports it.
+fn rtt_mem_write32(address: u32, data: &[u32]) -> bool {
+    if !get_stop_flag() {
+        return bmp::bmp_mem_write_nostop(
+            address,
+            (data.len() as u32) * 4,
+            data.as_ptr() as *const u8,
+        );
+    }
+    bmp::bmp_write_mem32(address, data)
 }
 
 /// Result of attempting to halt the target for RTT access.
@@ -185,7 +207,7 @@ impl RttControlBlock {
         };
         let halted = swindle_rtt_access_to_target();
         if halted != RttHalt::Failure {
-            bmp::bmp_read_mem_ptr(address, HEADER_SIZE, &mut block as *mut _ as *mut u8);
+            rtt_mem_read_ptr(address, HEADER_SIZE, &mut block as *mut _ as *mut u8);
             swindle_rtt_release_target(halted);
         }
         block
@@ -276,19 +298,16 @@ pub extern "C" fn swindle_enable_rtt(enable: bool) {
         }
     }
     //
-    let can_do: bool = !(crate::bmp::bmp_get_arch() == crate::bmp::bmp_arch::BMP_ARCH_ARM);
-    // For the moment we use a very simple scheme
-    // No need to stop for all cortexM
-    // stop for all others
+    // Ask the target whether memory access requires stopping the CPU. This is
+    // fully generic: no architecture or chip knowledge lives here, the target
+    // itself decides whether non-halting memory I/O is possible.
+    let can_do: bool = get_stop_flag();
     if enable {
-        set_stop_flag(can_do);
         if can_do {
             gdb_print!("RTT needs to stop the CPU to read \n");
         } else {
             gdb_print!("RTT does NOT need to stop the CPU to read \n");
         }
-    } else {
-        set_stop_flag(false);
     }
     swindle_get_rtt().enabled = enable;
 }
@@ -462,7 +481,7 @@ pub extern "C" fn swindle_read_rtt_channel(
         return false;
     }
 
-    bmp::bmp_read_mem_ptr(
+    rtt_mem_read_ptr(
         // Read aligned ..
         extra_address,
         extra_chunk,
@@ -475,7 +494,7 @@ pub extern "C" fn swindle_read_rtt_channel(
 
     //
     let updated: [u32; 1] = [new_read];
-    bmp::bmp_write_mem32(address + 16, &updated);
+    rtt_mem_write32(address + 16, &updated);
     swindle_rtt_release_target(halted);
     // do something with it
     let offset: usize = extra as usize;
@@ -560,7 +579,7 @@ impl SeggerRTT {
             gdb_print!("Failed to access target for RTT read!\n");
             return false;
         }
-        let r = bmp::bmp_read_mem_ptr(address, BUFFER_SIZE, buffer as *mut _ as *mut u8);
+        let r = rtt_mem_read_ptr(address, BUFFER_SIZE, buffer as *mut _ as *mut u8);
         swindle_rtt_release_target(halted);
         r
     }
