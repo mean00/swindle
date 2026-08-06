@@ -70,6 +70,8 @@ apply_patch_if_needed5(patched58 58blackmagic_rp2040_core1_reset.patch "Hold RP2
 apply_patch_if_needed5(patched82 82blackmagic_export_arch.patch "Export the cpu arch (ARM/RISCV) ")
 apply_patch_if_needed5(patched83 83blackmagic_select_csw_cache.patch "cache DP-SELECT and AP-CSW writes (skip unchanged)")
 apply_patch_if_needed5(patched84 84blackmagic_invalidate_caches_on_reset.patch "invalidate SELECT/CSW write caches on target reset")
+apply_patch_if_needed5(patched85 85blackmagic_rv_sysbus_fast_path.patch "RV sysbus fast path: direct DATA0 with busy-in-status retry + per-call fault check")
+apply_patch_if_needed5(patched86 86blackmagic_rv_progbuf_stream_fast_path.patch "RV progbuf fast path: abstractauto streaming (CH32: 50->~13 tx/16B)")
 
 string(JOIN " " pretty ${already_patched})
 message(STATUS "Patch already applied ${pretty} already done")

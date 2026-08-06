@@ -1,0 +1,105 @@
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -349,10 +349,23 @@
+ 		return;
+ 	uint8_t *const data = (uint8_t *)dest;
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+-		uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-		/* Wait for the current read cycle to complete */
+-		while (status & RV_SYSBUS_STATUS_BUSY) {
+-			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++		uint32_t value = 0;
++		/*
++		 * BMP 85 fast path: read the data register directly and let the DMI response
++		 * status act as the busy indicator (the platform DMI layer retries a bounded
++		 * number of times while the DM answers "busy", i.e. the access is in flight).
++		 * Fall back to the proven CTRLSTATUS busy-poll only if the target never
++		 * surfaced the data - safety valve for parts/variants that answer DATA0
++		 * reads differently while a system-bus access is still pending.
++		 */
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value)) {
++			uint32_t status = RV_SYSBUS_STATUS_BUSY;
++			/* Wait for the current read cycle to complete */
++			while (status & RV_SYSBUS_STATUS_BUSY) {
++				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++					return;
++			}
++			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+ 				return;
+ 		}
+ 		/* If this would be the last read, clean up the access control register */
+@@ -360,13 +373,9 @@
+ 			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, 0))
+ 				return;
+ 		}
+-		uint32_t value = 0;
+ 		/* Read back and unpack the data for this block */
+-		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+-			return;
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+-	riscv_sysbus_check(hart);
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
+@@ -482,17 +491,23 @@
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Pack the data for this block and write it */
+ 		const uint32_t value = riscv32_pack_data(data + offset, access_width);
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value))
+-			return;
+-
+-		uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-		/* Wait for the current write cycle to complete */
+-		while (status & RV_SYSBUS_STATUS_BUSY) {
+-			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++		/*
++		 * BMP 85 fast path: the DMI write response status doubles as the busy
++		 * indicator (the platform DMI layer retries a bounded number of times while
++		 * the DM answers "busy"). Only fall back to the CTRLSTATUS busy-poll and a
++		 * re-write if the target never accepted the value.
++		 */
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value)) {
++			uint32_t status = RV_SYSBUS_STATUS_BUSY;
++			/* Wait for the current write cycle to complete */
++			while (status & RV_SYSBUS_STATUS_BUSY) {
++				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++					return;
++			}
++			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value))
+ 				return;
+ 		}
+ 	}
+-	riscv_sysbus_check(hart);
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const target_addr_t dest, const void *const src,
+@@ -733,9 +748,11 @@
+ 	}
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_read(hart, dest, src, len);
+-	else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
++		riscv_sysbus_check(hart);
++	} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+ 		riscv32_progbuf_mem_read(hart, dest, src, len);
+ 	else
+ 		riscv32_abstract_mem_read(hart, dest, src, len);
+@@ -777,9 +794,11 @@
+ 		return;
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_write(hart, dest, src, len);
+-	else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
++		riscv_sysbus_check(hart);
++	} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+ 		riscv32_progbuf_mem_write(hart, dest, src, len);
+ 	else
+ 		riscv32_abstract_mem_write(hart, dest, src, len);
