@@ -622,96 +622,6 @@ static bool small_ch32v3x_write_few_bytes(target_s *target, uint32_t addr, const
 }
 
 /**
- * @brief Fast RAM write using the RISC-V debug module's program buffer.
- *
- * This function provides an optimized path for writing bulk data to SRAM via RVSWD.
- * The generic RISC-V `target_mem32_write` safely polls the debug module status
- * after every word to wait for completion. However, because CH32V SRAM writes
- * are zero-wait-state and much faster than the 1.5Mbps RVSWD link, polling is
- * redundant and extremely slow (adding significant overhead).
- * This function bypasses the polling by blindly feeding `DATA0` and executing
- * the program buffer, relying on the fact that the SRAM easily keeps up with the link.
- *
- * @param target The target structure.
- * @param dest   Destination address in the target memory.
- * @param src    Pointer to the source buffer.
- * @param len    Number of bytes to write (must be a multiple of 4).
- * @return true on success, false on failure.
- */
-#define RV_SW_A1_0_A0 0x00B52023   /* sw a1, 0(a0) */
-#define RV_ADDI_A0_A0_4 0x00450513 /* addi a0, a0, 4 */
-#define RV_DM_ABSTRACTAUTO 0x18U
-#define RV_ABSTRACTAUTO_AUTOEXECDATA_0 (1U << 0)
-
-static bool ch32v3xx_fast_ram_write(target_s *target, target_addr_t dest, const void *src, size_t len)
-{
-    riscv_hart_s *hart = riscv_hart_struct(target);
-    const uint32_t *data = (const uint32_t *)src;
-    size_t words = len / 4;
-
-    if (hart->progbuf_size < 3)
-    {
-        target_mem32_write(target, dest, src, len);
-        return true;
-    }
-
-    if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, RV_SW_A1_0_A0) ||
-        !riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1, RV_ADDI_A0_A0_4) ||
-        !riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2, RV_EBREAK))
-    {
-        return false;
-    }
-
-    uint32_t a0_save = 0, a1_save = 0;
-    riscv_csr_read(hart, RV_GPR_A0, &a0_save);
-    riscv_csr_read(hart, RV_GPR_A1, &a1_save);
-
-    if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, dest) ||
-        !riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
-                        RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_REG_ACCESS_32_BIT | RV_GPR_A0) ||
-        !riscv_command_wait_complete(hart))
-    {
-        riscv_csr_write(hart, RV_GPR_A0, &a0_save);
-        riscv_csr_write(hart, RV_GPR_A1, &a1_save);
-        return false;
-    }
-
-    bool result = true;
-    if (words > 0)
-    {
-        if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, data[0]) ||
-            !riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
-                            RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_ABST_POSTEXEC |
-                                RV_REG_ACCESS_32_BIT | RV_GPR_A1))
-        {
-            result = false;
-        }
-        else if (words > 1)
-        {
-            riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, RV_ABSTRACTAUTO_AUTOEXECDATA_0);
-
-            for (size_t i = 1; i < words; i++)
-            {
-                if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, data[i]))
-                {
-                    result = false;
-                    break;
-                }
-            }
-
-            riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, 0);
-        }
-    }
-
-    result &= riscv_command_wait_complete(hart);
-
-    riscv_csr_write(hart, RV_GPR_A0, &a0_save);
-    riscv_csr_write(hart, RV_GPR_A1, &a1_save);
-
-    return result;
-}
-
-/**
     write a chunk of code in flash/rram through flashstub
  */
 static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t dest, const void *srcx, size_t len)
@@ -729,7 +639,7 @@ static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t d
             return small_ch32v3x_write_few_bytes(flash->t, addr, srcx, chunk);
         }
         // markA();
-        ch32v3xx_fast_ram_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
+        target_mem32_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
         // markB();
         if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_WRITE, addr, STUB_DATA_LOCATION, chunk,
                               STUB_STACKEND_LOCATION))
