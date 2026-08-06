@@ -131,7 +131,9 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
 
     if (rx != 3 && rx != 7)
     {
-        Logger("Write failed Adr=0x%x Value=0x%x status=0x%x\n", adr, val, (uint32_t)rx);
+        // Quiet here: a non-OK status is usually "busy" (a system-bus access is still in
+        // flight), which the DMI layer retries with a bounded budget (BMP 85). Log only
+        // when the retries are exhausted.
         return false;
     }
     return true;
@@ -163,7 +165,9 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 
     if (status != 3 && status != 7)
     {
-        Logger("Read failed Adr=0x%x Value=0x%x status=0x%x\n", adr, *output, status);
+        // Quiet here: a non-OK status is usually "busy" (a system-bus access is still in
+        // flight), which the DMI layer retries with a bounded budget (BMP 85). Log only
+        // when the retries are exhausted.
         return false;
     }
     return true;
@@ -211,24 +215,26 @@ static bool rv_dm_probe(uint32_t *chip_id)
  * @return true
  * @return false
  */
+/* BMP 85: bounded busy-in-status retry budget for DMI accesses. A non-OK DMI response
+ * usually means the DM is still busy with the previous system-bus access (or the DM
+ * latched the access only recently, e.g. right after an ADDR0/DATA0 write). Retry a
+ * bounded number of times, then report failure - the riscv32 sysbus code then falls
+ * back to the proven CTRLSTATUS busy-poll. */
+#define RVSWD_DMI_MAX_ATTEMPTS 4U
+
 static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
-    int retries = 1;
-    while (1)
+    for (uint32_t attempt = 0U; attempt < RVSWD_DMI_MAX_ATTEMPTS; ++attempt)
     {
-        if (!retries)
-        {
-            dmi->fault = RV_DMI_FAILURE;
-            return false;
-        }
-        const bool result = rv_dm_read(address, value);
-        if (result)
+        if (rv_dm_read(address, value))
         {
             dmi->fault = RV_DMI_SUCCESS;
             return true;
         }
-        retries--;
     }
+    Logger("DMI read failed Adr=0x%x after %u attempts\n", address, (unsigned)RVSWD_DMI_MAX_ATTEMPTS);
+    dmi->fault = RV_DMI_FAILURE;
+    return false;
 }
 /**
  * @brief
@@ -241,12 +247,15 @@ static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, 
  */
 static bool ch32_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
 {
-    const bool result = rv_dm_write(address, value);
-    if (result)
+    for (uint32_t attempt = 0U; attempt < RVSWD_DMI_MAX_ATTEMPTS; ++attempt)
     {
-        dmi->fault = RV_DMI_SUCCESS;
-        return true;
+        if (rv_dm_write(address, value))
+        {
+            dmi->fault = RV_DMI_SUCCESS;
+            return true;
+        }
     }
+    Logger("DMI write failed Adr=0x%x after %u attempts\n", address, (unsigned)RVSWD_DMI_MAX_ATTEMPTS);
     dmi->fault = RV_DMI_FAILURE;
     return false;
 }
