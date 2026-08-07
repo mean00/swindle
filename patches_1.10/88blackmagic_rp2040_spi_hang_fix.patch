@@ -1,0 +1,52 @@
+diff --git a/src/target/rp2040.c b/src/target/rp2040.c
+index 179d088d..d462f348 100644
+--- a/src/target/rp2040.c
++++ b/src/target/rp2040.c
+@@ -531,6 +531,8 @@ static void rp_flash_put_get(
+ 		// APB load costs 4 cycles, so only do it on idle loops (our budget is 48 cyc/byte)
+ 		if (idle && rp_flash_was_aborted(target))
+ 			break;
++		if (target_check_error(target))
++			break;
+ 	}
+ 	rp_spi_chip_select(target, RP_GPIO_QSPI_CS_DRIVE_HIGH);
+ }
+diff --git a/src/target/spi.c b/src/target/spi.c
+index 872c68f4..20da90f4 100644
+--- a/src/target/spi.c
++++ b/src/target/spi.c
+@@ -162,6 +162,8 @@ bool bmp_spi_mass_erase(target_flash_s *const flash, platform_timeout_s *const p
+ 	while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY) {
+ 		if (print_progess)
+ 			target_print_progress(print_progess);
++		if (target_check_error(target))
++			return false;
+ 	}
+ 
+ 	return true;
+@@ -178,8 +180,10 @@ static bool bmp_spi_flash_erase(target_flash_s *const flash, const target_addr_t
+ 
+ 	spi_flash->run_command(
+ 		target, SPI_FLASH_CMD_SECTOR_ERASE | SPI_FLASH_OPCODE(spi_flash->sector_erase_opcode), addr - flash->start);
+-	while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY)
+-		continue;
++	while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY) {
++		if (target_check_error(target))
++			return false;
++	}
+ 	return true;
+ }
+ 
+@@ -197,8 +201,10 @@ static bool bmp_spi_flash_write(
+ 
+ 		const size_t amount = MIN(length - offset, spi_flash->page_size);
+ 		spi_flash->write(target, SPI_FLASH_CMD_PAGE_PROGRAM, begin + offset, buffer + offset, amount);
+-		while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY)
+-			continue;
++		while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY) {
++			if (target_check_error(target))
++				return false;
++		}
+ 	}
+ 	return true;
+ }
