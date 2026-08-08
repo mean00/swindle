@@ -402,8 +402,8 @@ extern "C" bool bmp_mem_write_c(const unsigned int addr, const unsigned int leng
     const uint32_t rv0 = ln_rv_tx_count;
     const bool ok = !target_mem32_write(cur_target, addr, data, length);
     const uint32_t elapsed = lnGetUs() - t0;
-    Logger("[MEMLOG] W addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length,
-           ln_swd_tx_count - swd0, ln_rv_tx_count - rv0, (long)elapsed);
+    Logger("[MEMLOG] W addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length, ln_swd_tx_count - swd0,
+           ln_rv_tx_count - rv0, (long)elapsed);
     return ok;
 }
 
@@ -482,8 +482,8 @@ extern "C" bool bmp_mem_read_c(const unsigned int addr, const unsigned int lengt
     const uint32_t rv0 = ln_rv_tx_count;
     const bool ok = !target_mem32_read(cur_target, data, addr, length);
     const uint32_t elapsed = lnGetUs() - t0;
-    Logger("[MEMLOG] R addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length,
-           ln_swd_tx_count - swd0, ln_rv_tx_count - rv0, (long)elapsed);
+    Logger("[MEMLOG] R addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length, ln_swd_tx_count - swd0,
+           ln_rv_tx_count - rv0, (long)elapsed);
     return ok;
 }
 
@@ -728,5 +728,45 @@ extern "C" uint32_t bmp_get_arch_c()
     if (!cur_target)
         return 0;
     return TOPT_GET_ARCH(cur_target->target_options);
+}
+
+extern "C" bool riscv32_run_benchmark(target_s *target);
+
+extern "C" bool bmp_run_riscv_benchmark_c(void)
+{
+    if (!cur_target)
+    {
+        gdb_outf("Error: No target attached.\n");
+        return false;
+    }
+
+    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
+    {
+        gdb_outf("Error: Target architecture is not RISC-V. Target arch: %u, RISC-V arch: %u\n",
+                 (unsigned)TOPT_GET_ARCH(cur_target->target_options), (unsigned)TOPT_ARCH_RISCV);
+        return false;
+    }
+
+    return riscv32_run_benchmark(cur_target);
+}
+
+extern "C" bool riscv32_run_benchmark2(target_s *target);
+
+extern "C" bool bmp_run_riscv_benchmark2_c(void)
+{
+    if (!cur_target)
+    {
+        gdb_outf("Error: No target attached.\n");
+        return false;
+    }
+
+    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
+    {
+        gdb_outf("Error: Target architecture is not RISC-V. Target arch: %u, RISC-V arch: %u\n",
+                 (unsigned)TOPT_GET_ARCH(cur_target->target_options), (unsigned)TOPT_ARCH_RISCV);
+        return false;
+    }
+
+    return riscv32_run_benchmark2(cur_target);
 }
 // EOF

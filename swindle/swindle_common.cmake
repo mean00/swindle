@@ -54,6 +54,7 @@ set(BM_TARGET
     ${T}/sfdp.c
     ${T}/spi.c
     ${T}/stm32_common.c
+    ${BMP_EXTRA}/extra/riscv_memaccess.c
     # ${T}/riscv64.c ${S}/gdb_hostio.c ${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c ${T}/cortexa.c
     # ${T}/lmi.c ${T}/target_probe.c
     CACHE INTERNAL "")

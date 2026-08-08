@@ -4,7 +4,6 @@
 //! Rust-safe types and C pointers. The BMP C library owns the actual debug hardware
 //! access (SWD bit-banging, target memory read/write, flash programming).
 
-
 use crate::commands::run::HaltState;
 use crate::rn_bmp_cmd_c;
 use alloc::vec::Vec;
@@ -479,7 +478,11 @@ pub fn bmp_get_version() -> &'static str {
 /// Sends a command string to the BMP monitor interface (like the GDB
 /// `monitor` command). Returns `true` if the command was accepted.
 pub fn bmp_mon(input_as_string: &str) -> bool {
-    unsafe { rn_bmp_cmd_c::bmp_mon_c(input_as_string.as_ptr()) }
+    let mut buf = [0u8; 128];
+    let len = core::cmp::min(input_as_string.len(), 127);
+    buf[..len].copy_from_slice(&input_as_string.as_bytes()[..len]);
+    buf[len] = 0;
+    unsafe { rn_bmp_cmd_c::bmp_mon_c(buf.as_ptr()) }
 }
 /// Get the current free heap size in bytes.
 pub fn free_heap() -> u32 {
@@ -548,9 +551,7 @@ extern "C" fn trampoline<F: FnMut()>(ctx: *mut core::ffi::c_void) {
 /// longjmp/exception occurs in the underlying C code.
 pub fn bmp_try<F: FnMut()>(mut f: F) -> Result<(), i32> {
     let ctx = &mut f as *mut _ as *mut core::ffi::c_void;
-    let result = unsafe {
-        rn_bmp_cmd_c::bmp_execute_with_catch_c(Some(trampoline::<F>), ctx)
-    };
+    let result = unsafe { rn_bmp_cmd_c::bmp_execute_with_catch_c(Some(trampoline::<F>), ctx) };
     if result == 0 {
         Ok(())
     } else {
@@ -630,5 +631,20 @@ pub fn bmp_get_arch() -> bmp_arch {
             _ => bmp_arch::BMP_ARCH_NONE,
         }
     }
+}
+
+unsafe extern "C" {
+    fn bmp_run_riscv_benchmark_c() -> bool;
+    fn bmp_run_riscv_benchmark2_c() -> bool;
+}
+
+/// Run the RISC-V memory benchmark directly.
+pub fn bmp_run_riscv_benchmark() -> bool {
+    unsafe { bmp_run_riscv_benchmark_c() }
+}
+
+/// Run the RISC-V memory benchmark through the generic target memory API.
+pub fn bmp_run_riscv_benchmark2() -> bool {
+    unsafe { bmp_run_riscv_benchmark2_c() }
 }
 // EOF

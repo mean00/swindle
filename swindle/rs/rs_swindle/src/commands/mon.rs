@@ -24,6 +24,7 @@
 //! | `redirect` | Redirect logging to USB CDC |
 //! | `bmp` | Forward command to BMP monitor |
 //! | `riscv_benchmark` | Run the RISC-V memory-access benchmark (abstract, progbuf, sysbus) |
+//! | `riscv_memory_benchmark` | Re-run the benchmark through the generic target memory API only |
 //! | `help` | Show this help |
 //! | `crash` | Force a crash (for testing) |
 //! | `delay` | Wait N milliseconds |
@@ -44,8 +45,7 @@ use crate::freertos::{enable_freertos, freertos_symbols, os_detach};
 #[cfg(not(feature = "hosted"))]
 use crate::parsing_util;
 use crate::parsing_util::{
-    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, string_to_bool,
-    u8_hex_string_to_u8s,
+    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, string_to_bool, u8_hex_string_to_u8s,
 };
 use crate::setting_keys::*;
 use crate::settings;
@@ -119,7 +119,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 30] = [
+const mon_command_tree: [CommandTree; 31] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -313,6 +313,14 @@ const mon_command_tree: [CommandTree; 30] = [
         next_separator: 0,
     }, //
     CommandTree {
+        command: "riscv_memory_benchmark",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_riscv_memory_benchmark),
+        start_separator: 0,
+        next_separator: 0,
+    }, //
+    CommandTree {
         command: "set_reset_pin",
         min_args: 1,
         require_connected: false,
@@ -362,7 +370,7 @@ const mon_command_tree: [CommandTree; 30] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 27] = [
+const help_tree: [HelpTree; 28] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -426,6 +434,10 @@ const help_tree: [HelpTree; 27] = [
     HelpTree {
         command: "riscv_benchmark",
         help: "Benchmark the RISC-V memory access methods (abstract, progbuf, sysbus).",
+    },
+    HelpTree {
+        command: "riscv_memory_benchmark",
+        help: "Benchmark the RISC-V memory access via the generic target API (verifies best-path routing).",
     },
     HelpTree {
         command: "redirect 0|1",
@@ -564,7 +576,15 @@ fn _bmp_mon(command: &str, _args: &[&str]) -> bool {
 /// same as `mon bmp riscv_benchmark`. Requires a connected RISC-V (CH32)
 /// target; BMP reports an error otherwise.
 fn _riscv_benchmark(_command: &str, _args: &[&str]) -> bool {
-    encoder::reply_bool(bmp::bmp_mon("riscv_benchmark"));
+    encoder::reply_bool(bmp::bmp_run_riscv_benchmark());
+    true
+}
+/// Handle `mon riscv_benchmark2` — run the RISC-V memory benchmark through
+/// the generic target memory API (`target_mem64_write/read`) only, to confirm
+/// the auto-selected "best" method is the one the normal path actually uses.
+/// Same forwarding as `mon riscv_benchmark`; prints exactly one result line.
+fn _riscv_memory_benchmark(_command: &str, _args: &[&str]) -> bool {
+    encoder::reply_bool(bmp::bmp_run_riscv_benchmark2());
     true
 }
 //

@@ -1,0 +1,577 @@
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -349,10 +349,23 @@
+ 		return;
+ 	uint8_t *const data = (uint8_t *)dest;
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+-		uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-		/* Wait for the current read cycle to complete */
+-		while (status & RV_SYSBUS_STATUS_BUSY) {
+-			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++		uint32_t value = 0;
++		/*
++		 * BMP 85 fast path: read the data register directly and let the DMI response
++		 * status act as the busy indicator (the platform DMI layer retries a bounded
++		 * number of times while the DM answers "busy", i.e. the access is in flight).
++		 * Fall back to the proven CTRLSTATUS busy-poll only if the target never
++		 * surfaced the data - safety valve for parts/variants that answer DATA0
++		 * reads differently while a system-bus access is still pending.
++		 */
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value)) {
++			uint32_t status = RV_SYSBUS_STATUS_BUSY;
++			/* Wait for the current read cycle to complete */
++			while (status & RV_SYSBUS_STATUS_BUSY) {
++				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++					return;
++			}
++			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+ 				return;
+ 		}
+ 		/* If this would be the last read, clean up the access control register */
+@@ -360,13 +373,9 @@
+ 			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, 0))
+ 				return;
+ 		}
+-		uint32_t value = 0;
+ 		/* Read back and unpack the data for this block */
+-		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+-			return;
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+-	riscv_sysbus_check(hart);
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
+@@ -482,17 +491,23 @@
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Pack the data for this block and write it */
+ 		const uint32_t value = riscv32_pack_data(data + offset, access_width);
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value))
+-			return;
+-
+-		uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-		/* Wait for the current write cycle to complete */
+-		while (status & RV_SYSBUS_STATUS_BUSY) {
+-			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++		/*
++		 * BMP 85 fast path: the DMI write response status doubles as the busy
++		 * indicator (the platform DMI layer retries a bounded number of times while
++		 * the DM answers "busy"). Only fall back to the CTRLSTATUS busy-poll and a
++		 * re-write if the target never accepted the value.
++		 */
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value)) {
++			uint32_t status = RV_SYSBUS_STATUS_BUSY;
++			/* Wait for the current write cycle to complete */
++			while (status & RV_SYSBUS_STATUS_BUSY) {
++				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++					return;
++			}
++			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value))
+ 				return;
+ 		}
+ 	}
+-	riscv_sysbus_check(hart);
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const target_addr_t dest, const void *const src,
+@@ -733,9 +748,11 @@
+ 	}
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_read(hart, dest, src, len);
+-	else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
++		riscv_sysbus_check(hart);
++	} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+ 		riscv32_progbuf_mem_read(hart, dest, src, len);
+ 	else
+ 		riscv32_abstract_mem_read(hart, dest, src, len);
+@@ -777,9 +794,11 @@
+ 		return;
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_write(hart, dest, src, len);
+-	else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
++		riscv_sysbus_check(hart);
++	} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+ 		riscv32_progbuf_mem_write(hart, dest, src, len);
+ 	else
+ 		riscv32_abstract_mem_write(hart, dest, src, len);
+
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -82,6 +82,11 @@
+ #define RV_SW_A1_A0 (RV_STORE_WORD | RV_RS2_A1 | RV_RS1_A0) // 0x00b52023U // sw a1, 0(a0)
+ #define RV_SH_A1_A0 (RV_STORE_HALF | RV_RS2_A1 | RV_RS1_A0) // 0x00b51023U // sh a1, 0(a0)
+ #define RV_SB_A1_A0 (RV_STORE_BYTE | RV_RS2_A1 | RV_RS1_A0) // 0x00b50023U // sb a1, 0(a0)
++/* RV32I opcode: post-increment the pointer in a0 by one word (abstractauto streaming) */
++#define RV_ADDI_A0_A0_4 0x00450513U // addi a0, a0, 4
++/* Debug-module abstractauto streaming support (see riscv32_progbuf_mem_read/write) */
++#define RV_DM_ABSTRACTAUTO 0x18U
++#define RV_ABSTRACTAUTO_AUTOEXECDATA_0 (1U << 0U)
+ 
+ static size_t riscv32_reg_read(target_s *target, uint32_t reg, void *data, size_t max);
+ static size_t riscv32_reg_write(target_s *target, uint32_t reg, const void *data, size_t max);
+@@ -642,13 +647,25 @@
+ 	default:
+ 		return;
+ 	}
++	/*
++	 * BMP 86: if there is room for the streaming loop (load + post-increment +
++	 * ebreak), stream native-width words through the program buffer using
++	 * abstractauto: the pipeline advances one word per DATA0 read instead of
++	 * re-issuing a command, polling and performing a CSR round-trip per word.
++	 */
++	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U;
+ 	/* Fill the program buffer */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_read))
+-		return;
+-	/* Append literal ebreak (if impebreak is not reached) */
+-	if (hart->progbuf_size > 1U) {
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK))
++	if (stream) {
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_LW_A1_A0) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_ADDI_A0_A0_4) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK))
+ 			return;
++	} else if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_read)) {
++		return;
++	} else if (hart->progbuf_size > 1U &&
++		!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK)) {
++		/* Append literal ebreak (if impebreak is not reached) */
++		return;
+ 	}
+ 
+ 	uint32_t a0_save = 0;
+@@ -657,6 +674,76 @@
+ 	riscv_csr_read(hart, RV_GPR_A1, &a1_save);
+ 
+ 	uint8_t *const data = (uint8_t *)dest;
++
++	if (stream) {
++		/*
++		 * BMP 86: abstractauto streaming read.
++		 *
++		 * Program: lw a1, 0(a0); addi a0, a0, 4; ebreak. With the read-a1
++		 * command armed with POSTEXEC and AUTOEXECDATA_0 set, every DATA0 read
++		 * returns the word the previous autoexec loaded and re-runs the command,
++		 * so the pipeline advances one word per read instead of one word per
++		 * command+poll+CSR round-trip. The first read returns a1's stale value
++		 * and is discarded. The program buffer is neutralised before the last
++		 * autoexec so the pipeline never issues a load past the requested range.
++		 */
++		bool result = true;
++		/* Set the source address in GPR a0 (no postexec) */
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_REG_ACCESS_32_BIT | RV_GPR_A0) ||
++			!riscv_command_wait_complete(hart))
++			result = false;
++		/* Prime the pipeline: read a1 out to data0, then progbuf loads word 0 */
++		if (result &&
++			(!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_READ | RV_REG_XFER | RV_ABST_POSTEXEC |
++					RV_REG_ACCESS_32_BIT | RV_GPR_A1) ||
++				!riscv_command_wait_complete(hart)))
++			result = false;
++		if (result && !riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, RV_ABSTRACTAUTO_AUTOEXECDATA_0))
++			result = false;
++		/* Single word: neutralise before even the priming autoexec can load past it */
++		if (result && len == 4U)
++			result = riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_ADDI_A0_A0_4);
++		/* First data access: returns the stale a1 value, discarded */
++		uint32_t discard = 0;
++		result &= riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &discard);
++		/* Stream words 0..N-3 under the live program (their autoexec loads land in range) */
++		for (size_t offset = 0; result && offset + 8U < len; offset += 4U) {
++			uint32_t value = 0;
++			result = riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value);
++			if (result)
++				riscv32_unpack_data(data + offset, value, RV_MEM_ACCESS_32_BIT);
++		}
++		/* Neutralise the program buffer before the autoexec that captures the last word */
++		if (result)
++			result = riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_ADDI_A0_A0_4);
++		/* Word N-2 (its autoexec captures word N-1 without issuing a load) */
++		if (result && len > 4U) {
++			uint32_t value = 0;
++			result = riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value);
++			if (result)
++				riscv32_unpack_data(data + len - 8U, value, RV_MEM_ACCESS_32_BIT);
++		}
++		/* Drop autoexec so the final read pulls word N-1 without further activity */
++		if (result)
++			result = riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, 0U);
++		if (result) {
++			uint32_t value = 0;
++			result = riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value);
++			if (result)
++				riscv32_unpack_data(data + len - 4U, value, RV_MEM_ACCESS_32_BIT);
++		}
++		/*
++		 * No trailing riscv_command_wait_complete here: the pipeline is quiesced
++		 * and any leftover command status is consumed by the CSR restores below.
++		 */
++		riscv_csr_write(hart, RV_GPR_A0, &a0_save);
++		riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++		return;
++	}
++
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Write the source address to DATA0 */
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src + offset))
+@@ -701,13 +788,26 @@
+ 	default:
+ 		return;
+ 	}
++	/*
++	 * BMP 86: if there is room for the streaming loop (store + post-increment +
++	 * ebreak), stream native-width words through the program buffer using
++	 * abstractauto: one write command primes the loop and every subsequent
++	 * DATA0 write re-executes it, so N words cost 1 command + N DATA0 writes
++	 * with no per-word polls.
++	 */
++	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U;
+ 	/* Fill the program buffer */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_write))
+-		return;
+-	/* Append literal ebreak (if impebreak is not reached) */
+-	if (hart->progbuf_size > 1U) {
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK))
++	if (stream) {
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_SW_A1_A0) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_ADDI_A0_A0_4) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK))
+ 			return;
++	} else if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_write)) {
++		return;
++	} else if (hart->progbuf_size > 1U &&
++		!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK)) {
++		/* Append literal ebreak (if impebreak is not reached) */
++		return;
+ 	}
+ 
+ 	uint32_t a0_save = 0;
+@@ -716,6 +816,42 @@
+ 	riscv_csr_read(hart, RV_GPR_A1, &a1_save);
+ 
+ 	const uint8_t *const data = (const uint8_t *)src;
++
++	if (stream) {
++		bool result = true;
++		/* Set the destination address in GPR a0 (no postexec) */
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, dest) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_REG_ACCESS_32_BIT | RV_GPR_A0) ||
++			!riscv_command_wait_complete(hart))
++			result = false;
++		/* Prime the pipeline: first word into a1, store it and advance a0 */
++		if (result &&
++			(!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, riscv32_pack_data(data, RV_MEM_ACCESS_32_BIT)) ||
++				!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++					RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_ABST_POSTEXEC |
++						RV_REG_ACCESS_32_BIT | RV_GPR_A1) ||
++				!riscv_command_wait_complete(hart)))
++			result = false;
++		/* Stream the remaining words under abstractauto (SRAM keeps up with the link) */
++		if (result && len > 4U) {
++			if (!riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, RV_ABSTRACTAUTO_AUTOEXECDATA_0))
++				result = false;
++			for (size_t offset = 4U; result && offset < len; offset += 4U)
++				result = riscv_dm_write(hart->dbg_module, RV_DM_DATA0,
++					riscv32_pack_data(data + offset, RV_MEM_ACCESS_32_BIT));
++			/* Drop autoexec before the completion check */
++			if (!riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, 0U))
++				result = false;
++		}
++		/* Make sure the last streamed store has actually completed */
++		result &= riscv_command_wait_complete(hart);
++
++		riscv_csr_write(hart, RV_GPR_A0, &a0_save);
++		riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++		return;
++	}
++
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Prepare the destination address in GPR A0 */
+ 		const uint32_t dest_a0 = dest + offset;
+
+diff --git a/src/include/target.h b/src/include/target.h
+--- a/src/include/target.h
++++ b/src/include/target.h
+@@ -85,6 +85,10 @@
+ bool target_mem32_write(target_s *target, target_addr_t dest, const void *src, size_t len);
+ bool target_mem64_write(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ bool target_mem_access_needs_halt(target_s *target);
++/* Non-halting memory access: try to perform memory I/O without stopping the CPU.
++ * Returns true if the operation was performed, false if the target cannot do it. */
++bool target_mem_read_nostop(target_s *target, void *dest, target_addr64_t src, size_t len);
++bool target_mem_write_nostop(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ /* Flash memory access functions */
+ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len);
+ bool target_flash_write(target_s *target, target_addr_t dest, const void *src, size_t len);
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -147,6 +147,11 @@
+ 	void (*mem_read)(target_s *target, void *dest, target_addr64_t src, size_t len);
+ 	void (*mem_write)(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ 
++	/* Non-halting memory access functions: perform memory I/O without stopping the CPU.
++	 * Return true if the operation was performed, false if the target cannot do it. */
++	bool (*mem_read_nostop)(target_s *target, void *dest, target_addr64_t src, size_t len);
++	bool (*mem_write_nostop)(target_s *target, target_addr64_t dest, const void *src, size_t len);
++
+ 	/* Register access functions */
+ 	size_t regs_size;
+ 	const char *(*regs_description)(target_s *target);
+diff --git a/src/target/target.c b/src/target/target.c
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -397,6 +397,40 @@
+ 	return !(target->target_options & TOPT_NON_HALTING_MEM_IO);
+ }
+ 
++/* Try to read memory from the target without halting the CPU. Returns true if the
++ * read was performed, false if the target cannot do non-halting memory I/O. */
++bool target_mem_read_nostop(target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
++{
++	if (target->mem_read_nostop)
++		return target->mem_read_nostop(target, dest, src, len);
++	/*
++	 * No explicit non-halting hook. If the target advertises non-halting memory
++	 * I/O (TOPT_NON_HALTING_MEM_IO, eg. Cortex-M), its generic mem_read is safe
++	 * to call while the CPU keeps running, so use it.
++	 */
++	if (target->target_options & TOPT_NON_HALTING_MEM_IO) {
++		if (target->mem_read)
++			target->mem_read(target, dest, src, len);
++		return true;
++	}
++	return false;
++}
++
++/* Try to write memory to the target without halting the CPU. Returns true if the
++ * write was performed, false if the target cannot do non-halting memory I/O. */
++bool target_mem_write_nostop(target_s *const target, const target_addr64_t dest, const void *const src, const size_t len)
++{
++	if (target->mem_write_nostop)
++		return target->mem_write_nostop(target, dest, src, len);
++	/* Same TOPT fallback as target_mem_read_nostop above */
++	if (target->target_options & TOPT_NON_HALTING_MEM_IO) {
++		if (target->mem_write)
++			target->mem_write(target, dest, src, len);
++		return true;
++	}
++	return false;
++}
++
+ /* Register access functions */
+ size_t target_reg_read(target_s *target, uint32_t reg, void *data, size_t max)
+ {
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -95,6 +95,8 @@
+ 
+ static int riscv32_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
+ static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
++static bool riscv32_mem_read_nostop(target_s *target, void *dest, target_addr64_t src, size_t len);
++static bool riscv32_mem_write_nostop(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ 
+ static const char *riscv32_target_arch(target_s *target)
+ {
+@@ -116,6 +118,8 @@
+ 	target->reg_read = riscv32_reg_read;
+ 	target->mem_read = riscv32_mem_read;
+ 	target->mem_write = riscv32_mem_write;
++	target->mem_read_nostop = riscv32_mem_read_nostop;
++	target->mem_write_nostop = riscv32_mem_write_nostop;
+ 
+ 	target->breakwatch_set = riscv32_breakwatch_set;
+ 	target->breakwatch_clear = riscv32_breakwatch_clear;
+@@ -626,6 +630,43 @@
+ 		riscv32_sysbus_mem_adjusted_write(hart, address, data, remainder, native_access_width, native_access_length);
+ }
+ 
++/* Non-halting memory I/O: use the system bus so the CPU keeps executing.
++ * Returns false if the target cannot do this right now, in which case the
++ * caller should fall back to halting memory access. */
++static bool riscv32_mem_read_nostop(
++	target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	if (!(hart->flags & RV_HART_CAP_HAS_SYSBUS))
++		return false;
++	if (len == 0)
++		return true;
++	riscv32_sysbus_mem_read(hart, dest, (target_addr_t)src, len);
++	riscv_sysbus_check(hart);
++	if (hart->status != RISCV_HART_NO_ERROR) {
++		DEBUG_WARN("riscv: system bus fault during non-halting read; falling back to halting I/O\n");
++		return false;
++	}
++	return true;
++}
++
++static bool riscv32_mem_write_nostop(
++	target_s *const target, const target_addr64_t dest, const void *const src, const size_t len)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	if (!(hart->flags & RV_HART_CAP_HAS_SYSBUS))
++		return false;
++	if (len == 0)
++		return true;
++	riscv32_sysbus_mem_write(hart, (target_addr_t)dest, src, len);
++	riscv_sysbus_check(hart);
++	if (hart->status != RISCV_HART_NO_ERROR) {
++		DEBUG_WARN("riscv: system bus fault during non-halting write; falling back to halting I/O\n");
++		return false;
++	}
++	return true;
++}
++
+ static void riscv32_progbuf_mem_read(
+ 	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
+ {
+
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -98,6 +98,9 @@
+ static bool riscv32_mem_read_nostop(target_s *target, void *dest, target_addr64_t src, size_t len);
+ static bool riscv32_mem_write_nostop(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ 
++/* Benchmarks memory access methods and selects the best one */
++void riscv32_benchmark_register(target_s *target);
++
+ static const char *riscv32_target_arch(target_s *target)
+ {
+ 	(void)target;
+@@ -123,6 +126,8 @@
+ 	target->mem_read_nostop = riscv32_mem_read_nostop;
+ 	target->mem_write_nostop = riscv32_mem_write_nostop;
+ 
++	riscv32_benchmark_register(target);
++
+ 	target->breakwatch_set = riscv32_breakwatch_set;
+ 	target->breakwatch_clear = riscv32_breakwatch_clear;
+ 
+
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 0047b91f..397c8ab4 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -601,13 +601,27 @@ static bool riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, cons
+ 	return result;
+ }
+ 
++uint32_t bmp_rv_tx_counter = 0;
++
++void bmp_rv_tx_reset_c(void)
++{
++	bmp_rv_tx_counter = 0;
++}
++
++uint32_t bmp_rv_tx_count_c(void)
++{
++	return bmp_rv_tx_counter;
++}
++
+ bool riscv_dm_read(riscv_dm_s *dbg_module, const uint8_t address, uint32_t *const value)
+ {
++	bmp_rv_tx_counter++;
+ 	return riscv_dmi_read(dbg_module->dmi_bus, dbg_module->base + address, value);
+ }
+ 
+ bool riscv_dm_write(riscv_dm_s *dbg_module, const uint8_t address, const uint32_t value)
+ {
++	bmp_rv_tx_counter++;
+ 	return riscv_dmi_write(dbg_module->dmi_bus, dbg_module->base + address, value);
+ }
+ 
+
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -102,6 +102,7 @@
+ #define RV_HART_FLAG_MEMORY_SYSBUS      (1U << 4U)
+ #define RV_HART_FLAG_DATA_GPR_ONLY      (1U << 5U) /* Hart supports Abstract Data commands for GPRs only */
+ #define RV_HART_FLAG_MEMORY_PROGBUF     (1U << 6U)
++#define RV_HART_CAP_HAS_SYSBUS          (1U << 8U)
+ 
+ typedef struct riscv_dmi riscv_dmi_s;
+ 
+@@ -151,7 +152,7 @@
+ 	uint32_t hartsel;
+ 	uint8_t access_width;
+ 	uint8_t address_width;
+-	uint8_t flags;
++	uint16_t flags;
+ 	uint8_t progbuf_size;
+ 	riscv_hart_status_e status;
+ 
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -1059,7 +1059,7 @@
+ static void riscv_hart_memory_access_type(target_s *const target)
+ {
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	hart->flags &= (uint8_t)~RV_HART_FLAG_MEMORY_SYSBUS;
++	hart->flags &= (uint16_t)~(RV_HART_FLAG_MEMORY_SYSBUS | RV_HART_CAP_HAS_SYSBUS);
+ 	uint32_t sysbus_status;
+ 	/*
+ 	 * Try reading the system bus access control and status register.
+@@ -1068,7 +1068,7 @@
+ 		!(sysbus_status & RV_DM_SYSBUS_STATUS_ADDR_WIDTH_MASK))
+ 		return;
+ 	/* If all the checks passed, we now have a valid system bus so can proceed with using it for memory access */
+-	hart->flags |= RV_HART_FLAG_MEMORY_SYSBUS | (sysbus_status & RV_HART_FLAG_ACCESS_WIDTH_MASK);
++	hart->flags |= RV_HART_FLAG_MEMORY_SYSBUS | RV_HART_CAP_HAS_SYSBUS | (sysbus_status & RV_HART_FLAG_ACCESS_WIDTH_MASK);
+ 	/* System Bus also means the target can have memory read without halting */
+ 	target->target_options |= TOPT_NON_HALTING_MEM_IO;
+ 	/* Make sure the system bus is not in any kind of error state */
+
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -104,2 +104,3 @@
+ #define RV_HART_FLAG_MEMORY_PROGBUF     (1U << 6U)
++#define RV_HART_FLAG_MEMORY_ABSTAUTO    (1U << 7U) /* Abstract commands with AUTOEXECDATA_0 streaming */
+ #define RV_HART_CAP_HAS_SYSBUS          (1U << 8U)
+@@ -186,6 +186,7 @@
+ #define RV_DM_DATA3             0x07U
+ #define RV_DM_ABST_CTRLSTATUS   0x16U
+ #define RV_DM_ABST_COMMAND      0x17U
++#define RV_DM_ABSTRACTAUTO      0x18U
+ #define RV_DM_PROGBUF_BASE      0x20U
+ #define RV_DM_SYSBUS_CTRLSTATUS 0x38U
+ #define RV_DM_SYSBUS_ADDR0      0x39U
+@@ -212,6 +213,8 @@
+ 
+ #define RV_ABST_MEM_ADDR_POST_INC 0x00080000U
+ #define RV_ABST_MEM_ACCESS_SHIFT  20U
++/* Bit 0 of the ABSTRACTAUTO register (0x18): re-run the abstract command on every DATA0 access */
++#define RV_ABSTRACTAUTO_AUTOEXECDATA_0 (1U << 0U)
+ 
+ #define RV_SYSBUS_MEM_ADDR_POST_INC 0x00010000U
+ #define RV_SYSBUS_MEM_READ_ON_ADDR  0x00100000U
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -84,9 +84,6 @@
+ #define RV_SB_A1_A0 (RV_STORE_BYTE | RV_RS2_A1 | RV_RS1_A0) // 0x00b50023U // sb a1, 0(a0)
+ /* RV32I opcode: post-increment the pointer in a0 by one word (abstractauto streaming) */
+ #define RV_ADDI_A0_A0_4 0x00450513U // addi a0, a0, 4
+-/* Debug-module abstractauto streaming support (see riscv32_progbuf_mem_read/write) */
+-#define RV_DM_ABSTRACTAUTO 0x18U
+-#define RV_ABSTRACTAUTO_AUTOEXECDATA_0 (1U << 0U)
+ 
+ static size_t riscv32_reg_read(target_s *target, uint32_t reg, void *data, size_t max);
+ static size_t riscv32_reg_write(target_s *target, uint32_t reg, const void *data, size_t max);

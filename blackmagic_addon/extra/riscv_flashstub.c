@@ -19,10 +19,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "general.h"
-#include "riscv_debug.h"
 #include "target.h"
 #include "target_internal.h"
-
+//
+#include "riscv_debug.h"
 #if defined(PLATFORM_HAS_DEBUG)
 #define debug DEBUG_WARN
 #else
@@ -30,13 +30,6 @@
     {                                                                                                                  \
     }
 #endif
-
-#define RISCV_REG_A0 10
-#define RISCV_REG_A1 11
-#define RISCV_REG_A2 12
-#define RISCV_REG_A3 13
-#define RISCV_REG_PC 32
-#define RISCV_REG_SP 2
 
 /*
     Small helper function to translate target to hart and simplify parameters

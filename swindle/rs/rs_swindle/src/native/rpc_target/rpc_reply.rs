@@ -42,6 +42,18 @@ pub struct rpc_reply_encoder {
 pub(crate) fn get_temp_buffer() -> &'static mut [u8] {
     unsafe { &mut *addr_of_mut!(temp_buffer) }
 }
+
+// C-exported accessor for the scratch buffer above. Same single-shot scratch
+// semantics as get_temp_buffer(); returns a pointer to the buffer (or NULL if
+// `size` doesn't fit, which the C caller is expected to assert on). The buffer
+// is NOT thread safe and must not be held across calls.
+#[unsafe(no_mangle)]
+pub extern "C" fn get_temp_buffer_c(size: u32) -> *mut u8 {
+    if (size as usize) > REPLY_TEMP_BUFFER_SIZE {
+        return core::ptr::null_mut();
+    }
+    get_temp_buffer().as_mut_ptr()
+}
 //
 //
 impl Default for rpc_reply_encoder {
