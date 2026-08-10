@@ -1,0 +1,52 @@
+diff --git a/src/target/riscv_adi_dtm.c b/src/target/riscv_adi_dtm.c
+index e525ae4828c99c0afb399341e709bb157c479cd3..1521fe19123b6ad68075810b9610ac1576f1d3ef 100644
+--- a/src/target/riscv_adi_dtm.c
++++ b/src/target/riscv_adi_dtm.c
+@@ -70,20 +70,41 @@
+ static bool riscv_adi_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
+ {
+ 	adiv5_access_port_s *const ap = ((riscv_dmi_ap_s *)dmi)->ap;
+-	adiv5_mem_read(ap, value, address << 2U, 4U);
+-	return adiv5_dp_error(ap->dp) == 0U;
++	/*
++	 * BMP 89 lean DMI path: drive the AP TAR/DRW registers directly instead of
++	 * going through adiv5_mem_read_bytes(). The SELECT1/SELECT/CSW writes are
++	 * skipped by the shadow caches (BMP 83/88), and skipping the generic mem
++	 * accessor drops its trailing RDBUFF flush, so a warm DMI read costs
++	 * TAR + DRW + RDBUFF (the latter is inherent to SWD AP reads).
++	 * The per-op CTRL/STAT error poll is dropped as well: SWD-level faults are
++	 * reported through dp->fault (cleared per op, as the removed CTRL/STAT poll
++	 * used to do), and abstract-command errors are caught by the RISC-V layer's
++	 * ABSTRACTCS/DMSTATUS checks.
++	 */
++	ap->dp->fault = 0;
++	adiv5_ap_write(ap, ADIV5_AP_TAR_LOW, address << 2U);
++	*value = adiv5_ap_read(ap, ADIV5_AP_DRW);
++	return ap->dp->fault == 0;
+ }
+ 
+ static void riscv_adi_invalidate_caches(riscv_dmi_s *const dmi)
+ {
+-	/* DMI accesses go through adiv5_mem_read/write, which may skip CSW/SELECT
+-	 * writes based on the shadow caches (BMP 83). Drop them after a reset. */
++	/* DMI accesses go through the AP TAR/DRW shadow caches (BMP 83/88).
++	 * Drop them after a reset. */
+ 	adiv5_ap_invalidate_caches(((riscv_dmi_ap_s *)dmi)->ap);
+ }
+ 
+ static bool riscv_adi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+ {
+ 	adiv5_access_port_s *const ap = ((riscv_dmi_ap_s *)dmi)->ap;
+-	adiv5_mem_write(ap, address << 2U, &value, 4U);
+-	return adiv5_dp_error(ap->dp) == 0U;
++	/*
++	 * BMP 89 lean DMI path: TAR + DRW only. Skipping the generic mem accessor
++	 * removes both the trailing RDBUFF flush and the per-op CTRL/STAT poll, so
++	 * a warm DMI write costs exactly TAR + data. The next access's TAR write
++	 * serialises the bus, so the dropped flush is not needed on SWD.
++	 */
++	ap->dp->fault = 0;
++	adiv5_ap_write(ap, ADIV5_AP_TAR_LOW, address << 2U);
++	adiv5_ap_write(ap, ADIV5_AP_DRW, value);
++	return ap->dp->fault == 0;
+ }
