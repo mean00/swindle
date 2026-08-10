@@ -71,6 +71,10 @@ apply_patch_if_needed5(patched82 82bisblackmagic_export_arch.patch "Export the c
 apply_patch_if_needed5(patched83bis 83bisblackmagic_select_csw_cache_invalidate_on_reset.patch "cache DP-SELECT/AP-CSW writes (skip unchanged) + invalidate caches on reset")
 apply_patch_if_needed5(patched85 85bisblackmagic_riscv_optimizations.patch "RV optimizations (sysbus, progbuf, nostop, benchmark, dmi counters) + shared RV_DM_ABSTRACTAUTO/RV_ABSTRACTAUTO_AUTOEXECDATA_0 and RV_HART_FLAG_MEMORY_ABSTAUTO in riscv_debug.h")
 apply_patch_if_needed5(patched87bis 87bisblackmagic_rp2040_spi_robust.patch "spi robustness: abort on target error in RP2040 QSPI flash put/get and generic SPI flash busy-wait loops")
+apply_patch_if_needed5(patched88 88blackmagic_adiv6_select_csw_cache.patch "cache ADIv6 DP-SELECT1/SELECT/AP-CSW writes (skip unchanged) in adiv5_ap_select + adiv6_ap_reg_write")
+apply_patch_if_needed5(patched89 89blackmagic_lean_dmi_accessor.patch "lean ADI DTM DMI path: drive TAR/DRW directly (no per-op RDBUFF flush + CTRL/STAT poll), warm loop = TAR + data")
+apply_patch_if_needed5(patched90 90blackmagic_dp_invalidate_caches.patch "split cache invalidation into DP-level (SELECT/SELECT1, covers ADIv5+ADIv6) and AP-level (CSW); invalidate SELECT/SELECT1 on SWD line reset")
+apply_patch_if_needed5(patched92 92blackmagic_riscv_reset_no_allreset_poll.patch "riscv_reset: drop RV_DM_STAT_ALL_RESET poll (dmstatus bit 19 = allhavereset, cleared by reset on v0.13 RP2350 -> always 2x500ms timeout); re-activate DM + wait for dmactive instead")
 
 
 
