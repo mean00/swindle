@@ -1,0 +1,88 @@
+# 92blackmagic_riscv_reset_no_allreset_poll.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# GDB attach to an RP2350 (RISC-V, Hazard3) over SWD took ~2 s, of which a
+# full 1000 ms was dead time spent inside riscv_reset() polling a dmstatus
+# bit that can never assert on this target.
+#
+# ROOT CAUSE
+# ----------
+# BMP's riscv_reset() confirmed an nRST-triggered reset by polling
+# RV_DM_STAT_ALL_RESET (dmstatus bit 19) via riscv_dm_poll_state(), which has
+# a fixed 500 ms timeout. That poll was issued twice per reset:
+#   1. while nRST was held, and
+#   2. after writing ndmreset (dmcontrol bit 1) as a fallback when (1) failed.
+#
+# The RP2350's DM implements RISC-V debug spec v0.13.2, where dmstatus bit 19
+# is allhavereset (not the v0.11-era 'allreset' event latch BMP was built
+# around). allhavereset is *cleared* by the reset itself and only set by the
+# hart executing the acknowledge-reset sequence:
+#   - poll #1 runs while nRST is asserted, so the DM is still held in reset
+#     and cannot possibly report it -> guaranteed 500 ms timeout.
+#   - poll #2 runs after nRST was already released; the ndmreset write is
+#     issued while the DM is still coming back up, gets lost, and allhavereset
+#     never asserts -> second guaranteed 500 ms timeout.
+# Hence every reset wasted exactly 1000 ms of GDB-attach time on the RP2350.
+#
+# FIX
+# ---
+# The nRST path no longer polls for the (unreachable) reset bit. Instead it
+# re-activates the DM by writing RV_DM_CTRL_ACTIVE to dmcontrol and polling
+# the dmactive readback until the DM acknowledges it is up (bounded by the
+# same 500 ms timeout, but on healthy hardware it succeeds on the first
+# iteration, i.e. within a few ms of nRST de-assertion). has_reset is then
+# set unconditionally, so the ndmreset fallback (and its second 500 ms poll)
+# is skipped.
+#
+# SAFETY / COMPATIBILITY
+# ----------------------
+# - The ndmreset fallback path is preserved untouched for targets that
+#   inhibit nRST (TOPT_INHIBIT_NRST).
+# - On v0.11 targets (e.g. SiFive, CH32V307) where the old bit-19 poll used
+#   to succeed quickly, behaviour is equivalent: nRST is trusted, the DM is
+#   re-activated explicitly, and the fallback is skipped.
+# - The re-activation loop is bounded, so a DM that never comes back times
+#   out after 500 ms exactly like the old poll would have (no new hang).
+#
+# VERIFIED
+# --------
+# RP2350 (RISC-V) @ 3 MHz SWD, GDB attach before/after:
+#   before: "Reset on" -> 500 ms dm_poll_state(0x80000) timeout
+#           "Reset off" -> 500 ms dm_poll_state(0x80000) timeout
+#   after : "Reset on"/"Reset off" complete in <1 ms and attach continues
+#           immediately (riscv_attach 13 ms, bmp_attach_c ~64 ms total).
+# Builds clean for the rp2350_inv preset.
+#
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -1280,9 +1280,26 @@
+ 	/* If the target does not have the nRST pin inhibited, use that to initiate reset */
+ 	if (!(target->target_options & TOPT_INHIBIT_NRST)) {
+ 		platform_nrst_set_val(true);
+-		has_reset = riscv_dm_poll_state(hart->dbg_module, RV_DM_STAT_ALL_RESET);
+ 		platform_nrst_set_val(false);
+-		/* In theory we're done at this point and no debug state was perturbed */
++		/*
++		 * nRST is a full-system reset that also resets the DM itself, so there is no
++		 * dmstatus bit that can ever confirm it: on debug-spec v0.13 targets such as
++		 * the RP2350, dmstatus bit 19 is allhavereset and is cleared by the reset, so
++		 * the old RV_DM_STAT_ALL_RESET poll burned the full 500 ms timeout on every
++		 * reset (twice: once here and once in the ndmreset fallback below). Instead,
++		 * wait for the DM to come back up and re-activate it, then treat nRST as the
++		 * reset having happened.
++		 */
++		platform_timeout_s timeout;
++		platform_timeout_set(&timeout, 500U);
++		do {
++			uint32_t control = RV_DM_CTRL_ACTIVE;
++			if (riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, control) &&
++				riscv_dm_read(hart->dbg_module, RV_DM_CONTROL, &control) &&
++				(control & RV_DM_CTRL_ACTIVE))
++				break;
++		} while (!platform_timeout_is_expired(&timeout));
++		has_reset = true;
+ 	}
+ 
+ 	/*
