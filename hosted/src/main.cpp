@@ -191,3 +191,10 @@ extern "C" void bmp_test(void)
 }
 
 #include "bmp_net_gdb.cpp"
+
+static uint32_t xxxx[1024];
+extern "C" uint8_t *get_temp_buffer_c(uint32_t size)
+{
+    xAssert(size < 1024);
+    return (uint8_t *)xxxx;
+}
