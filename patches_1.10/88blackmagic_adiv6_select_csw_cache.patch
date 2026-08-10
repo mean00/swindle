@@ -1,0 +1,103 @@
+diff --git a/src/target/adiv5_internal.h b/src/target/adiv5_internal.h
+index 5c4ebd5fe6419b85634b7505f40603af5674423c..2e6b03628586e634695b7ab220eddae01eee9d6a 100644
+@@ -241,6 +241,11 @@
+ 	/* Last DP-SELECT value written + validity flag (BMP 83: skip redundant writes) */
+ 	uint32_t select_cache;
+ 	uint8_t select_cached;
++	/* Last ADIv6 DP-SELECT1 (AP upper address) value written + validity flag
++	 * (BMP 88: skip redundant writes, SELECT1 only needs touching when the AP's
++	 * upper address bits change) */
++	uint32_t select1_cache;
++	uint8_t select1_cached;
+ };
+ 
+ struct adiv5_access_port {
+diff --git a/src/target/adiv5.c b/src/target/adiv5.c
+index eaaff976eca0344965ec7836d344b53b612e4218..d27e371f7f051b24f618b51ad665be8edd4d5664 100644
+@@ -382,6 +382,8 @@
+ 	 * registers to their reset values (BMP 83). */
+ 	dp->select_cache = 0;
+ 	dp->select_cached = 0;
++	dp->select1_cache = 0;
++	dp->select1_cached = 0;
+ 	dp->ap_write = adiv5_ap_reg_write;
+ 	dp->ap_read = adiv5_ap_reg_read;
+ 	dp->mem_read = adiv5_mem_read_bytes;
+@@ -727,6 +729,34 @@
+  * SELECT register already holds the requested value (BMP 83). */
+ void adiv5_ap_select(adiv5_access_port_s *const ap, const uint16_t addr)
+ {
++	if (ap->dp->version >= 3U) {
++		/*
++		 * ADIv6: the AP is selected with SELECT1 (upper 32 bits of the AP's
++		 * bus address) plus SELECT (lower 32 bits | register bank). SELECT1 is
++		 * only reachable while DP-SELECT is on bank 5, so hop there only when
++		 * the upper address actually needs rewriting. Both writes are skipped
++		 * entirely when nothing has changed (BMP 88).
++		 */
++		adiv6_access_port_s *const ap6 = (adiv6_access_port_s *)ap;
++		const uint32_t select1 = (uint32_t)(ap6->ap_address >> 32U);
++		if (select1 != ap->dp->select1_cache || !ap->dp->select1_cached) {
++			if (ap->dp->select_cache != ADIV5_DP_BANK5 || !ap->dp->select_cached) {
++				adiv5_dp_recoverable_access(ap->dp, ADIV5_LOW_WRITE, ADIV5_DP_SELECT, ADIV5_DP_BANK5);
++				ap->dp->select_cache = ADIV5_DP_BANK5;
++				ap->dp->select_cached = 1;
++			}
++			adiv5_dp_recoverable_access(ap->dp, ADIV5_LOW_WRITE, ADIV6_DP_SELECT1, select1);
++			ap->dp->select1_cache = select1;
++			ap->dp->select1_cached = 1;
++		}
++		const uint32_t select = (uint32_t)ap6->ap_address | (addr & ADIV6_AP_BANK_MASK);
++		if (select != ap->dp->select_cache || !ap->dp->select_cached) {
++			adiv5_dp_recoverable_access(ap->dp, ADIV5_LOW_WRITE, ADIV5_DP_SELECT, select);
++			ap->dp->select_cache = select;
++			ap->dp->select_cached = 1;
++		}
++		return;
++	}
+ 	const uint32_t select = ((uint32_t)ap->apsel << 24U) | (addr & 0xf0U);
+ 	if (select != ap->dp->select_cache || !ap->dp->select_cached) {
+ 		adiv5_dp_recoverable_access(ap->dp, ADIV5_LOW_WRITE, ADIV5_DP_SELECT, select);
+@@ -742,6 +772,7 @@
+ void adiv5_ap_invalidate_caches(adiv5_access_port_s *const ap)
+ {
+ 	ap->dp->select_cached = 0;
++	ap->dp->select1_cached = 0;
+ 	ap->csw_cached = 0;
+ }
+ 
+diff --git a/src/target/adiv6.c b/src/target/adiv6.c
+index a44ef879fc68f960b3c678ca7690d20f346cee9e..5eeca88ebeacc9faf3f9ed8db3bdcb4ee2084a09 100644
+@@ -366,22 +366,20 @@
+ 
+ uint32_t adiv6_ap_reg_read(adiv5_access_port_s *const base_ap, const uint16_t addr)
+ {
+-	adiv6_access_port_s *const ap = (adiv6_access_port_s *)base_ap;
+-	/* Set SELECT1 in the DP up first */
+-	adiv5_dp_write(base_ap->dp, ADIV5_DP_SELECT, ADIV5_DP_BANK5);
+-	adiv5_dp_write(base_ap->dp, ADIV6_DP_SELECT1, (uint32_t)(ap->ap_address >> 32U));
+-	/* Now set up SELECT in the DP */
+-	adiv5_dp_write(base_ap->dp, ADIV5_DP_SELECT, (uint32_t)ap->ap_address | (addr & ADIV6_AP_BANK_MASK));
++	/* Select the AP and register bank, skipping the DP-SELECT1/SELECT writes
++	 * when nothing has changed (BMP 88). */
++	adiv5_ap_select(base_ap, addr);
+ 	return base_ap->dp->dp_read(base_ap->dp, addr);
+ }
+ 
+ void adiv6_ap_reg_write(adiv5_access_port_s *const base_ap, const uint16_t addr, const uint32_t value)
+ {
+-	adiv6_access_port_s *const ap = (adiv6_access_port_s *)base_ap;
+-	/* Set SELECT1 in the DP up first */
+-	adiv5_dp_write(base_ap->dp, ADIV5_DP_SELECT, ADIV5_DP_BANK5);
+-	adiv5_dp_write(base_ap->dp, ADIV6_DP_SELECT1, (uint32_t)(ap->ap_address >> 32U));
+-	/* Now set up SELECT in the DP */
+-	adiv5_dp_write(base_ap->dp, ADIV5_DP_SELECT, (uint32_t)ap->ap_address | (addr & ADIV6_AP_BANK_MASK));
++	/* Select the AP and register bank, skipping the DP-SELECT1/SELECT writes
++	 * when nothing has changed (BMP 88). */
++	adiv5_ap_select(base_ap, addr);
+ 	base_ap->dp->low_access(base_ap->dp, ADIV5_LOW_WRITE, addr, value);
++	if (addr == ADIV5_AP_CSW) {
++		base_ap->csw_cache = value;
++		base_ap->csw_cached = 1;
++	}
+ }

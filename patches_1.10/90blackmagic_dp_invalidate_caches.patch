@@ -1,0 +1,68 @@
+diff --git a/src/target/adiv5.h b/src/target/adiv5.h
+index f741de9c92ec6d855a71c9331bfe513fb6104014..b9e0321ed810a2844b4c18a5297c8ec8630b1a1d 100644
+@@ -280,10 +280,17 @@
+ /* Write DP-SELECT for the given AP register bank, skipping the write when the
+  * last written value is unchanged (BMP 83). */
+ void adiv5_ap_select(adiv5_access_port_s *ap, uint16_t addr);
+-/* Invalidate the DP-SELECT and AP-CSW write caches after an event that may have
+- * reset the debug domain (nRST, power cycle, ...): the real registers revert to
+- * their reset values while the caches still claim to be valid, so the next
+- * access rewrites SELECT and CSW unconditionally (BMP 83). */
++/* Invalidate the DP-SELECT/SELECT1 write caches after an event that may have
++ * reset the DP itself (protocol-error line reset, nRST, power cycle, ...): the
++ * real registers revert to their reset values while the caches still claim to
++ * be valid, so the next access rewrites SELECT/SELECT1 unconditionally. Both
++ * shadow registers are DP-global and shared by every AP, so this single call
++ * covers ADIv5 and ADIv6 alike (BMP 90). */
++void adiv5_dp_invalidate_caches(adiv5_debug_port_s *dp);
++/* Invalidate the DP-SELECT/SELECT1 write caches (via adiv5_dp_invalidate_caches)
++ * plus this AP's CSW cache after an event that may have reset the debug domain
++ * (nRST, power cycle, ...): the next access rewrites SELECT and CSW
++ * unconditionally (BMP 83). */
+ void adiv5_ap_invalidate_caches(adiv5_access_port_s *ap);
+ 
+ /* ADIv5 DP logical operation function for reading DPIDR safely */
+diff --git a/src/target/adiv5.c b/src/target/adiv5.c
+index d27e371f7f051b24f618b51ad665be8edd4d5664..25cec06a8539acf850a6d8ce491e24ea9b21ac2e 100644
+@@ -765,14 +765,23 @@
+ 	}
+ }
+ 
+-/* Clear the DP-SELECT/AP-CSW write caches after an event that may have reset the
+- * debug domain (nRST, power cycle, ...). The shadow caches still claim to hold
+- * the last written values, but the real registers have reverted to their reset
+- * values, so the next access re-writes SELECT and CSW unconditionally (BMP 83). */
++/* Clear the DP-SELECT/SELECT1 write caches after an event that may have reset the
++ * DP itself (protocol-error line reset, nRST, power cycle, ...). The shadow
++ * caches still claim to hold the last written values, but the real registers
++ * have reverted to their reset values, so the next access re-writes SELECT and
++ * SELECT1 unconditionally. Both shadow registers are DP-global (SELECT1 only
++ * exists on ADIv6, where clearing its validity flag is a no-op on ADIv5) and
++ * are shared by every AP on the DP (BMP 90). */
++void adiv5_dp_invalidate_caches(adiv5_debug_port_s *const dp)
++{
++	dp->select_cached = 0;
++	dp->select1_cached = 0;
++}
++
++/* Clear the DP-SELECT/SELECT1 write caches plus this AP's CSW cache. */
+ void adiv5_ap_invalidate_caches(adiv5_access_port_s *const ap)
+ {
+-	ap->dp->select_cached = 0;
+-	ap->dp->select1_cached = 0;
++	adiv5_dp_invalidate_caches(ap->dp);
+ 	ap->csw_cached = 0;
+ }
+ 
+diff --git a/src/target/adiv5_swd.c b/src/target/adiv5_swd.c
+index 70ebaa0e6e25e60ed6ad9b28b0988a6d985a0d0b..b1cb16e083fdcf02c1b12693f7a9bd483724b3cd 100644
+@@ -392,6 +392,9 @@
+ 		 * we must then re-select the target to bring the device back
+ 		 * into the expected state.
+ 		 */
++		/* A line reset reverts the DP registers (including SELECT/SELECT1) to
++		 * their reset values, so drop the write caches first (BMP 90). */
++		adiv5_dp_invalidate_caches(dp);
+ 		swd_line_reset_sequence(true);
+ 		if (dp->version >= 2U)
+ 			adiv5_write_no_check(dp, ADIV5_DP_TARGETSEL, dp->targetsel);
