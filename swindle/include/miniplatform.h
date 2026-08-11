@@ -33,9 +33,16 @@ extern "C"
 
     /** @brief Halt execution with an error code (non-returning). */
     extern void deadEnd(int err);
+#define SMALL_SWINDLE 1
+#ifdef SMALL_SWINDLE
+#define PLATFORM_HAS_DEBUG 0
+#define ENABLE_DEBUG 0
+#define ENABLE_RISCV 0
+#else
 #define PLATFORM_HAS_DEBUG 1
 #define ENABLE_DEBUG 1
 #define ENABLE_RISCV 1
+#endif
 
 #undef PLATFORM_PRINTF
 #define PLATFORM_PRINTF Logger

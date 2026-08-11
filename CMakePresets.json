@@ -26,6 +26,15 @@
       }
     },
     {
+      "name": "bluepill",
+      "displayName": "blupill aka STM32F103",
+      "inherits": "base_usb",
+      "cacheVariables": {
+        "USE_48PIN_PACKAGE": "true",
+        "SMALL_SWINDLE": "true"
+      }
+    },
+    {
       "name": "rp2040",
       "displayName": "RP2040 zero mini board",
       "inherits": "base_usb",
