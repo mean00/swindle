@@ -95,14 +95,14 @@ include_directories(${BMP}/src/platforms/hosted)
 include_directories(${BMP}/src/target)
 include_directories(${BMP}/../lnBlackmagic/include)
 #
-add_definitions("-DPC_HOSTED=1")
+# The blackmagic context (PC_HOSTED, ENABLE_DEBUG, BMD_IS_STDC) is no longer
+# passed as -D flags here: the hosted-variant platformgenerated.h
+# (force-included into every blackmagic-touching target) is its single root of
+# truth. The defines below are the hosted project's own context (esprit / Qt app).
 add_definitions("-DLN_NO_FREERTOS")
 # If HOSTED_BMP_ONLY is set, whclink will not work
 add_definitions("-DHOSTED_BMP_ONLY=1") # HOSTED_BMP_ONLY
-add_definitions("-DENABLE_DEBUG=1")
 add_definitions("-g3")
-add_definitions("-DENABLE_DEBUG=1")
-add_definitions("-DBMD_IS_STDC=1")
 
 include(all_boards)
 target_include_directories(esprit INTERFACE esprit_dev)
@@ -126,7 +126,7 @@ set(SRC
     ${H}/esp_qtnetwork.h
     ${H}/esp_bridge.cpp
     ${H}/esp_eventgroup.cpp
-    ../../esprit/src/lnSocketRunner.cpp)
+    ../esprit/src/lnSocketRunner.cpp)
 # ${H}/bmp_remote_rv.cpp)
 
 add_executable(swindle_hosted ${SRC})

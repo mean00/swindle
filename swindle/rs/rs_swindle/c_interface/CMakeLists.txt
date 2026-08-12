@@ -11,6 +11,8 @@ set(SRC bmp_interface_c.cpp bmp_stubs_c.cpp ${RPC})
 # bmp_rtt.cpp
 add_library(swindle_interface STATIC ${SRC})
 target_link_libraries(swindle_interface PRIVATE esprit_dev)
+target_link_libraries(swindle_interface PRIVATE bmp_core)
+ln_force_platformgen(swindle_interface)
 target_include_directories(swindle_interface PRIVATE ../../../include)
 
 if(SWINDLE_USE_NETWORK)

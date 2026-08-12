@@ -72,21 +72,12 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE
     STATIC_LIBRARY
     CACHE INTERNAL "")
 
-set(GD32_MCU_C_FLAGS
-    "--sysroot ${PLATFORM_CLANG_SYSROOT} ${EXTRA_DEBUG} ${PLATFORM_CLANG_C_FLAGS} -DLN_MCU=LN_MCU_CH32V3x -DLN_ARCH=LN_ARCH_RISCV ${LN_BOARD_NAME_FLAG} -I${ESPRIT_ROOT}/riscv_ch32v3x/"
-    CACHE INTERNAL "")
-set(GD32_C_FLAGS
-    "-DLN_MCU_XTAL_CLOCK=${LN_MCU_XTAL_CLOCK} ${GD32_SPECS_SPECS} ${GD32_MCU_C_FLAGS} ${GD32_DEBUG_FLAGS}  -Werror=return-type  -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common "
-    CACHE INTERNAL "")
-set(CMAKE_C_FLAGS
-    "${GD32_C_FLAGS} -O2"
-    CACHE INTERNAL "")
-set(CMAKE_ASM_FLAGS
-    "${GD32_C_FLAGS}"
-    CACHE INTERNAL "")
-set(CMAKE_CXX_FLAGS
-    "${GD32_C_FLAGS}  -fno-rtti -fno-exceptions -fno-threadsafe-statics"
-    CACHE INTERNAL "")
+# The CH32V3x clang compile flags come from the shared seed module instead of a
+# hand-copied formula. (The esprit riscv_ch32v3x toolchain still carries the
+# historical copy; when that submodule can be changed it should include this
+# module instead.)
+include(${swindle}/cmake/ch32v3x_clang_seed.cmake)
+ln_ch32v3x_clang_seed()
 
 project(ch32vxx_flashstub)
 

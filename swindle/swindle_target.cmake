@@ -34,18 +34,10 @@ if(SWINDLE_USE_NETWORK)
 endif()
 
 # #
+# bmp_core (defined in swindle_common.cmake) now carries the blackmagic compile
+# definitions + include folders that used to be pushed into the whole swindle
+# directory here. Each target compiling blackmagic code links it explicitly.
 include(./swindle_common.cmake)
-# ==========================================================================
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${BMP}/src)
-include_directories(${BMP}/src/include)
-include_directories(${BMP}/src/target)
-# ==========================================================================
-add_definitions("-DENABLE_DEBUG=1")
-add_definitions("-DPLATFORM_IDENT=\"lnBMP\"")
-add_definitions("-DPC_HOSTED=0")
-add_definitions("-include miniplatform.h")
-add_definitions("-DBMD_IS_STDC=1")
 # ==========================================================================
 if(USE_INVERTED_NRST)
   set(EXTRA_SOURCE ${EXTRA_SOURCE} ${B}/bmp_reset_inv.cpp)
@@ -66,11 +58,18 @@ endif()
 # ===========================================================================================
 
 add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE})
-target_include_directories(libswindle PRIVATE ${BMP_EXTRA} ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(libswindle PRIVATE ${S}/include ${B}/include ${T} ${CMAKE_BINARY_DIR}/config)
+# blackmagic_addon (${BMP_EXTRA}) is a libswindle-only include (the addon
+# sources compile inside libswindle); the rest of the blackmagic context
+# (${BMP}/src* dirs + defines) comes from bmp_core (linked below).
+target_include_directories(libswindle PRIVATE ${BMP_EXTRA})
+target_include_directories(libswindle PRIVATE ${B}/include ${CMAKE_BINARY_DIR}/config)
 target_include_directories(libswindle PRIVATE ${myB}/private_include)
 target_include_directories(libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS})
 target_link_libraries(libswindle PUBLIC esprit_dev)
+target_link_libraries(libswindle PRIVATE bmp_core)
+# Force-include the generated platformgenerated.h (target-own option, see
+# swindle_common.cmake).
+ln_force_platformgen(libswindle)
 #
 if(USE_RP2040 OR USE_RP2350)
   include_directories(src/platform/rp2040)
@@ -94,6 +93,9 @@ else()
 endif()
 
 target_link_libraries(libswindle PUBLIC swindleio_impl)
+# Board-selection defines (USE_RP_CARRIER, LN_UART_*, USE_48PIN_PACKAGE ...)
+# live on the ln_bsp interface, populated by the platform CMakeLists above.
+target_link_libraries(libswindle PUBLIC ln_bsp)
 if(USE_GD32F3)
   target_compile_definitions(libswindle PUBLIC USE_GD32F303)
 endif()

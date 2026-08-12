@@ -33,8 +33,6 @@
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state)
 
-#define ENABLE_RISCV 1
-
 #undef sprintf
 #undef snprintf
 #undef vaprintf
