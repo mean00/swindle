@@ -8,7 +8,9 @@
 //
 #include "lnGPIO_pins.h"
 
-#ifdef LN_ESP_MINI
+#ifdef LN_SWINDLE_AS_EXTERNAL
+#include "lnBMP_pinout_external.h"
+#elif defined(LN_ESP_MINI)
 #include "mini/bmp_pinout.h"
 #else
 #include "wroom/bmp_pinout.h"
