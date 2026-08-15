@@ -167,6 +167,11 @@ set(BMP ${CMAKE_CURRENT_SOURCE_DIR}/blackmagic)
 #
 if(LN_SWINDLE_AS_EXTERNAL)
   add_definitions("-DLN_SWINDLE_AS_EXTERNAL")
+  # When built as an external library (e.g. the Rust wrapper), GENERATE_GD32_FIRMWARE
+  # is not called, so create the aggregate `swindle` target here (placeholder source,
+  # matching the old LN_EXTERNAL_GENERATE path). swindle_target.cmake builds the real
+  # objects; the wrapper consumes them via $<TARGET_OBJECTS:swindle> etc.
+  add_library(swindle STATIC src/swindle_empty.cpp)
 else()
 
   if(USE_RTT)
