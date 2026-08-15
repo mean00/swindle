@@ -135,5 +135,57 @@ bool rv_dm_reset()
     lnDelayMs(10);
     return true;
 }
+/**
+ * @brief Write @p tx_bits bits of @p tx_data (MSB first), then read @p rx_bits
+ *        bits (MSB first), with DMI start/stop framing.
+ *
+ * Used by rvswd_template.h (rv_dm_write/rv_dm_read). Ported from the generic
+ * `ln` platform implementation to the ESP32 fast (dedicated) GPIO primitives.
+ */
+uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
+{
+    // Start bit: SWDIO falling edge while CLK high
+    rSWDIO->dir_output();
+    rSWDIO->set(0);
+
+    // TX Data: shift out MSB first
+    if (tx_bits > 0)
+    {
+        uint64_t v = tx_data;
+        if (tx_bits < 64)
+        {
+            v <<= (uint64_t)(64 - tx_bits);
+        }
+        for (int i = 0; i < tx_bits; i++)
+        {
+            rSWCLK->clockOff();
+            rSWDIO->set((uint32_t)((v >> 63) & 1ULL));
+            rSWCLK->clockOn();
+            v <<= 1;
+        }
+    }
+
+    // RX Data: shift in MSB first
+    uint64_t rx_data = 0;
+    if (rx_bits > 0)
+    {
+        rSWDIO->dir_input();
+        for (int i = 0; i < rx_bits; i++)
+        {
+            rSWCLK->clockOff();
+            rSWCLK->clockOn();
+            rx_data = (rx_data << 1) | (rSWDIO->read() ? 1ULL : 0ULL);
+        }
+    }
+
+    // Stop bit: SWDIO rising edge while CLK high
+    rSWCLK->clockOff();
+    rSWDIO->dir_output();
+    rSWDIO->set(0);
+    rSWCLK->clockOn();
+    rSWDIO->set(1);
+
+    return rx_data;
+}
 #include "rvswd_template.h"
 // EOF
