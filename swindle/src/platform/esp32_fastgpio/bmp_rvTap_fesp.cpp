@@ -187,5 +187,12 @@ uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
 
     return rx_data;
 }
+// Cooperative-yield hook: keeps the Task WDT fed (and the core responsive)
+// during long DMI bit-bang bursts. See bmp_swd_yield in bmp_tap_fesp.cpp.
+// Default (all other platforms) is a no-op.
+#define SWD_TX_POLL() bmp_swd_yield()
+
 #include "rvswd_template.h"
+
+#undef SWD_TX_POLL
 // EOF

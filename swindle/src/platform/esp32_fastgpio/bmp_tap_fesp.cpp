@@ -18,6 +18,10 @@
 #include "math.h"
 
 #include "driver/dedic_gpio.h"
+#include "esp_cpu.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 extern void gmp_gpio_init_adc();
 
 uint32_t swd_delay_cnt = 10;          // around 1.3 Mbit/s
@@ -77,9 +81,11 @@ extern "C" uint32_t bmp_get_wait_state_c()
  * enabling near-1-cycle bit-banging on ESP32.
  */
 static dedic_gpio_bundle_handle_t bundle = NULL;
+/** Core that owns the dedicated-GPIO bundle (-1 = not initialised yet). */
+static int8_t bundle_core_id = -1;
 void bmp_gpio_init_once()
 {
-    Logger("Initializing IO with : \n");
+    Logger("Initializing IO with (v2) : \n");
     Logger("\t SWDIO : %d\n", _mapping[TSWDIO_PIN]);
     Logger("\t SWCLK : %d\n", _mapping[TSWDCK_PIN]);
     Logger("\t Reset : %d\n", _mapping[TRESET_PIN]);
@@ -123,6 +129,11 @@ void bmp_gpio_init_once()
     pReset->off(); // hi-z by default
     rSWCLK->off();
 
+    // Dedicated-GPIO channels are bound to the *calling* core's per-CPU
+    // ee.* registers. Record it so bmp_swd_yield() can loudly flag any
+    // future bit-bang on the other core instead of silently failing.
+    bundle_core_id = (int8_t)esp_cpu_get_core_id();
+
     gmp_gpio_init_adc();
 }
 /**
@@ -152,5 +163,52 @@ void bmp_io_end_session()
 uint8_t ln_get_ws2812_pin()
 {
     return LN_ESP_2812_PIN;
+}
+//
+/**
+ * @brief Cooperative yield for long bit-bang sessions (Task-WDT keeper).
+ *
+ * SWD/RVSWD bit-banging can hold the CPU continuously for seconds
+ * (flash erase/write, slow targets, long scans), which starves that
+ * core's idle task and trips the ESP32 Task Watchdog (TWDT) - and, in
+ * single-core mode, starves everything else (WiFi etc.) on the core.
+ *
+ * Called once per SWD/DMI transaction (via SWD_TX_POLL), this yields to
+ * the idle task with vTaskDelay(0), which lets the idle task self-feed
+ * the TWDT. Throttled to at most once per ~20 ms so the overhead stays
+ * negligible at any SWD clock speed. The line is idle between
+ * transactions, so yielding here is always protocol-safe.
+ *
+ * The elapsed-time check runs on EVERY call (no transaction counter in
+ * front of it), so even a single slow access - e.g. one transaction
+ * retrying for up to ~250 ms inside sendHeader() - can never starve the
+ * core beyond that one transaction, regardless of SWD clock speed.
+ *
+ * Also acts as the runtime core-affinity guard: the dedicated-GPIO
+ * bundle is bound to the core that created it, so any bit-bang on the
+ * other core makes the pads silently stop toggling. If that ever
+ * happens, log it loudly once instead of letting a scan hang into a
+ * Task-WDT panic.
+ */
+void bmp_swd_yield(void)
+{
+    /* Core-affinity guard: the dedicated-GPIO bundle is per-CPU. */
+    static bool core_warned = false;
+    if (!core_warned && bundle_core_id >= 0 &&
+        (int8_t)esp_cpu_get_core_id() != bundle_core_id)
+    {
+        core_warned = true;
+        Logger("CRITICAL: SWD bit-bang on core %d, but dedicated-GPIO "
+               "bundle was created on core %d - SWD I/O will fail!\n",
+               (int)esp_cpu_get_core_id(), (int)bundle_core_id);
+    }
+
+    /* Wrap-safe 32-bit microsecond comparison, checked every call. */
+    static uint32_t last_yield_us = 0;
+    const uint32_t now_us = (uint32_t)esp_timer_get_time();
+    if ((now_us - last_yield_us) < 20000U)
+        return;
+    last_yield_us = now_us;
+    vTaskDelay(0);
 }
 //

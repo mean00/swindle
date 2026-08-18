@@ -33,6 +33,9 @@ void SwdReset::on()
 
 void SwdReset::hiZ()
 {
+    // In inverted (active-high) reset the pin is push-pull, so the closest to
+    // high-impedance is driving it low = released. Keep _state consistent.
+    _state = false;
     lnDigitalWrite(_me, 0);
 }
 

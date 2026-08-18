@@ -10,3 +10,6 @@ extern uint32_t swd_delay_cnt;
 extern SwdWaitPin *rSWCLK;
 extern SwdDirectionPin *rSWDIO;
 extern SwdReset *pReset;
+
+/** Cooperative-yield hook for the SWD/RVSWD bit-bang (Task-WDT keeper). */
+void bmp_swd_yield();

@@ -112,5 +112,12 @@ static void ESP_RUN_FAST zwrite(const uint32_t size, uint32_t value)
 #define SWD_WAIT_PERIOD() swait()
 #define SWINDLE_FAST_IO ESP_RUN_FAST
 
+// Cooperative-yield hook: keeps the Task WDT fed (and the core responsive)
+// during long bit-bang bursts. See bmp_swd_yield in bmp_tap_fesp.cpp.
+// Default (all other platforms) is a no-op.
+#define SWD_TX_POLL() bmp_swd_yield()
+
 #include "swd_template.h"
+
+#undef SWD_TX_POLL
 //____________________________________________

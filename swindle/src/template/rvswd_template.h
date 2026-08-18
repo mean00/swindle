@@ -77,6 +77,19 @@ extern "C" uint32_t bmp_get_wait_state_c();
 // ---------------------------------------------------------------
 extern "C" volatile uint32_t ln_rv_tx_count;
 
+// ---------------------------------------------------------------
+// Cooperative-yield hook. Same contract as in swd_template.h:
+// platforms that bit-bang for a long time (e.g. ESP32 with its Task
+// Watchdog) override this to periodically yield the CPU. Invoked
+// once per DMI transaction, between wire exchanges. Default: no-op.
+// ---------------------------------------------------------------
+#ifndef SWD_TX_POLL
+#define SWD_TX_POLL() \
+    do               \
+    {                \
+    } while (0)
+#endif
+
 #define BMP_MIN_WS 1
 
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val);
@@ -111,6 +124,7 @@ extern "C" void rv_dm_start_c()
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
 {
     ln_rv_tx_count++;
+    SWD_TX_POLL();
     uint64_t tx = (adr << 1) + 1; // 1 = write
     int parity1 = lnOddParity(tx);
     tx = (tx << 2) | (parity1 ? 3 : 0);
@@ -149,6 +163,7 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
 bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 {
     ln_rv_tx_count++;
+    SWD_TX_POLL();
     uint64_t tx = (adr << 1) + 0; // 0 = read
     int parity1 = lnOddParity(tx);
     tx = (tx << 2) | (parity1 ? 3 : 0);

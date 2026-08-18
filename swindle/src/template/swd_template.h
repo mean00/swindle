@@ -13,9 +13,24 @@
 // ---------------------------------------------------------------
 extern "C" volatile uint32_t ln_swd_tx_count;
 
+// ---------------------------------------------------------------
+// Cooperative-yield hook. Platforms that bit-bang for a long time
+// (e.g. ESP32 with its Task Watchdog) override this to periodically
+// yield the CPU (see bmp_swd_yield in bmp_tap_fesp.cpp). It is
+// invoked between wire transactions (never mid-bit) and between
+// WAIT/FAULT retries, so it is always protocol-safe. Default: no-op.
+// ---------------------------------------------------------------
+#ifndef SWD_TX_POLL
+#define SWD_TX_POLL() \
+    do               \
+    {                \
+    } while (0)
+#endif
+
 extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
 {
     ln_swd_tx_count++;
+    SWD_TX_POLL();
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     zwrite(8, request);
     DIR_INPUT();
@@ -33,6 +48,7 @@ extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr,
 extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
 {
     ln_swd_tx_count++;
+    SWD_TX_POLL();
     const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
     zwrite(8, request);
     DIR_INPUT();
@@ -57,6 +73,7 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
     uint8_t ack;
     do
     {
+        SWD_TX_POLL(); // keep the WDT fed even if the target holds us in WAIT/FAULT for a long time
         zwrite(8, request);
         DIR_INPUT();
         ack = (zread(4) >> 1) & 7; // turn +  reply
@@ -120,6 +137,7 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
     if ((addr & ADIV5_APnDP) && dp->fault)
         return 0;
     ln_swd_tx_count++;
+    SWD_TX_POLL();
 
     const uint8_t request = make_packet_request(rnw, addr);
     // read
@@ -159,6 +177,7 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
 //
 extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value)
 {
+    SWD_TX_POLL();
     DIR_OUTPUT();
     zwrite(tick, value);
 }
