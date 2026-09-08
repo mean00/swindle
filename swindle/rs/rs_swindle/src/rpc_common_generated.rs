@@ -10,6 +10,7 @@
 pub const RPC_GEN_PACKET: u8 = b'G';
 pub const RPC_SWDP_PACKET: u8 = b'S';
 pub const RPC_HL_PACKET: u8 = b'H';
+pub const RPC_SDI_PACKET: u8 = b'I';
 pub const RPC_RV_PACKET: u8 = b'B';
 pub const RPC_LNADIV_PACKET: u8 = b'L';
 pub const RPC_ADIV5_PACKET: u8 = b'A';
@@ -31,6 +32,9 @@ pub const RPC_GEN_GPIO_RESET: u8 = b'R';
 pub const RPC_SWDP_INIT: u8 = b'S';
 pub const RPC_HL_CHECK: u8 = b'C';
 pub const RPC_HL_ACCEL: u8 = b'A';
+pub const RPC_SDI_RESET: u8 = b'S';
+pub const RPC_SDI_DM_READ: u8 = b'r';
+pub const RPC_SDI_DM_WRITE: u8 = b'w';
 pub const RPC_RV_RESET: u8 = b'S';
 pub const RPC_RV_DM_READ: u8 = b'r';
 pub const RPC_RV_DM_WRITE: u8 = b'w';

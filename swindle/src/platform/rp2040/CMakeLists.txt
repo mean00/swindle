@@ -1,12 +1,15 @@
 # IF(TRUE)
 rp_pio_generate(${CMAKE_CURRENT_SOURCE_DIR}/swd.pio ${CMAKE_BINARY_DIR}/bmp_pio_swd.h)
 rp_pio_generate(${CMAKE_CURRENT_SOURCE_DIR}/rvswd.pio ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h)
-set(EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h) # ${B}/bmp_rvTap${EXTRA}.cpp
-                                                                                        # ${B}/bmp_swdTap${EXTRA}.cpp
-                                                                                        # ${B}/bmp_tap_rp2040.cpp  )
+rp_pio_generate(${CMAKE_CURRENT_SOURCE_DIR}/sdi.pio ${CMAKE_BINARY_DIR}/bmp_pio_sdi.h)
+set(EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_swd.h ${CMAKE_BINARY_DIR}/bmp_pio_rvswd.h ${CMAKE_BINARY_DIR}/bmp_pio_sdi.h) # ${B}/bmp_rvTap${EXTRA}.cpp
+# ${B}/bmp_swdTap${EXTRA}.cpp
+# ${B}/bmp_tap_rp2040.cpp  )
 
-add_library(swindleio_impl STATIC bmp_adc_rp2040.cpp bmp_rvTap_rp2040.cpp bmp_swdTap_rp2040.cpp bmp_tap_rp2040.cpp
-                                  ${EXTRA_SOURCE} ../../template/swd_tap_stubs.cpp)
+add_library(swindleio_impl STATIC bmp_adc_rp2040.cpp bmp_rvTap_rp2040.cpp
+          bmp_swdTap_rp2040.cpp bmp_tap_rp2040.cpp
+          bmp_sdiTap_rp2040.cpp
+          ${EXTRA_SOURCE} ../../template/swd_tap_stubs.cpp)
 # Board selection -> ln_bsp interface (linked PUBLIC into libswindle by
 # swindle_target.cmake and PRIVATE into swindleio_impl here).
 if(USE_RP_CARRIER)

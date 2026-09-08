@@ -129,6 +129,40 @@ id = "A"
 old_name = "RPC_HL_ACCEL"
 description = "Get accelerated capabilities bitmap"
 reply = { type = "u8", doc = "Bitmap: bit0=ADIV5 supported" }
+# ---------------------------------------------------------------------------
+# SDI — WCH RISC-V Single wire Debug Module operations
+# ---------------------------------------------------------------------------
+[class.SDI]
+id = "I"
+handler = "rpc_sdi_impl"
+description = "SDI RISC-V Debug Module operations"
+
+[class.SDI.command.RESET]
+id = "S"
+old_name = "RPC_SDI_RESET"
+description = "Reset RISC-V DM"
+params = []
+reply = { type = "u32", on_error = "ok_bool" }
+
+[class.SDI.command.DM_READ]
+id = "r"
+old_name = "RPC_SDI_DM_READ"
+description = "Read RISC-V DM register"
+params = [
+  { name = "address", type = "u8", doc = "DM register address (5 bits)" }
+]
+reply = { type = "u32_le", on_error = "ok_bool" }
+
+[class.SDI.command.DM_WRITE]
+id = "w"
+old_name = "RPC_SDI_DM_WRITE"
+description = "Write RISC-V DM register"
+params = [
+  { name = "address", type = "u8" },
+  { name = "value", type = "u32" }
+]
+reply = { type = "u32", on_error = "ok_bool" }
+
 
 # ---------------------------------------------------------------------------
 # RV — RISC-V Debug Module operations

@@ -1,0 +1,53 @@
+; Unified TX/RX State Machine for CH32V00x SDI (Pulse-Width Protocol)
+; Clock should be configured to 16MHz (62.5ns per cycle). Total bit time = 1us (16 cycles).
+; Command Word:
+; Bits [5:0] = TX Bit Count minus 1 (e.g. 8 for Read, 40 for Write)
+; Bit 6 = Mode (1 = Write, 0 = Read)
+; Bits [31:7] = Unused
+
+.program sdi
+
+start:
+    pull block          ; Word 1: Mode + Header + Padding
+    out x, 1            ; Extract Mode
+    mov isr, x          ; Save Mode to ISR
+    set y, 8            ; 9-bit Header loop count
+    set pindirs, 1      ; Ensure pin is output
+tx_loop:
+    set pins, 0 [1]     ; Drive LOW (Start pulse: ~250ns)
+    out x, 1            ; Extract data bit
+    jmp !x, tx_0
+tx_1:
+    set pins, 1 [9]     ; Drive HIGH aggressively (Push-Pull: ~750ns)
+    jmp loop_end
+tx_0:
+    nop [7]
+    set pins, 1 [2]     ; Drive HIGH aggressively (Push-Pull: ~250ns)
+loop_end:
+    jmp y--, tx_loop    
+    
+    ; Transmit sub-phase complete. Read Mode flag.
+    mov x, isr          
+    jmp !x, do_read     ; If Read, jump straight to RX phase
+    
+    ; If Write, check if we just sent Header or Payload
+    jmp !osre, next_word; If padding exists, it was Word 1. Jump to pull Word 2!
+    jmp start           ; If Word 2 exhausted, transaction done.
+    
+next_word:
+    pull block          ; Pulls Payload Word 2, automatically discarding Word 1's padding!
+    set y, 31           ; 32-bit Payload loop count
+    jmp tx_loop         
+    
+do_read:
+    set y, 31
+    set pins, 0         ; Prepare internal pin state for open-drain toggling
+rx_loop:
+    set pindirs, 1 [3]  ; Drive LOW (~250ns)
+    set pindirs, 0 [5]  ; Float HIGH (Wait ~375ns for weak pull-ups to rise)
+    in pins, 1          ; Sample target response at ~687ns
+    jmp y--, rx_loop [4]; Wait out remainder of 1us bit time (Total 16 cycles)
+    
+    push block
+    ; Implicit wrap to start
+

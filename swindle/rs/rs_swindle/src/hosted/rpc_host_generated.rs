@@ -162,6 +162,40 @@ pub fn remote_hl_accel() -> u8 {
     u8s_string_to_u8(&reply[1..])
 }
 
+// ── SDI commands ──
+pub fn remote_sdi_reset() -> (bool, u32) {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_RESET]);
+    e.end();
+    let reply = remote_get_reply();
+    if !check_reply(reply, 8) { return (false, 0); }
+    (true, u8s_string_to_u32_le(&reply[1..]))
+}
+
+pub fn remote_sdi_dm_read(address: u32) -> (bool, u32) {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_DM_READ]);
+    e.add_u8_hex(address as u32);
+    e.end();
+    let reply = remote_get_reply();
+    if !check_reply(reply, 8) { return (false, 0); }
+    (true, u8s_string_to_u32_le(&reply[1..]))
+}
+
+pub fn remote_sdi_dm_write(address: u32, value: u32) -> (bool, u32) {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_DM_WRITE]);
+    e.add_u8_hex(address as u32);
+    e.add_u32_le(value as u32);
+    e.end();
+    let reply = remote_get_reply();
+    if !check_reply(reply, 8) { return (false, 0); }
+    (true, u8s_string_to_u32_le(&reply[1..]))
+}
+
 // ── RV commands ──
 pub fn remote_rv_reset() -> (bool, u32) {
     let mut e = rpc_encoder::new();

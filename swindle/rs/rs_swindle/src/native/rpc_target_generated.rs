@@ -29,6 +29,7 @@ pub fn rpc_dispatch(input: &[u8]) -> bool {
         RPC_GEN_PACKET => rpc_gen_impl::dispatch(&mut parser),
         RPC_SWDP_PACKET => rpc_swdp_impl::dispatch(&mut parser),
         RPC_HL_PACKET => rpc_hl_impl::dispatch(&mut parser),
+        RPC_SDI_PACKET => rpc_sdi_impl::dispatch(&mut parser),
         RPC_RV_PACKET => rpc_rv_impl::dispatch(&mut parser),
         RPC_LNADIV_PACKET => rpc_lnadiv_impl::dispatch(&mut parser),
         RPC_ADIV5_PACKET => rpc_adiv5_impl::dispatch(&mut parser),
@@ -185,6 +186,47 @@ pub mod rpc_hl_impl {
         let val = crate::native::rpc_target_impl::rpc_hl_impl::accel();
         #[allow(clippy::unnecessary_cast)]
         rpc_reply_ok(val as u8);
+        true
+    }
+
+}
+
+// ── SDI dispatch ──
+pub mod rpc_sdi_impl {
+    use crate::native::rpc_target::*;
+    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::rpc_common_generated::*;
+
+    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
+        match parser.next_cmd() {
+            RPC_SDI_RESET => cmd_reset(parser),
+            RPC_SDI_DM_READ => cmd_dm_read(parser),
+            RPC_SDI_DM_WRITE => cmd_dm_write(parser),
+            _ => {
+                bmplog!("unknown command in {} packet\n", stringify!(SDI));
+                false
+            }
+        }
+    }
+
+    fn cmd_reset(parser: &mut rpc_parameter_parser) -> bool {
+        let (ok, value) = crate::native::rpc_target_impl::rpc_sdi_impl::reset();
+        rpc_reply_bool_32le(ok, value);
+        true
+    }
+
+    fn cmd_dm_read(parser: &mut rpc_parameter_parser) -> bool {
+        let address = parser.next_u8();
+        let (ok, value) = crate::native::rpc_target_impl::rpc_sdi_impl::dm_read(address);
+        rpc_reply_bool_32le(ok, value);
+        true
+    }
+
+    fn cmd_dm_write(parser: &mut rpc_parameter_parser) -> bool {
+        let address = parser.next_u8();
+        let value = parser.next_u32();
+        let (ok, value) = crate::native::rpc_target_impl::rpc_sdi_impl::dm_write(address, value);
+        rpc_reply_bool_32le(ok, value);
         true
     }
 
