@@ -8,6 +8,7 @@
 //! |---------|-------------|
 //! | `swdp_scan` | Probe SWD bus for ARM devices |
 //! | `rvswdp_scan` | Probe for RISC-V devices |
+//! | `sdi_scan` | Probe WCH CH32V0xx single-wire (SDI) devices |
 //! | `fq` / `frequency` | Get/set SWD clock frequency |
 //! | `ws` | Get/set SWD wait states |
 //! | `voltage` | Read target supply voltage |
@@ -119,7 +120,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 31] = [
+const mon_command_tree: [CommandTree; 32] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -305,6 +306,14 @@ const mon_command_tree: [CommandTree; 31] = [
         next_separator: 0,
     }, //
     CommandTree {
+        command: "sdi_scan",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_sdi_scan),
+        start_separator: 0,
+        next_separator: 0,
+    }, //
+    CommandTree {
         command: "riscv_benchmark",
         min_args: 0,
         require_connected: false,
@@ -370,7 +379,7 @@ const mon_command_tree: [CommandTree; 31] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 28] = [
+const help_tree: [HelpTree; 29] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -454,6 +463,10 @@ const help_tree: [HelpTree; 28] = [
     HelpTree {
         command: "rvswdp_scan",
         help: "Probe WCH RISCV device(s).",
+    },
+    HelpTree {
+        command: "sdi_scan",
+        help: "Probe WCH CH32V0xx device(s) over the single-wire SDI interface.",
     },
     HelpTree {
         command: "set",
@@ -759,6 +772,25 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
 
     if !bmp::rvswdp_scan() {
         bmpwarning!("rvswdp_scan failed!\n");
+        return false;
+    }
+    os_detach();
+    encoder::reply_ok();
+    true
+}
+/*
+   Detect stuff connected to the SWD interface
+   Try to use the fastest speed
+*/
+/// Handle `mon sdi_scan` — probe for WCH CH32V0xx SDI devices.
+pub fn _sdi_scan(_command: &str, _args: &[&str]) -> bool {
+    bmplog!("sdi_scan:\n");
+    // The scan may detach from the current target and attach a different one:
+    // cached lines are target-specific and must be dropped.
+    crate::mem_cache::invalidate();
+
+    if !bmp::sdi_scan() {
+        bmpwarning!("sdi_scan failed!\n");
         return false;
     }
     os_detach();

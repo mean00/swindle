@@ -1,0 +1,82 @@
+# 93blackmagic_riscv32_rv32e_reg_access.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# GDB (riscv-none-elf-gdb) against an RV32EC hart (WCH CH32V003, QingKe V2) could read
+# the whole register file, but every single-register access to the PC failed, which made
+# 'load' and 'set $pc=...' impossible:
+#
+#   (gdb) set $pc=0x128
+#   [remote] Sending packet: $g...            <- 68 byte reply = 16 GPRs + PC (E layout)
+#   [remote] Sending packet: $P10=28010000    <- regno 16 = PC in rv32ec
+#   [remote] Packet received: E01             <- probe rejected the write
+#
+# ROOT CAUSE
+# ----------
+# An RV32E hart has half the GPR file of an RV32I hart, so the register number GDB uses
+# for the PC shifts with it: riscv_build_target_description() emits 16 GPRs (x0..x15)
+# followed by 'pc' when the E base ISA is in use, so GDB numbers the PC as register 16
+# (it is 32 only for the I base ISA, where 32 GPRs precede it -- which is exactly what
+# the observed $P10 and 68 byte $g reply show).
+#
+# riscv32_probe() (target->regs_size) and riscv32_regs_read()/riscv32_regs_write() (the
+# 'g'/'G' bulk paths) already derive their GPR count from
+# hart->extensions & RV_ISA_EXT_EMBEDDED, but the single register accessors
+# riscv32_reg_read()/riscv32_reg_write() (the 'p'/'P' packets) hard-coded the RV32I
+# layout: any regno below 32 was decoded as GPR x<regno>, so GDB's PC regno 16 was
+# written to abstract CSR 0x1010 (x16) instead of RV_DPC. A real RV32E hart does not
+# implement x16..x31, so the abstract command failed and the probe answered E01 for
+# every PC write ('load', 'set $pc'). PC reads were broken in the same way.
+#
+# FIX
+# ---
+# Derive the GPR count from the hart ISA in riscv32_reg_read()/riscv32_reg_write(), just
+# like the bulk accessors do, and compare the incoming GDB register number against it:
+# regno < gprs_count is a GPR, regno == gprs_count is the PC. The FPU (33..65, 66..68)
+# and CSR (128+n) numbers keep their hard-coded offsets: the target description gives
+# those registers explicit absolute regnums of their own, so they do not shift with E.
+#
+# EVIDENCE
+# --------
+# CH32V003F4P6 (RV32EC) over the single-wire SDI transport:
+#   (gdb) load           -> sections program, then 'Cannot write PC register' (E01)
+#   (gdb) set $pc=0x128  -> E01
+# after this patch: the $P10 write reaches RV_DPC and is acked with OK.
+#
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -195,9 +195,17 @@
+ 		return 0;
+ 	/* Grab the hart structure  */
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (reg < 32)
++	/*
++	 * The 'E' base ISA has only 16 GPRs (x0..x15) where 'I' has 32 (x0..x31), so GDB's
++	 * register numbers differ between the two: in the E case the PC register immediately
++	 * follows x15 instead of x31 (see riscv_build_target_description()). Use the same GPR
++	 * count the register file and the target description are generated with, or the PC
++	 * register gets mis-decoded into an out of range GPR that the DM then rejects.
++	 */
++	const uint32_t gprs_count = hart->extensions & RV_ISA_EXT_EMBEDDED ? 16U : 32U;
++	if (reg < gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, RV_GPR_BASE + reg, data));
+-	if (reg == 32)
++	if (reg == gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, RV_DPC, data));
+ 	if (reg >= RV_CSR_GDB_OFFSET)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, reg - RV_CSR_GDB_OFFSET, data));
+@@ -219,9 +227,11 @@
+ 		return 0;
+ 	/* Grab the hart structure  */
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (reg < 32)
++	/* See riscv32_reg_read() for why the GPR count and thus the PC register number shift */
++	const uint32_t gprs_count = hart->extensions & RV_ISA_EXT_EMBEDDED ? 16U : 32U;
++	if (reg < gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_GPR_BASE + reg, data));
+-	if (reg == 32)
++	if (reg == gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_DPC, data));
+ 	if (reg >= RV_CSR_GDB_OFFSET)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, reg - RV_CSR_GDB_OFFSET, data));

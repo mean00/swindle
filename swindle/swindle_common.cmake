@@ -210,7 +210,7 @@ endfunction()
 # Supported boards
 # ----------------------------
 set(BOARDS
-    ${enabled_sources} ${BMP_EXTRA}/target/CH32V3xx/ch32v3xx.c ${B}/bmp_disabledBoard.cpp ${T}/lpc_common.c
+    ${enabled_sources} ${BMP_EXTRA}/target/CH32V0xx/ch32v0x.c ${BMP_EXTRA}/target/CH32V3xx/ch32v3xx.c ${B}/bmp_disabledBoard.cpp ${T}/lpc_common.c
     CACHE INTERNAL "")
 
 # -------

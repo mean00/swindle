@@ -3,7 +3,7 @@
  * @brief Pin mode selection for SWD/JTAG GPIO reconfiguration.
  *
  * Derived from the Black Magic Debug project but simplified to focus on
- * the subset actually used (SWD, RVSWD, GPIO).
+ * the subset actually used (SWD, RVSWD, SDI, GPIO).
  */
 #pragma once
 
@@ -15,6 +15,7 @@ enum bmp_pin_mode
     BMP_PINMODE_SWD,       /**< ARM SWD protocol (SWDIO + SWCLK). */
     BMP_PINMODE_RVSWD,     /**< RISC-V RVSWD protocol (variant of SWD). */
     BMP_PINMODE_RVSWD_RAW, /**< RISC-V RVSWD RAW (no start/stop bits). */
+    BMP_PINMODE_SDI,       /**< WCH CH32V0xx single-wire debug (SDI). */
 };
 
 /** @brief Reconfigure debug pins to the specified operating mode. */

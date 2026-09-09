@@ -57,6 +57,7 @@ set(BM_HOSTED
     ${HOSTED}/remote/protocol_v4_adiv5.c
     ${HOSTED}/remote/protocol_v4_riscv.c
     ${BMP_EXTRA}/hosted/remote_rv_protocol.c
+    ${BMP_EXTRA}/hosted/remote_sdi_protocol.c
     ${BMP_EXTRA}/hosted/remote_adiv5.c
     ${PC}/utils.c
     ${PC}/cli.c

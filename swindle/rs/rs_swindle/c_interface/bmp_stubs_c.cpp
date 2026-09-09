@@ -35,9 +35,5 @@ extern "C"
     {
         return false;
     }
-    bool ch32v003x_probe(target_s *const target)
-    {
-        return false;
-    }
 }
 // EOF

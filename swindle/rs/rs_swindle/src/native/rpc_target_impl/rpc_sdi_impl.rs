@@ -1,21 +1,21 @@
-// rpc_rv_impl.rs — RV class command implementations
+// rpc_sdi_impl.rs — SDI (WCH CH32V0xx single-wire) class command implementations
 // Called by rpc_target_generated.rs
 
 use crate::bmp;
 
-/// Reset RISC-V DM
+/// Enter SDI debug mode (upload PIO, NRST pulse, 0x7e/0x7d unlock)
 pub fn reset() -> (bool, u32) {
-    bmp::rv_dm_start();
+    bmp::sdi_dm_start();
     (true, 0)
 }
 
-/// Read RISC-V DM register
+/// Read one SDI DM register
 pub fn dm_read(address: u32) -> (bool, u32) {
-    bmp::bmp_rv_read(address as u8)
+    bmp::bmp_sdi_read(address as u8)
 }
 
-/// Write RISC-V DM register
+/// Write one SDI DM register
 pub fn dm_write(address: u32, value: u32) -> (bool, u32) {
-    let ok = bmp::bmp_rv_write(address as u8, value);
+    let ok = bmp::bmp_sdi_write(address as u8, value);
     (ok, 0)
 }

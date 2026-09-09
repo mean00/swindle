@@ -142,6 +142,26 @@ pub fn bmp_rv_write(adr: u8, data: u32) -> bool {
     unsafe { rn_bmp_cmd_c::bmp_rv_dm_write_c(adr, data) }
 }
 
+pub fn sdi_dm_start() {
+    unsafe {
+        rn_bmp_cmd_c::bmp_sdi_dm_reset_c();
+    }
+}
+
+pub fn bmp_sdi_read(adr: u8) -> (bool, u32) {
+    unsafe {
+        let mut ret: u32 = 0;
+        let ret_ptr: *mut u32 = &mut ret;
+
+        let status: bool = rn_bmp_cmd_c::bmp_sdi_dm_read_c(adr, ret_ptr);
+        (status, ret)
+    }
+}
+
+pub fn bmp_sdi_write(adr: u8, data: u32) -> bool {
+    unsafe { rn_bmp_cmd_c::bmp_sdi_dm_write_c(adr, data) }
+}
+
 pub fn bmp_adiv5_swd_write_no_check(addr: u16, data: u32) -> bool {
     unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_write_no_check_c(addr, data) }
 }

@@ -120,6 +120,34 @@ pub fn swdp_scan() -> bool {
 pub fn rvswdp_scan() -> bool {
     unsafe { rn_bmp_cmd_c::cmd_rvswd_scan(null(), 0, null_mut()) }
 }
+/// Perform a WCH CH32V0xx single-wire debug (SDI) scan.
+///
+/// Native firmware runs the SDI probe directly (`sdi_scan` in sdiTap);
+/// hosted builds run the same stage-1 sequence in Rust over the class-I
+/// RPC primitives (see the `hosted` variant below).
+#[cfg(not(feature = "hosted"))]
+pub fn sdi_scan() -> bool {
+    unsafe { rn_bmp_cmd_c::sdi_scan() }
+}
+/// Hosted variant of [`sdi_scan`].
+///
+/// The scan + full RISC-V target attach is orchestrated in C
+/// (`blackmagic_addon/hosted/remote_sdi_protocol.c::bmda_sdi_scan2`, mirroring
+/// `remote_rv_protocol.c::bmda_rvswd_scan2` for the RVSWD leg): clear the
+/// blackmagic target list, gate on DMSTATUS, then hand `riscv_dmi_init()` a
+/// real, header-typed `riscv_dmi_s` (designer = WCH) so the C RISC-V framework
+/// (riscv32 + the CH32V0xx driver) discovers the hart — exactly like native
+/// `sdi_scan()` attaches. Only the DM-access leaf functions live in Rust
+/// (`remote_sdi_reset_rs` / `remote_sdi_dm_read_rs` / `remote_sdi_dm_write_rs`
+/// in `hosted/rpc_host/remote_rpc.rs`); there is no Rust-side layout mirror of
+/// `struct riscv_dmi` to keep in sync with riscv_debug.h.
+#[cfg(feature = "hosted")]
+pub fn sdi_scan() -> bool {
+    unsafe extern "C" {
+        fn bmda_sdi_scan2() -> bool;
+    }
+    unsafe { bmda_sdi_scan2() }
+}
 /// Detach from the currently attached target.
 ///
 /// Releases the target, disables RTT, and resets the GPIO state. Returns

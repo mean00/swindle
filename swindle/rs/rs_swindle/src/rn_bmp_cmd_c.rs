@@ -468,6 +468,21 @@ unsafe extern "C" {
     pub fn bmp_rv_rvswd_probe_c(id: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {
+    pub fn bmp_sdi_dm_reset_c() -> bool;
+}
+unsafe extern "C" {
+    pub fn bmp_sdi_dm_read_c(adr: u8, value: *mut cty::c_uint) -> bool;
+}
+unsafe extern "C" {
+    pub fn bmp_sdi_dm_write_c(adr: u8, value: cty::c_uint) -> bool;
+}
+// SDI scan entry point (native only): provided by sdiTap. Hosted builds run
+// sdi_scan() in Rust against the class-I RPC primitives instead.
+#[cfg(not(feature = "hosted"))]
+unsafe extern "C" {
+    pub fn sdi_scan() -> bool;
+}
+unsafe extern "C" {
     pub fn platform_buffer_read(data: *mut u8, maxsize: cty::c_int) -> cty::c_int;
 }
 unsafe extern "C" {

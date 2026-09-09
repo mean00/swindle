@@ -131,6 +131,30 @@ pub fn remote_ch32_riscv_dmi_write_rs(address: u32, value: u32) -> bool {
 }
 
 #[unsafe(no_mangle)]
+pub fn remote_sdi_reset_rs() -> bool {
+    // Enter SDI debug mode on the remote probe (PIO upload, NRST pulse,
+    // unlock). The C glue only needs to know whether the RPC leg answered
+    // (mirror of remote_ch32_riscv_dmi_reset_rs).
+    let (ok, _value) = crate::rpc_host_generated::remote_sdi_reset();
+    ok
+}
+
+#[unsafe(no_mangle)]
+pub fn remote_sdi_dm_read_rs(address: u32, value: &mut u32) -> bool {
+    let (ok, v) = crate::rpc_host_generated::remote_sdi_dm_read(address);
+    if ok {
+        *value = v;
+    }
+    ok
+}
+
+#[unsafe(no_mangle)]
+pub fn remote_sdi_dm_write_rs(address: u32, value: u32) -> bool {
+    let (ok, _value) = crate::rpc_host_generated::remote_sdi_dm_write(address, value);
+    ok
+}
+
+#[unsafe(no_mangle)]
 pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();

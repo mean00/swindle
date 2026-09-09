@@ -338,7 +338,10 @@ extern "C" bool rvswd_scan()
     memset(dmi, 0, sizeof(*dmi));
     dmi->designer_code = JEP106_MANUFACTURER_WCH;
     dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
-    dmi->address_width = 8U;
+    /* WCH RVSWD/SDI carry a 7-bit DMI address field (start+7addr+RW header),
+     * like wchlink_riscv_dtm.c; unused by the taps (fixed-frame drivers), but
+     * describe the bus correctly for any width-aware consumer. */
+    dmi->address_width = 7U;
     dmi->read = ch32_riscv_dmi_read;
     dmi->write = ch32_riscv_dmi_write;
 

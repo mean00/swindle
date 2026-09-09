@@ -11,15 +11,32 @@
 #include "lnGPIO.h"
 #include "ln_rp_pio.h"
 #include "stdint.h"
-#include "hardware/gpio.h"
+// Only the instruction array / wrap constants are needed from the pioasm
+// output (no hardware/pio.h structs): esprit drives the PIO directly.
 #define PICO_NO_HARDWARE 1
 #include "bmp_pio_sdi.h"
+#include "bmp_pinmode.h"
+#include "bmp_pinout.h"
+#include "lnBMP_pins.h"
+#include "lnBMP_reset.h"
+#include <cstring>
 
-#define PIN_TO_USE GPIO13
-#define PIN_RESET GPIO10
-#define SDIO_SPEED (16000000)
+// The blackmagic RISC-V target framework (riscv_debug.h) is needed for the
+// Stage-2 attach below: we hand riscv_dmi_init() an SDI-backed riscv_dmi_s,
+// exactly mirroring what rvswd_template.h::rvswd_scan() does over RVSWD.
+extern "C"
+{
+#include "jep106.h"
+#include "riscv_debug.h"
+}
+extern "C" void target_list_free(void);
 
-#define STEP 1
+// SDI data pin: the same physical wire the PIO state machine is configured on
+// by bmp_gpio_pinmode(BMP_PINMODE_SDI) (bmp_tap_rp2040.cpp), i.e. the SWDIO
+// line _mapping[TSWDIO_PIN] (GPIO13 on the RP2040 carrier/inv probe, where the
+// primitives were validated). NRST sits on GPIO10 there but is driven through
+// the shared SwdReset controller so the build-time polarity option is honored.
+#define SDI_DATA_PIN _mapping[TSWDIO_PIN]
 
 #define SDI_WRITE 0x80
 #define SDI_READ 0x00
@@ -29,6 +46,8 @@
 
 // 9-bit Header Structure (Start bit + 7 Address bits + 1 R/W bit)
 #define SDI_START_BIT 1
+
+#define INTER_WORD_DELAY 2
 
 static inline uint32_t make_sdi_header(uint8_t tgt, uint8_t mode)
 {
@@ -41,9 +60,10 @@ static uint32_t sdi_read(rpPIO_SM *xsm, const uint8_t adr)
     uint32_t header9 = make_sdi_header(adr, 0);
     uint32_t w = (0 << 31) | (header9 << 22);
     xsm->write(1, &w);
+    lnDelayUs(INTER_WORD_DELAY);
 
     xsm->read(1, &w);
-    lnDelayUs(2);
+    lnDelayUs(INTER_WORD_DELAY);
     return w;
 }
 
@@ -53,75 +73,180 @@ static void sdi_write(rpPIO_SM *xsm, const uint8_t adr, const uint32_t data)
     uint32_t header9 = make_sdi_header(adr, 1);
     uint32_t w1 = (1U << 31) | (header9 << 22);
     xsm->write(1, &w1);
+    lnDelayUs(INTER_WORD_DELAY);
 
     // Word 2: The exact 32-bit payload
     xsm->write(1, &data);
-    lnDelayUs(2);
+    lnDelayUs(INTER_WORD_DELAY);
 }
 static void sdi_reset(rpPIO_SM *xsm, uint32_t ms)
 {
-    xsm->setPinDir(PIN_TO_USE, true); // Drive LOW (assumes output value is 0)
+    xsm->setPinDir(SDI_DATA_PIN, true); // Drive LOW (assumes output value is 0)
     lnDelayMs(ms);
-    xsm->setPinDir(PIN_TO_USE, false); // Release to float HIGH
-                                       //
-    sdi_write(xsm, 0x7e, 0x5AA50400);  // address 0x7E
+    xsm->setPinDir(SDI_DATA_PIN, false); // Release to float HIGH
+                                         //
+    sdi_write(xsm, 0x7e, 0x5AA50400);    // address 0x7E
     lnDelayMs(2);
     sdi_write(xsm, 0x7d, 0x5AA50400); // address 0x7D
     lnDelayMs(2);
 }
-#if 0
-void runPio()
+
+// ---------------------------------------------------------------------------
+// Integrated SDI probe driver (stage 1: transport).
+//
+// Mirrors the RVSWD stack (bmp_rvTap_rp2040.cpp / rvswd_template.h):
+//   - bmp_gpio_pinmode(BMP_PINMODE_SDI) uploads the SDI PIO program onto the
+//     shared state machine `xsm` (see bmp_tap_rp2040.cpp setupSDI()),
+//   - these functions then drive the WCH DM (debug module) registers over the
+//     validated bit-level sdi_write / sdi_read / sdi_reset primitives above.
+// ---------------------------------------------------------------------------
+extern rpPIO_SM *xsm;    // shared SWD/RVSWD/SDI PIO state machine (bmp_tap_rp2040.cpp)
+extern SwdReset *pReset; // board NRST controller (bmp_tap_rp2040.cpp)
+
+/**
+ * @brief Enter SDI debug mode: upload the SDI PIO program, pulse NRST, then run
+ *        the SDI hold-low + 0x7e/0x7d unlock sequence.
+ * @return true
+ */
+bool LN_FAST_CODE sdi_dm_start()
 {
-
-    lnDigitalWrite(PIN_RESET, 0); // it is inverted
-    lnPinMode(PIN_RESET, lnOUTPUT);
-
-    lnPin pin = PIN_TO_USE;
-    rpPIO xpio(0);
-    rpPIO_SM *xsm = xpio.getSm(0);
-
-    lnPinModePIO((lnPin)pin, 0, true); // PIO0+pullup
-
-    rpPIO_pinConfig pinConfig;
-    pinConfig.sets.pinNb = 1;
-    pinConfig.sets.startPin = pin;
-    pinConfig.outputs.pinNb = 1;
-    pinConfig.outputs.startPin = pin;
-    pinConfig.inputs.pinNb = 1;
-    pinConfig.inputs.startPin = pin;
-
-    xsm->setSpeed(SDIO_SPEED);
-    xsm->setBitOrder(false, false); // MSB-first for WCH SDI protocol!
-    xsm->uploadCode(sizeof(sdi_program_instructions) / 2, sdi_program_instructions, sdi_wrap_target, sdi_wrap);
-    xsm->configure(pinConfig);
-
-    // Explicitly set the PIO pin output level to 0.
-    // This is required for the pseudo open-drain logic:
-    // When pindirs=1, it drives the 0. When pindirs=0, it floats.
-    xsm->setPinsValue(0);
-    xsm->setPinDir(pin, false);
-
-    xsm->execute();
-
-    lnDigitalWrite(PIN_RESET, 1); // it is inverted
-    lnDelayMs(20);
-    lnDigitalWrite(PIN_RESET, 0); // it is inverted
-    sdi_reset(xsm, 20);           // Hold SDI line low to reset target
-
-    while (1)
+    bmp_gpio_pinmode(BMP_PINMODE_SDI);
+    if (pReset)
     {
-#if 0
+        pReset->on(); // assert NRST
+        lnDelayMs(20);
+        pReset->off(); // release NRST
+    }
+    sdi_reset(xsm, 20); // SDI hold-low, then unlock 0x7e/0x7d (validated)
+    return true;
+}
 
-        sdi_write(xsm, DMSTATUS, 0x5555U);
-#else
-        lnDelayMs(5);
-        uint32_t status = sdi_read(xsm, DMSTATUS);
-#endif
-        // Logger("Status = 0x%x\n", status);
+/**
+ * @brief Write one DM register over SDI.
+ * @param adr Register address (7 bits).
+ * @param val Value to write.
+ * @return true
+ */
+bool LN_FAST_CODE sdi_dm_write(const uint8_t adr, const uint32_t val)
+{
+    sdi_write(xsm, adr, val);
+    return true;
+}
+
+/**
+ * @brief Read one DM register over SDI.
+ * @param adr    Register address (7 bits).
+ * @param output Receives the 32-bit register value.
+ * @return true
+ */
+bool LN_FAST_CODE sdi_dm_read(const uint8_t adr, uint32_t *const output)
+{
+    if (!output)
+        return false;
+    *output = sdi_read(xsm, adr);
+    return true;
+}
+
+extern "C"
+{
+    /** @brief C entry point: enter SDI debug mode (mirror of bmp_rv_dm_reset_c). */
+    bool bmp_sdi_dm_reset_c()
+    {
+        return sdi_dm_start();
+    }
+    /** @brief C entry point: SDI DM write (mirror of bmp_rv_dm_write_c). */
+    bool bmp_sdi_dm_write_c(const uint8_t adr, const uint32_t value)
+    {
+        return sdi_dm_write(adr, value);
+    }
+    /** @brief C entry point: SDI DM read (mirror of bmp_rv_dm_read_c). */
+    bool bmp_sdi_dm_read_c(const uint8_t adr, uint32_t *const value)
+    {
+        return sdi_dm_read(adr, value);
     }
 }
 
-//-
-bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val);
-bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output);
-#endif
+/* Bounded retry budget for DMI accesses, mirroring RVSWD_DMI_MAX_ATTEMPTS in
+ * rvswd_template.h. SDI transfers do not return a per-access DMI status word,
+ * so the retry loop only guards against the transport being momentarily
+ * unresponsive (e.g. right after an unlock/reset). */
+#define SDI_DMI_MAX_ATTEMPTS 4U
+#define RV_DMI_SUCCESS 0U
+#define RV_DMI_FAILURE 2U
+
+static bool ch32_sdi_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
+{
+    for (uint32_t attempt = 0U; attempt < SDI_DMI_MAX_ATTEMPTS; ++attempt)
+    {
+        if (sdi_dm_read((uint8_t)address, value))
+        {
+            dmi->fault = RV_DMI_SUCCESS;
+            return true;
+        }
+    }
+    dmi->fault = RV_DMI_FAILURE;
+    return false;
+}
+
+static bool ch32_sdi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+{
+    for (uint32_t attempt = 0U; attempt < SDI_DMI_MAX_ATTEMPTS; ++attempt)
+    {
+        if (sdi_dm_write((uint8_t)address, value))
+        {
+            dmi->fault = RV_DMI_SUCCESS;
+            return true;
+        }
+    }
+    dmi->fault = RV_DMI_FAILURE;
+    return false;
+}
+
+/**
+ * @brief SDI scan + full RISC-V target attach (stage 2).
+ *
+ * Stage 1 unlocked the CH32V0xx and reported DMSTATUS only. Stage 2 mirrors
+ * rvswd_template.h::rvswd_scan(): after the unlock it clears the blackmagic
+ * target list and hands riscv_dmi_init() an SDI-backed riscv_dmi_s (designer =
+ * WCH), so the C RISC-V framework discovers the hart and runs the per-family
+ * probe (riscv32_probe -> ch32v003x_probe) exactly as it does over RVSWD.
+ * A missing / unresponsive target leaves the SDI bus idle-high, which reads
+ * back as all-ones.
+ * @return true when a target responded to the unlock (attach attempted).
+ */
+extern "C" bool sdi_scan()
+{
+    sdi_dm_start();
+    target_list_free();
+
+    uint32_t status = 0;
+    (void)sdi_dm_read(DMSTATUS, &status);
+    if (status == 0xFFFFFFFFUL)
+    {
+        Logger("SDI : no target responding (DMSTATUS=0x%x)\n", (unsigned)status);
+        return false;
+    }
+    Logger("SDI : found target DMSTATUS=0x%x, attaching RISC-V debug module\n", (unsigned)status);
+
+    riscv_dmi_s *dmi = new riscv_dmi_s;
+    if (!dmi)
+    { /* allocation failed: heap exhaustion */
+        Logger("SDI : dmi allocation failed in %s\n", __func__);
+        return false;
+    }
+    memset(dmi, 0, sizeof(*dmi));
+    dmi->designer_code = JEP106_MANUFACTURER_WCH;
+    dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
+    /* SDI frames carry a 7-bit DMI address field (start+7addr+RW header, see
+     * make_sdi_header), matching wchlink_riscv_dtm.c. The tap never reads this
+     * field (fixed-frame driver), but it must describe the bus correctly. */
+    dmi->address_width = 7U;
+    dmi->read = ch32_sdi_dmi_read;
+    dmi->write = ch32_sdi_dmi_write;
+
+    riscv_dmi_init(dmi);
+
+    return true;
+}
+
+// EOF

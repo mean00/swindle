@@ -75,6 +75,8 @@ apply_patch_if_needed5(patched88 88blackmagic_adiv6_select_csw_cache.patch "cach
 apply_patch_if_needed5(patched89 89blackmagic_lean_dmi_accessor.patch "lean ADI DTM DMI path: drive TAR/DRW directly (no per-op RDBUFF flush + CTRL/STAT poll), warm loop = TAR + data")
 apply_patch_if_needed5(patched90 90blackmagic_dp_invalidate_caches.patch "split cache invalidation into DP-level (SELECT/SELECT1, covers ADIv5+ADIv6) and AP-level (CSW); invalidate SELECT/SELECT1 on SWD line reset")
 apply_patch_if_needed5(patched92 92blackmagic_riscv_reset_no_allreset_poll.patch "riscv_reset: drop RV_DM_STAT_ALL_RESET poll (dmstatus bit 19 = allhavereset, cleared by reset on v0.13 RP2350 -> always 2x500ms timeout); re-activate DM + wait for dmactive instead")
+apply_patch_if_needed5(patched93 93blackmagic_riscv32_rv32e_reg_access.patch "riscv32 single register access: derive the GPR count from the hart ISA (E base has 16 GPRs) so GDB's PC regno is not mis-decoded as GPR x16 -> fixes 'load'/'set $pc' failing with E01 on RV32E (CH32V003)")
+
 
 
 

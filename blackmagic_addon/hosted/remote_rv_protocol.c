@@ -41,6 +41,8 @@ extern bool remote_ch32_riscv_dmi_write_rs(uint32_t address, uint32_t value);
 extern bool remote_ch32_riscv_dmi_read_rs(uint32_t address, uint32_t *value);
 extern bool remote_ch32_riscv_dmi_reset_rs();
 
+extern bool bmda_sdi_scan2(void); /* remote_sdi_protocol.c (see link-pull note below) */
+
 /**
  * @brief
  *
@@ -136,6 +138,25 @@ bool bmda_rv_dm_probe(uint32_t *chip_id)
 }
 
 /**
+ * @brief Link-pull glue for the hosted SDI transport.
+ *
+ * The hosted executable links libswindle (which holds remote_sdi_protocol.o)
+ * *before* the Rust archive, so an archive member is only extracted while the
+ * unresolved set is being built from the C++ main objects and the already
+ * pulled C objects. The Rust side (`mon sdi_scan` -> bmp::sdi_scan) is linked
+ * last and therefore cannot pull the SDI object by itself.
+ *
+ * This object, by contrast, is always extracted: platforms/hosted/platform.c's
+ * `bmda_rvswd_scan()` unconditionally calls `bmda_rvswd_scan2()`. Forward-
+ * referencing `bmda_sdi_scan2()` from here forces remote_sdi_protocol.o out of
+ * the same archive. This function is intentionally never called at runtime.
+ */
+__attribute__((used)) bool bmda_keep_sdi_scan_linked(void)
+{
+    return bmda_sdi_scan2();
+}
+
+/**
  * @brief
  *
  * @return true
@@ -164,7 +185,10 @@ bool bmda_rvswd_scan2()
     }
     dmi->designer_code = JEP106_MANUFACTURER_WCH;
     dmi->version = RISCV_DEBUG_0_13; /* Assumption, unverified */
-    dmi->address_width = 8U;
+    /* WCH RVSWD carries a 7-bit DMI address field (like wchlink_riscv_dtm.c);
+     * unused by the RPC callbacks (leaf DM ops are forwarded raw) but describe
+     * the bus correctly for any width-aware consumer. */
+    dmi->address_width = 7U;
     dmi->read = remote_ch32_riscv_dmi_read;
     dmi->write = remote_ch32_riscv_dmi_write;
 
