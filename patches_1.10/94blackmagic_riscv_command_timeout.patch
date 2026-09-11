@@ -1,0 +1,17 @@
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index aaaaaaaa..bbbbbbbb 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -760,9 +760,11 @@
+ 
+ bool riscv_command_wait_complete(riscv_hart_s *const hart)
+ {
++	platform_timeout_s timeout;
++	platform_timeout_set(&timeout, 200U);
+ 	uint32_t status = RV_DM_ABST_STATUS_BUSY;
+ 	while (status & RV_DM_ABST_STATUS_BUSY) {
+-		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status))
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status) || platform_timeout_is_expired(&timeout))
+ 			return false;
+ 	}
+ 	/* Shift out and mask off the command status, then reset the status on the Hart */
