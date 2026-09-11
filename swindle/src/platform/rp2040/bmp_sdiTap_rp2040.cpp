@@ -48,6 +48,7 @@ extern "C" void target_list_free(void);
 #define SDI_START_BIT 1
 
 #define INTER_WORD_DELAY 2
+#define END_OF_WRITE_DELAY 55
 
 static inline uint32_t make_sdi_header(uint8_t tgt, uint8_t mode)
 {
@@ -77,7 +78,7 @@ static void sdi_write(rpPIO_SM *xsm, const uint8_t adr, const uint32_t data)
 
     // Word 2: The exact 32-bit payload
     xsm->write(1, &data);
-    lnDelayUs(INTER_WORD_DELAY);
+    lnDelayUs(END_OF_WRITE_DELAY);
 }
 static void sdi_reset(rpPIO_SM *xsm, uint32_t ms)
 {
@@ -220,7 +221,13 @@ extern "C" bool sdi_scan()
     target_list_free();
 
     uint32_t status = 0;
-    (void)sdi_dm_read(DMSTATUS, &status);
+    for (int retry = 0; retry < 5; retry++)
+    {
+        (void)sdi_dm_read(DMSTATUS, &status);
+        if (status != 0xFFFFFFFFUL) break;
+        lnDelayMs(1);
+    }
+    
     if (status == 0xFFFFFFFFUL)
     {
         Logger("SDI : no target responding (DMSTATUS=0x%x)\n", (unsigned)status);

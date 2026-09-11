@@ -1,25 +1,5 @@
 /*
  * This file is part of the Black Magic Debug project.
- *
- * Copyright (C) 2022-2026 1BitSquared <info@1bitsquared.com>
- * Written by Rafael Silva <perigoso@riseup.net>
- * Modified by Rachel Mant <git@dragonmux.net>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-/*
  * WCH CH32V0xx target driver.
  *
  * This file is derived from upstream blackmagic/src/target/ch32vx.c, trimmed to
@@ -37,6 +17,19 @@
  * Erase and programming are done by driving the on-chip FPEC registers through
  * the DM system bus (chapter 16 of the CH32V003 reference manual), so no flash
  * stub has to be uploaded into and run from target SRAM.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* This file implements RISC-V CH32V0xx (single-wire SDI) target functions */
@@ -351,6 +344,78 @@ static void ch32v0x_add_flash(target_s *target, const uint32_t addr, const size_
     flash->write = ch32v0x_flash_write;
     target_add_flash(target, flash);
 }
+//
+static bool small_ch32v30_write_page(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size)
+{
+    if (page_size != CH32V0X_FLASH_PAGE_BYTES)
+    {
+        DEBUG_ERROR("CH32V0: Wrong page size \n");
+        return false;
+    }
+    if ((addr & (CH32V0X_FLASH_PAGE_BYTES - 1)) != 0)
+    {
+        DEBUG_ERROR("CH32V0: Wrong page alignment \n");
+        return false;
+    }
+    return ch32v0x_flash_write(target->flash, addr, src, page_size);
+}
+static bool small_ch32v30_erase_page(target_s *target, uint32_t addr)
+{
+    if ((addr & (CH32V0X_FLASH_PAGE_BYTES - 1)) != 0)
+    {
+        DEBUG_ERROR("CH32V0: Erase: Wrong page alignment \n");
+        return false;
+    }
+    return ch32v0x_flash_erase(target->flash, addr, 64);
+}
+static uint32_t small_ch32v30_page_size(target_s *t)
+{
+    return CH32V0X_FLASH_PAGE_BYTES;
+}
+
+static const sw_breakpoint_helpers ch32v0_sw_breakpoint_helper = {.page_size = small_ch32v30_page_size,
+                                                                  .page_erase = small_ch32v30_erase_page,
+                                                                  .page_write = small_ch32v30_write_page};
+
+/* RISC-V Debug Module Registers and Bits */
+#define RV_DM_CONTROL 0x10U
+#define RV_DM_CTRL_HALT_REQ        (1U << 31U)
+#define RV_DM_CTRL_HART_ACK_RESET  (1U << 28U)
+#define RV_DM_CTRL_SYSTEM_RESET    (1U << 1U)
+#define RV_DM_STAT_ALL_RESET      (1U << 19U)
+
+static void ch32v003_reset(target_s *const target)
+{
+    riscv_hart_s *const hart = riscv_hart_struct(target);
+
+    /* 1. Assert ndmreset (System Reset via DM) */
+    riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_SYSTEM_RESET);
+    
+    /* 2. Wait for the core to acknowledge the reset state */
+    platform_timeout_s timeout;
+    platform_timeout_set(&timeout, 500U);
+    do {
+        uint32_t status = 0;
+        if (riscv_dm_read(hart->dbg_module, 0x11U /* RV_DM_STATUS */, &status) &&
+            (status & RV_DM_STAT_ALL_RESET))
+            break;
+    } while (!platform_timeout_is_expired(&timeout));
+
+    /* 3. Release ndmreset AND assert haltreq simultaneously 
+     * This instructs the DM to catch the CPU at the reset vector before it 
+     * executes any instructions (e.g., persistent ebreaks in flash).
+     */
+    riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HALT_REQ);
+
+    /* 4. Acknowledge the reset */
+    riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HART_ACK_RESET | RV_DM_CTRL_HALT_REQ);
+
+    /* 5. Cleanups carried over from standard riscv_reset() */
+    if (hart->dbg_module->dmi_bus->invalidate_caches)
+        hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
+    
+    target_check_error(target);
+}
 
 bool ch32v003x_probe(target_s *const target)
 {
@@ -371,6 +436,10 @@ bool ch32v003x_probe(target_s *const target)
 
     target->driver = "CH32V003";
 
+    /* Override reset handler to fix halt-on-reset race condition */
+    target->target_options |= TOPT_INHIBIT_NRST;
+    target->reset = ch32v003_reset;
+
     const uint32_t flash_size = ch32v0x_read_flash_size(target);
     const uint32_t ram_size = RAM_SIZE;
 
@@ -381,11 +450,23 @@ bool ch32v003x_probe(target_s *const target)
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
     ch32v0x_add_flash(target, FLASH_ADDRESS, (size_t)flash_size * 1024U, CH32V0X_FLASH_PAGE_BYTES,
                       CH32V0X_FLASH_PAGE_BYTES);
+    target->sw_breakpoint_helpers = &ch32v0_sw_breakpoint_helper;
+    /*
+     * A CH32V003 has no usable hardware breakpoints, so say so to the GDB layer
+     * (target_has_hw_breakpoint() is just !no_hw_breakpoint, and target_s comes
+     * from calloc(), so this flag defaults to false). This is what makes the
+     * Rust Z0 handler route GDB software breakpoints through the mass-write
+     * helpers registered above (read page / erase page / reprogram page) instead
+     * of taking the "has hardware breakpoint" branch, which patches the opcode
+     * with a plain memory write. A plain write cannot program flash: the FPEC is
+     * locked and PG is not set, so the write is silently ignored, no ebreak ever
+     * lands in the flash and the breakpoint never fires.
+     */
+    target->no_hw_breakpoint = true;
     DEBUG_WARN("CH32V003 family %s\n", target->driver);
     DEBUG_WARN("CH32V003x flash size: %" PRIu32 " ram size: %" PRIu32 "\n", (uint32_t)flash_size, ram_size);
     gdb_outf("\tDetected %s chip with %d k flash, %d k ram\n", target->driver, flash_size, ram_size);
 
     return true;
 }
-
 // EOF
