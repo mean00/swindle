@@ -5,7 +5,7 @@
 //! | Packet | Description |
 //! |--------|-------------|
 //! | `vAttach;target` | Attach to a target on the SWD/RISC-V bus |
-//! | `vRun` | Run the program (just replies OK) |
+//! | `vRun` | Start the program: reset the target, report the entry stop |
 //! | `vMustReply` | Empty reply (LLDB compatibility) |
 //!
 //! On attach, this module:
@@ -61,9 +61,32 @@ const v_command_tree: [CommandTree; 3] = [
 ];
 //
 //
+/// Handle `vRun` — GDB's "run": reset the target, report the entry-point stop.
+///
+/// Upstream blackmagic does both halves of this in `exec_v_run()`
+/// (`blackmagic/src/gdb_main.c`):
+///
+/// ```c
+/// /* Run target program. For us (embedded) this means reset. */
+/// target_reset(cur_target);
+/// gdb_put_packet_str("T05");
+/// ```
+///
+/// GDB relies on both. The reset puts the program counter on the entry point,
+/// and the stop reply tells GDB that the target is *stopped*, so it goes on to
+/// insert its breakpoints and only then resumes with `vCont;c`. Replying a bare
+/// `OK` (as this port used to) left the target un-reset and never reported a
+/// stop, so `load` + `b main` + `run` never reached `main`, while `continue`
+/// worked because it enters through `vCont;c` and needs no reset.
+///
+/// This matters most for the CH32V003, the only target with
+/// `no_hw_breakpoint` set (`blackmagic_addon/target/CH32V0xx/ch32v0x.c`): its
+/// breakpoints are flash pages patched through the mass-write helpers, and
+/// that patch has to be in place while the hart is parked on the entry point.
 fn vRun(_command: &str, _args: &[&str]) -> bool {
-    // _vCont("vCont",args)
-    encoder::reply_ok();
+    crate::mem_cache::invalidate();
+    bmp::bmp_reset_target();
+    crate::commands::run::report_reset_stop();
     true
 }
 //

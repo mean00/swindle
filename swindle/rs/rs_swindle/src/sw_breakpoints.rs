@@ -174,8 +174,33 @@ pub fn remove_sw_breakpoint(address: u32, _len: u32) -> bool {
 /// opcode, and overwrites the page. Returns `true` on success.
 pub fn add_mw_breakpoint(address: u32) -> bool {
     if get_list_mw_ref().is_present(address) {
-        // already done
-        return true;
+        /*
+         * The address is remembered as patched, but only trust that entry if
+         * the target really still holds the breakpoint opcode: the flash can be
+         * rewritten behind our back (GDB `load`ing a new image, or another
+         * agent flashing the part) while this list keeps the old entry.
+         * Reporting success then claims a breakpoint that is not in the
+         * target's memory -- GDB believes it planted one, no ebreak ever
+         * executes, and the breakpoint silently never fires. Re-reading is
+         * cheap, so verify, and drop stale entries to re-patch below.
+         */
+        let aligned_address: u32 = address & 0xfffffffcu32;
+        let offset_u: usize = (address & 2) as usize;
+        let expected: [u8; 2] = if bmp::bmp_is_riscv() {
+            RISCV_BREAKPOINT_OPCODE
+        } else {
+            ARM_BREAKPOINT_OPCODE
+        };
+        let mut current: [u8; 4] = [0, 0, 0, 0];
+        if bmp::bmp_read_mem(aligned_address, &mut current)
+            && current[offset_u] == expected[0]
+            && current[offset_u + 1] == expected[1]
+        {
+            return true; // still patched, the entry is accurate
+        }
+        if let Some(index) = get_list_mw_ref().lookup_index(address) {
+            get_list_mw_ref().breakpoint.remove(index);
+        }
     }
     // Read old opcode
     let mut breakpoint = address_old_opcode {

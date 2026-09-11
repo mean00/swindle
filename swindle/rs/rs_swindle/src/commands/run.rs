@@ -62,6 +62,18 @@ pub fn target_is_running() -> bool {
     running.load(Ordering::Relaxed)
 }
 
+/// Announce the stop at the program entry point that follows a target reset.
+///
+/// Used by `vRun` when GDB starts a program: upstream blackmagic resets the
+/// target and then reports the resulting stop with `T05` (see `exec_v_run()`
+/// in `src/gdb_main.c`), so GDB learns that the program counter sits on the
+/// entry point and that the target is stopped -- which is what lets it insert
+/// its breakpoints before resuming.
+pub fn report_reset_stop() {
+    set_running(false);
+    reply_2("T", 5);
+}
+
 //
 fn reply_2(prefix: &str, num: u32) {
     let mut buffer: [u8; 20] = [0; 20];
