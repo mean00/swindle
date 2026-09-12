@@ -13,7 +13,7 @@
 
 static inline __attribute__((always_inline)) void ch32v0x_flash_ctl_set(void *target, const uint32_t bits)
 {
-    WRITE_FLASH_REG(target, CTLR, READ_FLASH_REG(target, CTLR) | bits);
+    WRITE_FLASH_REG(target, CTLR, bits);
 }
 
 static inline __attribute__((always_inline)) bool ch32v0x_flash_wait_not_busy(void *target)
@@ -56,14 +56,13 @@ static inline __attribute__((always_inline)) uint32_t ch_read_le4(const uint8_t 
 #define WAIT_BETWEEN_BUFLOAD
 #include "../ch32v0x_write.h"
 
-__attribute__((naked, noreturn)) void _start(uint32_t dest, uint32_t src, uint32_t len, uint32_t base_ctlr)
+__attribute__((naked, noreturn)) void _start(uint32_t dest, uint32_t src, uint32_t len, uint32_t page_size)
 {
     __asm__ volatile("csrci mstatus, 8\n");
-    const uint32_t ctlr_bufload = base_ctlr | CH32V0X_FMC_CTL_BUFLOAD;
     uint8_t *data = (uint8_t *)src;
 
     // Call the shared inner loop, passing NULL for the target pointer
-    bool result = ch32v0x_write_inner(NULL, dest, data, len, ctlr_bufload);
+    bool result = ch32v0x_write_inner(NULL, dest, data, len, page_size);
     if (result)
     {
         riscv_stub_exit(0);

@@ -43,6 +43,12 @@
 
 #define CH32V003_FLASHSTUB 1
 
+typedef struct
+{
+    uint32_t family;
+    uint32_t page_size;
+} ch32v0x_priv_s;
+
 #include "ch32v0x_reg.h"
 
 #define READ_FLASH_REG(target, reg)                                                                                    \
@@ -70,12 +76,12 @@ static void ch32v0x_read_uid(target_s *const target, uint8_t *const uid)
         write_be4(uid, uid_reg_offset, target_mem32_read32(target, CH32V0X_ESIG_UID1 + uid_reg_offset));
 }
 /*
- * 16.3.5: read-modify-write of FLASH_CTLR, the FPEC has no atomic set/clear.
- * LOCK and FLOCK only latch a written 1, so ORing never releases them.
+ * 16.3.5: write of FLASH_CTLR, the FPEC has no atomic set/clear.
+ * LOCK and FLOCK only latch a written 1, so writing 0 doesn't release them.
  */
 static void ch32v0x_flash_ctl_set(target_s *const target, const uint32_t bits)
 {
-    WRITE_FLASH_REG(target, CTLR, READ_FLASH_REG(target, CTLR) | bits);
+    WRITE_FLASH_REG(target, CTLR, bits);
 }
 
 /* 16.4.2/16.4.5: open the FPEC lock and, if needed, the fast programming lock */
@@ -141,6 +147,8 @@ static bool ch32v0x_flash_check_complete(target_s *const target, const target_ad
 static bool ch32v0x_flash_erase(target_flash_s *const flash, target_addr_t addr, const size_t len)
 {
     target_s *const target = flash->t;
+    ch32v0x_priv_s *priv = (ch32v0x_priv_s *)target->target_storage;
+    uint32_t page_size = priv->page_size;
 
     if (!ch32v0x_flash_unlock(target) || !ch32v0x_flash_wait_not_busy(target))
         return false;
@@ -151,13 +159,13 @@ static bool ch32v0x_flash_erase(target_flash_s *const flash, target_addr_t addr,
     ch32v0x_flash_ctl_set(target, CH32V0X_FMC_CTL_FTER);
 
     bool result = true;
-    for (size_t offset = 0U; offset < len; offset += CH32V0X_FLASH_PAGE_BYTES)
+    for (size_t offset = 0U; offset < len; offset += page_size)
     {
         const target_addr_t page_addr = (addr + offset) | FLASH_OFFSET;
 
         /* Steps 5-6: address the page and start the erase */
         WRITE_FLASH_REG(target, ADDR, (uint32_t)page_addr);
-        ch32v0x_flash_ctl_set(target, CH32V0X_FMC_CTL_STRT);
+        ch32v0x_flash_ctl_set(target, CH32V0X_FMC_CTL_FTER | CH32V0X_FMC_CTL_STRT);
 
         /* Step 7: wait for BSY to clear, then consume EOP and check for errors */
         if (!ch32v0x_flash_wait_not_busy(target) || !ch32v0x_flash_check_complete(target, page_addr))
@@ -184,12 +192,14 @@ static bool ch32v0x_flash_write(target_flash_s *const flash, target_addr_t dest,
 {
     target_s *const target = flash->t;
     uint8_t *data = (uint8_t *)src;
+    ch32v0x_priv_s *priv = (ch32v0x_priv_s *)target->target_storage;
+    uint32_t page_size = priv->page_size;
 
     /* A fast page is loaded into the internal 64 byte buffer and programmed whole */
-    if ((dest % CH32V0X_FLASH_PAGE_BYTES) || (len % CH32V0X_FLASH_PAGE_BYTES))
+    if ((dest % page_size) || (len % page_size))
     {
-        DEBUG_ERROR("%s: CH32V0x fast programming needs 64 byte aligned pages (0x%08" PRIx32 " + %zu)\n", __func__,
-                    (uint32_t)dest, len);
+        DEBUG_ERROR("%s: CH32V0x fast programming needs %" PRIu32 " byte aligned pages (0x%08" PRIx32 " + %zu)\n",
+                    __func__, page_size, (uint32_t)dest, len);
         return false;
     }
 
@@ -200,9 +210,8 @@ static bool ch32v0x_flash_write(target_flash_s *const flash, target_addr_t dest,
 
     /* Step 4: enter fast page programming mode */
     ch32v0x_flash_ctl_set(target, CH32V0X_FMC_CTL_FTPG);
-    const uint32_t ctlr_bufload = ctlr_saved | CH32V0X_FMC_CTL_FTPG | CH32V0X_FMC_CTL_BUFLOAD;
 
-    bool result = ch32v0x_write_inner(target, (uint32_t)dest | FLASH_OFFSET, data, len, ctlr_bufload);
+    bool result = ch32v0x_write_inner(target, (uint32_t)dest | FLASH_OFFSET, data, len, page_size);
 
     /* Step 13: leave fast page programming mode, also restoring what we found */
     WRITE_FLASH_REG(target, CTLR, ctlr_saved);
@@ -233,6 +242,8 @@ static bool ch32v0x_flash_write_flashstub(target_flash_s *const flash, target_ad
     }
 
     target_s *const target = flash->t;
+    ch32v0x_priv_s *priv = (ch32v0x_priv_s *)target->target_storage;
+    uint32_t page_size = priv->page_size;
 
     if (!ch32v0x_flash_unlock(target) || !ch32v0x_flash_wait_not_busy(target))
         return false;
@@ -249,12 +260,11 @@ static bool ch32v0x_flash_write_flashstub(target_flash_s *const flash, target_ad
         target_mem32_write(target, STUB_DATA_LOCATION, src_ptr, chunk);
 
         ch32v0x_flash_ctl_set(target, CH32V0X_FMC_CTL_FTPG);
-        uint32_t base_ctlr = ctlr_saved | CH32V0X_FMC_CTL_FTPG;
 
         // Set up a valid stack pointer at the top of the 2KB SRAM before running the stub
         uint32_t sp = STUB_STAK_LOCATION;
         target->reg_write(target, RISCV_REG_SP, &sp, 4);
-        bool stub_success = riscv32_run_stub(flash->t, STUB_CODE_LOCATION, addr, STUB_DATA_LOCATION, chunk, base_ctlr);
+        bool stub_success = riscv32_run_stub(flash->t, STUB_CODE_LOCATION, addr, STUB_DATA_LOCATION, chunk, page_size);
         if (!stub_success)
         {
             DEBUG_ERROR("CH32 Write Error at 0x%x\n", addr);
@@ -264,7 +274,7 @@ static bool ch32v0x_flash_write_flashstub(target_flash_s *const flash, target_ad
 
         if (!stub_success)
         {
-            DEBUG_ERROR("CH32V003 Flash stub failed at 0x%08" PRIx32 " (MARK = %" PRIu32 ")\n", addr, mark);
+            DEBUG_ERROR("CH32V003 Flash stub failed at 0x%08" PRIx32 " (MARK = %" PRIu32 ")\n", addr, 0);
             WRITE_FLASH_REG(target, CTLR, ctlr_saved);
             return false;
         }
@@ -279,7 +289,7 @@ static bool ch32v0x_flash_write_flashstub(target_flash_s *const flash, target_ad
 #endif
 
 static void ch32v0x_add_flash(target_s *target, const uint32_t addr, const size_t length, const size_t erasesize,
-                              const size_t writesize)
+                              const size_t writesize, uint32_t family)
 {
     target_flash_s *flash = calloc(1, sizeof(*flash));
     if (!flash)
@@ -296,8 +306,15 @@ static void ch32v0x_add_flash(target_s *target, const uint32_t addr, const size_
     flash->erased = 0xff;
     flash->erase = ch32v0x_flash_erase;
 #if CH32V003_FLASHSTUB
-    flash->prepare = ch32v0x_flash_prepare_flashstub;
-    flash->write = ch32v0x_flash_write_flashstub;
+    if (family == 3)
+    {
+        flash->prepare = ch32v0x_flash_prepare_flashstub;
+        flash->write = ch32v0x_flash_write_flashstub;
+    }
+    else
+    {
+        flash->write = ch32v0x_flash_write;
+    }
 #else
     flash->write = ch32v0x_flash_write;
 #endif
@@ -306,12 +323,13 @@ static void ch32v0x_add_flash(target_s *target, const uint32_t addr, const size_
 //
 static bool small_ch32v30_write_page(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size)
 {
-    if (page_size != CH32V0X_FLASH_PAGE_BYTES)
+    ch32v0x_priv_s *priv = (ch32v0x_priv_s *)target->target_storage;
+    if (page_size != priv->page_size)
     {
         DEBUG_ERROR("CH32V0: Wrong page size \n");
         return false;
     }
-    if ((addr & (CH32V0X_FLASH_PAGE_BYTES - 1)) != 0)
+    if ((addr & (priv->page_size - 1)) != 0)
     {
         DEBUG_ERROR("CH32V0: Wrong page alignment \n");
         return false;
@@ -320,16 +338,18 @@ static bool small_ch32v30_write_page(target_s *target, uint32_t addr, const uint
 }
 static bool small_ch32v30_erase_page(target_s *target, uint32_t addr)
 {
-    if ((addr & (CH32V0X_FLASH_PAGE_BYTES - 1)) != 0)
+    ch32v0x_priv_s *priv = (ch32v0x_priv_s *)target->target_storage;
+    if ((addr & (priv->page_size - 1)) != 0)
     {
         DEBUG_ERROR("CH32V0: Erase: Wrong page alignment \n");
         return false;
     }
-    return ch32v0x_flash_erase(target->flash, addr, 64);
+    return ch32v0x_flash_erase(target->flash, addr, priv->page_size);
 }
 static uint32_t small_ch32v30_page_size(target_s *t)
 {
-    return CH32V0X_FLASH_PAGE_BYTES;
+    ch32v0x_priv_s *priv = (ch32v0x_priv_s *)t->target_storage;
+    return priv->page_size;
 }
 
 static const sw_breakpoint_helpers ch32v0_sw_breakpoint_helper = {.page_size = small_ch32v30_page_size,
@@ -380,6 +400,8 @@ bool ch32v003x_probe(target_s *const target)
 {
     const uint32_t idcode = target_mem32_read32(target, CH32V003X_IDCODE);
     uint32_t ram_size = RAM_SIZE;
+    uint32_t page_size = 64;
+    uint32_t family = 0;
 
     switch (idcode & CH32V0X_IDCODE_MASK)
     {
@@ -390,6 +412,8 @@ bool ch32v003x_probe(target_s *const target)
         {
             target->driver = "CH32V006";
             ram_size = 8; // all have 8kB ??
+            page_size = 256;
+            family = 6;
         }
         else
             return false;
@@ -400,12 +424,19 @@ bool ch32v003x_probe(target_s *const target)
     case 0x00330500U:        /* CH32V003J4M6 */
         ram_size = RAM_SIZE; // all have 2kB
         target->driver = "CH32V003";
+        family = 3;
+        page_size = 64;
         break;
     default:
         DEBUG_INFO("Unrecognized CH32V003x IDCODE: 0x%08" PRIx32 "\n", idcode);
         return false;
         break;
     }
+
+    ch32v0x_priv_s *priv = calloc(1, sizeof(*priv));
+    priv->page_size = page_size;
+    priv->family = family;
+    target->target_storage = priv;
 
     /* Override reset handler to fix halt-on-reset race condition */
     target->target_options |= TOPT_INHIBIT_NRST;
@@ -418,7 +449,7 @@ bool ch32v003x_probe(target_s *const target)
     target_add_commands(target, ch32v0x_cmd_list, "CH32V0");
     target_mem_map_free(target);
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
-    ch32v0x_add_flash(target, FLASH_ADDRESS, (size_t)flash_size * 1024U, 512, 512);
+    ch32v0x_add_flash(target, FLASH_ADDRESS, (size_t)flash_size * 1024U, 512, 512, family);
     target->sw_breakpoint_helpers = &ch32v0_sw_breakpoint_helper;
     /*
      * A CH32V003 has no usable hardware breakpoints, so say so to the GDB layer

@@ -20,6 +20,7 @@ gen() {
   ${TOOLPATH}objdump -Sd $1.o >$1.asm
   xxd -i $1.bin >$1.h1
   cat $1.h1 | sed 's/unsigned char/const unsigned char/g' | head -c -1 >$1.stub
+  \rm -f $1.h1
   #cat $1.h1 | sed 's/unsigned char/const unsigned char/g' | sed 's/^.*_len =/#define $1/g' | head -c -1 >$1.stub
 }
 
