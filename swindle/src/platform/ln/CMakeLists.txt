@@ -1,4 +1,5 @@
 add_library(swindleio_impl STATIC bmp_adc_ln.cpp bmp_rvTap_ln.cpp bmp_swdTap_ln.cpp bmp_tap_ln.cpp
+                                  bmp_sdiTap_ln.cpp
                                   ../../template/swd_tap_stubs.cpp)
 # Board package selection -> ln_bsp interface (linked PUBLIC into libswindle by
 # swindle_target.cmake and PRIVATE into swindleio_impl here).
