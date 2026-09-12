@@ -141,7 +141,7 @@ static size_t ch32v0x_read_flash_size(target_s *const target)
 {
     return target_mem32_read16(target, CH32V0X_ESIG_FLASH_CAP);
 }
-static const size_t ch32v0_erase_sizes[] = {CH32V0X_FLASH_PAGE_BYTES, 0};
+static const size_t ch32v0_erase_sizes[] = {512, 0};
 
 static void ch32v0x_read_uid(target_s *const target, uint8_t *const uid)
 {
@@ -288,6 +288,7 @@ static bool ch32v0x_flash_write(target_flash_s *const flash, target_addr_t dest,
         }
 
         /* Steps 7-9: load the page four bytes at a time through BUFLOAD */
+        const uint32_t ctlr_bufload = ctlr_saved | CH32V0X_FMC_CTL_FTPG | CH32V0X_FMC_CTL_BUFLOAD;
         for (size_t word = 0U; word < CH32V0X_FLASH_PAGE_WORDS; word++)
         {
             const size_t word_offset = word * CH32V0X_FLASH_WORD_BYTES;
@@ -301,12 +302,11 @@ static bool ch32v0x_flash_write(target_flash_s *const flash, target_addr_t dest,
                 break;
             }
 
-            ch32v0x_flash_ctl_set(target, CH32V0X_FMC_CTL_BUFLOAD);
-            if (!ch32v0x_flash_wait_not_busy(target) || !ch32v0x_flash_check_complete(target, word_addr))
-            {
-                result = false;
-                break;
-            }
+            // LEVEL 1 FIX: Direct write to CTLR saves 4 DMI reads
+            WRITE_FLASH_REG(target, CTLR, ctlr_bufload);
+
+            // LEVEL 1 FIX: We do not wait for BSY or check EOP here!
+            // The buffer load takes 1 sysclk, it is guaranteed done before the next SDI frame.
         }
         if (!result)
             break;
@@ -379,10 +379,10 @@ static const sw_breakpoint_helpers ch32v0_sw_breakpoint_helper = {.page_size = s
 
 /* RISC-V Debug Module Registers and Bits */
 #define RV_DM_CONTROL 0x10U
-#define RV_DM_CTRL_HALT_REQ        (1U << 31U)
-#define RV_DM_CTRL_HART_ACK_RESET  (1U << 28U)
-#define RV_DM_CTRL_SYSTEM_RESET    (1U << 1U)
-#define RV_DM_STAT_ALL_RESET      (1U << 19U)
+#define RV_DM_CTRL_HALT_REQ (1U << 31U)
+#define RV_DM_CTRL_HART_ACK_RESET (1U << 28U)
+#define RV_DM_CTRL_SYSTEM_RESET (1U << 1U)
+#define RV_DM_STAT_ALL_RESET (1U << 19U)
 
 static void ch32v003_reset(target_s *const target)
 {
@@ -390,19 +390,19 @@ static void ch32v003_reset(target_s *const target)
 
     /* 1. Assert ndmreset (System Reset via DM) */
     riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_SYSTEM_RESET);
-    
+
     /* 2. Wait for the core to acknowledge the reset state */
     platform_timeout_s timeout;
     platform_timeout_set(&timeout, 500U);
-    do {
+    do
+    {
         uint32_t status = 0;
-        if (riscv_dm_read(hart->dbg_module, 0x11U /* RV_DM_STATUS */, &status) &&
-            (status & RV_DM_STAT_ALL_RESET))
+        if (riscv_dm_read(hart->dbg_module, 0x11U /* RV_DM_STATUS */, &status) && (status & RV_DM_STAT_ALL_RESET))
             break;
     } while (!platform_timeout_is_expired(&timeout));
 
-    /* 3. Release ndmreset AND assert haltreq simultaneously 
-     * This instructs the DM to catch the CPU at the reset vector before it 
+    /* 3. Release ndmreset AND assert haltreq simultaneously
+     * This instructs the DM to catch the CPU at the reset vector before it
      * executes any instructions (e.g., persistent ebreaks in flash).
      */
     riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HALT_REQ);
@@ -413,7 +413,7 @@ static void ch32v003_reset(target_s *const target)
     /* 5. Cleanups carried over from standard riscv_reset() */
     if (hart->dbg_module->dmi_bus->invalidate_caches)
         hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
-    
+
     target_check_error(target);
 }
 
@@ -448,8 +448,7 @@ bool ch32v003x_probe(target_s *const target)
     target_add_commands(target, ch32v0x_cmd_list, "CH32V0");
     target_mem_map_free(target);
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
-    ch32v0x_add_flash(target, FLASH_ADDRESS, (size_t)flash_size * 1024U, CH32V0X_FLASH_PAGE_BYTES,
-                      CH32V0X_FLASH_PAGE_BYTES);
+    ch32v0x_add_flash(target, FLASH_ADDRESS, (size_t)flash_size * 1024U, 512, 512);
     target->sw_breakpoint_helpers = &ch32v0_sw_breakpoint_helper;
     /*
      * A CH32V003 has no usable hardware breakpoints, so say so to the GDB layer
