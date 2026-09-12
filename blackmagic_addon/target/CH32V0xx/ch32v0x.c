@@ -420,13 +420,27 @@ static void ch32v003_reset(target_s *const target)
 bool ch32v003x_probe(target_s *const target)
 {
     const uint32_t idcode = target_mem32_read32(target, CH32V003X_IDCODE);
+    uint32_t ram_size = RAM_SIZE;
 
     switch (idcode & CH32V0X_IDCODE_MASK)
     {
-    case 0x00300500U: /* CH32V003F4P6 */
-    case 0x00310500U: /* CH32V003F4U6 */
-    case 0x00320500U: /* CH32V003A4M6 */
-    case 0x00330500U: /* CH32V003J4M6 */
+    case CH32V0X_IDCODE_MASK: /* CH32V006xxxx */
+        // In case that OTP was not set full of 1 , if the flash size is 62 kB
+        // we assume it is a ch32v006
+        if (ch32v0x_read_flash_size(target) == 62)
+        {
+            target->driver = "CH32V006";
+            ram_size = 8; // all have 8kB ??
+        }
+        else
+            return false;
+        break;
+    case 0x00300500U:        /* CH32V003F4P6 */
+    case 0x00310500U:        /* CH32V003F4U6 */
+    case 0x00320500U:        /* CH32V003A4M6 */
+    case 0x00330500U:        /* CH32V003J4M6 */
+        ram_size = RAM_SIZE; // all have 2kB
+        target->driver = "CH32V003";
         break;
     default:
         DEBUG_INFO("Unrecognized CH32V003x IDCODE: 0x%08" PRIx32 "\n", idcode);
@@ -434,14 +448,11 @@ bool ch32v003x_probe(target_s *const target)
         break;
     }
 
-    target->driver = "CH32V003";
-
     /* Override reset handler to fix halt-on-reset race condition */
     target->target_options |= TOPT_INHIBIT_NRST;
     target->reset = ch32v003_reset;
 
     const uint32_t flash_size = ch32v0x_read_flash_size(target);
-    const uint32_t ram_size = RAM_SIZE;
 
     target->part_id = idcode;
 
