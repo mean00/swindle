@@ -10,13 +10,17 @@ gen() {
   export NAME=$1
 
   ${TOOLPATH}gcc \
-    -march=rv32ec -mabi=ilp32e \
-    $1.S -o $1.o \
+    -g \
+    -march=rv32ec_zicsr -mabi=ilp32e \
+    -O3 -ffreestanding -nostdlib -fomit-frame-pointer \
+    -I../../../flashstub \
+    $1.c -o $1.o \
     -c || fail gcc
   ${TOOLPATH}objcopy -Obinary $1.o $1.bin
+  ${TOOLPATH}objdump -Sd $1.o >$1.asm
   xxd -i $1.bin >$1.h1
-  cat $1.h1 | sed 's/unsigned char/const unsigned char/g' | head -c -2 >$1.stub
-  #cat $1.h1 | sed 's/unsigned char/const unsigned char/g' | sed 's/^.*_len =/#define $1/g' | head -c -2 >$1.stub
+  cat $1.h1 | sed 's/unsigned char/const unsigned char/g' | head -c -1 >$1.stub
+  #cat $1.h1 | sed 's/unsigned char/const unsigned char/g' | sed 's/^.*_len =/#define $1/g' | head -c -1 >$1.stub
 }
 
 gen ch32v0x_write

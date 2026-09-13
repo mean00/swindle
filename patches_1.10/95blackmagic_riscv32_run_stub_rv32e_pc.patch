@@ -1,0 +1,30 @@
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -1092,8 +1092,9 @@
+ 	uint32_t pc = 0;
+ 	uint32_t mie = 0;
+ 	uint32_t zero = 0;
++	const uint32_t pc_reg = (riscv_hart_struct(target)->extensions & RV_ISA_EXT_EMBEDDED) ? 16U : 32U;
+ 	// save PC & MIE
+-	target->reg_read(target, RISCV_REG_PC, &pc, 4);
++	target->reg_read(target, pc_reg, &pc, 4);
+ 	riscv32_target_csr_read(target, RV_CSR_MIE, &mie);
+ 	riscv32_target_csr_write(target, RV_CSR_MIE, zero); // disable interrupt
+ 	target->reg_write(target, RISCV_REG_A0, &param1, 4);
+@@ -1100,7 +1101,7 @@
+ 	target->reg_write(target, RISCV_REG_A1, &param2, 4);
+ 	target->reg_write(target, RISCV_REG_A2, &param3, 4);
+ 	target->reg_write(target, RISCV_REG_A3, &param4, 4);
+-	target->reg_write(target, RISCV_REG_PC, &loadaddr, 4);
++	target->reg_write(target, pc_reg, &loadaddr, 4);
+ 
+ 	target->halt_resume(target, false); // go!
+ 	platform_timeout_s timeout;
+@@ -1128,6 +1129,6 @@
+ 	}
+ 	// restore PC & MIE
+ 	riscv32_target_csr_write(target, RV_CSR_MIE, mie); // put back MIE
+-	target->reg_write(target, RISCV_REG_PC, &pc, 4);
++	target->reg_write(target, pc_reg, &pc, 4);
+ 	return ret;
+ }

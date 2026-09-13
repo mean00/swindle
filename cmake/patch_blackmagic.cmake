@@ -77,6 +77,7 @@ apply_patch_if_needed5(patched90 90blackmagic_dp_invalidate_caches.patch "split 
 apply_patch_if_needed5(patched92 92blackmagic_riscv_reset_no_allreset_poll.patch "riscv_reset: drop RV_DM_STAT_ALL_RESET poll (dmstatus bit 19 = allhavereset, cleared by reset on v0.13 RP2350 -> always 2x500ms timeout); re-activate DM + wait for dmactive instead")
 apply_patch_if_needed5(patched93 93blackmagic_riscv32_rv32e_reg_access.patch "riscv32 single register access: derive the GPR count from the hart ISA (E base has 16 GPRs) so GDB's PC regno is not mis-decoded as GPR x16 -> fixes 'load'/'set $pc' failing with E01 on RV32E (CH32V003)")
 apply_patch_if_needed5(patched94 94blackmagic_riscv_command_timeout.patch "add a 200ms timeout to riscv_command_wait_complete to prevent infinite loops when target is disconnected")
+apply_patch_if_needed5(patched95 95blackmagic_riscv32_run_stub_rv32e_pc.patch "Write the correct register (PC) when running on RV32E")
 
 
 
