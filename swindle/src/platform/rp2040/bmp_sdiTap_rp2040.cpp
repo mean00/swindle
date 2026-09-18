@@ -38,27 +38,82 @@ extern "C" void target_list_free(void);
 // the shared SwdReset controller so the build-time polarity option is honored.
 #define SDI_DATA_PIN _mapping[TSWDIO_PIN]
 
-#define SDI_WRITE 0x80
-#define SDI_READ 0x00
-
-#define DMCONTROL 0x10
+/* WCH debug module (DM) register used by the transport (QingKeV2 debug manual,
+ * ch. 3, Table 3-5): dmstatus [3:0] version (0010 = V0.13, reset value 0x2),
+ * [7] authenticated. dmcontrol (0x10) is deliberately not written from here:
+ * riscv_debug.c::riscv_dm_init() activates the DM itself with
+ * RV_DM_CTRL_ACTIVE once the scan attaches. */
 #define DMSTATUS 0x11
+
+/* dmstatus version nibble / authenticated bit; the version is 2 for v0.13 (the
+ * version this tap claims via RISCV_DEBUG_0_13). */
+#define SDI_DMSTATUS_VERSION_0_13 2U
+#define SDI_DMSTATUS_AUTHENTICATED (1U << 7)
+
+/* SDI debug-interface registers (§2.3 Table 2-1). */
+#define SDI_CPBR 0x7C     /* capability register: reports what actually took effect */
+#define SDI_CFGR 0x7D     /* configuration register: carries the update mask */
+#define SDI_SHDWCFGR 0x7E /* shadow configuration register: carries the value */
+
+/* Configuration protocol (§2.4): a write only lands when the upper half word is
+ * the key 0x5AA5. SHDWCFGR (0x7E) carries the *value* and CFGR (0x7D) the *field
+ * mask* that commits it ("first set the corresponding bit of SHDWCFGR and then
+ * set the corresponding bit field of CFGR to set the corresponding
+ * configuration bit of the shadow configuration register to take effect, while
+ * other configuration bits remain unchanged"). The bits set in CFGR are an
+ * *update mask*, not a value: §2.4(1) writes SHDWCFGR = CFGR = 0x5AA50400, where
+ * mask bit 10 commits OUTEN from a shadow value that also enables it. §2.4(2)
+ * needs two *different* words for the same reason - SHDWCFGR = 0x5AA50000 (value)
+ * and CFGR = 0x5AA50003 (mask [1:0] = 0b11) - and blindly applying that pair is
+ * what cleared OUTEN and took the link down (see the caveat below).
+ *
+ * MEASURED CAVEAT (CH32V003): a SHDWCFGR write replaces the *whole* shadow
+ * value, so a value with bit 10 clear switches the slave output driver off and
+ * takes the entire SDI link down (DMSTATUS then reads the idle-high all-ones
+ * pattern and the scan fails). Every SHDWCFGR write below therefore carries
+ * SDI_CFGR_OUTEN. */
+#define SDI_KEY 0x5AA5U
+#define SDI_KEYED(data) (((uint32_t)(SDI_KEY) << 16) | (uint32_t)(data))
+#define SDI_CFGR_OUTEN (1U << 10) /* CFGR[10] enable / CPBR[10] OUTSTA */
+#define SDI_TDIVCFG_MASK 0x3U     /* CFGR[1:0] field mask / CPBR[1:0] TDIV */
+#define SDI_TDIVCFG_DIV1 0x0U     /* 00: divided by 1 -> fast 1x, T = 125 ns */
+#define SDI_TDIVCFG_DIV2 0x1U     /* 01: divided by 2 -> normal 2x (reset)   */
+
+/* The word written by sdi_reset(): §2.4(1) only, i.e. slave output enabled.
+ * Read the mask, not the value - CFGR[1:0] = 0b00 means TDIVCFG is *not*
+ * committed, so the ÷1 in the shadow is inert and the part keeps its post-reset
+ * time base. Committing ÷1 as well would take CFGR = 0x5AA50403 (mask [1:0] =
+ * 0b11); that is deliberately NOT done here, because 0x5AA50400 to both 0x7E and
+ * 0x7D is the pair validated on hardware. The waveform's fit to the fast-1x
+ * windows (T = 125 ns, see sdi.pio) is therefore measured behaviour: the part
+ * answers CPBR.TDIV = 0b11, which the manual lists as reserved. */
+#define SDI_CONFIG_OUT_DIV1 (SDI_CFGR_OUTEN | SDI_TDIVCFG_DIV1)
 
 // 9-bit Header Structure (Start bit + 7 Address bits + 1 R/W bit)
 #define SDI_START_BIT 1
+#define SDI_ADDRESS_BITS 7
+#define SDI_MAX_ADDRESS ((1U << SDI_ADDRESS_BITS) - 1U)
+#define SDI_READ_FLAG 0U  /* host reads from the DM */
+#define SDI_WRITE_FLAG 1U /* host writes to the DM */
 
+/* Post-frame idle. The stop convention (§2.2) needs >= 10 times the time base in
+ * 1x (>= 18 in 2x): 55 us covers both, and only has to be that long after a
+ * write because a read frame is followed by the caller's own turn-around. */
 #define INTER_WORD_DELAY 2
 #define END_OF_WRITE_DELAY 55
 
 static inline uint32_t make_sdi_header(uint8_t tgt, uint8_t mode)
 {
-    return (SDI_START_BIT << 8) | (tgt << 1) | mode;
+    /* Callers must reject addresses wider than 7 bits: they would be shifted
+     * into the start bit (see sdi_dm_read / sdi_dm_write). */
+    return (SDI_START_BIT << 8) | ((uint32_t)tgt << 1) | (mode ? 1U : 0U);
 }
 
 static uint32_t sdi_read(rpPIO_SM *xsm, const uint8_t adr)
 {
-    // Word 1: Mode=0 (bit 31), Header (bits 30 down to 22)
-    uint32_t header9 = make_sdi_header(adr, 0);
+    // Word 1: Mode=0 (bit 31 is the flag consumed by the PIO, not transmitted),
+    // header (bits 30 down to 22)
+    uint32_t header9 = make_sdi_header(adr, SDI_READ_FLAG);
     uint32_t w = (0 << 31) | (header9 << 22);
     xsm->write(1, &w);
     lnDelayUs(INTER_WORD_DELAY);
@@ -70,8 +125,9 @@ static uint32_t sdi_read(rpPIO_SM *xsm, const uint8_t adr)
 
 static void sdi_write(rpPIO_SM *xsm, const uint8_t adr, const uint32_t data)
 {
-    // Word 1: Mode=1 (bit 31), Header (bits 30 down to 22)
-    uint32_t header9 = make_sdi_header(adr, 1);
+    // Word 1: Mode=1 (bit 31 is the flag consumed by the PIO, not transmitted),
+    // header (bits 30 down to 22)
+    uint32_t header9 = make_sdi_header(adr, SDI_WRITE_FLAG);
     uint32_t w1 = (1U << 31) | (header9 << 22);
     xsm->write(1, &w1);
     lnDelayUs(INTER_WORD_DELAY);
@@ -80,16 +136,85 @@ static void sdi_write(rpPIO_SM *xsm, const uint8_t adr, const uint32_t data)
     xsm->write(1, &data);
     lnDelayUs(END_OF_WRITE_DELAY);
 }
+
+/**
+ * @brief Apply one configuration value using the §2.4 shadow/commit protocol.
+ * Writes the value to SHDWCFGR and then the same word to CFGR to commit it. The
+ * word must carry SDI_CFGR_OUTEN: a SHDWCFGR write replaces the whole shadow
+ * value, so leaving bit 10 out would disable the slave output driver.
+ * @param value Full 16-bit configuration word (see SDI_CONFIG_OUT_DIV1).
+ */
+static void sdi_write_config(rpPIO_SM *xsm, const uint32_t value)
+{
+    sdi_write(xsm, SDI_SHDWCFGR, SDI_KEYED(value));
+    lnDelayMs(2);
+    sdi_write(xsm, SDI_CFGR, SDI_KEYED(value));
+    lnDelayMs(2);
+}
+
+/**
+ * @brief Reset the SDI interface (§2.4(3)) and enable the slave output (§2.4(1)).
+ *
+ * The wire idles high through the pad pull-up, so a self-timed low pulse of
+ * more than 32 time bases resets the interface "regardless of the mode". The
+ * word pair that follows (0x5AA50400 to 0x7E then 0x7D) is the sequence
+ * validated on hardware and is kept byte-identical; it commits OUTEN only (see
+ * SDI_CONFIG_OUT_DIV1), so the effective time base stays whatever the part comes
+ * out of reset with. The sdi.pio waveform is measured to match the fast-1x
+ * windows (T = 125 ns), which is what that post-reset state has to be.
+ */
 static void sdi_reset(rpPIO_SM *xsm, uint32_t ms)
 {
     xsm->setPinDir(SDI_DATA_PIN, true); // Drive LOW (assumes output value is 0)
     lnDelayMs(ms);
     xsm->setPinDir(SDI_DATA_PIN, false); // Release to float HIGH
-                                         //
-    sdi_write(xsm, 0x7e, 0x5AA50400);    // address 0x7E
-    lnDelayMs(2);
-    sdi_write(xsm, 0x7d, 0x5AA50400); // address 0x7D
-    lnDelayMs(2);
+
+    sdi_write_config(xsm, SDI_CONFIG_OUT_DIV1); // §2.4(1), validated word pair
+}
+
+/**
+ * @brief Human-readable name of a CPBR.TDIV field value.
+ */
+static const char *sdi_tdiv_name(const uint32_t tdiv)
+{
+    switch (tdiv)
+    {
+    case SDI_TDIVCFG_DIV1:
+        return "div1/fast-1x";
+    case SDI_TDIVCFG_DIV2:
+        return "div2/normal-2x";
+    default:
+        /* Not a fault: the manual only documents 00/01 here, but a working
+         * CH32V003 answers 0b11 (measured 2026-09-18 on a live link). CPBR is
+         * informational - nothing here may drive a configuration write. */
+        return "undocumented";
+    }
+}
+
+/**
+ * @brief Report the capability register (CPBR) so the negotiated mode is visible.
+ * Measured on a live CH32V003 (2026-09-18): CPBR = 0x10403 gives VERSION = 1 and
+ * OUTSTA = 1 exactly as the manual describes, but TDIV[1:0] = 0b11, which the
+ * manual only lists as "reserved". The register is informational: report it,
+ * never let it drive configuration. An all-ones answer means the slave is not
+ * driving the line (OUTSTA = 0) - re-writing SHDWCFGR to "fix" a read is what
+ * took the link down before.
+ *
+ * Single Logger call on purpose: Logger() formats into one shared static buffer
+ * that the output path drains asynchronously, so two back-to-back calls can drop
+ * the first line.
+ */
+static void sdi_log_config(rpPIO_SM *xsm, const char *const tag)
+{
+    const uint32_t cpbr = sdi_read(xsm, SDI_CPBR);
+    if (cpbr == 0xFFFFFFFFUL)
+    {
+        Logger("SDI : CPBR %s = all ones (no slave output, OUTSTA=0)\n", tag);
+        return;
+    }
+    Logger("SDI : CPBR %s = 0x%x (VERSION=0x%x, OUTSTA=%u, TDIV=0x%x/%s)\n", tag, (unsigned)cpbr,
+           (unsigned)(cpbr >> 16), (unsigned)((cpbr >> 10) & 1U),
+           (unsigned)(cpbr & SDI_TDIVCFG_MASK), sdi_tdiv_name(cpbr & SDI_TDIVCFG_MASK));
 }
 
 // ---------------------------------------------------------------------------
@@ -105,8 +230,15 @@ extern rpPIO_SM *xsm;    // shared SWD/RVSWD/SDI PIO state machine (bmp_tap_rp20
 extern SwdReset *pReset; // board NRST controller (bmp_tap_rp2040.cpp)
 
 /**
- * @brief Enter SDI debug mode: upload the SDI PIO program, pulse NRST, then run
- *        the SDI hold-low + 0x7e/0x7d unlock sequence.
+ * @brief Enter SDI debug mode: upload the SDI PIO program, pulse NRST, reset and
+ *        configure the SDI interface (slave output on, ÷1 fast 1x) and report
+ *        the mode the interface says it is in.
+ *
+ * Every session starts from the ÷2 normal-2x reset default (NRST and the §2.4(3)
+ * hold-low both clear the interface configuration), which is not what the
+ * sdi.pio waveform expects, so the mode is configured here rather than assumed.
+ * The DM itself is not touched: riscv_debug.c::riscv_dm_init() activates it after
+ * sdi_scan() attaches.
  * @return true
  */
 bool LN_FAST_CODE sdi_dm_start()
@@ -118,7 +250,11 @@ bool LN_FAST_CODE sdi_dm_start()
         lnDelayMs(20);
         pReset->off(); // release NRST
     }
-    sdi_reset(xsm, 20); // SDI hold-low, then unlock 0x7e/0x7d (validated)
+    sdi_reset(xsm, 20); // §2.4(3) hold-low, then §2.4(1)+(2) configuration
+
+    /* Report what the interface thinks it is doing. Read-only: the validated
+     * configuration above is never second-guessed on the strength of a read. */
+    sdi_log_config(xsm, "after unlock");
     return true;
 }
 
@@ -130,20 +266,30 @@ bool LN_FAST_CODE sdi_dm_start()
  */
 bool LN_FAST_CODE sdi_dm_write(const uint8_t adr, const uint32_t val)
 {
+    if (adr > SDI_MAX_ADDRESS)
+    {
+        Logger("SDI : write to out-of-range address 0x%02x rejected\n", (unsigned)adr);
+        return false;
+    }
     sdi_write(xsm, adr, val);
     return true;
 }
 
 /**
  * @brief Read one DM register over SDI.
- * @param adr    Register address (7 bits).
+ * @param adr    Register address (7 bits; see SDI_MAX_ADDRESS).
  * @param output Receives the 32-bit register value.
- * @return true
+ * @return false when the address cannot be encoded in a frame, or output is null.
  */
 bool LN_FAST_CODE sdi_dm_read(const uint8_t adr, uint32_t *const output)
 {
     if (!output)
         return false;
+    if (adr > SDI_MAX_ADDRESS)
+    {
+        Logger("SDI : read of out-of-range address 0x%02x rejected\n", (unsigned)adr);
+        return false;
+    }
     *output = sdi_read(xsm, adr);
     return true;
 }
@@ -233,7 +379,21 @@ extern "C" bool sdi_scan()
         Logger("SDI : no target responding (DMSTATUS=0x%x)\n", (unsigned)status);
         return false;
     }
-    Logger("SDI : found target DMSTATUS=0x%x, attaching RISC-V debug module\n", (unsigned)status);
+    /* Report what the DM says about itself. One Logger call per path: Logger()
+     * formats into a single shared buffer that is drained asynchronously, so a
+     * second back-to-back call can drop the first line. The all-ones gate above
+     * stays deliberately loose (it only means "nobody is driving the wire"): the
+     * authoritative version check is riscv_dmi_init() -> riscv_dm_init(), which
+     * decodes dmstatus itself and rejects anything but v0.13/v1.0. */
+    if ((status & RV_STATUS_VERSION_MASK) == SDI_DMSTATUS_VERSION_0_13)
+        Logger("SDI : found target DMSTATUS=0x%x (version=%u v0.13, authenticated=%u), attaching RISC-V DM\n",
+               (unsigned)status, (unsigned)SDI_DMSTATUS_VERSION_0_13,
+               (unsigned)((status & SDI_DMSTATUS_AUTHENTICATED) ? 1U : 0U));
+    else
+        Logger("SDI : WARNING DMSTATUS=0x%x reports version=%u where v0.13 (%u) is expected; "
+               "riscv_dm_init() will reject it\n",
+               (unsigned)status, (unsigned)(status & RV_STATUS_VERSION_MASK),
+               (unsigned)SDI_DMSTATUS_VERSION_0_13);
 
     riscv_dmi_s *dmi = new riscv_dmi_s;
     if (!dmi)

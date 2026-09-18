@@ -1,30 +1,70 @@
-; Unified TX/RX State Machine for CH32V00x SDI (Pulse-Width Protocol)
-; Clock should be configured to 16MHz (62.5ns per cycle). Total bit time = 1us (16 cycles).
-; Command Word:
-; Bits [5:0] = TX Bit Count minus 1 (e.g. 8 for Read, 40 for Write)
-; Bit 6 = Mode (1 = Write, 0 = Read)
-; Bits [31:7] = Unused
-
+; Unified TX/RX state machine for the WCH CH32V00x SDI single-wire protocol
+; (asymmetric pulse-width encoding).
+;
+; Frame layout:
+;   Word 1 (host -> SM): bit 31 = frame mode flag (1 = write, 0 = read). It is
+;     consumed by the first `out x, 1` and is NOT transmitted; the tx_loop then
+;     shifts out bits [30:22] = the 9-bit header [start=1][addr6..addr0][R/W],
+;     MSB first (setBitOrder(false, false) = shift left).
+;   Word 2 (write only): the 32-bit payload, MSB first.
+;   Read frames: the SM only toggles pindirs (pseudo open drain), so the wire is
+;     released between the host's low pulses and the target drives the level.
+;
+; Bit encoding: logic 0 = long low + short high, logic 1 = short low + long high.
+; At the actual state-machine clock of 17.857 MHz (56 ns/cycle) one bit is 16-17
+; cycles (~896-952 ns), which gives:
+;   logic 1 -> low  4 cycles (224 ns) + high 12 cycles (672 ns)
+;   logic 0 -> low 12 cycles (672 ns) + high  5 cycles (280 ns)
+; Spec windows (section 2.2) for fast 1x, T = 125 ns (CH32V003 debug clock =
+; 24 MHz / 3 = 8 MHz, section 2.4 note):
+;   logic 1 low  in (T, 2T)   = (125, 250)  -> 224 ns, only 26 ns under the ceiling
+;   logic 1 high in (T, 8T)   = (125, 1000) -> 672 ns
+;   logic 0 low  in (4T, 32T) = (500, 4000) -> 672 ns
+;   logic 0 high in (T, 8T)   = (125, 1000) -> 280 ns
+;
+; The 4-cycle logic-1 low is the tight one (margin < 1 cycle) and it is
+; deterministic, so the numbers around it are load bearing, not cosmetics:
+;   - the clock: rpPIO_SM::setSpeed() floors the divider, 125/16 -> 7 -> 17.857 MHz,
+;     which is what makes that low 224 ns. A /8 divider (15.625 MHz) gives 256 ns
+;     and leaves the window.
+;   - the [1] / [9] / [7] / [2] deltas below, which set the 4/12-cycle split.
+; The clock must not be raised much either: the logic-0 low (12 cycles) has to stay
+; above 4T = 500 ns, i.e. the state machine must stay below ~24 MHz. Valid band is
+; roughly 16-24 MHz; 17.857 MHz is the validated point and sits at the low end.
+;
+; Time base caveat: nothing here reads the time base back. The interface is
+; configured by one validated word pair (bmp_sdiTap_rp2040.cpp::sdi_reset()),
+; which is section 2.4(1) only - CFGR[1:0] = 0b00 means TDIVCFG is never
+; committed, so the part keeps its post-reset time base. That the resulting timing
+; is the fast-1x table above is measured behaviour, not a read-back: a 224 ns
+; logic-1 low is illegal under normal 2x, whose window is (250, 1000) ns. CPBR.TDIV
+; is read for information only and answers 0b11 ("reserved") on this silicon.
+;
+; RX caveat: `in pins,1` samples ~560-616 ns into the bit, i.e. past 4T = 500 ns,
+; the earliest a compliant slave may release a data-0 low - a part driving the
+; minimum 4T would read back as 1. The manual does not describe the read-response
+; timing at all, so this is only settleable with a scope, not from the text.
+;
 .program sdi
 
 start:
-    pull block          ; Word 1: Mode + Header + Padding
-    out x, 1            ; Extract Mode
+    pull block          ; Word 1: mode flag (bit 31) + 9-bit header (bits [30:22])
+    out x, 1            ; Consume the flag (never transmitted); x = sentinel bit
     mov isr, x          ; Save Mode to ISR
     set y, 8            ; 9-bit Header loop count
     set pindirs, 1      ; Ensure pin is output
 tx_loop:
-    set pins, 0 [1]     ; Drive LOW (Start pulse: ~250ns)
+    set pins, 0 [1]     ; Drive LOW: 4 cycles for a 1 bit, 12 cycles for a 0 bit
     out x, 1            ; Extract data bit
     jmp !x, tx_0
 tx_1:
-    set pins, 1 [9]     ; Drive HIGH aggressively (Push-Pull: ~750ns)
+    set pins, 1 [9]     ; HIGH for the rest of the cell: 12 cycles ~ 672ns
     jmp loop_end
 tx_0:
-    nop [7]
-    set pins, 1 [2]     ; Drive HIGH aggressively (Push-Pull: ~250ns)
+    nop [7]             ; Hold the long low: 12 cycles total ~ 672ns
+    set pins, 1 [2]     ; HIGH for 5 cycles ~ 280ns (still >= T)
 loop_end:
-    jmp y--, tx_loop    
+    jmp y--, tx_loop    ; one bit = 16-17 cycles ~ 896-952ns
     
     ; Transmit sub-phase complete. Read Mode flag.
     mov x, isr          
@@ -43,10 +83,10 @@ do_read:
     set y, 31
     set pins, 0         ; Prepare internal pin state for open-drain toggling
 rx_loop:
-    set pindirs, 1 [3]  ; Drive LOW (~250ns)
-    set pindirs, 0 [5]  ; Float HIGH (Wait ~375ns for weak pull-ups to rise)
-    in pins, 1          ; Sample target response at ~687ns
-    jmp y--, rx_loop [4]; Wait out remainder of 1us bit time (Total 16 cycles)
+    set pindirs, 1 [3]  ; Host drives LOW for 4 cycles (~224ns, >= T)
+    set pindirs, 0 [5]  ; Release the wire; the target drives it for 6 cycles
+    in pins, 1          ; Sample on cycle 11 of the bit (~616ns @17.86MHz)
+    jmp y--, rx_loop [4]; Pad the bit cell to 16 cycles (~896ns)
     
     push block
     ; Implicit wrap to start

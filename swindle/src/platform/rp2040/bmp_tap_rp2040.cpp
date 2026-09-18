@@ -146,7 +146,15 @@ static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight
  * selected after a SWD/RVSWD session the clock/direction pads are released
  * from PIO function so they do not float while the SWDIO pad stays on PIO.
  */
-#define SDI_PIO_FREQUENCY_HZ 16000000U /* validated SM clock for SDI */
+/* Requested SDI state-machine clock. rpPIO_SM::setSpeed() floors the divider
+ * (intdiv = clk_sys / fq, see ln_rp_pio.cpp), so with clk_sys = 125 MHz
+ * (LN_MCU_SPEED) this request for 16 MHz yields CLKDIV = 7 -> 17.857 MHz
+ * (56 ns/cycle). That is what the sdi.pio bit schedule depends on: its 4-cycle
+ * logic-1 low comes out at 224 ns, just under the fast-1x ceiling of 2T = 250 ns
+ * (a /8 divider, 15.625 MHz, would stretch it to 256 ns and break the window).
+ * Do not round this request up or change clk_sys without re-checking sdi.pio,
+ * which carries the window table and the ~16-24 MHz valid band. */
+#define SDI_PIO_FREQUENCY_HZ 16000000U
 static void setupSDI()
 {
     lnPin pin_sdi = _mapping[TSWDIO_PIN];
