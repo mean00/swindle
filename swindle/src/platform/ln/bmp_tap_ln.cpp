@@ -1,9 +1,11 @@
 /**
  * @file bmp_tap_ln.cpp
- * @brief SWD TAP initialisation, frequency and wait-state control (LN targets)
+ * @brief LN platform tap: ownership of the shared debug pins (PB8/PC3/NRST), the
+ *        debug pin-mode switch, and SWD frequency / wait-state control.
  */
 
 #include "bmp_tap_ln.h"
+#include "bmp_pinmode.h"
 #include "bmp_pinout.h"
 #include "bmp_swdio_ln.h"
 #include "esprit.h"
@@ -115,6 +117,31 @@ extern "C" void bmp_io_end_session()
     rSWCLK->hiZ();
     pReset->off(); // hi-z by default
 }
+
+/* SDI pin hand-over (bmp_sdiTap_ln.cpp). SDI owns PB8 for the whole of a
+ * session (released open drain) and is the only protocol whose pins do not
+ * double as the SWD ones, so it has to be told when its session begins and
+ * when it ends. */
+extern void sdi_pinmode_enter();
+extern void sdi_pinmode_leave();
+
+/**
+ * @brief Select the debug pins for @p pioMode.
+ *
+ * This is the only place that knows about every pin mode: SWD and RVSWD
+ * reconfigure PB8/PC3 on their own (swdptap_init(), bmp_rvTap_ln.cpp's scan
+ * sets rSWDIO output/input as it goes), so SDI is the single mode that needs an
+ * explicit hand-over. Any other mode - including BMP_PINMODE_NONE - ends a
+ * running SDI session.
+ */
+void bmp_gpio_pinmode(bmp_pin_mode pioMode)
+{
+    if (pioMode == BMP_PINMODE_SDI)
+        sdi_pinmode_enter();
+    else
+        sdi_pinmode_leave();
+}
+
 /**
  * @brief Disable frequency scaling (no-op for LN platform).
  */

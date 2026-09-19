@@ -73,14 +73,6 @@ static uint32_t zread(uint32_t nbTicks)
 }
 
 /**
- * @brief Stub: set SWD pin mode (not implemented for LN targets).
- */
-void bmp_gpio_pinmode(bmp_pin_mode pioMode)
-{
-    (void)pioMode;
-}
-
-/**
  * @brief Drive SWDIO high and set to output (reset line state).
  */
 extern "C" void bmp_gpio_reset()
