@@ -195,6 +195,19 @@ static inline LN_ALWAYS_INLINE void sdiPadOpenDrain()
 {
     lnPinMode(SDI_DATA_PIN, lnOUTPUT_OPEN_DRAIN, 1);
 }
+/**
+ * @brief The idle wire: released, shifter pointing at the probe, open drain.
+ *
+ * What every frame starts and ends in, and the state sdi_pinmode_enter() leaves
+ * the pad in - including after the timing measurement, which parks it differently
+ * for the duration (see there).
+ */
+static void sdiPark()
+{
+    sdiPadRelease();
+    sdiDirProbe();
+    sdiPadOpenDrain();
+}
 
 // ---------------------------------------------------------------------------
 // The clock: a counted NOP loop.
@@ -286,6 +299,10 @@ static uint32_t sdiPhaseLoops(const uint32_t ns, const uint32_t accesses)
  * their own, which is how sdiConfigureTiming() separates the loop cost from the
  * access cost. 1000 cells are ~1 ms, short enough for the microsecond timer to
  * still resolve a single cell to 0.1%.
+ *
+ * Only the CPU is timed, so the pad is parked off the wire for the whole
+ * calibration (sdi_pinmode_enter()): the store that makes an edge still costs what
+ * it costs, and the burst that measures it reaches nobody.
  */
 static uint32_t sdiMeasureCellNs(const uint32_t lowLoops, const uint32_t highLoops, const uint32_t cells)
 {
@@ -305,7 +322,9 @@ static uint32_t sdiMeasureCellNs(const uint32_t lowLoops, const uint32_t highLoo
  * count their bits in an outer loop. This runs sdiSendBit(), the code the frames
  * run, cell by cell, so it times a cell in a frame. The bit value alternates -
  * the frames' is a run-time value too, and both cell shapes are the same number
- * of iterations (LOW1+HIGH1 = LOW0+HIGH0), so what comes out is one cell.
+ * of iterations (LOW1+HIGH1 = LOW0+HIGH0), so what comes out is one cell. Like the
+ * calibration, it runs with the pad parked off the wire: what is measured is the
+ * CPU's cell either way.
  */
 static uint32_t sdiMeasureWriteCellNs(const uint32_t cells)
 {
@@ -411,9 +430,10 @@ static void sdiConfigureTiming()
  * The last two numbers are the interesting ones: the cell a frame bit makes on
  * the counts the trim settled on, i.e. the cell the target will see, and what
  * that same cell was before the trim (the size of the correction the model
- * needed). Each clocks SDI_TRIM_CELLS cells onto the wire, which happens at mode
- * entry, before sdi_dm_start() resets the target: nothing is listening for them
- * yet.
+ * needed). Each clocks SDI_TRIM_CELLS cells with the pad parked off the wire (see
+ * sdi_pinmode_enter()), so the numbers are the CPU's cost and the burst carries
+ * nothing: mode entry is before sdi_dm_start() resets the target, and nothing is
+ * listening for a cell before that either.
  *
  * Single Logger call on purpose - Logger() formats into one shared static buffer
  * that the output path drains asynchronously, so two back-to-back calls can drop
@@ -565,24 +585,30 @@ static uint32_t sdiReadFrame(const uint8_t adr)
  * @brief Enter SDI mode: park PB8 released and calibrate the timing once.
  *
  * PB8 leaves the tap in open drain and released, with the shifter pointing at the
- * probe, which is the state every frame starts and ends in - and the state the
- * calibration (which drives the pad) has to measure from. There is no cell engine
- * to build here: that is the point of this file.
+ * probe, which is the state every frame starts and ends in. There is no cell
+ * engine to build here: that is the point of this file.
+ *
+ * The calibration and the trim it feeds are the only cells a session makes outside
+ * a frame, so they are made with the pad held off the wire: they time the CPU, not
+ * the wire - sdiSendCell()'s stores, to the same BOP register at the same address
+ * as a frame's - so a pin mode whose output driver is off leaves the shifter at its
+ * idle high and the ~12 ms of cells they make reach nobody. Both modes have the ODR
+ * bit high (open drain released before, pull-up after), so the pin does not move
+ * either way. (SWCLK/PB9 would measure the same store too - lnFastIO::on() writes
+ * the same port register with a different bit - but this keeps the measurement on
+ * the pin, and on the code path, the frames use.)
  */
 void sdi_pinmode_enter()
 {
     if (!rSWDIO)
         return;
-    if (!sdiMode)
-    {
-        sdiPadRelease();
-        sdiDirProbe();
-        sdiPadOpenDrain();
-    }
+    sdiPark(); /* also what the measurement has to start from: same state every session */
     if (!sdiTimingDone)
     {
-        sdiConfigureTiming(); /* measures the pad too: park it first */
+        lnPinMode(SDI_DATA_PIN, lnINPUT_PULLUP); /* driver off: the measurement is the CPU's */
+        sdiConfigureTiming();
         sdiLogMode();
+        sdiPark();
         sdiTimingDone = true;
     }
     sdiMode = true;
