@@ -128,6 +128,15 @@ extern "C" void target_list_free(void);
  * only stands in until the measurement has run. */
 #define SDI_LOOP_NS_X10_DEFAULT 125u
 
+/* The cell the counts are trimmed against (see sdiConfigureTiming()): 1000 cells
+ * is the same ~1 ms burst the calibration uses, which the microsecond timer
+ * resolves to 0.1% per cell, and three passes where two land the cell inside the
+ * one iteration a count can resolve - the spare costs 1 ms at mode entry and
+ * bounds the loop whatever the part does.
+ */
+#define SDI_TRIM_CELLS 1000u
+#define SDI_TRIM_PASSES 3u
+
 /* What the measurement found, and the loop counts derived from it. The counts
  * stay zero until sdiConfigureTiming() runs, which every frame is behind: frames
  * only start once bmp_gpio_pinmode(BMP_PINMODE_SDI) has called
@@ -137,6 +146,10 @@ static uint32_t sdiAccessNs = 0;                        /* one pad access */
 static uint32_t sdiLow1Loops = 0, sdiHigh1Loops = 0;    /* a cell whose bit is 1 */
 static uint32_t sdiLow0Loops = 0, sdiHigh0Loops = 0;    /* a cell whose bit is 0 */
 static uint32_t sdiRxLowLoops = 0, sdiRxMidLoops = 0, sdiRxTailLoops = 0;
+
+/* What the counts above made before they were trimmed onto the cell, for the
+ * mode entry log: the trim factor is how far the model was off. */
+static uint32_t sdiCellUntrimmedNs = 0;
 
 /* SDI owns PB8/PC3 for the whole session; the timing is calibrated once. */
 static bool sdiMode = false;
@@ -283,6 +296,41 @@ static uint32_t sdiMeasureCellNs(const uint32_t lowLoops, const uint32_t highLoo
 }
 
 /**
+ * @brief Measure the cell a frame bit makes, @p cells times over, in ns.
+ *
+ * sdiMeasureCellNs() takes its counts as arguments, so the compiler hoists the
+ * loads out of the burst and what it times is the loop alone - which is what the
+ * two-point calibration wants, and exactly what the frames do not pay: they read
+ * the counts out of the statics for every cell, choose the cell at run time and
+ * count their bits in an outer loop. This runs sdiSendBit(), the code the frames
+ * run, cell by cell, so it times a cell in a frame. The bit value alternates -
+ * the frames' is a run-time value too, and both cell shapes are the same number
+ * of iterations (LOW1+HIGH1 = LOW0+HIGH0), so what comes out is one cell.
+ */
+static uint32_t sdiMeasureWriteCellNs(const uint32_t cells)
+{
+    const uint32_t startUs = lnGetUs();
+    for (uint32_t i = 0; i < cells; i++)
+        sdiSendBit(i & 1u);
+    return ((lnGetUs() - startUs) * 1000u) / cells;
+}
+
+/**
+ * @brief @p loops scaled so that the cell they are part of comes out at
+ *        SDI_TBIT_NS.
+ *
+ * Rounded to nearest. The counts are the only knob the model has and the cell
+ * responds to them (one count is one iteration, ~42 ns on this part), so moving
+ * all of them by one factor is what walks the measured cell onto the target;
+ * scaling them together is also what keeps the LOW/HIGH fractions, i.e. the bits.
+ * A count of 0 stays 0, which is a half the pad accesses already pay for.
+ */
+static uint32_t sdiTrim(const uint32_t loops, const uint32_t cellNs)
+{
+    return (loops * SDI_TBIT_NS + cellNs / 2u) / cellNs;
+}
+
+/**
  * @brief Turn the waveform's fractions into loop counts, from what the CPU
  *        measures.
  *
@@ -320,16 +368,52 @@ static void sdiConfigureTiming()
     sdiRxLowLoops = sdiPhaseLoops(SDI_LOW1_NS, 2u);
     sdiRxMidLoops = sdiPhaseLoops(SDI_RX_SAMPLE_NS - SDI_LOW1_NS, 3u);
     sdiRxTailLoops = sdiPhaseLoops(SDI_TBIT_NS - SDI_RX_SAMPLE_NS, 1u);
+
+    /* Those counts are a model, and the burst the model was measured in is not a
+     * frame: sdiMeasureCellNs() takes its counts as arguments, so the count loads
+     * are hoisted out of it, and it runs neither the per-cell register reloads nor
+     * the run-time choice of cell that sdiSendWord() pays. On a GD32F303 at
+     * 96 MHz the model asks for a 950 ns cell and the frames make 1107 ns: 157 ns
+     * that is the cell's rather than the iterations', and that no count in the
+     * model can account for.
+     *
+     * The cell is monotone in the counts whatever that 157 ns is, and it is
+     * measurable at the fidelity the loop cost was - so close the loop on it:
+     * trim every count by what sdiMeasureWriteCellNs(), i.e. the cells the frames
+     * make, came out as against §2.2's cell, and measure again. The per-cell part
+     * is a quarter or so of the cell, so each pass takes out most of what is left:
+     * two land it inside the one iteration a count can resolve, and SDI_TRIM_PASSES
+     * bounds the loop whatever the part does. The accesses, the register reloads
+     * and the loop entries stay where they are, and the response phases ride on
+     * the same factor because they run the same loop. */
+    uint32_t cellNs = sdiMeasureWriteCellNs(SDI_TRIM_CELLS);
+    sdiCellUntrimmedNs = cellNs;
+    for (uint32_t pass = 0; pass < SDI_TRIM_PASSES && cellNs; pass++)
+    {
+        const uint32_t offNs = (cellNs > SDI_TBIT_NS) ? (cellNs - SDI_TBIT_NS) : (SDI_TBIT_NS - cellNs);
+        if (offNs <= oneLoopNs)
+            break; /* one count is one iteration: an integer count cannot do better */
+        sdiLow1Loops = sdiTrim(sdiLow1Loops, cellNs);
+        sdiHigh1Loops = sdiTrim(sdiHigh1Loops, cellNs);
+        sdiLow0Loops = sdiTrim(sdiLow0Loops, cellNs);
+        sdiHigh0Loops = sdiTrim(sdiHigh0Loops, cellNs);
+        sdiRxLowLoops = sdiTrim(sdiRxLowLoops, cellNs);
+        sdiRxMidLoops = sdiTrim(sdiRxMidLoops, cellNs);
+        sdiRxTailLoops = sdiTrim(sdiRxTailLoops, cellNs);
+        cellNs = sdiMeasureWriteCellNs(SDI_TRIM_CELLS);
+    }
 }
 
 /**
  * @brief One console line: the transport, what it measured, and what a cell
  *        comes out as.
  *
- * The last number is the interesting one: sdiMeasureCellNs() on the counts that
- * were just derived, i.e. the cell the target will actually see. It clocks 1000
- * cells onto the wire, which happens at mode entry, before sdi_dm_start() resets
- * the target: nothing is listening for them yet.
+ * The last two numbers are the interesting ones: the cell a frame bit makes on
+ * the counts the trim settled on, i.e. the cell the target will see, and what
+ * that same cell was before the trim (the size of the correction the model
+ * needed). Each clocks SDI_TRIM_CELLS cells onto the wire, which happens at mode
+ * entry, before sdi_dm_start() resets the target: nothing is listening for them
+ * yet.
  *
  * Single Logger call on purpose - Logger() formats into one shared static buffer
  * that the output path drains asynchronously, so two back-to-back calls can drop
@@ -338,11 +422,12 @@ static void sdiConfigureTiming()
 static void sdiLogMode()
 {
     Logger("SDI : bit-bang transport on pin %u : loop %u.%u ns, access %u ns, LOW1 %u+%u loops, LOW0 %u+%u, "
-           "rx %u/%u/%u, one cell measures %u ns\n",
+           "rx %u/%u/%u, one cell measures %u ns (%u ns untrimmed)\n",
            (unsigned)SDI_DATA_PIN, (unsigned)(sdiLoopNsX10 / 10u), (unsigned)(sdiLoopNsX10 % 10u),
            (unsigned)sdiAccessNs, (unsigned)sdiLow1Loops, (unsigned)sdiHigh1Loops, (unsigned)sdiLow0Loops,
            (unsigned)sdiHigh0Loops, (unsigned)sdiRxLowLoops, (unsigned)sdiRxMidLoops,
-           (unsigned)sdiRxTailLoops, (unsigned)sdiMeasureCellNs(sdiLow1Loops, sdiHigh1Loops, 1000u));
+           (unsigned)sdiRxTailLoops, (unsigned)sdiMeasureWriteCellNs(SDI_TRIM_CELLS),
+           (unsigned)sdiCellUntrimmedNs);
 }
 
 // ---------------------------------------------------------------------------
