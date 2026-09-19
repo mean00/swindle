@@ -1,7 +1,7 @@
 (kicad_sch
-	(version 20231120)
+	(version 20260306)
 	(generator "eeschema")
-	(generator_version "8.0")
+	(generator_version "10.0")
 	(uuid "fbe443d6-6d74-4abc-9dee-16e0160553bc")
 	(paper "A4")
 	(title_block
@@ -11,17 +11,23 @@
 	(sheet
 		(at 46.99 78.74)
 		(size 29.21 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
 		(fields_autoplaced yes)
 		(stroke
 			(width 0.1524)
 			(type solid)
 		)
 		(fill
-			(color 0 0 0 0.0000)
+			(color 0 0 0 0)
 		)
 		(uuid "3e3374ff-17d6-414d-9a63-96aa322d3dc0")
 		(property "Sheetname" "PowerSupply"
 			(at 46.99 78.0284 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -31,6 +37,8 @@
 		)
 		(property "Sheetfile" "powersupply.kicad_sch"
 			(at 46.99 107.2646 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -49,17 +57,23 @@
 	(sheet
 		(at 46.99 116.84)
 		(size 29.21 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
 		(fields_autoplaced yes)
 		(stroke
 			(width 0.1524)
 			(type solid)
 		)
 		(fill
-			(color 0 0 0 0.0000)
+			(color 0 0 0 0)
 		)
 		(uuid "860eb7d0-1eba-4c3d-ac2c-5a3607b90fb5")
 		(property "Sheetname" "MCU"
 			(at 46.99 116.1284 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -69,6 +83,8 @@
 		)
 		(property "Sheetfile" "mcu.kicad_sch"
 			(at 46.99 145.3646 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -87,17 +103,23 @@
 	(sheet
 		(at 46.99 41.91)
 		(size 30.48 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
 		(fields_autoplaced yes)
 		(stroke
 			(width 0.1524)
 			(type solid)
 		)
 		(fill
-			(color 0 0 0 0.0000)
+			(color 0 0 0 0)
 		)
 		(uuid "d69ade2a-4297-4849-b967-fee3fb9a9870")
 		(property "Sheetname" "output"
 			(at 46.99 41.1984 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -107,6 +129,8 @@
 		)
 		(property "Sheetfile" "output.kicad_sch"
 			(at 46.99 70.4346 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -127,4 +151,5 @@
 			(page "1")
 		)
 	)
+	(embedded_fonts no)
 )
