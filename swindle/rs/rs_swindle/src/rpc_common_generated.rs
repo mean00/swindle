@@ -35,6 +35,7 @@ pub const RPC_HL_ACCEL: u8 = b'A';
 pub const RPC_SDI_RESET: u8 = b'S';
 pub const RPC_SDI_DM_READ: u8 = b'r';
 pub const RPC_SDI_DM_WRITE: u8 = b'w';
+pub const RPC_SDI_SET_WIRE: u8 = b'T';
 pub const RPC_RV_RESET: u8 = b'S';
 pub const RPC_RV_DM_READ: u8 = b'r';
 pub const RPC_RV_DM_WRITE: u8 = b'w';

@@ -154,6 +154,17 @@ pub fn remote_sdi_dm_write_rs(address: u32, value: u32) -> bool {
     ok
 }
 
+/// The 'mon sdi_wire' knobs for a hosted build: 'mon sdi_wire' runs on this PC,
+/// but the numbers tune the probe's bit-bang tap, so they go over the class-I
+/// SDI RPC (`SDI.SET_WIRE`) and are read by the tap on its next mode entry
+/// (i.e. the `mon sdi_scan` that follows). False means the probe did not take
+/// them - no answer, or a firmware without the command - which is worth saying
+/// out loud: nothing here would have changed the wire.
+#[unsafe(no_mangle)]
+pub fn remote_sdi_set_wire_rs(tbit_ns: u32, low1_ns: u32, low0_ns: u32, sample_ns: u32, no_trim: bool) -> bool {
+    crate::rpc_host_generated::remote_sdi_set_wire(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim)
+}
+
 #[unsafe(no_mangle)]
 pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
     let mut e = rpc_encoder::new();

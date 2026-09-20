@@ -163,6 +163,22 @@ params = [
 ]
 reply = { type = "u32", on_error = "ok_bool" }
 
+# The 'mon sdi_wire' knobs: the timing the probe's bit-bang SDI tap builds its
+# waveform from. They belong to the probe (that is where the wire is driven),
+# so a hosted build forwards them instead of defining bmp_set_sdi_wire_c.
+# 0 keeps the tap's own default for that number.
+[class.SDI.command.SET_WIRE]
+id = "T"
+description = "Set the SDI bit-bang wire timing ('mon sdi_wire'), in ns"
+params = [
+  { name = "tbit_ns", type = "u32", doc = "cell, 0 = tap default" },
+  { name = "low1_ns", type = "u32", doc = "LOW that carries a 1" },
+  { name = "low0_ns", type = "u32", doc = "LOW that carries a 0" },
+  { name = "sample_ns", type = "u32", doc = "response sample point" },
+  { name = "no_trim", type = "bool", doc = "leave the model's counts untrimmed" }
+]
+reply = "ok"
+
 
 # ---------------------------------------------------------------------------
 # RV — RISC-V Debug Module operations

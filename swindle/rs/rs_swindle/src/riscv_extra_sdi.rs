@@ -12,7 +12,10 @@
 //! the failure it always reports, exactly like the C stubs behind it.
 //!
 //! A hosted (Blackmagic-app) build always takes this file: its C side
-//! (`blackmagic_addon/hosted/remote_sdi_protocol.c`) always links the native leg.
+//! (`blackmagic_addon/hosted/remote_sdi_protocol.c`) always links the native leg,
+//! and the RPC leaves it drives live in `hosted/rpc_host/remote_rpc.rs`. The
+//! `mon sdi_wire` knobs go the same way, over the SDI class's `SET_WIRE` command,
+//! because the tap they tune is the probe's, not this process's.
 
 use crate::encoder::encoder;
 use crate::freertos::os_detach;
@@ -30,7 +33,12 @@ setup_log!(false);
 /// (`bmp_riscv_extra_sdi_c.cpp`); with `SWINDLE_WITH_SDI=OFF` the same symbols
 /// come from the stubs (`bmp_riscv_extra_stubs.cpp` /
 /// `bmp_riscv_extra_sdi_stubs_c.cpp`), so these declarations stay valid.
+///
+/// A hosted build declares none of them: the transport lives on the probe and
+/// is reached over the class-I SDI RPC, so the local C leg is not linked at all
+/// (its `bmp_set_sdi_wire_c` would only write knobs no tap on this PC reads).
 mod c {
+    #[cfg(not(feature = "hosted"))]
     unsafe extern "C" {
         pub fn bmp_set_sdi_wire_c(
             tbit_ns: cty::c_uint,
@@ -39,9 +47,6 @@ mod c {
             sample_ns: cty::c_uint,
             no_trim: bool,
         );
-    }
-    #[cfg(not(feature = "hosted"))]
-    unsafe extern "C" {
         pub fn sdi_scan() -> bool;
         pub fn bmp_sdi_dm_reset_c() -> bool;
         pub fn bmp_sdi_dm_read_c(adr: u8, value: *mut cty::c_uint) -> bool;
@@ -83,8 +88,24 @@ pub fn sdi_scan() -> bool {
 /// carries a 1, the LOW that carries a 0 and the sample point. `no_trim` leaves
 /// the counts the model built instead of trimming them onto the cell. The SDI tap
 /// re-calibrates on its next mode entry, so `mon sdi_scan` applies a new set.
+#[cfg(not(feature = "hosted"))]
 pub fn bmp_set_sdi_wire(tbit_ns: u32, low1_ns: u32, low0_ns: u32, sample_ns: u32, no_trim: bool) {
     unsafe { c::bmp_set_sdi_wire_c(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim) }
+}
+
+/// Hosted variant of [`bmp_set_sdi_wire`].
+///
+/// The tap these numbers tune runs on the probe, so they are forwarded over the
+/// class-I SDI RPC (`SDI.SET_WIRE` -> `rpc_sdi_impl::set_wire` ->
+/// `bmp_set_sdi_wire_c` on the probe) instead of being written into this PC's
+/// memory, where nothing would read them. A failed leg means the wire was left
+/// as it was - no probe answering, or probe firmware from before this command
+/// existed - so say so rather than let the echo above imply otherwise.
+#[cfg(feature = "hosted")]
+pub fn bmp_set_sdi_wire(tbit_ns: u32, low1_ns: u32, low0_ns: u32, sample_ns: u32, no_trim: bool) {
+    if !crate::hosted::rpc_host::remote_rpc::remote_sdi_set_wire_rs(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim) {
+        bmpwarning!("SDI wire : the probe did not take the timing (no answer, or no SDI support)\n");
+    }
 }
 
 /// Enter SDI debug mode: reset the SDI debug module (upload the transport on

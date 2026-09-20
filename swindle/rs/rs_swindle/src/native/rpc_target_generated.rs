@@ -202,6 +202,7 @@ pub mod rpc_sdi_impl {
             RPC_SDI_RESET => cmd_reset(parser),
             RPC_SDI_DM_READ => cmd_dm_read(parser),
             RPC_SDI_DM_WRITE => cmd_dm_write(parser),
+            RPC_SDI_SET_WIRE => cmd_set_wire(parser),
             _ => {
                 bmplog!("unknown command in {} packet\n", stringify!(SDI));
                 false
@@ -227,6 +228,17 @@ pub mod rpc_sdi_impl {
         let value = parser.next_u32();
         let (ok, value) = crate::native::rpc_target_impl::rpc_sdi_impl::dm_write(address, value);
         rpc_reply_bool_32le(ok, value);
+        true
+    }
+
+    fn cmd_set_wire(parser: &mut rpc_parameter_parser) -> bool {
+        let tbit_ns = parser.next_u32();
+        let low1_ns = parser.next_u32();
+        let low0_ns = parser.next_u32();
+        let sample_ns = parser.next_u32();
+        let no_trim = parser.next_cmd() != b'0';
+        crate::native::rpc_target_impl::rpc_sdi_impl::set_wire(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim);
+        rpc_reply_encoder::new().end();
         true
     }
 

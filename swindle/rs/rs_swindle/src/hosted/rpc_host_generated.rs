@@ -196,6 +196,20 @@ pub fn remote_sdi_dm_write(address: u32, value: u32) -> (bool, u32) {
     (true, u8s_string_to_u32_le(&reply[1..]))
 }
 
+pub fn remote_sdi_set_wire(tbit_ns: u32, low1_ns: u32, low0_ns: u32, sample_ns: u32, no_trim: bool) -> bool {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_SET_WIRE]);
+    e.add_u32_le(tbit_ns as u32);
+    e.add_u32_le(low1_ns as u32);
+    e.add_u32_le(low0_ns as u32);
+    e.add_u32_le(sample_ns as u32);
+    e.add_u8(&[if no_trim { b'1' } else { b'0' }]);
+    e.end();
+    let reply = remote_get_reply();
+    check_reply(reply, 0)
+}
+
 // ── RV commands ──
 pub fn remote_rv_reset() -> (bool, u32) {
     let mut e = rpc_encoder::new();

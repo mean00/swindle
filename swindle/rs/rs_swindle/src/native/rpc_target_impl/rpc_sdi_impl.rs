@@ -26,3 +26,13 @@ pub fn dm_write(address: u32, value: u32) -> (bool, u32) {
     let ok = riscv_extra::bmp_sdi_write(address as u8, value);
     (ok, 0)
 }
+
+/// Set the SDI bit-bang wire timing ('mon sdi_wire' knobs).
+///
+/// The numbers end up in the tap's globals, which it reads on its next mode
+/// entry: a following `mon sdi_scan` is what applies them. Adding the command
+/// to the protocol is what makes 'mon sdi_wire' reach the probe from a hosted
+/// (Blackmagic-app) build, where there is no local tap to tune.
+pub fn set_wire(tbit_ns: u32, low1_ns: u32, low0_ns: u32, sample_ns: u32, no_trim: bool) {
+    riscv_extra::bmp_set_sdi_wire(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim);
+}
