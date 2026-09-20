@@ -8,7 +8,14 @@ if(SWINDLE_HOSTED)
 else()
   message(STATUS "Rust swindle in target mode")
   set(LN_LTO_RUST_FLAGS ${LN_LTO_RUST_FLAGS} -C opt-level=s) # we try to make arm code smaller, we dont care for hosted
-  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native)
+  # The SDI support is optional (SWINDLE_WITH_SDI, top level CMakeLists.txt): with
+  # it off the Rust side of the seam is riscv_extra_sdi_stubs.rs instead of
+  # riscv_extra_sdi.rs (rs_swindle/src/lib.rs), matching the C stubs.
+  set(SWINDLE_RUST_SDI_FEATURE "")
+  if(SWINDLE_WITH_SDI)
+    set(SWINDLE_RUST_SDI_FEATURE sdi)
+  endif()
+  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native ${SWINDLE_RUST_SDI_FEATURE})
   corrosion_add_target_rustflags(rsbmp_wrapper --cfg feature="native")
   if(SWINDLE_USE_NETWORK)
     corrosion_add_target_rustflags(rsbmp_wrapper --cfg feature="network")

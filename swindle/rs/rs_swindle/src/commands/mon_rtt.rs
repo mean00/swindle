@@ -33,7 +33,13 @@ pub fn rtt_clear_symbols() -> bool {
 ///
 /// Stores the RTT control block address in persistent settings.
 pub fn rtt_processing(key: &str, value_str: &str) -> bool {
-    bmpwarning!("processing :key {} value {}", key, value_str);
+    /* Debug-level on purpose: the host resolves this symbol during the GDB
+     * attach/symbol exchange, i.e. while that packet's reply is being written.
+     * A Logger write there goes out on the log CDC while the reply goes out on
+     * the GDB CDC, and the two streams are observed to cross on the LN build
+     * (the host loses the packet and reports a timeout). See the same note in
+     * freertos/freertos_symbols.rs. */
+    bmplog!("processing :key {} value {}", key, value_str);
     let value = parsing_util::ascii_hex_to_u32(value_str);
     settings::set(RTT_SETTING_KEY, value);
     true

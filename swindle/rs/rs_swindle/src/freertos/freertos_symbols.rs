@@ -162,7 +162,14 @@ fn freertos_read_debug_offsets() {
         return;
     }
     if raw[0] != LN_FREERTOS_MAGIC {
-        bmpwarning!(
+        /* Debug-level on purpose: this fires on every non-FreeRTOS target (the
+         * host resolves the symbol to whatever it finds), and it runs *inside*
+         * the reply of the GDB packet that triggered the symbol exchange - a
+         * Logger write there goes out on the log CDC while the reply goes out on
+         * the GDB CDC, and the two streams are observed to cross on the LN
+         * build (the reply packet is lost, the host reports a timeout). Not
+         * worth risking a session for an informational message. */
+        bmplog!(
             "freeRTOSDebug magic mismatch: got 0x{:08x}, expected 0x{:08x}\n",
             raw[0],
             LN_FREERTOS_MAGIC

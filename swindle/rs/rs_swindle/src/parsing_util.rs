@@ -160,6 +160,28 @@ pub fn u8_to_ascii_to_buffer(value: u8, out: &mut [u8]) {
     out[0] = _tohex(value >> 4);
     out[1] = _tohex(value & 0xf);
 }
+/// Parse a decimal parameter with an optional `k`/`K` suffix (1000x).
+///
+/// e.g. `"1500"` => `(true, 1500)`, `"12k"` => `(true, 12000)`. An empty string
+/// is an error: it prints the expected syntax and returns `(false, 0)`, which
+/// the monitor commands turn into a failed command.
+pub fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
+    let trimmed = in_str.trim();
+    // ok we have an input
+    let mut sz: usize = trimmed.len();
+    if sz == 0 {
+        gdb_print!("incorrect parameter, expecting xxx or xxxK\n");
+        return (false, 0);
+    }
+    let mut mul: u32 = 1;
+    if trimmed.ends_with('k') || trimmed.ends_with('K') {
+        mul = 1000;
+        sz -= 1;
+    }
+    let mut out = ascii_string_decimal_to_u32(&trimmed[..sz]);
+    out *= mul;
+    (true, out)
+}
 /// Parse an "address,length" pair from a GDB command string.
 ///
 /// e.g. `"20001000,100"` => `Some((0x20001000, 0x100))`

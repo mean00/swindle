@@ -120,34 +120,11 @@ pub fn swdp_scan() -> bool {
 pub fn rvswdp_scan() -> bool {
     unsafe { rn_bmp_cmd_c::cmd_rvswd_scan(null(), 0, null_mut()) }
 }
-/// Perform a WCH CH32V0xx single-wire debug (SDI) scan.
-///
-/// Native firmware runs the SDI probe directly (`sdi_scan` in sdiTap);
-/// hosted builds run the same stage-1 sequence in Rust over the class-I
-/// RPC primitives (see the `hosted` variant below).
-#[cfg(not(feature = "hosted"))]
-pub fn sdi_scan() -> bool {
-    unsafe { rn_bmp_cmd_c::sdi_scan() }
-}
-/// Hosted variant of [`sdi_scan`].
-///
-/// The scan + full RISC-V target attach is orchestrated in C
-/// (`blackmagic_addon/hosted/remote_sdi_protocol.c::bmda_sdi_scan2`, mirroring
-/// `remote_rv_protocol.c::bmda_rvswd_scan2` for the RVSWD leg): clear the
-/// blackmagic target list, gate on DMSTATUS, then hand `riscv_dmi_init()` a
-/// real, header-typed `riscv_dmi_s` (designer = WCH) so the C RISC-V framework
-/// (riscv32 + the CH32V0xx driver) discovers the hart — exactly like native
-/// `sdi_scan()` attaches. Only the DM-access leaf functions live in Rust
-/// (`remote_sdi_reset_rs` / `remote_sdi_dm_read_rs` / `remote_sdi_dm_write_rs`
-/// in `hosted/rpc_host/remote_rpc.rs`); there is no Rust-side layout mirror of
-/// `struct riscv_dmi` to keep in sync with riscv_debug.h.
-#[cfg(feature = "hosted")]
-pub fn sdi_scan() -> bool {
-    unsafe extern "C" {
-        fn bmda_sdi_scan2() -> bool;
-    }
-    unsafe { bmda_sdi_scan2() }
-}
+// NOTE: the SDI side of this file (sdi_scan(), and the 'mon sdi_wire' knobs
+// further down) moved to the optional SDI module — crate::riscv_extra, i.e.
+// riscv_extra_sdi.rs behind the `sdi` cargo feature, or
+// riscv_extra_sdi_stubs.rs without it. The C half of the same seam is
+// swindle/include/bmp_riscv_extra.h.
 /// Detach from the currently attached target.
 ///
 /// Releases the target, disables RTT, and resets the GPIO state. Returns
@@ -365,6 +342,8 @@ pub fn bmp_read_mem32(address: u32, data: &mut [u32]) -> bool {
 pub fn bmp_set_mem_log(enable: bool) {
     unsafe { rn_bmp_cmd_c::bmp_set_mem_log_c(enable) }
 }
+// The SDI wire-timing knobs ('mon sdi_wire') are in crate::riscv_extra — see
+// the note above bmp_detach().
 /// Snapshot the global SWD/RVSWD wire-transaction counters.
 ///
 /// Returns `(swd_tx, rv_tx)` absolute counts since power-up / last reset.
@@ -664,6 +643,37 @@ pub fn bmp_get_arch() -> bmp_arch {
 unsafe extern "C" {
     fn bmp_run_riscv_benchmark_c() -> bool;
     fn bmp_run_riscv_benchmark2_c() -> bool;
+    fn bmp_set_riscv_progbuf_stream_c(enable: bool);
+    fn bmp_get_riscv_progbuf_stream_c() -> bool;
+    fn bmp_riscv_confirm_stats_c(out: *mut u32, words: u32) -> u32;
+    fn bmp_riscv_confirm_stats_reset_c();
+}
+
+/// The number of counters `bmp_riscv_confirm_stats()` fills (riscv32.c, `riscv_confirm_stats_s`).
+pub const RISCV_CONFIRM_STATS_FIELDS: usize = 9;
+
+/// Select the RISC-V program-buffer streaming sub-path ('mon riscv_stream').
+pub fn bmp_set_riscv_progbuf_stream(enable: bool) {
+    unsafe { bmp_set_riscv_progbuf_stream_c(enable) }
+}
+
+/// Is the RISC-V program-buffer streaming sub-path selected?
+pub fn bmp_get_riscv_progbuf_stream() -> bool {
+    unsafe { bmp_get_riscv_progbuf_stream_c() }
+}
+
+/// Snapshot the RISC-V read-confirm counters, in the order riscv32.c declares them.
+pub fn bmp_riscv_confirm_stats() -> [u32; RISCV_CONFIRM_STATS_FIELDS] {
+    let mut out = [0u32; RISCV_CONFIRM_STATS_FIELDS];
+    unsafe {
+        bmp_riscv_confirm_stats_c(out.as_mut_ptr(), RISCV_CONFIRM_STATS_FIELDS as u32);
+    }
+    out
+}
+
+/// Zero the RISC-V read-confirm counters.
+pub fn bmp_riscv_confirm_stats_reset() {
+    unsafe { bmp_riscv_confirm_stats_reset_c() }
 }
 
 /// Run the RISC-V memory benchmark directly.

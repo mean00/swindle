@@ -346,6 +346,11 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn bmp_set_mem_log_c(enable: bool);
 }
+// NOTE: the SDI bindings that used to sit here (bmp_set_sdi_wire_c, and the
+// bmp_sdi_dm_*_c / sdi_scan probe below bmp_rv_rvswd_probe_c) moved next to
+// their only user, the optional SDI module: riscv_extra_sdi.rs (crate::
+// riscv_extra) declares them in its own `mod c`. The C half of the seam is
+// swindle/include/bmp_riscv_extra.h.
 unsafe extern "C" {
     pub fn bmp_mem_counts_c(swd: *mut cty::c_uint, rv: *mut cty::c_uint);
 }
@@ -467,21 +472,10 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn bmp_rv_rvswd_probe_c(id: *mut cty::c_uint) -> bool;
 }
-unsafe extern "C" {
-    pub fn bmp_sdi_dm_reset_c() -> bool;
-}
-unsafe extern "C" {
-    pub fn bmp_sdi_dm_read_c(adr: u8, value: *mut cty::c_uint) -> bool;
-}
-unsafe extern "C" {
-    pub fn bmp_sdi_dm_write_c(adr: u8, value: cty::c_uint) -> bool;
-}
-// SDI scan entry point (native only): provided by sdiTap. Hosted builds run
-// sdi_scan() in Rust against the class-I RPC primitives instead.
-#[cfg(not(feature = "hosted"))]
-unsafe extern "C" {
-    pub fn sdi_scan() -> bool;
-}
+// NOTE: the SDI debug-module bindings that used to sit here
+// (bmp_sdi_dm_reset_c / bmp_sdi_dm_read_c / bmp_sdi_dm_write_c and the
+// sdi_scan() probe) moved to riscv_extra_sdi.rs — see the note in this file
+// above bmp_mem_counts_c. crate::riscv_extra is their only user now.
 unsafe extern "C" {
     pub fn platform_buffer_read(data: *mut u8, maxsize: cty::c_int) -> cty::c_int;
 }

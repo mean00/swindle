@@ -29,6 +29,7 @@
 //! | `packet_symbols` | GDB protocol constants |
 //! | `parsing_util` | Hex string parsing utilities |
 //! | `rpc_common` | Shared RPC protocol definitions |
+//! | `riscv_extra` | SDI (WCH single-wire) feature seam — optional, see `SWINDLE_WITH_SDI` |
 //! | `rtt` | SEGGER RTT support |
 //! | `settings` | Persistent key-value settings |
 //! | `sw_breakpoints` | Software breakpoint management |
@@ -60,6 +61,19 @@ mod mem_cache;
 mod packet_symbols;
 mod parsing_util;
 mod rn_bmp_cmd_c;
+// The SDI (WCH CH32V0xx single-wire) support is optional and sits behind this
+// seam: see swindle/include/bmp_riscv_extra.h for the C half. With the `sdi`
+// cargo feature on (CMake: SWINDLE_WITH_SDI, wired in swindle/rs/CMakeLists.txt)
+// riscv_extra_sdi.rs is the whole SDI implementation; with it off the stubs in
+// riscv_extra_sdi_stubs.rs answer for it, so the firmware is a plain SWD/RVSWD
+// probe. A hosted build always takes the real file: its C side
+// (blackmagic_addon/hosted/remote_sdi_protocol.c) always links the native leg.
+#[cfg(not(any(feature = "sdi", feature = "hosted")))]
+#[path = "riscv_extra_sdi_stubs.rs"]
+mod riscv_extra;
+#[cfg(any(feature = "sdi", feature = "hosted"))]
+#[path = "riscv_extra_sdi.rs"]
+mod riscv_extra;
 mod rtt_consts;
 mod setting_keys;
 mod settings;

@@ -41,6 +41,9 @@ extern "C"
     volatile uint32_t ln_rv_tx_count = 0;
     // When true, bmp_mem_read_c/bmp_mem_write_c log (len, tx delta, us).
     bool bmp_mem_log_enabled = false;
+    // NOTE: the SDI side of this file ('mon sdi_wire' knobs + bmp_set_sdi_wire_c)
+    // moved to bmp_riscv_extra_sdi_c.cpp, next to the seam header that declares
+    // it: see swindle/include/bmp_riscv_extra.h.
 
 #define STUB_BUFFER_SIZE 256
     static uint8_t stub_buffer[STUB_BUFFER_SIZE];
@@ -67,6 +70,33 @@ extern "C" void bmp_mem_counts_reset_c()
 {
     ln_swd_tx_count = 0;
     ln_rv_tx_count = 0;
+}
+/*
+ * BMP 103: the RISC-V read-confirm instrumentation (blackmagic/src/target/riscv32.c).
+ * 'mon riscv_stream' selects the program-buffer streaming sub-path, and 'mon riscv_confirm'
+ * reads the counters the confirmed read keeps - the *silent* losses, the ones no status bit
+ * reports (riscv_fault.md §12.6). Both are the A/B knobs §12.9 is measured with.
+ */
+extern "C" void bmp_riscv32_set_progbuf_stream(bool enable);
+extern "C" bool bmp_riscv32_get_progbuf_stream(void);
+extern "C" void bmp_riscv32_reset_confirm_stats(void);
+extern "C" uint32_t bmp_riscv32_confirm_stats(uint32_t *out, uint32_t words);
+
+extern "C" void bmp_set_riscv_progbuf_stream_c(bool enable)
+{
+    bmp_riscv32_set_progbuf_stream(enable);
+}
+extern "C" bool bmp_get_riscv_progbuf_stream_c(void)
+{
+    return bmp_riscv32_get_progbuf_stream();
+}
+extern "C" uint32_t bmp_riscv_confirm_stats_c(uint32_t *out, uint32_t words)
+{
+    return bmp_riscv32_confirm_stats(out, words);
+}
+extern "C" void bmp_riscv_confirm_stats_reset_c(void)
+{
+    bmp_riscv32_reset_confirm_stats();
 }
 extern "C" void *bmp_get_temporary_buffer(uint32_t asked)
 {

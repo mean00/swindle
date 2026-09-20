@@ -12,6 +12,17 @@ use core::cmp::min;
 
 // qCRC:addr hex,length hex’
 // return Ccrc32 hex
+//
+// The variant below is the one gdb's compare-sections agrees with, and that is a
+// measured fact, not the textbook CRC-32: it is the *non*-reflected form of
+// 0x04c11db7 with init 0xffffffff and xorout 0. Feeding the register reflected
+// instead (zlib/ISO-HDLC) was measured to *break* compare-sections on a CH32V003
+// whose bytes were correct: with the reflected form the probe answers the zlib value
+// (e.g. 0xA146D81B for a .text that dumps byte-identical to the ELF, 0x6AB9783A for
+// .init) and gdb then prints MIS-MATCHED for every section, while this form's answer
+// for the same bytes (0x2537C11E for that .text, 0xF317ACA7 for that .init) is what
+// gdb matched. gdb sends `qCRC:<addr>,<length>` for compare-sections, so this value
+// is what the two sides compare.
 const GDB_CRC_ALG: crc::Algorithm<u32> = crc::Algorithm {
     width: 32,
     poly: 0x04c11db7,

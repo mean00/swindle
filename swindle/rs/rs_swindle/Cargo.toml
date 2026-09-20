@@ -14,6 +14,11 @@ network = []
 
 cdc = ["rust_esprit/cdc"]
 
+# WCH CH32V0xx single-wire (SDI) debug support — CMake option SWINDLE_WITH_SDI,
+# wired in swindle/rs/CMakeLists.txt. Off selects the no-SDI seam twin
+# (src/riscv_extra_sdi_stubs.rs) in lib.rs.
+sdi = []
+
 fake_std = ["rust_esprit/fake_std"]
 
 rp2040 = ["rust_esprit/rp2040"]

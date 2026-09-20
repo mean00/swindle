@@ -26,6 +26,8 @@
 //! | `bmp` | Forward command to BMP monitor |
 //! | `riscv_benchmark` | Run the RISC-V memory-access benchmark (abstract, progbuf, sysbus) |
 //! | `riscv_memory_benchmark` | Re-run the benchmark through the generic target memory API only |
+//! | `riscv_stream` | Select the program-buffer streaming sub-path (BMP 103 A/B knob) |
+//! | `riscv_confirm` | Show/clear the confirmed-read counters: the silent read losses (BMP 103) |
 //! | `help` | Show this help |
 //! | `crash` | Force a crash (for testing) |
 //! | `delay` | Wait N milliseconds |
@@ -46,7 +48,8 @@ use crate::freertos::{enable_freertos, freertos_symbols, os_detach};
 #[cfg(not(feature = "hosted"))]
 use crate::parsing_util;
 use crate::parsing_util::{
-    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, string_to_bool, u8_hex_string_to_u8s,
+    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, convert_param_to_integer,
+    string_to_bool, u8_hex_string_to_u8s,
 };
 use crate::setting_keys::*;
 use crate::settings;
@@ -120,7 +123,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 32] = [
+const mon_command_tree: [CommandTree; 35] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -309,9 +312,17 @@ const mon_command_tree: [CommandTree; 32] = [
         command: "sdi_scan",
         min_args: 0,
         require_connected: false,
-        cb: CallbackType::text(_sdi_scan),
+        cb: CallbackType::text(crate::riscv_extra::_sdi_scan),
         start_separator: 0,
         next_separator: 0,
+    }, //
+    CommandTree {
+        command: "sdi_wire",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(crate::riscv_extra::_sdi_wire),
+        start_separator: b' ',
+        next_separator: b' ',
     }, //
     CommandTree {
         command: "riscv_benchmark",
@@ -328,6 +339,22 @@ const mon_command_tree: [CommandTree; 32] = [
         cb: CallbackType::text(_riscv_memory_benchmark),
         start_separator: 0,
         next_separator: 0,
+    }, //
+    CommandTree {
+        command: "riscv_stream",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_riscv_stream),
+        start_separator: b' ',
+        next_separator: b' ',
+    }, //
+    CommandTree {
+        command: "riscv_confirm",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_riscv_confirm),
+        start_separator: b' ',
+        next_separator: b' ',
     }, //
     CommandTree {
         command: "set_reset_pin",
@@ -379,7 +406,7 @@ const mon_command_tree: [CommandTree; 32] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 29] = [
+const help_tree: [HelpTree; 32] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -467,6 +494,18 @@ const help_tree: [HelpTree; 29] = [
     HelpTree {
         command: "sdi_scan",
         help: "Probe WCH CH32V0xx device(s) over the single-wire SDI interface.",
+    },
+    HelpTree {
+        command: "sdi_wire tbit low1 low0 sample [notrim]",
+        help: "Override the SDI bit-bang wire timing in ns (0 = keep the tap's default); 'mon sdi_scan' re-calibrates with it.",
+    },
+    HelpTree {
+        command: "riscv_stream on|off",
+        help: "Select the RISC-V program-buffer streaming sub-path (BMP 103): 'off' makes every word wait for its own command, which is the A/B for the silent read losses (riscv_fault.md 12.9).",
+    },
+    HelpTree {
+        command: "riscv_confirm [reset]",
+        help: "Show (or clear) the RISC-V confirmed-read counters (BMP 103): windows, disagreements, faults, latched command errors, abstractauto retries, and where the last disagreement was.",
     },
     HelpTree {
         command: "set",
@@ -598,6 +637,65 @@ fn _riscv_benchmark(_command: &str, _args: &[&str]) -> bool {
 /// Same forwarding as `mon riscv_benchmark`; prints exactly one result line.
 fn _riscv_memory_benchmark(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_bool(bmp::bmp_run_riscv_benchmark2());
+    true
+}
+/// Handle `mon riscv_stream [on|off]` — BMP 103: select the program-buffer streaming
+/// sub-path of the RISC-V memory reader and writer.
+///
+/// One read, one wire, and only this implementation detail differing: with the stream on
+/// (the default) DATA0 is read without ever waiting for the command that read starts; with
+/// it off every word goes through its own command plus completion wait. That is the A/B
+/// `riscv_fault.md` §12.9 is measured with.
+fn _riscv_stream(_command: &str, args: &[&str]) -> bool {
+    if let Some(arg) = args.first() {
+        match *arg {
+            "on" => bmp::bmp_set_riscv_progbuf_stream(true),
+            "off" => bmp::bmp_set_riscv_progbuf_stream(false),
+            _ => gdb_println!("usage: mon riscv_stream on|off"),
+        }
+    }
+    let state = if bmp::bmp_get_riscv_progbuf_stream() {
+        "on"
+    } else {
+        "off"
+    };
+    gdb_println!("riscv stream : ", state, " (program buffer streaming sub-path)");
+    encoder::reply_ok();
+    true
+}
+/// Handle `mon riscv_confirm [reset]` — BMP 103: the counters behind the confirmed read.
+///
+/// On a transport that cannot report a lost access (the SDI wire, `dmi->read_confirm`) every
+/// read window is read twice and the two passes compared, because the debug module answers a
+/// read it dropped with the *previous* answer while busy and cmderr stay clear. These are the
+/// silent losses nothing else reports:
+/// `windows` windows confirmed, `disagreeing` windows whose passes disagreed, `elements`
+/// elements settled one at a time afterwards, `faults` passes that reported a fault (patch
+/// 102's re-issue), `latched` transfers that ended with a command error latched, `autoexec`
+/// abstractauto writes that had to be repeated, and the last disagreement (`last_address`,
+/// `last_first_pass`, `last_second_pass`). `reset` zeroes them.
+fn _riscv_confirm(_command: &str, args: &[&str]) -> bool {
+    if !args.is_empty() {
+        match args[0] {
+            "reset" => {
+                bmp::bmp_riscv_confirm_stats_reset();
+                gdb_println!("riscv confirm : counters cleared");
+            }
+            _ => gdb_println!("usage: mon riscv_confirm [reset]"),
+        }
+    }
+    let s = bmp::bmp_riscv_confirm_stats();
+    gdb_println!("riscv confirm : windows=", s[0], " disagreeing=", s[1], " elements=", s[2]);
+    gdb_println!("riscv confirm : faults=", s[3], " latched_cmderr=", s[4], " autoexec_retries=", s[5]);
+    gdb_println!(
+        "riscv confirm : last @ ",
+        Hex(s[6]),
+        " pass1=",
+        Hex(s[7]),
+        " pass2=",
+        Hex(s[8])
+    );
+    encoder::reply_ok();
     true
 }
 //
@@ -778,25 +876,12 @@ pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
-/*
-   Detect stuff connected to the SWD interface
-   Try to use the fastest speed
-*/
-/// Handle `mon sdi_scan` — probe for WCH CH32V0xx SDI devices.
-pub fn _sdi_scan(_command: &str, _args: &[&str]) -> bool {
-    bmplog!("sdi_scan:\n");
-    // The scan may detach from the current target and attach a different one:
-    // cached lines are target-specific and must be dropped.
-    crate::mem_cache::invalidate();
-
-    if !bmp::sdi_scan() {
-        bmpwarning!("sdi_scan failed!\n");
-        return false;
-    }
-    os_detach();
-    encoder::reply_ok();
-    true
-}
+// NOTE: the SDI handlers that used to sit here (_sdi_scan, _sdi_wire) moved to
+// the optional SDI module crate::riscv_extra — riscv_extra_sdi.rs with the
+// `sdi` cargo feature (CMake: SWINDLE_WITH_SDI), riscv_extra_sdi_stubs.rs
+// without it. The two tree entries above are the only thing this file knows
+// about SDI, and they resolve either way; the C half of the seam is
+// swindle/include/bmp_riscv_extra.h.
 /*
  *
  */
@@ -813,23 +898,8 @@ pub fn _ws(_command: &str, args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
-fn convert_param_to_integer(in_str: &str) -> (bool, u32) {
-    let trimmed = in_str.trim();
-    // ok we have an input
-    let mut sz: usize = trimmed.len();
-    if sz == 0 {
-        gdb_print!("incorrect parameter, expecting xxx or xxxK\n");
-        return (false, 0);
-    }
-    let mut mul: u32 = 1;
-    if trimmed.ends_with('k') || trimmed.ends_with('K') {
-        mul = 1000;
-        sz -= 1;
-    }
-    let mut out = ascii_string_decimal_to_u32(&trimmed[..sz]);
-    out *= mul;
-    (true, out)
-}
+// convert_param_to_integer() now lives in parsing_util: it is a plain parsing
+// helper, and the SDI handler in crate::riscv_extra uses it too.
 /*
  *
  *

@@ -74,6 +74,8 @@ bool bmp_mem_access_needs_halt_c();
 void bmp_set_mem_log_c(bool enable);
 void bmp_mem_counts_c(uint32_t *swd, uint32_t *rv);
 void bmp_mem_counts_reset_c();
+// SDI wire timing ('mon sdi_wire'): ns overrides, 0 leaves the SDI tap's default.
+void bmp_set_sdi_wire_c(uint32_t tbit_ns, uint32_t low1_ns, uint32_t low0_ns, uint32_t sample_ns, bool no_trim);
 //
 bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint16_t address,
                               int32_t *err, uint32_t *value);
