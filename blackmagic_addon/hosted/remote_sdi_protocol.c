@@ -3,7 +3,7 @@
  * @brief Hosted (RPC-forwarded) WCH CH32V0xx single-wire (SDI) debug attach.
  *
  * Hosted counterpart of the native `sdi_scan()` in
- * swindle/src/platform/rp2040/bmp_sdiTap_rp2040.cpp, and sibling of the hosted
+ * swindle/src/platform/rp2040/bmp_sdiTap_rp2040_riscv_extra.cpp, and sibling of the hosted
  * RVSWD glue in remote_rv_protocol.c (`bmda_rvswd_scan2()`). The scan, the
  * target-list handling and the `riscv_dmi_s` bookkeeping all live in C against
  * the *real* blackmagic headers (riscv_debug.h / target.h / jep106.h) — there

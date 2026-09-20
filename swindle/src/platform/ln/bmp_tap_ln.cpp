@@ -8,6 +8,10 @@
 #include "bmp_pinmode.h"
 #include "bmp_pinout.h"
 #include "bmp_swdio_ln.h"
+/* SDI pin hand-over (sdi_pinmode_enter/leave): the seam header declares it, the
+ * SDI transport defines it, and bmp_riscv_extra_stubs.cpp makes it a no-op in a
+ * build without SDI. Nothing else in this file is SDI. */
+#include "bmp_riscv_extra.h"
 #include "esprit.h"
 #include "lnCpuID.h"
 #include "math.h"
@@ -118,12 +122,11 @@ extern "C" void bmp_io_end_session()
     pReset->off(); // hi-z by default
 }
 
-/* SDI pin hand-over (bmp_sdiTap_ln.cpp). SDI owns PB8 for the whole of a
- * session (released open drain) and is the only protocol whose pins do not
- * double as the SWD ones, so it has to be told when its session begins and
- * when it ends. */
-extern void sdi_pinmode_enter();
-extern void sdi_pinmode_leave();
+/* SDI pin hand-over (bmp_sdiTap_ln_bitbang_riscv_extra.cpp /
+ * bmp_sdiTap_ln_riscv_extra.cpp). SDI owns PB8 for the whole of a session
+ * (released open drain) and is the only protocol whose pins do not double as the
+ * SWD ones, so it has to be told when its session begins and when it ends. Both
+ * hooks come from bmp_riscv_extra.h. */
 
 /**
  * @brief Select the debug pins for @p pioMode.

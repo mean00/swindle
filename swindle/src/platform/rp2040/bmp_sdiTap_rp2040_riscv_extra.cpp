@@ -1,5 +1,5 @@
 /**
- * @file bmp_sdiTap_rp2040.cpp
+ * @file bmp_sdiTap_rp2040_riscv_extra.cpp
  * @brief WCH SDI (single wire debug interface) tap: RP2040 PIO transport.
  *
  * The SDI protocol itself (DM/configuration registers, §2.4 shadow/commit,

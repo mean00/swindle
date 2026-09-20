@@ -1,10 +1,10 @@
 /*
  */
 /**
- * @file bmp_sdiTap_ln.cpp
+ * @file bmp_sdiTap_ln_riscv_extra.cpp
  * @brief WCH SDI (single wire debug interface) tap for the LN platform.
  *
- * Same abstract interface as bmp_sdiTap_rp2040.cpp (sdi_dm_start/write/read, the
+ * Same abstract interface as bmp_sdiTap_rp2040_riscv_extra.cpp (sdi_dm_start/write/read, the
  * bmp_sdi_dm_*_c entry points, sdi_scan, the ch32_sdi_dmi_* leaves and every
  * protocol constant), but no PIO:
  *
@@ -31,7 +31,7 @@
  * shifter's direction (PC3) is left undriven for the whole SDI session and the board's
  * own default decides it - see SDI_LN_DRIVE_DIR_PIN further down for what that means
  * and how to bring the stores back. The RP2040 tap writes that pin once, in
- * setupSDI() (bmp_tap_rp2040.cpp), and turns the *wire* around per bit with the PIO's
+ * setupSDI() (bmp_tap_rp2040_riscv_extra.cpp), and turns the *wire* around per bit with the PIO's
  * own pin direction. A timer channel cannot do that - PB8's alternate function has no
  * high-Z release - which is why the LN tap used to turn the shifter per cell instead
  * (two stores, at ticks the loop was waiting for anyway, replacing the DMA that used
@@ -39,7 +39,7 @@
  *
  * The bit cell, the frame layout and every protocol constant are shared with the
  * RP2040 tap (sdi.pio, sdi.txt); only the way the waveform is produced differs.
- * bmp_sdiTap_ln_bitbang.cpp is the older CPU paced variant, kept for bring-up:
+ * bmp_sdiTap_ln_bitbang_riscv_extra.cpp is the older CPU paced variant, kept for bring-up:
  * CMakeLists.txt builds exactly one of the two.
  *
  * Pins: the SDI wire is the SWDIO line, _mapping[TSWDIO_PIN] (PB8), whose
@@ -63,6 +63,9 @@
 #include "lnBMP_pins.h"
 #include "lnBMP_reset.h"
 #include <cstring>
+/* The SDI seam (sdi_pinmode_enter/leave, the 'mon sdi_wire' knobs): the one set of
+ * declarations every non-SDI file shares with this one. */
+#include "bmp_riscv_extra.h"
 
 // The blackmagic RISC-V target framework (riscv_debug.h) is needed for the
 // Stage-2 attach below: we hand riscv_dmi_init() an SDI-backed riscv_dmi_s,
@@ -670,7 +673,7 @@ static uint32_t sdiSampleWord()
 
 // ---------------------------------------------------------------------------
 // Frame level: the SDI transport (same wire format as sdi_write / sdi_read in
-// bmp_sdiTap_rp2040.cpp).
+// bmp_sdiTap_rp2040_riscv_extra.cpp).
 // ---------------------------------------------------------------------------
 /**
  * @brief Send one DM write: the nine header cells and the 32 payload cells as
