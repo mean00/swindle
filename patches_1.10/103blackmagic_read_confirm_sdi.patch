@@ -1,0 +1,484 @@
+# 103blackmagic_read_confirm_sdi.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# riscv_fault.md F5 / 12.6 / 12.8: on the SDI single-wire transport a read the debug module never
+# performed is answered with the *previous* answer while `busy` and `cmderr` both stay clear, so
+# no status bit a caller can poll reports it and BMP 102 - which re-issues what a path *reports* -
+# can never fire on one. Measured on a CH32V003 over SDI: one whole 16-byte block per read, its
+# data registers reading back 0x00000000, in ~2% of reads in a healthy session and a large
+# fraction of them in a marginal one, silently. gdb sees it as compare-sections MIS-MATCHED on
+# the first verify and matched on the second.
+#
+# WHAT IT DOES
+# ------------
+# * riscv_dmi_s gains `read_confirm`, set by the SDI DMI only (swindle/src/template/sdi_template.h
+#   sets it in the DMI factory). A DMI that can report per access (JTAG, RVSWD, ADI) is untouched,
+#   so a healthy target's traffic is byte-identical - the confirmed read is selected by the
+#   transport, not imposed on every part the way BMP 98 proposed. Patch 98's two-pass scheme is
+#   otherwise reused verbatim (window 128 B, element 4 B, three attempts).
+# * riscv32_mem_read() reads a window twice on such a transport and only accepts a window the two
+#   passes agree on. A window they disagree about is settled element by element (4 B) - T11's
+#   measured confirmation granularity - and BMP 102's re-issue of a *reported* failure still wraps
+#   the whole call.
+# * The end-of-transfer check minichlink ends its bulk reads with (DefaultWaitForDoneOp(dev,0)
+#   after DefaultReadBinaryBlob): one read of abstractioncs, and a latched command error makes the
+#   transfer a reported failure instead of silently handing back whatever DATA0 held. The
+#   streaming reader (BMP 86) never waits for the command it starts, so this is the only place
+#   that can see an autoexec'd access fault.
+# * The command error is cleared *with a read-back*, bounded: a clear that did not land leaves the
+#   module ignoring every command after it, which is how one dropped frame becomes a whole window
+#   of faults (BMP 102's "one 13 KB window in three faults, the same window again is clean").
+# * abstractauto is written through one place that confirms the write on an untrusted transport
+#   (read it back, write it again, bounded): a lost *drop* leaves the stream armed, and the a0/a1
+#   restores that follow re-run a stale command.
+# * `mon riscv_stream on|off` selects the streaming sub-path at runtime and `mon riscv_confirm`
+#   prints the counters the confirmed read keeps: windows, disagreements, elements, faults,
+#   latched command errors, abstractauto retries, and the last disagreement with both answers.
+#   This is the A/B and the instrumentation riscv_fault.md 12.9 is measured with.
+# * The diagnostics that have to be readable on the probe go to Logger() behind the existing
+#   `mon memlog on` switch (bmp_mem_log_enabled): ENABLE_DEBUG is 0 on the embedded builds, so
+#   every DEBUG_WARN() on these paths (BMP 100's GPR restore, BMP 102's re-issue) compiles to
+#   *nothing* on the probe.
+#
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -134,6 +134,14 @@
+ 	uint8_t idle_cycles;
+ 	uint8_t address_width;
+ 	uint8_t fault;
++	/*
++	 * BMP 103: true when this transport cannot tell a delivered access from a lost one, so a
++	 * read has to be confirmed by a second pass instead of being trusted (riscv_fault.md F5,
++	 * §12.6). The single-wire SDI bus carries no DMI status word: ch32_sdi_dmi_read() reports
++	 * success for any frame it managed to send, whatever the target did with it. Off by
++	 * default, so a DMI that can report (JTAG, RVSWD, ADI) is untouched.
++	 */
++	bool read_confirm;
+ 
+ 	void (*prepare)(target_s *target);
+ 	void (*quiesce)(target_s *target);
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -85,6 +85,101 @@
+ /* RV32I opcode: post-increment the pointer in a0 by one word (abstractauto streaming) */
+ #define RV_ADDI_A0_A0_4 0x00450513U // addi a0, a0, 4
+ 
++/*
++ * BMP 103: diagnostics for a transport that cannot report a lost access.
++ *
++ * ENABLE_DEBUG is 0 on the embedded builds, so every DEBUG_WARN() in this file compiles to
++ * nothing on the probe - the probe's own log sink is Logger(), and it is the channel the SDI
++ * tap's traces use. These lines are only emitted while the memory path is instrumented
++ * (`mon memlog on`, bmp_mem_log_enabled, riscv_fault.md §9), because a log write during a GDB
++ * reply is exactly what §9 had to move behind that switch; the readable-but-silent alternative
++ * for the same numbers is `mon riscv_confirm`, which reads the counters below.
++ */
++#if defined(PLATFORM_HAS_DEBUG) && PLATFORM_HAS_DEBUG
++#define RV_MEMLOG(...) DEBUG_WARN(__VA_ARGS__)
++#else
++extern bool bmp_mem_log_enabled;
++extern void Logger(const char *fmt, ...);
++#define RV_MEMLOG(...)           \
++	do {                         \
++		if (bmp_mem_log_enabled) \
++			Logger(__VA_ARGS__); \
++	} while (0)
++#endif
++
++/*
++ * BMP 103: the streaming sub-paths of the program buffer reader and writer, switchable at
++ * runtime with `mon riscv_stream on|off`. It is the A/B knob riscv_fault.md §12.9 measures
++ * with: one read, one wire, and only this implementation detail differing - the streaming path
++ * (patch 86) reads DATA0 without ever waiting for the command that read starts, the
++ * word-at-a-time path waits for every one of them. On by default, so nothing changes for a
++ * target that is not being investigated.
++ */
++bool riscv32_progbuf_stream_enabled = true;
++
++/*
++ * BMP 103: what the confirmed read saw. These are the *silent* losses - the ones no status bit
++ * reports, which is why a counter is the only way to tell "the transport is sound" from "the
++ * transport is sound today". `mon riscv_confirm` prints them.
++ */
++typedef struct riscv_confirm_stats {
++	uint32_t windows;          /* read windows confirmed: two passes compared */
++	uint32_t disagreeing;      /* windows whose two passes disagreed */
++	uint32_t elements;         /* elements settled one at a time after a disagreement */
++	uint32_t faults;           /* passes that reported a fault and were re-issued */
++	uint32_t latched;          /* transfers that ended with a latched command error */
++	uint32_t autoexec;         /* abstractauto writes that did not take on the first try */
++	uint32_t last_address;     /* where the most recent disagreement was */
++	uint32_t last_first_pass;  /* what the first pass answered there */
++	uint32_t last_second_pass; /* and what the second pass answered there */
++} riscv_confirm_stats_s;
++
++static riscv_confirm_stats_s riscv_confirm_stats;
++
++/*
++ * The three functions the probe's `mon` commands use. Plain values, so the layout of the
++ * struct above stays private to this file. `out` is filled with as many of the counters as
++ * fit and the total count is returned, which is what makes adding a counter harmless.
++ */
++void bmp_riscv32_set_progbuf_stream(const bool enable)
++{
++	riscv32_progbuf_stream_enabled = enable;
++}
++
++bool bmp_riscv32_get_progbuf_stream(void)
++{
++	return riscv32_progbuf_stream_enabled;
++}
++
++void bmp_riscv32_reset_confirm_stats(void)
++{
++	memset(&riscv_confirm_stats, 0, sizeof(riscv_confirm_stats));
++}
++
++uint32_t bmp_riscv32_confirm_stats(uint32_t *const out, const uint32_t words)
++{
++	const uint8_t *const fields = (const uint8_t *)&riscv_confirm_stats;
++	const uint32_t count = sizeof(riscv_confirm_stats) / sizeof(uint32_t);
++	if (out) {
++		const uint32_t limit = words < count ? words : count;
++		for (uint32_t i = 0; i < limit; ++i)
++			memcpy(&out[i], fields + i * sizeof(uint32_t), sizeof(uint32_t));
++	}
++	return count;
++}
++
++/*
++ * BMP 103: the numbers the confirmed read is built from. The window and element sizes are patch
++ * 98's, measured on this silicon (T11 of ch32v0x_silicon_tests: an element read twice either
++ * agrees, or its third read is the right one); the attempt counts are small on purpose - a
++ * window that will not settle in three tries is not a window this defect is losing, and the
++ * caller is better served by an answer than by a loop.
++ */
++#define RV_READ_CONFIRM_WINDOW 128U
++#define RV_READ_CONFIRM_ELEMENT 4U
++#define RV_READ_CONFIRM_TRIES 3U
++#define RV_AUTOEXEC_CONFIRM_TRIES 3U
++
+ static size_t riscv32_reg_read(target_s *target, uint32_t reg, void *data, size_t max);
+ static size_t riscv32_reg_write(target_s *target, uint32_t reg, const void *data, size_t max);
+ static void riscv32_regs_read(target_s *target, void *data);
+@@ -703,7 +798,7 @@
+ 			readback[0] == value[0])
+ 			return true;
+ 	}
+-	DEBUG_WARN("riscv: GPR %04x could not be put back after program buffer execution (%08" PRIx32 ")\n", reg,
++	RV_MEMLOG("riscv: GPR %04x could not be put back after program buffer execution (%08" PRIx32 ")\n", reg,
+ 		value[0]);
+ 	return false;
+ }
+@@ -725,6 +820,44 @@
+ 	return riscv_dm_write(hart->dbg_module, address, value) && quiesced;
+ }
+ 
++/*
++ * BMP 103: arm or drop the abstractauto stream and, on a transport that cannot be trusted to
++ * deliver the write, make sure it landed. The drop is the one that matters: a lost drop leaves
++ * the stream armed, so the next DATA0 access - the a0/a1 restores at the end of the read -
++ * re-runs a stale command and the register comes back wrong. BMP 100's quiesce stops the drop
++ * racing an executing command; this is about it never having arrived at all. The read-back is a
++ * *register* read, not a data access, so it cannot disturb the stream it is checking.
++ */
++static bool riscv32_autoexec_confirmed_write(riscv_hart_s *const hart, const uint32_t value)
++{
++	uint32_t readback = 0;
++	for (size_t attempt = 0; attempt < RV_AUTOEXEC_CONFIRM_TRIES; ++attempt) {
++		/* The write must not race a command an earlier DATA0 read has just started (BMP 100) */
++		const bool quiesced = riscv_command_wait_complete(hart);
++		if (riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, value) && quiesced &&
++			riscv_dm_read(hart->dbg_module, RV_DM_ABSTRACTAUTO, &readback) && readback == value)
++			return true;
++		riscv_confirm_stats.autoexec++;
++		RV_MEMLOG("riscv: abstractauto = %08" PRIx32 " did not take (read back %08" PRIx32 "), writing it again\n",
++			value, readback);
++	}
++	return false;
++}
++
++/*
++ * Every abstractauto write this file makes goes through here, so the confirmation costs a
++ * transport that can report nothing, and a target on a transport that can keeps the traffic it
++ * had (the drop still goes through the quiescing write BMP 100 introduced).
++ */
++static bool riscv32_autoexec_write(riscv_hart_s *const hart, const uint32_t value)
++{
++	if (hart->dbg_module->dmi_bus->read_confirm)
++		return riscv32_autoexec_confirmed_write(hart, value);
++	if (!value)
++		return riscv32_progbuf_quiesced_write(hart, RV_DM_ABSTRACTAUTO, 0U);
++	return riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, value);
++}
++
+ static void riscv32_progbuf_mem_read(
+ 	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
+ {
+@@ -752,7 +885,8 @@
+ 	 * abstractauto: the pipeline advances one word per DATA0 read instead of
+ 	 * re-issuing a command, polling and performing a CSR round-trip per word.
+ 	 */
+-	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U;
++	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U &&
++		riscv32_progbuf_stream_enabled;
+ 	/* Fill the program buffer */
+ 	if (stream) {
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_LW_A1_A0) ||
+@@ -804,7 +938,7 @@
+ 					RV_REG_ACCESS_32_BIT | RV_GPR_A1) ||
+ 				!riscv_command_wait_complete(hart)))
+ 			result = false;
+-		if (result && !riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, RV_ABSTRACTAUTO_AUTOEXECDATA_0))
++		if (result && !riscv32_autoexec_write(hart, RV_ABSTRACTAUTO_AUTOEXECDATA_0))
+ 			result = false;
+ 		/* Single word: neutralise before even the priming autoexec can load past it */
+ 		if (result && len == 4U)
+@@ -839,7 +973,7 @@
+ 		 * attempted even after giving up on the data, or the armed autoexec would re-run a stale
+ 		 * command on the next data0 access - which is exactly what the restores below are.
+ 		 */
+-		if (!riscv32_progbuf_quiesced_write(hart, RV_DM_ABSTRACTAUTO, 0U))
++		if (!riscv32_autoexec_write(hart, 0U))
+ 			result = false;
+ 		if (result) {
+ 			uint32_t value = 0;
+@@ -913,7 +1047,8 @@
+ 	 * DATA0 write re-executes it, so N words cost 1 command + N DATA0 writes
+ 	 * with no per-word polls.
+ 	 */
+-	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U;
++	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U &&
++		riscv32_progbuf_stream_enabled;
+ 	/* Fill the program buffer */
+ 	if (stream) {
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_SW_A1_A0) ||
+@@ -1042,6 +1177,203 @@
+  * a post-increment; BMP 100 already puts a0 and a1 back whatever the run did, so the retry
+  * cannot leave the hart in a different state than the attempt before it did.
+  */
++/*
++ * BMP 103: the transfer is not over until the module says it is.
++ *
++ * minichlink ends every bulk read the same way (DefaultWaitForDoneOp(dev, 0) after
++ * DefaultReadBinaryBlob, pgm-wch-linke.c): it looks at the abstraction control/status once more
++ * and refuses the data if a command error is latched. The streaming reader has no such point -
++ * patch 86 reads DATA0 without ever waiting for the command that read starts - so an
++ * autoexec'd access that faulted (an address the module will not reach, a command it rejected,
++ * a hart in the wrong state) is nowhere in the answer the caller is handed. This is that
++ * missing point: one status read per transfer.
++ */
++static void riscv32_check_transfer_complete(riscv_hart_s *const hart)
++{
++	uint32_t status = 0;
++	if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status))
++		return;
++	if (!((status >> 8U) & RISCV_HART_OTHER))
++		return;
++	hart->status = (status >> 8U) & RISCV_HART_OTHER;
++	riscv_confirm_stats.latched++;
++	RV_MEMLOG("riscv: transfer ended with a command error %u latched (abstractioncs = %08" PRIx32 ")\n",
++		(unsigned)hart->status, status);
++}
++
++/*
++ * Ask the module to drop its command error, and keep asking until it agrees.
++ *
++ * The clear is a write, and the write is what this transport loses: a clear that did not land
++ * leaves the module ignoring every command after it, which is how one dropped frame becomes a
++ * whole window of read failures (patch 102's "one 13 KB window in three faulted, and the same
++ * window read again is clean"). Reading the register back is what tells a clear that landed
++ * from one that did not - minichlink reads it back for the same reason.
++ */
++static bool riscv32_clear_command_error(riscv_hart_s *const hart)
++{
++	uint32_t status = 0;
++	for (size_t attempt = 0; attempt < RV_READ_CONFIRM_TRIES; ++attempt) {
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, RISCV_HART_OTHER << 8U))
++			return false;
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status))
++			return false;
++		if (!(status & (RISCV_HART_OTHER << 8U)))
++			return true;
++	}
++	RV_MEMLOG("riscv: command error %08" PRIx32 " would not clear\n", status);
++	return false;
++}
++
++/*
++ * One unconfirmed pass over a request, through whichever method this hart routes to. Returns
++ * false if the pass did not complete cleanly, having left the module able to be asked again.
++ */
++static bool riscv32_mem_read_once(
++	riscv_hart_s *const hart, void *const dest, const target_addr64_t src, const size_t len)
++{
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
++		riscv32_sysbus_mem_read(hart, dest, (target_addr_t)src, len);
++		/* BMP 85: a system-bus fault is recorded in the module's control/status, not cmderr */
++		riscv_sysbus_check(hart);
++		return hart->status == RISCV_HART_NO_ERROR;
++	}
++
++	if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		riscv32_progbuf_mem_read(hart, dest, src, len);
++	else
++		riscv32_abstract_mem_read(hart, dest, src, len);
++	/* BMP 103: the end-of-transfer check the streaming reader never had */
++	riscv32_check_transfer_complete(hart);
++	if (hart->status == RISCV_HART_NO_ERROR)
++		return true;
++	riscv_confirm_stats.faults++;
++	/*
++	 * A module left with a command error set ignores every command after it, so the error is
++	 * dropped here rather than carried into the re-issue: a clear that landed means the next
++	 * attempt starts from a module that is listening again.
++	 */
++	if (riscv32_clear_command_error(hart))
++		hart->status = RISCV_HART_NO_ERROR;
++	return false;
++}
++
++/*
++ * BMP 103: the evidence this exercise exists for. The two passes disagreed, and here is what
++ * each of them said. A lost access is expected to answer as a zero word (the data register
++ * reads back 0) or as a word belonging to another address, and both are visible in the pair;
++ * the first differing element is kept for `mon riscv_confirm`, and at most four are logged, so
++ * a marginal session cannot flood the log with one bad window.
++ */
++static void riscv32_report_read_disagreement(
++	const target_addr64_t src, const uint8_t *const first, const uint8_t *const second, const size_t len)
++{
++	size_t differing = 0;
++	bool recorded = false;
++	for (size_t element = 0; element < len; element += RV_READ_CONFIRM_ELEMENT) {
++		uint32_t a = 0;
++		uint32_t b = 0;
++		const size_t element_len =
++			len - element < RV_READ_CONFIRM_ELEMENT ? len - element : RV_READ_CONFIRM_ELEMENT;
++		if (!memcmp(first + element, second + element, element_len))
++			continue;
++		memcpy(&a, first + element, element_len);
++		memcpy(&b, second + element, element_len);
++		if (!recorded) {
++			recorded = true;
++			riscv_confirm_stats.last_address = (uint32_t)(src + element);
++			riscv_confirm_stats.last_first_pass = a;
++			riscv_confirm_stats.last_second_pass = b;
++		}
++		if (differing < 4U)
++			RV_MEMLOG("riscv: read @ %08" PRIx32 ": pass 1 said %08" PRIx32 ", pass 2 said %08" PRIx32 "\n",
++				(uint32_t)(src + element), a, b);
++		++differing;
++	}
++	RV_MEMLOG("riscv: read @ %08" PRIx32 " len %zu: the two passes disagreed on %zu element(s)\n", (uint32_t)src,
++		len, differing);
++}
++
++/*
++ * BMP 103: the confirmed read, scoped to a transport that cannot report a lost access.
++ *
++ * The debug module answers a read that never happened with the *previous* answer while `busy`
++ * and `cmderr` both stay clear, so no status bit a caller can poll reports the window and patch
++ * 102 - which re-issues what a path *reports* - can never fire on one. Nothing in the DM says
++ * "this access ran", so an element is confirmed the way the silicon tests validated it: read it
++ * again and compare. This is patch 98's scheme; the difference is that it is selected by the
++ * transport (dmi_bus->read_confirm) instead of being imposed on every RISC-V part, where it
++ * doubles the read traffic of silicon that does not have the defect.
++ *
++ * A window is read twice. A window whose two passes agree is settled. When they disagree the
++ * elements they disagree about are settled one at a time - an element read twice either agrees,
++ * or its third read is the right one (T11 of ch32v0x_silicon_tests) - so a dropped block costs
++ * a few accesses instead of a second pass over the whole window.
++ */
++static void riscv32_mem_read_confirmed(
++	riscv_hart_s *const hart, void *const dest, const target_addr64_t src, const size_t len)
++{
++	/* Not `data`: the DEBUG_PROTO block in the caller declares one of those */
++	uint8_t *const buf = (uint8_t *)dest;
++	for (size_t offset = 0; offset < len; offset += RV_READ_CONFIRM_WINDOW) {
++		const size_t window = len - offset < RV_READ_CONFIRM_WINDOW ? len - offset : RV_READ_CONFIRM_WINDOW;
++		uint8_t *const window_data = buf + offset;
++		const target_addr64_t window_src = src + offset;
++		uint8_t retry[RV_READ_CONFIRM_WINDOW] = {0};
++		bool settled = false;
++		bool have_two_passes = false;
++
++		riscv_confirm_stats.windows++;
++		/*
++		 * A window is good once a pass ran clean and a second pass agreed with it. A fault is
++		 * not fatal in itself - riscv32_mem_read_once() has already dropped the command error
++		 * the module was left with, so the window can simply be asked for again - and only a
++		 * window that never settles carries the fault on to the caller, which is what a real
++		 * bus error does.
++		 */
++		for (size_t attempt = 0; attempt < RV_READ_CONFIRM_TRIES && !settled; ++attempt) {
++			if (!riscv32_mem_read_once(hart, window_data, window_src, window))
++				continue;
++			if (!riscv32_mem_read_once(hart, retry, window_src, window))
++				continue;
++			have_two_passes = true;
++			settled = !memcmp(window_data, retry, window);
++		}
++		if (settled)
++			continue;
++		/*
++		 * The two passes disagree. Name the difference on the log, keep the newest answer for
++		 * the elements that never settle, and settle the rest one element at a time.
++		 */
++		riscv_confirm_stats.disagreeing++;
++		riscv_confirm_stats.last_address = (uint32_t)window_src;
++		riscv_confirm_stats.last_first_pass = 0;
++		riscv_confirm_stats.last_second_pass = 0;
++		if (have_two_passes)
++			riscv32_report_read_disagreement(window_src, window_data, retry, window);
++		for (size_t element = 0; element < window; element += RV_READ_CONFIRM_ELEMENT) {
++			const size_t element_len =
++				window - element < RV_READ_CONFIRM_ELEMENT ? window - element : RV_READ_CONFIRM_ELEMENT;
++			uint8_t *const element_data = window_data + element;
++			/* Both passes agree on this element: it is settled */
++			if (have_two_passes && !memcmp(element_data, retry + element, element_len))
++				continue;
++			const target_addr64_t element_src = window_src + element;
++			uint8_t element_buf[RV_READ_CONFIRM_ELEMENT];
++			riscv_confirm_stats.elements++;
++			for (size_t pass = 0; pass < RV_READ_CONFIRM_TRIES; ++pass) {
++				if (!riscv32_mem_read_once(hart, element_buf, element_src, element_len))
++					continue;
++				/* Two reads of the element agree: it is settled */
++				if (!memcmp(element_data, element_buf, element_len))
++					break;
++				/* They disagree: keep the re-issued answer, which T11 measured as the good one */
++				memcpy(element_data, element_buf, element_len);
++			}
++		}
++	}
++}
++
+ #define RV_MEM_READ_RETRIES 7U
+ 
+ void riscv32_mem_read(target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
+@@ -1054,7 +1386,13 @@
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	for (uint32_t attempt = 0;; ++attempt) {
+-		if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
++		/*
++		 * BMP 103: a transport that cannot report a lost access gets the confirmed read -
++		 * patch 98's two-pass scheme, selected by the transport instead of by the part.
++		 */
++		if (hart->dbg_module->dmi_bus->read_confirm)
++			riscv32_mem_read_confirmed(hart, dest, src, len);
++		else if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 			riscv32_sysbus_mem_read(hart, dest, src, len);
+ 			/* BMP 85: check for (and report) any system-bus fault once per top-level call */
+ 			riscv_sysbus_check(hart);
+@@ -1065,7 +1403,7 @@
+ 		/* BMP 102: a faulted read window is re-issued before it is reported */
+ 		if (hart->status == RISCV_HART_NO_ERROR || attempt >= RV_MEM_READ_RETRIES)
+ 			break;
+-		DEBUG_WARN("riscv: memory read @ %08" PRIx32 " len %zu faulted (%u), re-issuing\n", (uint32_t)src, len,
++		RV_MEMLOG("riscv: memory read @ %08" PRIx32 " len %zu faulted (%u), re-issuing\n", (uint32_t)src, len,
+ 			(unsigned)hart->status);
+ 		/*
+ 		 * The re-issue has to start from a clean verdict: the paths above set hart->status

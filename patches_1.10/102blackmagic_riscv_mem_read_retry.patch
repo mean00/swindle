@@ -1,0 +1,105 @@
+# 102blackmagic_riscv_mem_read_retry.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# riscv_fault.md F5: the SDI/RVSWD transports cannot report DMI status and never retry a
+# transfer the debug module dropped. The DM answers the access, the transport does not, and the
+# memory path reports a failure that has nothing to do with the address - measured on a
+# CH32V003 over SDI, one 13 KB .text read window in three faults (`target memory fault, section
+# .text`), and the same window read again comes back clean, twice, with every section matching.
+#
+# WHAT IT DOES
+# ------------
+# riscv32_mem_read() re-issues a faulted window, bounded (RV_MEM_READ_RETRIES = 7, i.e. up to
+# eight attempts), and only after a path has already set hart->status - i.e. only where the
+# failure was *detected* and the caller got an error rather than the previous answer. The rate
+# is per word (~1e-4), so eight attempts is what takes a reported failure from ~0.3 per window
+# to ~1e-4: a window that faults is not a window that is broken. A healthy target sees no extra
+# traffic at all - the first pass is the only pass - and a genuinely unreadable address pays
+# eight accesses and then reports what the first one found.
+#
+# Reads only, all three read paths (system bus, program buffer, abstract). A write is not
+# idempotent - a faulted write may or may not have landed, and re-issuing one is what would
+# corrupt a flash access. Re-issuing a read through the program buffer re-runs a load plus
+# post-increment, and BMP 100 puts a0/a1 back whatever the run did, so the retry cannot leave
+# the hart in a different state.
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -1010,6 +1010,40 @@
+ 		riscv_dpc_guard_end(hart, dpc_save);
+ }
+ 
++/*
++ * BMP 102: a faulted memory read window is re-issued before it is reported.
++ *
++ * The debug module on these parts drops the odd transfer - a mis-decoded DMI frame on the
++ * bit-banged SDI transport is one way (riscv_fault.md §10.2/§12), a dropped DMI write is
++ * another (the V006 measurements counted 26 lost data1 writes in 7638 transfers) - and the
++ * path then reports a failure that has nothing to do with the address: measured on a
++ * CH32V003 over SDI, one 13 KB .text window in three faults, and the same window read again
++ * comes back clean, twice, with every section matching.
++ *
++ * A faulted window is therefore read again instead of being handed to the caller: the
++ * alternative is GDB aborting a section load or a compare-sections verify on a single
++ * dropped frame. This costs a healthy target nothing - the loop is only entered after a
++ * path has already set hart->status, so the first pass, and every successful read on every
++ * part, is exactly the traffic it was before - and it costs a *faulted* window the same
++ * window again, which is what the depth below is about.
++ *
++ * Why eight attempts: the fault rate is per *word* (~1e-4 on a 13 KB read in one window in
++ * three, 3300 words), so a window re-issued once still has most of its original chance of
++ * faulting again - a window that faults is not a window that is broken. Eight attempts take
++ * the chance of a *reported* failure from ~0.3 to ~1e-4, which is what makes a bulk read of
++ * a whole section trustworthy rather than usually-working. Re-issuing is bounded and only
++ * ever on the path where the failure was *detected* (the caller got an error, not the
++ * previous answer - F8 in riscv_fault.md), so a genuinely unreadable address pays eight
++ * accesses and then reports what the first one found.
++ *
++ * Reads only, all three read paths (system bus, program buffer and abstract). A write is not
++ * idempotent - a faulted write may or may not have landed, and re-issuing one is what would
++ * corrupt a flash access. Re-issuing a *read* through the program buffer re-runs a load and
++ * a post-increment; BMP 100 already puts a0 and a1 back whatever the run did, so the retry
++ * cannot leave the hart in a different state than the attempt before it did.
++ */
++#define RV_MEM_READ_RETRIES 7U
++
+ void riscv32_mem_read(target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
+ {
+ 	/* If we're asked to do a 0-byte read, do nothing */
+@@ -1019,14 +1053,28 @@
+ 	}
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+-		riscv32_sysbus_mem_read(hart, dest, src, len);
+-		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
+-		riscv_sysbus_check(hart);
+-	} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+-		riscv32_progbuf_mem_read(hart, dest, src, len);
+-	else
+-		riscv32_abstract_mem_read(hart, dest, src, len);
++	for (uint32_t attempt = 0;; ++attempt) {
++		if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
++			riscv32_sysbus_mem_read(hart, dest, src, len);
++			/* BMP 85: check for (and report) any system-bus fault once per top-level call */
++			riscv_sysbus_check(hart);
++		} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++			riscv32_progbuf_mem_read(hart, dest, src, len);
++		else
++			riscv32_abstract_mem_read(hart, dest, src, len);
++		/* BMP 102: a faulted read window is re-issued before it is reported */
++		if (hart->status == RISCV_HART_NO_ERROR || attempt >= RV_MEM_READ_RETRIES)
++			break;
++		DEBUG_WARN("riscv: memory read @ %08" PRIx32 " len %zu faulted (%u), re-issuing\n", (uint32_t)src, len,
++			(unsigned)hart->status);
++		/*
++		 * The re-issue has to start from a clean verdict: the paths above set hart->status
++		 * on failure and only a later success clears it, so a stale verdict would make the
++		 * re-issue read as a failure however well it went. The path sets it again if it does
++		 * fail - this is a read, so clearing the field cannot lose anything but the report.
++		 */
++		hart->status = RISCV_HART_NO_ERROR;
++	}
+ 
+ #if ENABLE_DEBUG
+ 	DEBUG_PROTO("%s: @ %08" PRIx32 " len %zu:", __func__, (uint32_t)src, len);
