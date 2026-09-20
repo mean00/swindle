@@ -168,18 +168,22 @@ static const char *sdi_tdiv_name(const uint32_t tdiv)
  * Single Logger call on purpose: Logger() formats into one shared static buffer
  * that the output path drains asynchronously, so two back-to-back calls can drop
  * the first line.
+ *
+ * @return true when the slave answered (any CPBR other than all ones), which is
+ *         what sdi_dm_start() retries the whole unlock sequence on.
  */
-static void sdi_log_config(const char *const tag)
+static bool sdi_log_config(const char *const tag)
 {
     const uint32_t cpbr = sdiFrameRead(SDI_CPBR);
     if (cpbr == 0xFFFFFFFFUL)
     {
         Logger("SDI : CPBR %s = all ones (no slave output, OUTSTA=0)\n", tag);
-        return;
+        return false;
     }
     Logger("SDI : CPBR %s = 0x%x (VERSION=0x%x, OUTSTA=%u, TDIV=0x%x/%s)\n", tag, (unsigned)cpbr,
            (unsigned)(cpbr >> 16), (unsigned)((cpbr >> 10) & 1U),
            (unsigned)(cpbr & SDI_TDIVCFG_MASK), sdi_tdiv_name(cpbr & SDI_TDIVCFG_MASK));
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +196,26 @@ static void sdi_log_config(const char *const tag)
 //     platform's frame primitives (sdiFrameWrite / sdiFrameRead).
 // ---------------------------------------------------------------------------
 /**
+ * @brief How many times the whole reset+unlock sequence is re-run when the interface
+ *        does not answer.
+ *
+ * The unlock is a handful of raw SDI frames, and one frame in a few thousand is
+ * decoded wrong on this transport (riscv_fault.md §10.2/§12) - so a boot whose first
+ * attempt loses one is a boot where no session attaches anything: measured as 1
+ * attach failure in 2 sessions of otherwise identical traffic, each of them coming
+ * back "CPBR after unlock = all ones (no slave output)". Nothing else in the session
+ * can be tried once the unlock did not take, which is why the retry is here and not
+ * around the memory reads alone.
+ *
+ * The sequence is idempotent - NRST pulse, then §2.4's hold-low and configuration -
+ * and the first attempt already resets the target, so re-running it costs the ~25 ms
+ * it takes and nothing else. The retry is visible in the log ("after unlock
+ * (retried)"), so a boot that needed one says so rather than looking like a boot
+ * that was simply lucky.
+ */
+#define SDI_DM_START_ATTEMPTS 3u
+
+/**
  * @brief Enter SDI debug mode: put the pins in SDI mode, pulse NRST, reset and
  *        configure the SDI interface (slave output on) and report the mode the
  *        interface says it is in.
@@ -201,23 +225,29 @@ static void sdi_log_config(const char *const tag)
  * platform waveform expects, so the mode is configured here rather than assumed.
  * The DM itself is not touched: riscv_debug.c::riscv_dm_init() activates it after
  * sdi_scan() attaches.
- * @return true
+ * @return true when the slave answered the capability read.
  */
 bool LN_FAST_CODE sdi_dm_start()
 {
-    bmp_gpio_pinmode(BMP_PINMODE_SDI);
-    if (pReset)
+    for (uint32_t attempt = 1u; attempt <= SDI_DM_START_ATTEMPTS; attempt++)
     {
-        pReset->on(); // assert NRST
-        lnDelayMs(20);
-        pReset->off(); // release NRST
-    }
-    sdi_reset(20); // §2.4(3) hold-low, then §2.4(1) configuration
+        bmp_gpio_pinmode(BMP_PINMODE_SDI);
+        if (pReset)
+        {
+            pReset->on(); // assert NRST
+            lnDelayMs(20);
+            pReset->off(); // release NRST
+        }
+        sdi_reset(20); // §2.4(3) hold-low, then §2.4(1) configuration
 
-    /* Report what the interface thinks it is doing. Read-only: the validated
-     * configuration above is never second-guessed on the strength of a read. */
-    sdi_log_config("after unlock");
-    return true;
+        /* Report what the interface thinks it is doing. Read-only: the validated
+         * configuration above is never second-guessed on the strength of a read -
+         * a read that came back all ones is the one thing that does drive a
+         * decision here, and the decision is to run the sequence again. */
+        if (sdi_log_config(attempt == 1u ? "after unlock" : "after unlock (retried)"))
+            return true;
+    }
+    return false;
 }
 
 /**
@@ -372,6 +402,12 @@ extern "C" bool sdi_scan()
     dmi->address_width = 7U;
     dmi->read = ch32_sdi_dmi_read;
     dmi->write = ch32_sdi_dmi_write;
+    /* BMP 103: the wire has no DMI status word - ch32_sdi_dmi_read() reports success for every
+     * frame it got onto the wire, whatever the target made of it - so a read window cannot be
+     * trusted on its own and is confirmed with a second pass (riscv_fault.md §12.6/§12.8).
+     * This is the only thing that sets the flag: every other DMI either reports per access or
+     * has its own path. */
+    dmi->read_confirm = true;
 
     riscv_dmi_init(dmi);
 

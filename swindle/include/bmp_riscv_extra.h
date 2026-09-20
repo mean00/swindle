@@ -18,6 +18,16 @@
  *   swindle/src/platform/rp2040/bmp_sdiTap_rp2040_riscv_extra.cpp
  *   swindle/src/platform/rp2040/bmp_tap_rp2040_riscv_extra.cpp PIO upload + pin hand-over
  *   swindle/rs/rs_swindle/c_interface/bmp_riscv_extra_sdi_c.cpp 'mon sdi_wire' knobs
+ *   swindle/rs/rs_swindle/src/riscv_extra_sdi.rs               Rust half: the names below,
+ *                                                             the mon commands, the Rust FFI
+ *
+ * The Rust half of the seam is selected the same way, by a cargo feature driven by
+ * the same option (swindle/rs/CMakeLists.txt): with SWINDLE_WITH_SDI=ON rs_swindle
+ * compiles riscv_extra_sdi.rs as its crate::riscv_extra module, with the option off
+ * it compiles riscv_extra_sdi_stubs.rs instead. So the Rust names listed here
+ * (sdi_scan, bmp_sdi_dm_reset_c, bmp_sdi_dm_read_c, bmp_sdi_dm_write_c,
+ * bmp_set_sdi_wire_c) resolve either way, and the only Rust-side difference the
+ * option makes is what 'mon sdi_scan' / 'mon sdi_wire' print.
  */
 #pragma once
 
