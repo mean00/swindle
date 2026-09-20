@@ -62,6 +62,12 @@ extern "C"
      * A zero leaves that number as the SDI tap's own default, so a call only has to
      * name the numbers it wants to change. The tap notices the change and calibrates
      * again on its next mode entry, i.e. 'mon sdi_scan' is what applies a new set.
+     *
+     * This is the native leg. A hosted (Blackmagic-app) build does not define it:
+     * the tap being tuned is the probe's, so the same numbers go over the class-I
+     * SDI RPC as SDI.SET_WIRE (rpc_protocol.toml) to rpc_sdi_impl::set_wire, which
+     * ends here on the probe. See riscv_extra_sdi.rs's two bmp_set_sdi_wire
+     * variants and hosted/rpc_host/remote_rpc.rs::remote_sdi_set_wire_rs.
      */
     void bmp_set_sdi_wire_c(uint32_t tbit_ns, uint32_t low1_ns, uint32_t low0_ns, uint32_t sample_ns, bool no_trim);
 
