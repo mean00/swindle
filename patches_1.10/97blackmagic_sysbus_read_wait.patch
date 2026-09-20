@@ -1,0 +1,117 @@
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -366,15 +366,43 @@
+  */
+ static bool riscv32_sysbus_wait_idle(riscv_hart_s *const hart)
+ {
++	uint32_t status = 0;
++	static bool reported = false;
+ 	for (size_t spin = 0; spin < RV_SYSBUS_IDLE_SPINS; ++spin) {
+-		uint32_t status = 0;
++		status = 0;
+ 		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
+ 			return false;
+-		if (!(status & RV_SYSBUS_STATUS_SBBUSY))
++		/*
++		 * BMP 97: sbcs carries the in-flight indication twice and the WCH debug modules
++		 * disagree about which one they raise, so wait out both:
++		 *   bit 21 (RV_SYSBUS_STATUS_BUSY, sbcs.sbbusy) - what the debug spec defines as
++		 *        "an access is in progress", and what the older BMP 85 fallback poll
++		 *        further down has always used,
++		 *   bit 22 (RV_SYSBUS_STATUS_SBBUSY, sbcs.sbbusyerror) - the spec's sticky error
++		 *        flag, and what a CH32V006 was measured raising instead.
++		 * BMP 96 tested bit 22 only, so on a part that shows the access on bit 21 the wait
++		 * never fired and sbdata0 was taken before the (slow, flash) access had completed.
++		 * Measured on the LN + CH32V003 (2026-09-19): a paced single-word read answered a
++		 * stale word, the address itself, 0x0 or all-ones in about a quarter of the reads,
++		 * while the pipelined (autoincrement + read-on-data) burst read stayed correct.
++		 */
++		if (!(status & (RV_SYSBUS_STATUS_BUSY | RV_SYSBUS_STATUS_SBBUSY)))
+ 			return true;
+ 	}
+-	/* The bus never reported itself idle: hand back to the caller instead of hanging here,
+-	 * and let riscv_sysbus_check() report the state the debug module is left in. */
++	/*
++	 * Neither bit cleared within the budget: hand back to the caller instead of hanging here.
++	 * A sticky sbcs.sbbusyerror would otherwise make every access pay the full spin budget,
++	 * which is what turned a dense read into something that looks like a hang.
++	 * Report the state once per session: it is the measurement that says which of the two
++	 * indications this debug module actually raises (neither is documented by WCH).
++	 */
++	if (!reported)
++	{
++		reported = true;
++		DEBUG_WARN(
++			"riscv32 sysbus: sbcs = 0x%08x after %u idle spins (bit 21 = sbbusy, bit 22 = sbbusyerror)\n",
++			(unsigned)status, (unsigned)RV_SYSBUS_IDLE_SPINS);
++	}
+ 	return true;
+ }
+ 
+@@ -443,12 +471,14 @@
+ 		 * reads differently while a system-bus access is still pending.
+ 		 */
+ 		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value)) {
+-			uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-			/* Wait for the current read cycle to complete */
+-			while (status & RV_SYSBUS_STATUS_BUSY) {
+-				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
+-					return;
+-			}
++			/*
++			 * BMP 97: this poll used to be unbounded - while the busy bit stays set the
++			 * probe never returns from here, so GDB waits for a reply forever (the probe
++			 * is alive, it just never answers). Bound it like the wait above and give up
++			 * on this access instead of spinning on a wedged debug module.
++			 */
++			if (!riscv32_sysbus_wait_idle(hart))
++				return;
+ 			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+ 				return;
+ 		}
+@@ -573,12 +603,9 @@
+ 		 * re-write if the target never accepted the value.
+ 		 */
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value)) {
+-			uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-			/* Wait for the current write cycle to complete */
+-			while (status & RV_SYSBUS_STATUS_BUSY) {
+-				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
+-					return;
+-			}
++			/* BMP 97: bounded the same way as the read side - never spin on a wedged DM. */
++			if (!riscv32_sysbus_wait_idle(hart))
++				return;
+ 			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value))
+ 				return;
+ 		}
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -222,17 +222,22 @@
+ #define RV_SYSBUS_MEM_READ_ON_DATA  0x00008000U
+ #define RV_SYSBUS_STATUS_BUSY       0x00200000U
+ #define RV_SYSBUS_MEM_ACCESS_SHIFT  17U
+-/* sbcs.sbbusy (bit 22): set while a system bus access is in progress. sbdata0 only holds the
+- * result of an access once that access has completed, so this is the bit that has to be seen
+- * clear before the data is taken (BMP 96). */
++/* sbcs bit 22: the debug spec calls this sbbusyerror, a *sticky* error flag, but a CH32V006
++ * was measured raising it while a system bus access was still in progress, so it is treated
++ * as "possibly still busy" (BMP 96). sbcs bit 21 (RV_SYSBUS_STATUS_BUSY above) is the spec's
++ * sbbusy and is what a CH32V003 shows for an access in flight, so the wait in
++ * riscv32_sysbus_wait_idle() tests both (BMP 97). */
+ #define RV_SYSBUS_STATUS_SBBUSY 0x00400000U
+ /* The bits that make an access run ahead of itself: autoincrement moves the address on, and
+  * read-on-data makes every sbdata0 read trigger -- and answer -- a further access. A request
+  * that does not ask for them must not find them armed. */
+ #define RV_SYSBUS_ARMED_BITS (RV_SYSBUS_MEM_ADDR_POST_INC | RV_SYSBUS_MEM_READ_ON_DATA)
+ /* Handshake bounds: long enough to cover a slow (flash) access, short enough to hand back to
+- * the caller when the debug module is wedged instead of hanging the probe. */
+-#define RV_SYSBUS_IDLE_SPINS    10000U
++ * the caller when the debug module is wedged instead of hanging the probe. One spin is one SDI
++ * read frame (~40 us on the LN bit-bang transport), so this budget is what a stuck bit costs
++ * per access: at 10000 spins that was ~0.45 s per word, which turns a dense read (qCRC,
++ * compare-sections) into something that looks like a hang (BMP 97). */
++#define RV_SYSBUS_IDLE_SPINS    256U
+ #define RV_SYSBUS_PROGRAM_TRIES 8U
+ 
+ /* dpc -> Debug Program Counter */

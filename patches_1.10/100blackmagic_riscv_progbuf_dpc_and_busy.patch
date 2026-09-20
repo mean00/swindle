@@ -1,0 +1,514 @@
+# 100blackmagic_riscv_progbuf_dpc_and_busy.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# riscv_fault.md - the audit of this stack against RISC-V External Debug Support v0.13.2 -
+# reports two HIGH findings in the RISC-V program buffer (abstractauto) paths:
+#
+#   F1  the streaming pipeline writes data0 / progbuf / abstractauto while an autoexec'd
+#       abstract command can still be executing, and restores the bounce registers (a0/a1)
+#       with no busy check, no verification and no diagnostic. Of command, abstractauto,
+#       progbuf and the data registers the spec says "Accessing these registers while an
+#       abstract command is executing causes cmderr to be set to 1 (busy) if it is 0" and
+#       "Attempts to write them while busy is set does not change their value" (3.12.7,
+#       3.12.8, 3.12.11, 3.12.12; the vendor documents the same rule at sdi.txt:1258). A write
+#       the DM discards is silent: a lost a0 restore leaves a0 holding the advanced address
+#       (one addi a0,a0,4 per executed program) and a lost abstractauto=0 leaves the stream
+#       armed, so the *next* data0 access re-runs a stale command - during the register
+#       restores. The ~37us SDI frame normally hides this (a progbuf run needs ~1us), which is
+#       why it has not shown up in testing.
+#
+#   F2  dpc is never saved/restored around program buffer execution, which spec 3.7 requires:
+#       "Executing the Program Buffer may clobber dpc. [...] The debugger must attempt to save
+#       dpc between halting and executing a Program Buffer, and then restore dpc before
+#       leaving Debug Mode." All four executors (riscv_csr_progbuf_read/_write,
+#       riscv32_progbuf_mem_read/_write) saved only a0 (and a1), so on a part whose DM runs
+#       the program buffer through the PC, *every* CSR access and every memory access would
+#       move the PC. The only path that protected it was riscv32_run_stub() (patch 95).
+#
+# The streaming code fixed here came in with 85bis (there is no patch 86 - riscv_fault.md
+# cites that number for 85bis), so this is a new patch rather than a rework of an old one.
+#
+# FIX
+# ---
+# F1 - riscv32_progbuf_quiesced_write() wraps every write the DM must not be busy for: it
+#      calls riscv_command_wait_complete() (which waits for busy to clear *and* consumes
+#      cmderr) and then writes. It is used for the progbuf neutralise, for dropping
+#      abstractauto - which now happens even when the data phase gave up, so an armed stream
+#      can no longer be left behind - and for both restores.
+#      riscv32_progbuf_restore_gpr() puts a0/a1 back and checks the write landed by reading
+#      the register back, retrying a bounded number of times before reporting on the probe's
+#      log (the DMI link is known to drop the odd write: see the ch006 investigation in
+#      ch32v0x_silicon_tests). The a0/a1 save buffers became 4 words wide so that a Hart
+#      probed at 64-bit (the V003 is, see F7 of the audit) no longer has a 64-bit transfer
+#      written through a 4-byte object. The failure is *not* turned into a GDB-visible error
+#      here - that is F8, deliberately parked in patch 99 - what changes is that the
+#      corruption can no longer happen silently.
+#
+# F2 - riscv_dpc_guard_begin()/_end() (riscv_debug.c) save dpc with an abstract command that
+#      carries dpc itself and runs no program buffer of its own (the mechanism 3.7 asks for),
+#      tried at the probed width and then at half that, and put it back after the run. They are
+#      called by all four executors, with accesses to dpc itself exempt (protecting dpc by
+#      rewriting dpc would undo a 'set $pc', and asking for dpc in order to read dpc would be
+#      a loop).
+#      The round trip is only paid on a Hart that needs it: the first execution compares dpc
+#      before and after and records the answer (RV_DPC_GUARD_STABLE / _CLOBBERS, or _OPAQUE if
+#      dpc cannot be read that way at all, which is reported once on the log). A part that
+#      leaves dpc alone - the V003 does: reading it through the program buffer is how
+#      riscv_pc_read() sees the right value - pays one read and one read-back, once, and
+#      nothing from then on. A run that did not complete cleanly (bus error or exception inside
+#      the program buffer) goes back to measuring, since that can move dpc where a clean run
+#      does not.
+#
+# EVIDENCE
+# --------
+# Not yet measured on hardware: build only (gd32f303_48_inv_ws2812, the LN probe that talks to
+# the CH32V003 over SDI, builds clean and with no new warnings) plus code review. To see it,
+# watch the probe log (mon redirect 1) for the one-line measurement, and compare
+# mon riscv_benchmark / memory reads before and after.
+#
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -679,6 +679,52 @@
+ 	return true;
+ }
+ 
++/* How many times a bounce register is put back after a program buffer run before giving up */
++#define RISCV_PROGBUF_RESTORE_TRIES 2U
++
++/*
++ * BMP 100: put a GPR back the way a program buffer run found it, and make sure it landed.
++ *
++ * The DMI link drops the odd write (the Debug Module answers the access but the transfer never
++ * lands - the ch006 investigation in ch32v0x_silicon_tests is that happening during reads), and a
++ * write issued while an abstract command is still executing is discarded by the Debug Module
++ * (spec 3.12.7), so a restore can be lost with nothing to show for it: a0 is then left holding
++ * the advanced address (one addi a0, a0, 4 per executed program) and a1 the last word the program
++ * transferred. The write is therefore verified by reading the register back, and retried a bounded
++ * number of times. Only the low word is compared: the upper half of a transfer wider than the Hart
++ * is not defined by the spec, while on a 32-bit Hart the low word is the whole register.
++ */
++static bool riscv32_progbuf_restore_gpr(
++	riscv_hart_s *const hart, const uint16_t reg, const uint32_t value[RV_DPC_WORDS])
++{
++	for (uint32_t attempt = 0; attempt < RISCV_PROGBUF_RESTORE_TRIES; ++attempt) {
++		uint32_t readback[RV_DPC_WORDS] = {0U};
++		if (riscv_csr_write(hart, reg, value) && riscv_csr_read(hart, reg, readback) &&
++			readback[0] == value[0])
++			return true;
++	}
++	DEBUG_WARN("riscv: GPR %04x could not be put back after program buffer execution (%08" PRIx32 ")\n", reg,
++		value[0]);
++	return false;
++}
++
++/*
++ * BMP 100: a register write that must not race the abstract command an autoexec'd data0 access has
++ * just started. Touching command, abstractauto, progbuf or the data registers while a command is
++ * executing sets cmderr to 1 and the access is discarded - "Attempts to write them while busy is
++ * set does not change their value" (spec 3.12.7, 3.12.8, 3.12.11, 3.12.12; the vendor documents
++ * the same rule at sdi.txt:1258), which is exactly how a register restore, or the write that drops
++ * the autoexec stream, can go missing. riscv_command_wait_complete() waits for busy to clear *and*
++ * consumes cmderr, so it is used to quiesce the pipeline first. The write is attempted even if that
++ * did not work out: a write the Debug Module rejects is ignored, while leaving the autoexec stream
++ * armed would re-run a stale command on the next data0 access - i.e. during the restores.
++ */
++static bool riscv32_progbuf_quiesced_write(riscv_hart_s *const hart, const uint8_t address, const uint32_t value)
++{
++	const bool quiesced = riscv_command_wait_complete(hart);
++	return riscv_dm_write(hart->dbg_module, address, value) && quiesced;
++}
++
+ static void riscv32_progbuf_mem_read(
+ 	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
+ {
+@@ -721,10 +767,11 @@
+ 		return;
+ 	}
+ 
+-	uint32_t a0_save = 0;
+-	uint32_t a1_save = 0;
+-	riscv_csr_read(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_read(hart, RV_GPR_A1, &a1_save);
++	/* 4 words: a 64-bit or 128-bit transfer must not write past the end of these */
++	uint32_t a0_save[RV_DPC_WORDS] = {0U};
++	uint32_t a1_save[RV_DPC_WORDS] = {0U};
++	riscv_csr_read(hart, RV_GPR_A0, a0_save);
++	riscv_csr_read(hart, RV_GPR_A1, a1_save);
+ 
+ 	uint8_t *const data = (uint8_t *)dest;
+ 
+@@ -741,6 +788,9 @@
+ 		 * autoexec so the pipeline never issues a load past the requested range.
+ 		 */
+ 		bool result = true;
++		/* dpc is saved before the first program buffer execution of this read (spec 3.7) */
++		uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++		const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
+ 		/* Set the source address in GPR a0 (no postexec) */
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src) ||
+ 			!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
+@@ -769,9 +819,13 @@
+ 			if (result)
+ 				riscv32_unpack_data(data + offset, value, RV_MEM_ACCESS_32_BIT);
+ 		}
+-		/* Neutralise the program buffer before the autoexec that captures the last word */
++		/*
++		 * Neutralise the program buffer before the autoexec that captures the last word. That
++		 * write must not race the execution the data0 read above has just started, so the
++		 * pipeline is quiesced first.
++		 */
+ 		if (result)
+-			result = riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_ADDI_A0_A0_4);
++			result = riscv32_progbuf_quiesced_write(hart, RV_DM_PROGBUF_BASE + 0U, RV_ADDI_A0_A0_4);
+ 		/* Word N-2 (its autoexec captures word N-1 without issuing a load) */
+ 		if (result && len > 4U) {
+ 			uint32_t value = 0;
+@@ -779,24 +833,32 @@
+ 			if (result)
+ 				riscv32_unpack_data(data + len - 8U, value, RV_MEM_ACCESS_32_BIT);
+ 		}
+-		/* Drop autoexec so the final read pulls word N-1 without further activity */
+-		if (result)
+-			result = riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, 0U);
++		/*
++		 * Drop autoexec so the final read pulls word N-1 without further activity, and quiesce
++		 * first: that write must not race the execution the read above has just started. It is
++		 * attempted even after giving up on the data, or the armed autoexec would re-run a stale
++		 * command on the next data0 access - which is exactly what the restores below are.
++		 */
++		if (!riscv32_progbuf_quiesced_write(hart, RV_DM_ABSTRACTAUTO, 0U))
++			result = false;
+ 		if (result) {
+ 			uint32_t value = 0;
+ 			result = riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value);
+ 			if (result)
+ 				riscv32_unpack_data(data + len - 4U, value, RV_MEM_ACCESS_32_BIT);
+ 		}
+-		/*
+-		 * No trailing riscv_command_wait_complete here: the pipeline is quiesced
+-		 * and any leftover command status is consumed by the CSR restores below.
+-		 */
+-		riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+-		riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++		/* Whatever happened, put a0/a1 and dpc back the way this read found them */
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++		if (guard_dpc)
++			result &= riscv_dpc_guard_end(hart, dpc_save);
+ 		return;
+ 	}
+ 
++	/* Executing the program buffer may clobber dpc: save it around the run (spec 3.7) */
++	uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
++
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Write the source address to DATA0 */
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src + offset))
+@@ -816,8 +878,11 @@
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+ 
+-	riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++	/* Whatever happened, put a0/a1 and dpc back the way this read found them */
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++	if (guard_dpc)
++		riscv_dpc_guard_end(hart, dpc_save);
+ }
+ 
+ static void riscv32_progbuf_mem_write(
+@@ -863,15 +928,19 @@
+ 		return;
+ 	}
+ 
+-	uint32_t a0_save = 0;
+-	uint32_t a1_save = 0;
+-	riscv_csr_read(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_read(hart, RV_GPR_A1, &a1_save);
++	/* 4 words: a 64-bit or 128-bit transfer must not write past the end of these */
++	uint32_t a0_save[RV_DPC_WORDS] = {0U};
++	uint32_t a1_save[RV_DPC_WORDS] = {0U};
++	riscv_csr_read(hart, RV_GPR_A0, a0_save);
++	riscv_csr_read(hart, RV_GPR_A1, a1_save);
+ 
+ 	const uint8_t *const data = (const uint8_t *)src;
+ 
+ 	if (stream) {
+ 		bool result = true;
++		/* dpc is saved before the first program buffer execution of this write (spec 3.7) */
++		uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++		const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
+ 		/* Set the destination address in GPR a0 (no postexec) */
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, dest) ||
+ 			!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
+@@ -893,18 +962,28 @@
+ 			for (size_t offset = 4U; result && offset < len; offset += 4U)
+ 				result = riscv_dm_write(hart->dbg_module, RV_DM_DATA0,
+ 					riscv32_pack_data(data + offset, RV_MEM_ACCESS_32_BIT));
+-			/* Drop autoexec before the completion check */
+-			if (!riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, 0U))
++			/*
++			 * Drop autoexec before the completion check, quiescing first: the write must not
++			 * race the store the last data0 write above has just started.
++			 */
++			if (!riscv32_progbuf_quiesced_write(hart, RV_DM_ABSTRACTAUTO, 0U))
+ 				result = false;
+ 		}
+ 		/* Make sure the last streamed store has actually completed */
+ 		result &= riscv_command_wait_complete(hart);
+ 
+-		riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+-		riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++		/* Whatever happened, put a0/a1 and dpc back the way this write found them */
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++		if (guard_dpc)
++			result &= riscv_dpc_guard_end(hart, dpc_save);
+ 		return;
+ 	}
+ 
++	/* Executing the program buffer may clobber dpc: save it around the run (spec 3.7) */
++	uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
++
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Prepare the destination address in GPR A0 */
+ 		const uint32_t dest_a0 = dest + offset;
+@@ -924,8 +1003,11 @@
+ 			break;
+ 	}
+ 
+-	riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++	/* Whatever happened, put a0/a1 and dpc back the way this write found them */
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++	if (guard_dpc)
++		riscv_dpc_guard_end(hart, dpc_save);
+ }
+ 
+ void riscv32_mem_read(target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -794,6 +794,10 @@
+ 
+ static bool riscv_csr_progbuf_read(riscv_hart_s *const hart, const uint16_t reg, void *const data)
+ {
++	/* Executing the program buffer below may clobber dpc, so save it first (spec 3.7). Accessing
++	 * dpc itself is exempt - asking for dpc in order to read dpc would be a loop. */
++	uint32_t dpc[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = (reg & RV_CSR_ADDR_MASK) != RV_DPC && riscv_dpc_guard_begin(hart, dpc);
+ 	/* Set up the program buffer to read out the target CSR */
+ 	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_CSRR_A0 | ((reg & RV_CSR_ADDR_MASK) << 20U)))
+ 		return false;
+@@ -813,7 +817,11 @@
+ 	/* Now try to read out the requested data from a0 at the requested size */
+ 	result &= riscv_csr_read(hart, RV_GPR_A0 | (reg & RV_CSR_FORCE_MASK), data);
+ 	/* Whatever happened, now put back a0 from before */
+-	return riscv_csr_write(hart, RV_GPR_A0, a0_value) && result;
++	result &= riscv_csr_write(hart, RV_GPR_A0, a0_value);
++	/* And dpc, if executing the program buffer could have clobbered it (spec 3.7) */
++	if (guard_dpc)
++		result &= riscv_dpc_guard_end(hart, dpc);
++	return result;
+ }
+ 
+ bool riscv_csr_read(riscv_hart_s *const hart, const uint16_t reg, void *const data)
+@@ -860,8 +868,129 @@
+ 	return true;
+ }
+ 
++/*
++ * BMP 100: dpc preservation around program buffer execution (RISC-V Debug spec 3.7).
++ *
++ * "Executing the Program Buffer may clobber dpc. If that is the case, it must be possible to
++ * read/write dpc using an abstract command with postexec not set. The debugger must attempt to
++ * save dpc between halting and executing a Program Buffer, and then restore dpc before leaving
++ * Debug Mode."
++ *
++ * The save therefore has to be an abstract command carrying dpc itself in its register transfer
++ * and with no program buffer of its own - anything that ran a program buffer to fetch dpc would
++ * be running the very thing that clobbers it, and would read the clobbered value instead. It is
++ * tried at the width the Hart was probed with and then at half that, so a Debug Module that only
++ * implements 32-bit transfers (the V003 answers cmderr = 2 to a wider one) is still handled.
++ *
++ * Paying for that around every program buffer execution would be pure loss on a part that does
++ * not clobber dpc, so the first execution measures it: the value after the execution is compared
++ * with the value before it, and the Hart is made to pay from then on only if they differ. That
++ * measurement is also what says on the probe's log which kind of part this is.
++ */
++static bool riscv_dpc_read(riscv_hart_s *const hart, uint32_t dpc[RV_DPC_WORDS])
++{
++	/* Looking at dpc is not the caller's verdict on the Hart: leave the status as it was */
++	const riscv_hart_status_e status = hart->status;
++	for (uint8_t width = hart->access_width; width >= 32U; width >>= 1U) {
++		if (riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_READ | RV_REG_XFER | riscv_hart_access_width(width) |
++					RV_DPC) &&
++			riscv_command_wait_complete(hart) && riscv_csr_read_data(hart, dpc, width)) {
++			hart->status = status;
++			return true;
++		}
++	}
++	hart->status = status;
++	return false;
++}
++
++static bool riscv_dpc_write(riscv_hart_s *const hart, const uint32_t dpc[RV_DPC_WORDS])
++{
++	/* As above: putting dpc back is not the caller's verdict on the Hart either */
++	const riscv_hart_status_e status = hart->status;
++	for (uint8_t width = hart->access_width; width >= 32U; width >>= 1U) {
++		if (riscv_csr_write_data(hart, dpc, width) &&
++			riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | riscv_hart_access_width(width) |
++					RV_DPC) &&
++			riscv_command_wait_complete(hart)) {
++			hart->status = status;
++			return true;
++		}
++	}
++	hart->status = status;
++	return false;
++}
++
++/*
++ * BMP 100: called before a program buffer run. Returns true if dpc was saved and the matching
++ * riscv_dpc_guard_end() has to be called, false if this Hart needs nothing done - or cannot have
++ * anything done, which has been reported on the probe's log by then.
++ */
++bool riscv_dpc_guard_begin(riscv_hart_s *const hart, uint32_t dpc[RV_DPC_WORDS])
++{
++	if (hart->dpc_guard == RV_DPC_GUARD_OPAQUE)
++		return false;
++	/*
++	 * An execution that did not complete cleanly (a bus error or an exception inside the program
++	 * buffer) can move dpc even where a clean one does not, so stop trusting the measurement.
++	 */
++	if (hart->dpc_guard == RV_DPC_GUARD_STABLE && hart->status == RISCV_HART_NO_ERROR)
++		return false;
++	if (!riscv_dpc_read(hart, dpc)) {
++		hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++		DEBUG_WARN("riscv: dpc cannot be read without running the program buffer, so it cannot be "
++				   "protected across program buffer execution\n");
++		return false;
++	}
++	return true;
++}
++
++/*
++ * BMP 100: called after a program buffer run started by the matching riscv_dpc_guard_begin().
++ * Returns false if dpc is no longer known to hold what it did before the run.
++ */
++bool riscv_dpc_guard_end(riscv_hart_s *const hart, const uint32_t dpc[RV_DPC_WORDS])
++{
++	/* Already known to clobber dpc: put the saved value back without paying for another read */
++	if (hart->dpc_guard == RV_DPC_GUARD_CLOBBERS) {
++		if (!riscv_dpc_write(hart, dpc)) {
++			hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++			DEBUG_WARN("riscv: dpc could not be restored, the Hart's program counter is now wrong\n");
++			return false;
++		}
++		return true;
++	}
++	uint32_t now[RV_DPC_WORDS] = {0U};
++	if (!riscv_dpc_read(hart, now)) {
++		hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++		DEBUG_WARN("riscv: dpc cannot be read back after program buffer execution, so it can no "
++				   "longer be protected\n");
++		return false;
++	}
++	if (now[0] == dpc[0]) {
++		hart->dpc_guard = RV_DPC_GUARD_STABLE;
++		DEBUG_INFO("riscv: dpc survives program buffer execution on this part, no longer saving it\n");
++		return true;
++	}
++	hart->dpc_guard = RV_DPC_GUARD_CLOBBERS;
++	DEBUG_WARN("riscv: program buffer execution clobbers dpc (%08" PRIx32 " -> %08" PRIx32 "), it is now "
++			   "saved and restored around every execution\n",
++		dpc[0], now[0]);
++	if (!riscv_dpc_write(hart, dpc)) {
++		hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++		DEBUG_WARN("riscv: dpc could not be restored, the Hart's program counter is now wrong\n");
++		return false;
++	}
++	return true;
++}
++
+ static bool riscv_csr_progbuf_write(riscv_hart_s *const hart, const uint16_t reg, const void *const data)
+ {
++	/* Executing the program buffer below may clobber dpc, so save it first (spec 3.7). Accessing
++	 * dpc itself is exempt - protecting dpc by rewriting dpc would undo the access. */
++	uint32_t dpc[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = (reg & RV_CSR_ADDR_MASK) != RV_DPC && riscv_dpc_guard_begin(hart, dpc);
+ 	/* Read out a0 to keep it safe as the actions below clobber it */
+ 	uint32_t a0_value[4];
+ 	if (!riscv_csr_read(hart, RV_GPR_A0, a0_value))
+@@ -886,7 +1015,11 @@
+ 	/* Wait for both the register write and progbuf execution to complete */
+ 	result &= riscv_command_wait_complete(hart);
+ 	/* Whatever happened, now put back a0 from before */
+-	return riscv_csr_write(hart, RV_GPR_A0, a0_value) && result;
++	result &= riscv_csr_write(hart, RV_GPR_A0, a0_value);
++	/* And dpc, if executing the program buffer could have clobbered it (spec 3.7) */
++	if (guard_dpc)
++		result &= riscv_dpc_guard_end(hart, dpc);
++	return result;
+ }
+ 
+ bool riscv_csr_write(riscv_hart_s *const hart, const uint16_t reg, const void *const data)
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -105,6 +105,22 @@
+ #define RV_HART_FLAG_MEMORY_ABSTAUTO    (1U << 7U) /* Abstract commands with AUTOEXECDATA_0 streaming */
+ #define RV_HART_CAP_HAS_SYSBUS          (1U << 8U)
+ 
++/*
++ * This enum describes how a Hart treats dpc when a program buffer is executed, which the RISC-V
++ * Debug spec leaves implementation defined and which decides whether dpc has to be saved around
++ * program buffer execution (spec 3.7).
++ */
++typedef enum riscv_dpc_guard {
++	/* Not measured yet: dpc is read before an execution and checked (and put back) after it */
++	RV_DPC_GUARD_UNKNOWN = 0,
++	/* Measured: dpc survives program buffer execution, so there is nothing left to do */
++	RV_DPC_GUARD_STABLE = 1,
++	/* Measured: program buffer execution clobbers dpc, so it is saved and restored every time */
++	RV_DPC_GUARD_CLOBBERS = 2,
++	/* dpc cannot be read without running a program buffer, so it cannot be protected at all */
++	RV_DPC_GUARD_OPAQUE = 3,
++} riscv_dpc_guard_e;
++
+ typedef struct riscv_dmi riscv_dmi_s;
+ 
+ /* This structure represents a version-agnostic Debug Module Interface on a RISC-V device */
+@@ -156,6 +172,8 @@
+ 	uint16_t flags;
+ 	uint8_t progbuf_size;
+ 	riscv_hart_status_e status;
++	/* How this Hart treats dpc across program buffer execution (spec 3.7), see riscv_dpc_guard_e */
++	riscv_dpc_guard_e dpc_guard;
+ 
+ 	uint32_t extensions;
+ 	uint32_t vendorid;
+@@ -225,6 +243,8 @@
+ 
+ /* dpc -> Debug Program Counter */
+ #define RV_DPC 0x7b1U
++/* dpc is XLEN wide: 4 words covers a 128-bit abstract command transfer without truncating it */
++#define RV_DPC_WORDS 4U
+ /* The GPR base defines the starting register space address for the CPU state registers */
+ #define RV_GPR_BASE 0x1000U
+ /* The FP base defines the starting register space address for the floating point registers */
+@@ -344,6 +364,8 @@
+ bool riscv_command_wait_complete(riscv_hart_s *hart);
+ bool riscv_csr_read(riscv_hart_s *hart, uint16_t reg, void *data);
+ bool riscv_csr_write(riscv_hart_s *hart, uint16_t reg, const void *data);
++bool riscv_dpc_guard_begin(riscv_hart_s *hart, uint32_t dpc[RV_DPC_WORDS]);
++bool riscv_dpc_guard_end(riscv_hart_s *hart, const uint32_t dpc[RV_DPC_WORDS]);
+ riscv_match_size_e riscv_breakwatch_match_size(size_t size);
+ bool riscv_config_trigger(
+ 	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, const void *config, const void *address);

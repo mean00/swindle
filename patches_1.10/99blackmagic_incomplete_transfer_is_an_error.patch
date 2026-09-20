@@ -1,0 +1,273 @@
+--- a/src/target/riscv32.c	2026-09-19 21:00:56.660840219 +0200
++++ b/src/target/riscv32.c	2026-09-19 21:01:49.286494277 +0200
+@@ -291,6 +291,24 @@
+ 	return 0;
+ }
+ 
++/*
++ * BMP 99: record that the transfer in progress did not complete.
++ *
++ * riscv_check_error() is exactly `hart->status != RISCV_HART_NO_ERROR`, and that
++ * verdict is what target_mem64_read()/target_mem64_write() hand back to their
++ * caller (via target_check_error()), which is in turn what the C glue behind
++ * bmp_mem_read_c()/bmp_mem_write_c() reports. Every bail-out below used to leave
++ * hart->status alone, so a transfer that timed out, or whose address/value never
++ * landed, was reported as a success and the part of the caller's buffer that was
++ * never written was handed back -- a failed read shows up as zeroes (or as the
++ * previous answer) with no error anywhere. Recording the failure turns the same
++ * event into a failed memory access the caller can see and act on.
++ */
++static void riscv32_transfer_failed(riscv_hart_s *const hart)
++{
++	hart->status = RISCV_HART_OTHER;
++}
++
+ static void riscv32_abstract_mem_read(
+ 	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
+ {
+@@ -301,17 +319,23 @@
+ 	const uint32_t command = RV_DM_ABST_CMD_ACCESS_MEM | RV_ABST_READ | (access_width << RV_ABST_MEM_ACCESS_SHIFT) |
+ 		(access_length < len ? RV_ABST_MEM_ADDR_POST_INC : 0U);
+ 	/* Write the address to read to arg1 */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA1, src))
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA1, src)) {
++		riscv32_transfer_failed(hart);
+ 		return;
++	}
+ 	uint8_t *const data = (uint8_t *)dest;
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Execute the read */
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, command) || !riscv_command_wait_complete(hart))
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, command) || !riscv_command_wait_complete(hart)) {
++			riscv32_transfer_failed(hart);
+ 			return;
++		}
+ 		/* Extract back the data from arg0 */
+ 		uint32_t value = 0;
+-		if (!riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value))
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value)) {
++			riscv32_transfer_failed(hart);
+ 			return;
++		}
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+ }
+@@ -326,17 +350,23 @@
+ 	const uint32_t command = RV_DM_ABST_CMD_ACCESS_MEM | RV_ABST_WRITE | (access_width << RV_ABST_MEM_ACCESS_SHIFT) |
+ 		(access_length < len ? RV_ABST_MEM_ADDR_POST_INC : 0U);
+ 	/* Write the address to write to arg1 */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA1, dest))
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA1, dest)) {
++		riscv32_transfer_failed(hart);
+ 		return;
++	}
+ 	const uint8_t *const data = (const uint8_t *)src;
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Pack the data to write into arg0 */
+ 		uint32_t value = riscv32_pack_data(data + offset, access_width);
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, value))
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, value)) {
++			riscv32_transfer_failed(hart);
+ 			return;
++		}
+ 		/* Execute the write */
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, command) || !riscv_command_wait_complete(hart))
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND, command) || !riscv_command_wait_complete(hart)) {
++			riscv32_transfer_failed(hart);
+ 			return;
++		}
+ 	}
+ }
+ 
+@@ -698,6 +728,7 @@
+ 		progbuf_read = RV_LW_A1_A0;
+ 		break;
+ 	default:
++		riscv32_transfer_failed(hart);
+ 		return;
+ 	}
+ 	/*
+@@ -711,13 +742,17 @@
+ 	if (stream) {
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_LW_A1_A0) ||
+ 			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_ADDI_A0_A0_4) ||
+-			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK))
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK)) {
++			riscv32_transfer_failed(hart);
+ 			return;
++		}
+ 	} else if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_read)) {
++		riscv32_transfer_failed(hart);
+ 		return;
+ 	} else if (hart->progbuf_size > 1U &&
+ 		!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK)) {
+ 		/* Append literal ebreak (if impebreak is not reached) */
++		riscv32_transfer_failed(hart);
+ 		return;
+ 	}
+ 
+@@ -789,9 +824,15 @@
+ 				riscv32_unpack_data(data + len - 4U, value, RV_MEM_ACCESS_32_BIT);
+ 		}
+ 		/*
+-		 * No trailing riscv_command_wait_complete here: the pipeline is quiesced
+-		 * and any leftover command status is consumed by the CSR restores below.
++		 * BMP 99: the autoexec pipeline is quiesced, but "no DATA0 read failed" is not
++		 * the same as "every access ran" -- a stalled pipeline hands back whatever
++		 * DATA0 last held and reports nothing about it. Ask for the command status
++		 * once so a stalled transfer becomes a failure, and record the bail-outs above
++		 * (their failed writes would otherwise be masked by this check succeeding).
+ 		 */
++		result &= riscv_command_wait_complete(hart);
++		if (!result)
++			riscv32_transfer_failed(hart);
+ 		riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+ 		riscv_csr_write(hart, RV_GPR_A1, &a1_save);
+ 		return;
+@@ -799,20 +840,26 @@
+ 
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Write the source address to DATA0 */
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src + offset))
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src + offset)) {
++			riscv32_transfer_failed(hart);
+ 			break;
++		}
+ 		/* Copy the source address from DATA0 to GPR A0 and launch the progbuf postexec */
+ 		bool result = riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
+ 			RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_ABST_POSTEXEC | RV_REG_ACCESS_32_BIT |
+ 				RV_GPR_A0);
+ 		/* Wait for both the register write and progbuf execution to complete */
+ 		result &= riscv_command_wait_complete(hart);
+-		if (!result)
++		if (!result) {
++			riscv32_transfer_failed(hart);
+ 			break;
++		}
+ 		uint32_t value = 0;
+ 		result = riscv_csr_read(hart, RV_GPR_A1, &value);
+-		if (!result)
++		if (!result) {
++			riscv32_transfer_failed(hart);
+ 			break;
++		}
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+ 
+@@ -839,6 +886,7 @@
+ 		progbuf_write = RV_SW_A1_A0;
+ 		break;
+ 	default:
++		riscv32_transfer_failed(hart);
+ 		return;
+ 	}
+ 	/*
+@@ -853,13 +901,17 @@
+ 	if (stream) {
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_SW_A1_A0) ||
+ 			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_ADDI_A0_A0_4) ||
+-			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK))
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK)) {
++			riscv32_transfer_failed(hart);
+ 			return;
++		}
+ 	} else if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_write)) {
++		riscv32_transfer_failed(hart);
+ 		return;
+ 	} else if (hart->progbuf_size > 1U &&
+ 		!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK)) {
+ 		/* Append literal ebreak (if impebreak is not reached) */
++		riscv32_transfer_failed(hart);
+ 		return;
+ 	}
+ 
+@@ -899,6 +951,9 @@
+ 		}
+ 		/* Make sure the last streamed store has actually completed */
+ 		result &= riscv_command_wait_complete(hart);
++		/* BMP 99: a stream that did not complete is a failed write, not an unknown one */
++		if (!result)
++			riscv32_transfer_failed(hart);
+ 
+ 		riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+ 		riscv_csr_write(hart, RV_GPR_A1, &a1_save);
+@@ -908,20 +963,26 @@
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Prepare the destination address in GPR A0 */
+ 		const uint32_t dest_a0 = dest + offset;
+-		if (!riscv_csr_write(hart, RV_GPR_A0, &dest_a0))
++		if (!riscv_csr_write(hart, RV_GPR_A0, &dest_a0)) {
++			riscv32_transfer_failed(hart);
+ 			break;
++		}
+ 
+ 		/* Pack the data to write into GPR A1 */
+ 		uint32_t value = riscv32_pack_data(data + offset, access_width);
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, value))
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, value)) {
++			riscv32_transfer_failed(hart);
+ 			break;
++		}
+ 		/* Copy the write value from DATA0 to GPR A1 and launch the progbuf postexec */
+ 		bool result = riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
+ 			RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_ABST_POSTEXEC | RV_REG_ACCESS_32_BIT |
+ 				RV_GPR_A1);
+ 		result &= riscv_command_wait_complete(hart);
+-		if (!result)
++		if (!result) {
++			riscv32_transfer_failed(hart);
+ 			break;
++		}
+ 	}
+ 
+ 	riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+@@ -937,6 +998,11 @@
+ 	}
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
++	/*
++	 * BMP 99: riscv_check_error() reports whatever hart->status last held, so the
++	 * verdict has to belong to this transfer and not to an earlier operation.
++	 */
++	hart->status = RISCV_HART_NO_ERROR;
+ 	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_read(hart, dest, src, len);
+ 		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
+@@ -983,6 +1049,8 @@
+ 		return;
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
++	/* BMP 99: the verdict below belongs to this transfer (see riscv32_mem_read) */
++	hart->status = RISCV_HART_NO_ERROR;
+ 	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_write(hart, dest, src, len);
+ 		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
+--- a/src/target/riscv_debug.c	2026-09-19 21:00:56.660911513 +0200
++++ b/src/target/riscv_debug.c	2026-09-19 21:01:49.286697497 +0200
+@@ -764,13 +764,24 @@
+ 	platform_timeout_set(&timeout, 200U);
+ 	uint32_t status = RV_DM_ABST_STATUS_BUSY;
+ 	while (status & RV_DM_ABST_STATUS_BUSY) {
+-		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status) || platform_timeout_is_expired(&timeout))
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status) || platform_timeout_is_expired(&timeout)) {
++			/*
++			 * BMP 99: a command that never completes, or whose status cannot be read, is a
++			 * failure and not an unknown verdict. riscv_check_error() reports hart->status,
++			 * so returning here without touching it made a timed-out access look like a
++			 * successful one (the previous command left the status clear).
++			 */
++			hart->status = RISCV_HART_OTHER;
+ 			return false;
++		}
+ 	}
+ 	/* Shift out and mask off the command status, then reset the status on the Hart */
+ 	hart->status = (status >> 8U) & RISCV_HART_OTHER;
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, RISCV_HART_OTHER << 8U))
++	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, RISCV_HART_OTHER << 8U)) {
++		/* BMP 99: false from here always means "no verdict", never "no error" */
++		hart->status = RISCV_HART_OTHER;
+ 		return false;
++	}
+ 	if (hart->status != RISCV_HART_NO_ERROR)
+ 		DEBUG_WARN("CSR access failed: %u\n", hart->status);
+ 	/* If the command failed, return the failure */

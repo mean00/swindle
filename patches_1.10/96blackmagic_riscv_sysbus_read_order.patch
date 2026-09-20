@@ -1,0 +1,155 @@
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -355,21 +355,84 @@
+ 		DEBUG_WARN("memory access failed: %u\n", hart->status);
+ }
+ 
++/*
++ * BMP 96: wait for the system bus to go idle. sbdata0 carries the result of an access only
++ * once that access has completed; taken earlier, the read answers with the value of the access
++ * the read itself triggers, which is one access unit above the address that was asked for.
++ * That is what a CH32V006 was measured doing -- a 32-bit read answering the word above, an
++ * 8-bit read the byte above, on flash reads only (the slow accesses) and never on RAM, with a
++ * verified reread always coming back right (ch32v0x_silicon_tests/08_read_path_check_v006.gdb,
++ * T10/T12).
++ */
++static bool riscv32_sysbus_wait_idle(riscv_hart_s *const hart)
++{
++	for (size_t spin = 0; spin < RV_SYSBUS_IDLE_SPINS; ++spin) {
++		uint32_t status = 0;
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++			return false;
++		if (!(status & RV_SYSBUS_STATUS_SBBUSY))
++			return true;
++	}
++	/* The bus never reported itself idle: hand back to the caller instead of hanging here,
++	 * and let riscv_sysbus_check() report the state the debug module is left in. */
++	return true;
++}
++
++/*
++ * BMP 96: program the access control register, and only then write the address register that
++ * triggers the access. A command write that the DM drops while it is still busy leaves the
++ * previous request's autoincrement and read-on-data bits armed, and the access that follows is
++ * then answered one access unit above the address it asked for. So for a request that does not
++ * want those bits, read the state back until the DM shows them clear before anything triggers.
++ */
++static bool riscv32_sysbus_program(
++	riscv_hart_s *const hart, const uint32_t command, const target_addr_t src)
++{
++	const uint32_t must_be_clear = RV_SYSBUS_ARMED_BITS & ~command;
++	if (must_be_clear) {
++		for (size_t attempt = 0; attempt < RV_SYSBUS_PROGRAM_TRIES; ++attempt) {
++			uint32_t readback = 0;
++			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, command))
++				return false;
++			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &readback))
++				return false;
++			if (!(readback & must_be_clear))
++				break;
++		}
++	} else if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, command))
++		return false;
++	/* Only now trigger the access */
++	return riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_ADDR0, src);
++}
++
+ static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
+ 	const size_t len, const uint8_t access_width, const uint8_t access_length)
+ {
+ 	/* Build the access command */
+ 	const uint32_t command = ((uint32_t)access_width << RV_SYSBUS_MEM_ACCESS_SHIFT) | RV_SYSBUS_MEM_READ_ON_ADDR |
+ 		(access_length < len ? RV_SYSBUS_MEM_ADDR_POST_INC | RV_SYSBUS_MEM_READ_ON_DATA : 0U);
+-	/*
+-	 * Write the command setup to the access control register
+-	 * Then set up the read by writing the address to the address register
+-	 */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, command) ||
+-		!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_ADDR0, src))
++	/* BMP 96: program the access, then let the address write trigger it */
++	if (!riscv32_sysbus_program(hart, command, src))
+ 		return;
+ 	uint8_t *const data = (uint8_t *)dest;
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
++		/*
++		 * BMP 96: the access this read belongs to has to have completed before its data is
++		 * taken. Reading sbdata0 earlier answers with the value of the access the read
++		 * itself triggers, one access unit above the address asked for -- the wait BMP 85
++		 * dropped in favour of trusting the DMI response status, which the CH32V006 does
++		 * not honour for its slow (flash) accesses.
++		 */
++		if (!riscv32_sysbus_wait_idle(hart))
++			return;
++		/*
++		 * If this would be the last read, disarm the access control register *before* the
++		 * data is taken: the last read must not trigger a further access that can then
++		 * answer it instead of the access it belongs to.
++		 */
++		if (offset + access_length == len && (command & RV_SYSBUS_MEM_ADDR_POST_INC) &&
++			!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, 0))
++			return;
+ 		uint32_t value = 0;
+ 		/*
+ 		 * BMP 85 fast path: read the data register directly and let the DMI response
+@@ -389,11 +452,6 @@
+ 			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+ 				return;
+ 		}
+-		/* If this would be the last read, clean up the access control register */
+-		if (offset + access_length == len && (command & RV_SYSBUS_MEM_ADDR_POST_INC)) {
+-			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, 0))
+-				return;
+-		}
+ 		/* Read back and unpack the data for this block */
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+@@ -501,12 +559,8 @@
+ 	/* Build the access command */
+ 	const uint32_t command = ((uint32_t)access_width << RV_SYSBUS_MEM_ACCESS_SHIFT) |
+ 		(access_length < len ? RV_SYSBUS_MEM_ADDR_POST_INC : 0U);
+-	/*
+-	 * Write the command setup to the access control register
+-	 * Then set up the write by writing the address to the address register
+-	 */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, command) ||
+-		!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_ADDR0, dest))
++	/* BMP 96: program the access, then let the address write trigger it */
++	if (!riscv32_sysbus_program(hart, command, dest))
+ 		return;
+ 	const uint8_t *const data = (const uint8_t *)src;
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+@@ -529,6 +583,13 @@
+ 				return;
+ 		}
+ 	}
++	/* BMP 96: wait out the last write, then disarm the autoincrement again. A multi-unit
++	 * write leaves it set otherwise, and the request that follows inherits it when its own
++	 * command write is dropped while the DM is still busy with this transfer. */
++	if ((command & RV_SYSBUS_MEM_ADDR_POST_INC) &&
++		(!riscv32_sysbus_wait_idle(hart) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, 0)))
++		return;
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const target_addr_t dest, const void *const src,
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -222,6 +222,18 @@
+ #define RV_SYSBUS_MEM_READ_ON_DATA  0x00008000U
+ #define RV_SYSBUS_STATUS_BUSY       0x00200000U
+ #define RV_SYSBUS_MEM_ACCESS_SHIFT  17U
++/* sbcs.sbbusy (bit 22): set while a system bus access is in progress. sbdata0 only holds the
++ * result of an access once that access has completed, so this is the bit that has to be seen
++ * clear before the data is taken (BMP 96). */
++#define RV_SYSBUS_STATUS_SBBUSY 0x00400000U
++/* The bits that make an access run ahead of itself: autoincrement moves the address on, and
++ * read-on-data makes every sbdata0 read trigger -- and answer -- a further access. A request
++ * that does not ask for them must not find them armed. */
++#define RV_SYSBUS_ARMED_BITS (RV_SYSBUS_MEM_ADDR_POST_INC | RV_SYSBUS_MEM_READ_ON_DATA)
++/* Handshake bounds: long enough to cover a slow (flash) access, short enough to hand back to
++ * the caller when the debug module is wedged instead of hanging the probe. */
++#define RV_SYSBUS_IDLE_SPINS    10000U
++#define RV_SYSBUS_PROGRAM_TRIES 8U
+ 
+ /* dpc -> Debug Program Counter */
+ #define RV_DPC 0x7b1U

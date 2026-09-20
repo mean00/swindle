@@ -1,0 +1,103 @@
+# 101blackmagic_riscv_reset_halt_request.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# riscv_fault.md, the audit of this stack against RISC-V External Debug Support v0.13.2,
+# reports F3: 'reset halt' does not stop at the reset vector.
+#
+# Spec 3.4 - and 3.2 about reset - says "When a hart comes out of reset and haltreq or
+# resethaltreq are set, the hart will immediately enter Debug Mode". riscv_reset() instead
+# released the reset first (nRST, or ndmreset for a part with TOPT_INHIBIT_NRST, which the
+# CH32V003 sets) and only asked for the halt at the very end, through riscv_halt_request().
+# Between those two points the hart runs from the reset vector: at 8-48MHz on this target,
+# over a ~37us SDI frame, that is hundreds to thousands of instructions of the target's
+# startup code, so 'monitor reset halt' lands somewhere inside it.
+#
+# The part offers no alternative: sdi.txt Table 3-4 shows dmcontrol[29] and dmcontrol[27:2] as
+# Reserved, i.e. neither resethaltreq nor setresethaltreq/clrresethaltreq exist on it, so haltreq
+# is the only mechanism available and it has to be set when the hart leaves reset. (Note the
+# vendor's own reset recipe, sdi.txt Table 3-17, halts the core first and clears haltreq before
+# asking for the reset; it does not claim to halt the hart *on* the reset.)
+#
+# FIX
+# ---
+# Set haltreq before the reset is triggered, and hold it across the reset, the ackhavereset
+# acknowledgement and the DM re-activation that follows nRST (nRST resets the Debug Module
+# itself, so on that path the request has to be made again as soon as the DM is back).
+# riscv_halt_request() still runs last: if a part ignores haltreq until after the reset, the
+# behaviour is unchanged, and it is what clears the request once the hart has actually halted.
+#
+# EVIDENCE
+# --------
+# Not measured on hardware yet - it is one of the audit's open measurements: 'monitor reset
+# halt' followed by reading dpc should leave dpc at the reset vector / start of the startup
+# code instead of somewhere inside it. Build only so far: gd32f303_48_inv_ws2812, no new
+# warnings.
+#
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -1412,6 +1412,20 @@
+ {
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	bool has_reset = false;
++	/*
++	 * Request a halt before anything is reset. "When a hart comes out of reset and haltreq or
++	 * resethaltreq are set, the hart will immediately enter Debug Mode" (spec 3.4/3.2), and
++	 * ndmreset below resets everything *except* the Debug Module, so a request made here is
++	 * still there when the hart comes out of reset. Asking for the halt only afterwards - as
++	 * this function used to - leaves the hart running from the reset vector until the request
++	 * lands, which over SDI at 8-48MHz is hundreds to thousands of instructions of the target's
++	 * startup code, so 'monitor reset halt' does not stop at the entry point. The request is
++	 * dropped again by riscv_halt_request() at the end of this function, once the hart has
++	 * actually halted. Note this part implements neither resethaltreq nor the
++	 * setresethaltreq/clrresethaltreq bits (sdi.txt Table 3-4), so haltreq is the only mechanism
++	 * it offers; on a part that does implement them this is simply the same request made earlier.
++	 */
++	riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HALT_REQ);
+ 	/* If the target does not have the nRST pin inhibited, use that to initiate reset */
+ 	if (!(target->target_options & TOPT_INHIBIT_NRST)) {
+ 		platform_nrst_set_val(true);
+@@ -1423,15 +1437,18 @@
+ 		 * the old RV_DM_STAT_ALL_RESET poll burned the full 500 ms timeout on every
+ 		 * reset (twice: once here and once in the ndmreset fallback below). Instead,
+ 		 * wait for the DM to come back up and re-activate it, then treat nRST as the
+-		 * reset having happened.
++		 * reset having happened. Re-activating it is also the first chance to (re)assert
++		 * the halt request made above: nRST resets the Debug Module itself, so a request
++		 * made before it is gone with it.
+ 		 */
+ 		platform_timeout_s timeout;
+ 		platform_timeout_set(&timeout, 500U);
+ 		do {
+-			uint32_t control = RV_DM_CTRL_ACTIVE;
++			const uint32_t control = RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ;
++			uint32_t readback = control;
+ 			if (riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, control) &&
+-				riscv_dm_read(hart->dbg_module, RV_DM_CONTROL, &control) &&
+-				(control & RV_DM_CTRL_ACTIVE))
++				riscv_dm_read(hart->dbg_module, RV_DM_CONTROL, &readback) &&
++				(readback & RV_DM_CTRL_ACTIVE))
+ 				break;
+ 		} while (!platform_timeout_is_expired(&timeout));
+ 		has_reset = true;
+@@ -1442,13 +1459,15 @@
+ 	 * when reset is requested, use the ndmreset bit to perform a system reset
+ 	 */
+ 	if (!has_reset) {
+-		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_SYSTEM_RESET);
++		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL,
++			hart->hartsel | RV_DM_CTRL_SYSTEM_RESET | RV_DM_CTRL_HALT_REQ);
+ 		riscv_dm_poll_state(hart->dbg_module, RV_DM_STAT_ALL_RESET);
+-		/* Complete the reset by resetting ndmreset */
+-		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel);
++		/* Complete the reset by resetting ndmreset, holding the halt request across it */
++		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HALT_REQ);
+ 	}
+-	/* Acknowledge the reset */
+-	riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HART_ACK_RESET);
++	/* Acknowledge the reset, still holding the halt request */
++	riscv_dm_write(
++		hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HART_ACK_RESET | RV_DM_CTRL_HALT_REQ);
+ 	/* The debug domain may have been reset by nRST or ndmreset: invalidate any
+ 	 * AP CSW / DP-SELECT write caches held by the DMI bus (BMP 83). */
+ 	if (hart->dbg_module->dmi_bus->invalidate_caches)

@@ -1,0 +1,156 @@
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -1016,6 +1016,84 @@
+ 	riscv_csr_write(hart, RV_GPR_A1, &a1_save);
+ }
+ 
++/*
++ * BMP 98: confirmed reads.
++ *
++ * The debug module on these parts sometimes answers a read with the result of the
++ * transfer before it -- the command, or the DATA0 write behind the access, never
++ * landed -- while both `busy` and `cmderr` stay clear. No status bit a caller can
++ * poll reports the window, so the caller is handed the previous answer instead,
++ * which shows up as a word repeated that the request never asked for (measured as
++ * "case 5" of ch32v0x_silicon_tests/investigate_ch006.md, 36 repeated answers in
++ * one run 6 pass).
++ *
++ * Since nothing in the DM reports "this access ran", the element is confirmed the
++ * way the silicon tests validated: read it a second time and compare. Two passes
++ * that agree settle the element; when they disagree the element is re-issued
++ * (bounded) and the newest answer stands, which is what a single dropped transfer
++ * needs -- T11 measured the first pair bad and the third read right. Confirming a
++ * window with a second pass keeps a stalled transfer from costing the whole
++ * transfer and keeps the scratch buffer small; a window whose two passes disagree
++ * is then settled one element at a time, so an element that went wrong on its own
++ * is repaired as well.
++ *
++ * A dropped transfer can also fault instead of answering late, and a fault is not
++ * fatal either: the module is left either with a set command error -- which makes
++ * it ignore every command after it, so one dropped clear of that error turns into a
++ * whole section that faults -- or with an unreached address to blame. Both are
++ * recovered here by asking for the transfer again (bounded), and only a window that
++ * never settles passes the fault on to the caller.
++ */
++#define RV_READ_CONFIRM_WINDOW 128U
++#define RV_READ_CONFIRM_ELEMENT 4U /* the native RISC-V access unit, T11's confirmation granularity */
++#define RV_READ_CONFIRM_RETRIES 3U
++
++/*
++ * A dropped transfer does not only answer late: it can also leave the module with a set command
++ * error, which makes it ignore every command after it. `riscv_command_wait_complete` asks for
++ * that error to be cleared by a write, and writes are subject to the same defect, so the clear is
++ * asked for again until the module agrees it took; reading the register back is what tells the
++ * two apart -- a clear that landed, or a status that stays set and is then left for the caller.
++ */
++static void riscv32_clear_command_error(riscv_hart_s *const hart)
++{
++	for (size_t attempt = 0; attempt < RV_READ_CONFIRM_RETRIES; ++attempt) {
++		uint32_t status = 0;
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, RISCV_HART_OTHER << 8U))
++			return;
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status))
++			return;
++		if (!(status & (RISCV_HART_OTHER << 8U))) {
++			hart->status = RISCV_HART_NO_ERROR;
++			return;
++		}
++	}
++}
++
++/*
++ * One unconfirmed pass over a request, using whichever method this hart routes to.
++ * Returns false if the pass faulted, having left the module able to be asked again.
++ */
++static bool riscv32_mem_read_once(
++	riscv_hart_s *const hart, void *const dest, const target_addr64_t src, const size_t len)
++{
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
++		riscv32_sysbus_mem_read(hart, dest, (target_addr_t)src, len);
++		/* 85: a system-bus fault is recorded in the module's control/status, not in cmderr */
++		riscv_sysbus_check(hart);
++		return hart->status == RISCV_HART_NO_ERROR;
++	}
++
++	if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		riscv32_progbuf_mem_read(hart, dest, src, len);
++	else
++		riscv32_abstract_mem_read(hart, dest, src, len);
++	if (hart->status == RISCV_HART_NO_ERROR)
++		return true;
++	riscv32_clear_command_error(hart);
++	return false;
++}
++
+ void riscv32_mem_read(target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
+ {
+ 	/* If we're asked to do a 0-byte read, do nothing */
+@@ -1025,14 +1103,60 @@
+ 	}
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+-		riscv32_sysbus_mem_read(hart, dest, src, len);
+-		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
+-		riscv_sysbus_check(hart);
+-	} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+-		riscv32_progbuf_mem_read(hart, dest, src, len);
+-	else
+-		riscv32_abstract_mem_read(hart, dest, src, len);
++	/* Not `data`: the DEBUG_PROTO block below declares one of those itself */
++	uint8_t *const buf = (uint8_t *)dest;
++	/* BMP 98: read window by window, and only trust a window two passes agree on */
++	for (size_t offset = 0; offset < len; offset += RV_READ_CONFIRM_WINDOW) {
++		const size_t window = len - offset < RV_READ_CONFIRM_WINDOW ? len - offset : RV_READ_CONFIRM_WINDOW;
++		uint8_t *const window_data = buf + offset;
++		const target_addr64_t window_src = src + offset;
++		uint8_t retry[RV_READ_CONFIRM_WINDOW] = {0};
++		bool settled = false;
++		bool have_two_passes = false;
++
++		/*
++		 * A window is good once a pass has run without a fault and a second pass agrees with
++		 * it. A fault is not fatal in itself: a transfer that reached an address it should not
++		 * have (or left the command error set) is asked for again, and only a window that never
++		 * settles carries the fault on to the caller -- which is what a real bus error does.
++		 */
++		for (size_t attempt = 0; attempt < RV_READ_CONFIRM_RETRIES && !settled; ++attempt) {
++			if (!riscv32_mem_read_once(hart, window_data, window_src, window))
++				continue;
++			if (!riscv32_mem_read_once(hart, retry, window_src, window))
++				continue;
++			have_two_passes = true;
++			settled = !memcmp(window_data, retry, window);
++		}
++		if (settled)
++			continue;
++		/*
++		 * The two passes disagree: settle the elements they disagree about, one at a
++		 * time.  That is the granularity T11 measured -- an element read twice either
++		 * agrees, or its third read is the right one -- and an element the two passes
++		 * agree on is already settled, so a stale read costs a few accesses here
++		 * instead of re-reading the whole window element by element.
++		 */
++		for (size_t element = 0; element < window; element += RV_READ_CONFIRM_ELEMENT) {
++			const size_t element_len =
++				window - element < RV_READ_CONFIRM_ELEMENT ? window - element : RV_READ_CONFIRM_ELEMENT;
++			uint8_t *const element_data = window_data + element;
++			/* Both passes agree on this element: it is settled */
++			if (have_two_passes && !memcmp(element_data, retry + element, element_len))
++				continue;
++			const target_addr64_t element_src = window_src + element;
++			uint8_t element_buf[RV_READ_CONFIRM_ELEMENT];
++			for (size_t pass = 0; pass < RV_READ_CONFIRM_RETRIES; ++pass) {
++				if (!riscv32_mem_read_once(hart, element_buf, element_src, element_len))
++					continue;
++				/* Two reads of the element agree: it is settled */
++				if (!memcmp(element_data, element_buf, element_len))
++					break;
++				/* They disagree: keep the re-issued answer, which T11 measured as the good one */
++				memcpy(element_data, element_buf, element_len);
++			}
++		}
++	}
+ 
+ #if ENABLE_DEBUG
+ 	DEBUG_PROTO("%s: @ %08" PRIx32 " len %zu:", __func__, (uint32_t)src, len);
