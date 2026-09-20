@@ -21,6 +21,7 @@ option(SWINDLE_USE_USB "Use USB interface" ON)
 option(SWINDLE_USE_NETWORK "Use tcp/ip interface" OFF)
 option(LN_EXTERNAL_GENERATE "Build swindle as a subproject" OFF)
 option(LN_DISABLE_SWINDLE_LNIO "Disable optimized IO path and revert to BMP ones" OFF)
+option(SWINDLE_WITH_SDI "Build the WCH CH32V0xx single-wire (SDI) debug support" ON)
 #
 set(BMP_VERSION_BRANCH 1.10)
 set(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
