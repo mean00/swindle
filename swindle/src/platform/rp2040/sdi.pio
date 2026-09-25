@@ -11,15 +11,35 @@
 ;     released between the host's low pulses and the target drives the level.
 ;
 ; Bit encoding: logic 0 = long low + short high, logic 1 = short low + long high.
-; At the actual state-machine clock of 17.857 MHz (56 ns/cycle) one bit is 16-17
-; cycles (~896-952 ns), which gives:
-;   logic 1 -> low  4 cycles (224 ns) + high 12 cycles (672 ns)
-;   logic 0 -> low 12 cycles (672 ns) + high  5 cycles (280 ns)
+; At the actual state-machine clock of 17.857 MHz (56 ns/cycle) one bit is 18
+; cycles (1008 ns), which gives:
+;   logic 1 -> low  4 cycles (224 ns) + high 14 cycles (784 ns)
+;   logic 0 -> low 13 cycles (728 ns) + high  5 cycles (280 ns)
+; Read cells repeat the same 18-cycle grid: the probe's clock low is 4 cycles
+; (224 ns) and `in pins,1` samples 12 cycles (672 ns) after the falling edge, so
+; the target has 8 cycles (448 ns) to answer.
+;
+; This is the LN's zero-loss waveform (its bit-bang tap at 1000/250/750/687 ns
+; measured 0 wrong words in 1856, while the same tap running this program's
+; previous 896/224/672/616 family measured 51, sdi_ln_plan.md 12.9.6/20.2) mapped
+; onto the 56 ns grid. Worst mapping error 34 ns:
+;   | quantity | LN zero-loss | here          |
+;   | cell     | 1000         | 18 cyc = 1008 |
+;   | 1 low    | 250          |  4 cyc =  224 |
+;   | 1 high   | 750          | 14 cyc =  784 |
+;   | 0 low    | 750          | 13 cyc =  728 |
+;   | 0 high   | 250          |  5 cyc =  280 |
+;   | sample   | 687          | 12 cyc =  672 |
+;   | window   | 437          |  8 cyc =  448 |
+; The sample and the 0-low are deliberately *not* the previous 560 ns / 672 ns:
+; they keep the zero-loss proportions (44 % and 72 % of the cell) instead of
+; shrinking against a longer cell (33 % and 67 %).
+;
 ; Spec windows (section 2.2) for fast 1x, T = 125 ns (CH32V003 debug clock =
 ; 24 MHz / 3 = 8 MHz, section 2.4 note):
-;   logic 1 low  in (T, 2T)   = (125, 250)  -> 224 ns, only 26 ns under the ceiling
-;   logic 1 high in (T, 8T)   = (125, 1000) -> 672 ns
-;   logic 0 low  in (4T, 32T) = (500, 4000) -> 672 ns
+;   logic 1 low  in (T, 2T)   = (125, 250)  -> 224 ns, 26 ns under the ceiling
+;   logic 1 high in (T, 8T)   = (125, 1000) -> 784 ns
+;   logic 0 low  in (4T, 32T) = (500, 4000) -> 728 ns
 ;   logic 0 high in (T, 8T)   = (125, 1000) -> 280 ns
 ;
 ; The 4-cycle logic-1 low is the tight one (margin < 1 cycle) and it is
@@ -27,10 +47,28 @@
 ;   - the clock: rpPIO_SM::setSpeed() floors the divider, 125/16 -> 7 -> 17.857 MHz,
 ;     which is what makes that low 224 ns. A /8 divider (15.625 MHz) gives 256 ns
 ;     and leaves the window.
-;   - the [1] / [9] / [7] / [2] deltas below, which set the 4/12-cycle split.
-; The clock must not be raised much either: the logic-0 low (12 cycles) has to stay
-; above 4T = 500 ns, i.e. the state machine must stay below ~24 MHz. Valid band is
-; roughly 16-24 MHz; 17.857 MHz is the validated point and sits at the low end.
+;   - the [1] / [8] / [9] / [1] / [2] deltas below, which set the 4/13-cycle low
+;     split and the 18-cycle cell.
+; The clock must not be raised much either: the logic-0 low (13 cycles) has to stay
+; above 4T = 500 ns, i.e. the state machine must stay below ~26 MHz. Valid band is
+; roughly 17-26 MHz; 17.857 MHz is the validated point and sits at the low end.
+;
+; Frame entry: every cell's low must start on the `set pins, 0 [1]` (tx) or on
+; `rx_loop`'s `set pindirs, 1` (rx), never on the instruction that arms the driver.
+; Arming while the latch still held the previous frame's level used to make the
+; start bit's low 5 cycles = 280 ns (outside (T, 2T)) after a read frame, and the
+; first read cell's low the same. `start` therefore sets the latch to the idle
+; level before arming, and `do_read` releases the driver before re-basing the
+; latch, so the frame's first cell is shaped like every other one.
+;
+; Write seam: the 9th header bit is R/W = 1, and the fall-through to the payload
+; (`mov x,isr` + `jmp !x` + `jmp !osre` + `pull` + `set y,31` + `jmp tx_loop` = 6
+; cycles) holds the wire high for 14 + 6 = 20 cycles = 1120 ns = 8.96T. That is
+; past the (T, 8T] data-high window but short of the 10T = 1250 ns stop threshold
+; (the target stops on 10 *consecutive* high samples of its 8 MHz debug clock), so
+; it is not a stop; it is what caps this cell at 18 cycles - two more delay cycles
+; would make it 1232 ns, 18 ns from the stop - and it holds only because `pull`
+; does not stall: sdi_write() pushes word 2 2 us into a 9.07 us header.
 ;
 ; Time base caveat: nothing here reads the time base back. The interface is
 ; configured by one validated word pair (bmp_sdiTap_rp2040.cpp::sdi_reset()),
@@ -40,10 +78,13 @@
 ; logic-1 low is illegal under normal 2x, whose window is (250, 1000) ns. CPBR.TDIV
 ; is read for information only and answers 0b11 ("reserved") on this silicon.
 ;
-; RX caveat: `in pins,1` samples ~560-616 ns into the bit, i.e. past 4T = 500 ns,
+; RX caveat: `in pins,1` samples 672 ns into the bit, i.e. well past 4T = 500 ns,
 ; the earliest a compliant slave may release a data-0 low - a part driving the
-; minimum 4T would read back as 1. The manual does not describe the read-response
-; timing at all, so this is only settleable with a scope, not from the text.
+; minimum 4T would read back as 1. It is the LN's zero-loss sample position (687 ns
+; from the falling edge) and the CH32V003 holds a data-0 low longer than that
+; (measured 0/1856 on the LN), which is why the sample moved with the cell. The
+; manual does not describe the read-response timing at all, so this is only
+; settleable with a scope, not from the text.
 ;
 .program sdi
 
@@ -52,19 +93,20 @@ start:
     out x, 1            ; Consume the flag (never transmitted); x = sentinel bit
     mov isr, x          ; Save Mode to ISR
     set y, 8            ; 9-bit Header loop count
-    set pindirs, 1      ; Ensure pin is output
+    set pins, 1         ; Latch = idle level, so arming the driver cannot pull low
+    set pindirs, 1      ; Ensure pin is output (drives the latch, i.e. the idle high)
 tx_loop:
-    set pins, 0 [1]     ; Drive LOW: 4 cycles for a 1 bit, 12 cycles for a 0 bit
+    set pins, 0 [1]     ; Drive LOW: 4 cycles for a 1 bit, 13 cycles for a 0 bit
     out x, 1            ; Extract data bit
     jmp !x, tx_0
 tx_1:
-    set pins, 1 [9]     ; HIGH for the rest of the cell: 12 cycles ~ 672ns
+    set pins, 1 [9]     ; HIGH for the rest of the cell: 14 cycles = 784 ns
     jmp loop_end
 tx_0:
-    nop [7]             ; Hold the long low: 12 cycles total ~ 672ns
-    set pins, 1 [2]     ; HIGH for 5 cycles ~ 280ns (still >= T)
+    nop [8]             ; Hold the long low: 13 cycles total = 728 ns
+    set pins, 1 [1]     ; HIGH for 5 cycles = 280 ns (still >= T)
 loop_end:
-    jmp y--, tx_loop    ; one bit = 16-17 cycles ~ 896-952ns
+    jmp y--, tx_loop [2]; one bit = 18 cycles = 1008 ns
     
     ; Transmit sub-phase complete. Read Mode flag.
     mov x, isr          
@@ -81,12 +123,13 @@ next_word:
     
 do_read:
     set y, 31
+    set pindirs, 0      ; Release first: the entry cell must fall on rx_loop's drive
     set pins, 0         ; Prepare internal pin state for open-drain toggling
 rx_loop:
-    set pindirs, 1 [3]  ; Host drives LOW for 4 cycles (~224ns, >= T)
-    set pindirs, 0 [5]  ; Release the wire; the target drives it for 6 cycles
-    in pins, 1          ; Sample on cycle 11 of the bit (~616ns @17.86MHz)
-    jmp y--, rx_loop [4]; Pad the bit cell to 16 cycles (~896ns)
+    set pindirs, 1 [3]  ; Host drives LOW for 4 cycles (224 ns, >= T)
+    set pindirs, 0 [7]  ; Release the wire; the target drives it, sampled 8 cycles on
+    in pins, 1          ; Sample on cycle 12 of the bit (672 ns @17.86 MHz)
+    jmp y--, rx_loop [4]; Pad the bit cell to 18 cycles (1008 ns)
     
     push block
     ; Implicit wrap to start

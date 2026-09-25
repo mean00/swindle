@@ -39,7 +39,7 @@ extern rpPIO_SM *xsm;
  * logic-1 low comes out at 224 ns, just under the fast-1x ceiling of 2T = 250 ns
  * (a /8 divider, 15.625 MHz, would stretch it to 256 ns and break the window).
  * Do not round this request up or change clk_sys without re-checking sdi.pio,
- * which carries the window table and the ~16-24 MHz valid band. */
+ * which carries the window table and the ~17-26 MHz valid band. */
 #define SDI_PIO_FREQUENCY_HZ 16000000U
 static void setupSDI()
 {

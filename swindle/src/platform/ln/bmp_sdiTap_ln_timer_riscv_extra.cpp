@@ -42,11 +42,12 @@ extern "C"
 #include "sdi_template.h"
 }
 
-#define SDI_TBIT_NS 1200u // was 1000u
+#define SDI_TBIT_NS 1200u
 #define SDI_LOW1_NS 250u
 #define SDI_LOW0_NS 900u
 #define SDI_RX_SAMPLE_NS 625u
 #define TIMER_TO_USE 4 // Remember then our timer starts at 0, not 1 so this is timer6 for STM32
+
 static lnTimerWatch *sdi_watch = NULL;
 static uint32_t sdi_ticks_per_us = 0;
 
@@ -123,6 +124,29 @@ static void sdiConfigureTiming()
            (unsigned)sdi_ticks_low1, (unsigned)sdi_ticks_low0, (unsigned)sdi_ticks_sample, (unsigned)sdi_ticks_tbit);
 }
 
+/* ---- The data pad (PB8) and the level shifter's direction (PC3) ----------------
+ *
+ * Two independent things, and they must not be mixed up:
+ *
+ *   the pad's mode (lnPinMode)  who owns the wire decides it. While the probe
+ *       drives a cell (a read frame's header, a whole write frame) the pad is
+ *       push-pull: it is the probe's own driver that makes the HIGH, because the
+ *       SDI data line has no pull-up - a pad let go of is a floating wire, not a
+ *       HIGH, so an open drain *header* sends nothing the target can decode. For
+ *       the response cells the pad is open drain instead: the probe sinks the
+ *       read clock's LOW and lets go for the sample, and the target drives the
+ *       bit it answers with.
+ *   DIR (PC3)                   the level shifter's direction, driven by
+ *       sdiOutput() / sdiInput(). It follows the same rule - probe side while the
+ *       probe drives (from a cell's LOW to its release, and for a whole write
+ *       frame), target side from a response cell's release to its sample - and is
+ *       a no-op on a board without the shifter.
+ *
+ * Only the output bit changes inside a cell (sdiPadLow/sdiPadRelease write the
+ * pad's BOP register, sdiReadPad() loads its input register), so a cell costs two
+ * stores and a load whatever the pad's mode is: sdiPadRelease() means "drive the
+ * wire HIGH" to a push-pull pad and "let the wire go" to an open drain one.
+ */
 static inline LN_ALWAYS_INLINE void sdiOutput()
 {
     rSWDIO->_fastdir.on();

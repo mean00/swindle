@@ -11,14 +11,19 @@
 # protocol layer defines), on the same wire (PB8/PC3) and over the same protocol
 # layer (swindle/src/template/sdi_template.h), so exactly one of them is built:
 #
+#   bmp_sdiTap_ln_timer_riscv_extra.cpp
+#                              timer polled: lnTimerWatch times the cells and the
+#                              CPU bit-bangs both frames against it, the pad being
+#                              push-pull while the probe drives and open drain for
+#                              the response cells. This is the one that is built
+#                              (SDI_SOURCES below).
 #   bmp_sdiTap_ln_bitbang_riscv_extra.cpp
 #                              CPU only: every edge of both frames is made by the
 #                              CPU, with a counted NOP loop as the clock. No timer
 #                              channel, no DMA, and nothing that can block (the
 #                              DMA path can park in lnDMA::beginTransfer()'s
 #                              channel mutex while running with interrupts masked
-#                              - see the file header). This is the one that is
-#                              built.
+#                              - see the file header).
 #   bmp_sdiTap_ln_riscv_extra.cpp
 #                              the timer driven carrier: one compare event per
 #                              cell, the per-cell duty written by the CPU a
