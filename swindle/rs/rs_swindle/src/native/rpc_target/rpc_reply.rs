@@ -26,7 +26,9 @@ use core::ptr::addr_of_mut;
 // DF -- not thread safe, not re-entrant,ugly but simple
 // Large enough for RPC reply encoding + ADIV5 mem_read/write data buffers
 const REPLY_TEMP_BUFFER_SIZE: usize = 1024;
-static mut temp_buffer: [u8; REPLY_TEMP_BUFFER_SIZE] = [0; REPLY_TEMP_BUFFER_SIZE];
+#[repr(align(4))]
+struct AlignedBuffer([u8; REPLY_TEMP_BUFFER_SIZE]);
+static mut temp_buffer: AlignedBuffer = AlignedBuffer([0; REPLY_TEMP_BUFFER_SIZE]);
 
 setup_log!(false);
 //use crate::{bmplog, bmpwarning};
@@ -40,7 +42,7 @@ pub struct rpc_reply_encoder {
 // only in a single shot
 
 pub(crate) fn get_temp_buffer() -> &'static mut [u8] {
-    unsafe { &mut *addr_of_mut!(temp_buffer) }
+    unsafe { &mut *addr_of_mut!(temp_buffer.0) }
 }
 
 // C-exported accessor for the scratch buffer above. Same single-shot scratch

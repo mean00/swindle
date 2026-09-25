@@ -32,7 +32,9 @@ use core::ptr::addr_of_mut;
 
 // DF -- not thread safe, not re-entrant,ugly but simple
 const TEMP_BUFFER_SIZE: usize = 64;
-static mut temp_buffer: [u8; TEMP_BUFFER_SIZE] = [0; TEMP_BUFFER_SIZE];
+#[repr(align(4))]
+struct AlignedBuffer([u8; TEMP_BUFFER_SIZE]);
+static mut temp_buffer: AlignedBuffer = AlignedBuffer([0; TEMP_BUFFER_SIZE]);
 
 setup_log!(false);
 //use crate::{bmplog, bmpwarning};
@@ -54,7 +56,7 @@ pub struct encoder {
 ///
 /// Not thread-safe — intended for single-shot use within the GDB stub.
 fn get_temp_buffer() -> &'static mut [u8] {
-    unsafe { &mut *addr_of_mut!(temp_buffer) }
+    unsafe { &mut *addr_of_mut!(temp_buffer.0) }
 }
 //
 //
