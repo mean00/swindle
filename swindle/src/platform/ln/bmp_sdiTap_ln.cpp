@@ -57,6 +57,7 @@ static uint32_t sdi_ticks_sample;
 static uint32_t sdi_ticks_tbit;
 static bool sdiTimingDone = false;
 static bool sdiMode = false;
+static bool sdiEntryLogged = false;
 
 struct SdiWire
 {
@@ -126,42 +127,46 @@ static void sdiConfigureTiming()
 
 /* ---- The data pad (PB8) and the level shifter's direction (PC3) ----------------
  *
- * Two independent things, and they must not be mixed up:
- *
- *   the pad's mode (lnPinMode)  who owns the wire decides it. While the probe
- *       drives a cell (a read frame's header, a whole write frame) the pad is
- *       push-pull: it is the probe's own driver that makes the HIGH, because the
- *       SDI data line has no pull-up - a pad let go of is a floating wire, not a
- *       HIGH, so an open drain *header* sends nothing the target can decode. For
- *       the response cells the pad is open drain instead: the probe sinks the
- *       read clock's LOW and lets go for the sample, and the target drives the
- *       bit it answers with.
- *   DIR (PC3)                   the level shifter's direction, driven by
- *       sdiOutput() / sdiInput(). It follows the same rule - probe side while the
- *       probe drives (from a cell's LOW to its release, and for a whole write
- *       frame), target side from a response cell's release to its sample - and is
- *       a no-op on a board without the shifter.
+ * The pad is an open drain for the whole SDI session. sdiPadOpenDrain() writes
+ * lnOUTPUT_OPEN_DRAIN once, on pin-mode entry and on leave (both through
+ * sdiPark()), and no frame and no cell ever writes the mode again: every LOW the
+ * probe makes is sunk by the pad's N-MOS (sdiPadLow(), ODR = 0) and every HIGH is
+ * made by the wire's pull-up once the pad lets go (sdiPadRelease(), ODR = 1 =
+ * high-Z). Releasing is therefore never an input-mode switch - the pad stays an
+ * output and the line's level is read while it does.
  *
  * Only the output bit changes inside a cell (sdiPadLow/sdiPadRelease write the
- * pad's BOP register, sdiReadPad() loads its input register), so a cell costs two
- * stores and a load whatever the pad's mode is: sdiPadRelease() means "drive the
- * wire HIGH" to a push-pull pad and "let the wire go" to an open drain one.
+ * pad's BOP register, sdiReadPad() loads the *input status* register, which keeps
+ * following the pin in output mode), so a cell costs two stores and a load
+ * whatever the line does. Reading the output-control register instead would read
+ * back our own released bit, i.e. a permanent 1 - that is the register trap of an
+ * open drain read, and it is why sdiReadPad() must stay on the input status.
+ *
+ * The consequence worth remembering: with the pad push-pull gone, the probe-driven
+ * cells (a read frame's header, a whole write frame) rise through that same
+ * pull-up, so pure open drain needs the wire to have one. sdiLogEntry() reports,
+ * once per boot, the released and sunk levels of the wire.
+ *
+ * DIR (PC3) is a separate pin and a separate concern: probe side while the probe
+ * drives (a cell's LOW, the whole write path), target side from a response cell's
+ * release to its sample, driven by sdiLevelShifterAsOutput() / sdiLevelShifterAsInput().
+ * Only its level changes - it is an output from the board's constructor on - and it is
+ * a no-op on a board without the shifter.
  */
-static inline LN_ALWAYS_INLINE void sdiOutput()
+static inline LN_ALWAYS_INLINE void sdiLevelShifterAsOutput()
 {
     rSWDIO->_fastdir.on();
 }
-static inline LN_ALWAYS_INLINE void sdiInput()
+static inline LN_ALWAYS_INLINE void sdiLevelShifterAsInput()
 {
     rSWDIO->_fastdir.off();
 }
-static inline LN_ALWAYS_INLINE void sdiPadDriven()
-{
-    lnPinMode(SDI_DATA_PIN, lnOUTPUT, SWD_IO_SPEED);
-}
+/* The only pin-mode write of an SDI session: open drain at the same slew rate the
+ * SWD pad uses, with ODR = 1 already set by sdiPark() so the pad is released the
+ * instant it becomes an output. Nothing in a frame or a cell writes it again. */
 static inline LN_ALWAYS_INLINE void sdiPadOpenDrain()
 {
-    lnPinMode(SDI_DATA_PIN, lnOUTPUT_OPEN_DRAIN, 1);
+    lnPinMode(SDI_DATA_PIN, lnOUTPUT_OPEN_DRAIN, SWD_IO_SPEED);
 }
 static inline LN_ALWAYS_INLINE void sdiPadLow()
 {
@@ -176,10 +181,53 @@ static inline LN_ALWAYS_INLINE bool sdiReadPad()
     return rSWDIO->_fast.read();
 }
 
+/* ---- One-shot entry diagnostic ---------------------------------------------
+ *
+ * Three facts, read once per boot at pin-mode entry, that decide whether a pure
+ * open drain session can work at all:
+ *
+ *   released    the level a *released* pad sees. It is 1 only if the wire has a
+ *               pull-up; with no target attached a 0 here means the probe-driven
+ *               HIGHs of a read header / write frame cannot be made at all, and the
+ *               fix is hardware, not a timing knob.
+ *   sunk        the level the pad pulls the wire to (one short pull, then released
+ *               again). A 0 proves the pad really is an output that drives the wire
+ *               - a pad left in input mode would read 1 released *and* 1 sunk, and
+ *               would sink nothing, which is exactly the failure this session mode
+ *               must not have.
+ *   DIR         the shifter's level, i.e. whether the pad is connected to the wire
+ *               at all while the two levels above are measured (its mode is set by
+ *               the board's constructor; SDI only changes its value). 1 = probe
+ *               side, which is where sdiPark() leaves it.
+ *
+ * Both levels come from the input-status register, the same one sdiReadPad() uses,
+ * so the reading is the one a response cell sees. The pad's mode *nibble* is not
+ * reported on purpose: esprit declares lnGetGpioDirectionRegister()/lnReadPort()
+ * with a uint32_t port but defines them with an int one, so the mangled names
+ * differ and the declarations in lnGPIO.h cannot be linked against. The mode needs
+ * no reader anyway - sdiPadOpenDrain() is the only writer and asks for
+ * lnOUTPUT_OPEN_DRAIN explicitly.
+ */
+static void sdiLogEntry()
+{
+    const bool released = sdiReadPad();
+
+    sdiPadLow();
+    lnDelayUs(1);
+    const bool sunk = sdiReadPad();
+    sdiPadRelease();
+
+    Logger("SDI : entry : pad %u, released %u, sunk %u, DIR %u\n", (unsigned)SDI_DATA_PIN, released ? 1U : 0U,
+           sunk ? 1U : 0U, rSWDIO->_fastdir.read() ? 1U : 0U);
+}
+
+/* The single place the pad's mode is written: let go of the wire first (ODR = 1, so
+ * the mode change cannot sink it), point the shifter at the probe, then make the pad
+ * an open drain and leave it that way for the whole session. */
 static void sdiPark()
 {
     sdiPadRelease();
-    sdiOutput();
+    sdiLevelShifterAsOutput();
     sdiPadOpenDrain();
 }
 
@@ -196,6 +244,12 @@ void sdi_pinmode_enter()
         sdiTimingDone = true;
     }
     sdiMode = true;
+
+    if (!sdiEntryLogged)
+    {
+        sdiLogEntry();
+        sdiEntryLogged = true;
+    }
 }
 
 void sdi_pinmode_leave()
@@ -246,11 +300,11 @@ static uint32_t sdiSampleWord()
     for (int i = 0; i < SDI_WORD_BITS; i++)
     {
         sdi_watch->start();
-        sdiOutput();
+        sdiLevelShifterAsOutput();
         sdiPadLow();
         sdi_watch->wait(sdi_ticks_low1);
         sdiPadRelease();
-        sdiInput();
+        sdiLevelShifterAsInput();
         sdi_watch->wait(sdi_ticks_sample);
         word = (word << 1) | (sdiReadPad() ? 1U : 0U);
         sdi_watch->wait(sdi_ticks_tbit);
@@ -261,8 +315,7 @@ static uint32_t sdiSampleWord()
 static void sdiWriteFrame(const uint8_t adr, const uint32_t data)
 {
     lnNoInterrupt();
-    sdiPadDriven();
-    sdiOutput();
+    sdiLevelShifterAsOutput(); // shifter -> probe; the pad is already an open drain
 
     sdiSendHeader(adr, SDI_WRITE_FLAG);
     sdiSendWord(data);
@@ -278,16 +331,17 @@ static uint32_t sdiReadFrame(const uint8_t adr)
     uint32_t word;
 
     lnNoInterrupt();
-    sdiPadDriven();
-    sdiOutput();
+    sdiLevelShifterAsOutput(); // shifter -> probe for the header; the pad is already an open drain
 
     sdiSendHeader(adr, SDI_READ_FLAG);
 
-    sdiPadOpenDrain();
+    /* The pad stays an open drain across the header/response boundary: the header
+     * cells are the probe's, the response cells are the target's, and only the
+     * output bit and DIR change between the two. */
     word = sdiSampleWord();
 
     sdiPadRelease();
-    sdiOutput();
+    sdiLevelShifterAsOutput();
     lnInterrupts();
 
     return word;
