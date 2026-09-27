@@ -3327,6 +3327,12 @@
 		(uuid "c3629362-b066-4de5-a79b-59ad1c44c21e")
 	)
 	(junction
+		(at 128.27 130.81)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "df5d3ab9-41da-4ab3-a8ce-112cdf09b7e5")
+	)
+	(junction
 		(at 66.04 62.23)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3337,6 +3343,16 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "fd061278-b01d-4813-9a62-5857357f6e3d")
+	)
+	(wire
+		(pts
+			(xy 147.32 128.27) (xy 152.4 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "01ffb817-b763-48c8-8d9d-a448f4200483")
 	)
 	(wire
 		(pts
@@ -3427,6 +3443,16 @@
 			(type default)
 		)
 		(uuid "2f3c6578-c4dc-4a42-9250-435bf1a393b4")
+	)
+	(wire
+		(pts
+			(xy 128.27 130.81) (xy 138.43 130.81)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "32acafac-e1e9-4da0-b478-36a610b140f1")
 	)
 	(wire
 		(pts
@@ -3820,13 +3846,23 @@
 	)
 	(wire
 		(pts
-			(xy 128.27 128.27) (xy 128.27 135.89)
+			(xy 86.36 128.27) (xy 147.32 128.27)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "851bce0f-2eda-4d79-bd70-fb232aa8633e")
+		(uuid "86caa5cc-af08-4b70-bf44-5fef43129265")
+	)
+	(wire
+		(pts
+			(xy 128.27 135.89) (xy 128.27 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "88451de9-babe-4e0e-9891-d3ec26c2fd38")
 	)
 	(wire
 		(pts
@@ -4140,23 +4176,13 @@
 	)
 	(wire
 		(pts
-			(xy 128.27 138.43) (xy 128.27 144.78)
+			(xy 152.4 119.38) (xy 152.4 113.03)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "cbda25a7-b229-4b00-bd8d-fef04ef77bce")
-	)
-	(wire
-		(pts
-			(xy 86.36 128.27) (xy 128.27 128.27)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ce5e6d6d-e124-4b16-ad29-a196611fcba5")
 	)
 	(wire
 		(pts
@@ -4250,7 +4276,7 @@
 	)
 	(wire
 		(pts
-			(xy 86.36 130.81) (xy 88.9 130.81)
+			(xy 86.36 130.81) (xy 128.27 130.81)
 		)
 		(stroke
 			(width 0)
@@ -4914,7 +4940,7 @@
 	)
 	(global_label "OUT_SWDIO_3V"
 		(shape output)
-		(at 88.9 130.81 0)
+		(at 138.43 130.81 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -4924,7 +4950,7 @@
 		)
 		(uuid "a4275755-7e17-403a-bba6-38e5df2af5e7")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 105.6133 130.81 0)
+			(at 155.1433 130.81 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4938,17 +4964,17 @@
 	)
 	(global_label "IN_FORCE_DFU"
 		(shape input)
-		(at 106.68 128.27 0)
+		(at 106.68 128.27 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "ad62353f-15ed-4bf0-8124-9e01686337ce")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 123.3329 128.27 0)
+			(at 90.0271 128.27 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4956,7 +4982,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 	)
@@ -5580,7 +5606,7 @@
 	)
 	(symbol
 		(lib_id "Device:R_Small")
-		(at 128.27 147.32 0)
+		(at 152.4 110.49 180)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5590,7 +5616,7 @@
 		(dnp no)
 		(uuid "1f29626b-032b-4c3a-81e4-7db7583d1261")
 		(property "Reference" "R1"
-			(at 122.936 144.272 0)
+			(at 157.734 113.538 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5601,7 +5627,7 @@
 			)
 		)
 		(property "Value" "1k"
-			(at 123.19 146.304 0)
+			(at 157.48 111.506 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5612,7 +5638,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 128.27 147.32 0)
+			(at 152.4 110.49 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5623,7 +5649,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 128.27 147.32 0)
+			(at 152.4 110.49 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5634,7 +5660,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 128.27 147.32 0)
+			(at 152.4 110.49 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6072,6 +6098,84 @@
 			(project "swindle_ch32_revJ_mini"
 				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
 					(reference "D1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3.3V")
+		(at 128.27 137.16 0)
+		(mirror x)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "46b8b952-5ece-4fc6-9459-ff0c00321e35")
+		(property "Reference" "#PWR027"
+			(at 128.27 133.35 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 128.27 142.24 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 128.27 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 128.27 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 128.27 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "5197dbfc-7c79-45b4-be3b-61c87e85953b")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "#PWR027")
 					(unit 1)
 				)
 			)
@@ -7216,6 +7320,87 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R_Small")
+		(at 128.27 133.35 180)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "870d6960-ddd0-411c-9584-963b113ee75b")
+		(property "Reference" "R12"
+			(at 133.604 136.398 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1k"
+			(at 133.35 134.366 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 128.27 133.35 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 128.27 133.35 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 128.27 133.35 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "b42271e5-8efb-42e6-9a18-0bcf0c86a463")
+		)
+		(pin "2"
+			(uuid "9567dd2d-8004-49f7-8f44-81eae8a0f334")
+		)
+		(instances
+			(project "swindle_ch32_revJ_mini"
+				(path "/fbe443d6-6d74-4abc-9dee-16e0160553bc"
+					(reference "R12")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+3.3V")
 		(at 30.48 72.39 0)
 		(mirror y)
@@ -7454,7 +7639,7 @@
 	)
 	(symbol
 		(lib_id "Connector:Conn_01x02_Pin")
-		(at 123.19 135.89 0)
+		(at 157.48 121.92 180)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7464,7 +7649,7 @@
 		(dnp no)
 		(uuid "9ea8790d-2ce7-41a6-b502-4bc5c7891421")
 		(property "Reference" "J2_DFU1"
-			(at 123.825 130.81 0)
+			(at 156.845 127 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7474,7 +7659,7 @@
 			)
 		)
 		(property "Value" "con2"
-			(at 117.602 140.208 0)
+			(at 163.068 117.602 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7484,7 +7669,7 @@
 			)
 		)
 		(property "Footprint" "Connector_PinHeader_1.27mm:PinHeader_1x02_P1.27mm_Vertical"
-			(at 123.19 135.89 0)
+			(at 157.48 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7495,7 +7680,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 123.19 135.89 0)
+			(at 157.48 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7506,7 +7691,7 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x02, script generated"
-			(at 123.19 135.89 0)
+			(at 157.48 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8171,7 +8356,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 128.27 149.86 0)
+		(at 152.4 107.95 180)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8181,7 +8366,7 @@
 		(dnp no)
 		(uuid "da7f2f7c-9723-4c2e-a831-3ddd46ab766f")
 		(property "Reference" "#PWR018"
-			(at 128.27 156.21 0)
+			(at 152.4 101.6 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8192,7 +8377,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 123.698 150.368 0)
+			(at 156.972 107.442 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8202,7 +8387,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 128.27 149.86 0)
+			(at 152.4 107.95 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8213,7 +8398,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 128.27 149.86 0)
+			(at 152.4 107.95 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8224,7 +8409,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 128.27 149.86 0)
+			(at 152.4 107.95 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

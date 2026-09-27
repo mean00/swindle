@@ -110,6 +110,10 @@
           ""
         ],
         [
+          "starved_thermal|126755425|70795375|e2aeda1a-289f-44e9-9c5b-c81df07cbc23|739b2df5-4f4a-4663-afcd-ca0633c304d4|F.Cu",
+          ""
+        ],
+        [
           "starved_thermal|148455025|94174975|e2aeda1a-289f-44e9-9c5b-c81df07cbc23|456ed133-2275-4bff-bcc0-d42ace39e616|F.Cu",
           ""
         ],
@@ -712,7 +716,7 @@
         "uuid": "fbe443d6-6d74-4abc-9dee-16e0160553bc"
       }
     ],
-    "used_designators": "J3_BL1,#PWR25-26,J2_DFU2",
+    "used_designators": "J3_BL1,#PWR25-27,R12,J2_DFU2",
     "variants": []
   },
   "sheets": [
