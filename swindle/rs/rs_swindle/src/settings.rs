@@ -13,6 +13,7 @@
 use crate::setting_keys::MAX_SETTING_ENTRIES;
 use crate::setting_keys::SW_TOKEN_SIZE;
 use arraystring::{ArrayString, typenum::U32};
+#[cfg(not(feature = "fake_std"))]
 use core::mem::MaybeUninit;
 use heapless::LinearMap;
 type token = ArrayString<U32>;
@@ -43,6 +44,13 @@ impl swindle_settings {
 
 //--
 
+#[cfg(feature = "fake_std")]
+use rust_esprit::{LazyLock, Mutex};
+
+#[cfg(feature = "fake_std")]
+static SETTINGS: LazyLock<Mutex<swindle_settings>> = LazyLock::new(|| Mutex::new(swindle_settings::new()));
+
+#[cfg(not(feature = "fake_std"))]
 fn get_settings() -> &'static mut swindle_settings {
     static mut SETTINGS: MaybeUninit<swindle_settings> = MaybeUninit::uninit();
     static mut SETTINGS_INIT: bool = false;
@@ -54,15 +62,34 @@ fn get_settings() -> &'static mut swindle_settings {
         SETTINGS.assume_init_mut()
     }
 }
+
+#[cfg(feature = "fake_std")]
+fn with_settings<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut swindle_settings) -> R,
+{
+    let mut lock = SETTINGS.lock();
+    f(&mut lock)
+}
+
+#[cfg(not(feature = "fake_std"))]
+fn with_settings<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut swindle_settings) -> R,
+{
+    f(get_settings())
+}
+
 /// Print all settings to the GDB console.
 pub fn dump() {
-    let info = get_settings();
-    gdb_print!("Dumping settings \n");
-    for (key, value) in &info.hash {
-        gdb_println!("Key: ", key.as_str());
-        gdb_print!("Value:  ", *value);
-        gdb_println!("- Hex : ", Hex(*value as usize));
-    }
+    with_settings(|info| {
+        gdb_print!("Dumping settings \n");
+        for (key, value) in &info.hash {
+            gdb_println!("Key: ", key.as_str());
+            gdb_print!("Value:  ", *value);
+            gdb_println!("- Hex : ", Hex(*value as usize));
+        }
+    });
 }
 /// Convert a string key to a fixed-size token, truncating if necessary.
 fn to_token(key: &str) -> token {
@@ -75,32 +102,36 @@ fn to_token(key: &str) -> token {
 
 /// Set a setting value by key.
 pub fn set(k: &str, value: u32) {
-    let info = get_settings();
     let key: token = to_token(k);
-    if let Some(old_value) = info.hash.get_mut(&key) {
-        *old_value = value;
-    } else {
-        let _ = info.hash.insert(key, value);
-    }
+    with_settings(|info| {
+        if let Some(old_value) = info.hash.get_mut(&key) {
+            *old_value = value;
+        } else {
+            let _ = info.hash.insert(key, value);
+        }
+    });
 }
 /// Remove a setting by key. Returns `true` if the key existed.
 pub fn remove(k: &str) -> bool {
-    let info = get_settings();
     let key: token = to_token(k);
-    if info.hash.contains_key(&key) {
-        info.hash.remove(&key);
-        return true;
-    }
-    false
+    with_settings(|info| {
+        if info.hash.contains_key(&key) {
+            info.hash.remove(&key);
+            true
+        } else {
+            false
+        }
+    })
 }
 /// Get a setting value, returning `def` if the key is not found.
 pub fn get_or_default(k: &str, def: u32) -> u32 {
-    let info = get_settings();
     let key: token = to_token(k);
-    match info.hash.get(&key) {
-        Some(x) => *x,
-        None => def,
-    }
+    with_settings(|info| {
+        match info.hash.get(&key) {
+            Some(x) => *x,
+            None => def,
+        }
+    })
 }
 /// Force initialisation of the settings store.
 ///
@@ -108,7 +139,7 @@ pub fn get_or_default(k: &str, def: u32) -> u32 {
 /// ensures they are ready before any other code runs.
 pub fn init_settings() {
     // OnceLock initialises lazily on first access; this call forces it.
-    get_settings();
+    with_settings(|_| {});
 }
 // C interface
 

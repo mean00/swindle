@@ -23,7 +23,6 @@
 use crate::bmp;
 use crate::encoder::encoder;
 use crate::parsing_util;
-use alloc::vec::Vec;
 
 pub mod breakpoints;
 mod flash;
@@ -37,7 +36,6 @@ mod registers;
 pub mod run;
 pub mod symbols;
 mod v;
-use alloc::vec;
 use breakpoints::_Z;
 use breakpoints::_z;
 use flash::_flashv;
@@ -291,24 +289,25 @@ pub fn exec_one(tree: &[CommandTree], command: &[u8]) -> bool {
                     CallbackType::text(y) => {
                         let as_string = unsafe { core::str::from_utf8_unchecked(command) };
                         let prefix_size = c.command.len() + if c.start_separator != 0 { 1 } else { 0 };
-                        let mut conf: Vec<&str>;
+                        let mut conf_arr = [""; 4];
+                        let mut conf_len = 0;
                         if as_string.len() > prefix_size && c.next_separator != 0 {
-                            conf = as_string[prefix_size..].split(c.next_separator as char).collect();
-                        } else {
-                            if as_string.len() > prefix_size {
-                                conf = vec![&as_string[prefix_size..]];
-                            } else {
-                                conf = vec![];
+                            for (i, p) in as_string[prefix_size..].split(c.next_separator as char).enumerate() {
+                                if i < conf_arr.len() {
+                                    conf_arr[i] = parsing_util::chomp(p);
+                                    conf_len = i + 1;
+                                }
                             }
+                        } else if as_string.len() > prefix_size {
+                            conf_arr[0] = parsing_util::chomp(&as_string[prefix_size..]);
+                            conf_len = 1;
                         }
-                        for i in conf.iter_mut() {
-                            *i = parsing_util::chomp(i);
-                        }
+                        let conf = &conf_arr[..conf_len];
                         if conf.len() < c.min_args {
                             bmplog!("Wrong number of parameters\n");
                             return false;
                         }
-                        (y)(as_string, &conf)
+                        (y)(as_string, conf)
                     }
                     CallbackType::raw(x) => {
                         (x)(command)

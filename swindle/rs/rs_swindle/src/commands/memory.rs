@@ -89,11 +89,11 @@ pub fn _X(command: &[u8]) -> bool {
     }
     let semicolumn = coma + semicolumn_offset;
 
-    let addr_str = unsafe { core::str::from_utf8_unchecked(&command[1..coma]) };
-    let len_str = unsafe { core::str::from_utf8_unchecked(&command[(coma + 1)..semicolumn]) };
+    let addr_u8 = &command[1..coma];
+    let len_u8 = &command[(coma + 1)..semicolumn];
 
-    let address = ascii_string_hex_to_u32(addr_str);
-    let mut length = ascii_string_hex_to_u32(len_str) as usize;
+    let address = crate::parsing_util::u8s_string_to_u32(addr_u8);
+    let mut length = crate::parsing_util::u8s_string_to_u32(len_u8) as usize;
 
     let data = &command[(semicolumn + 1)..];
     bmplog!("buffer size :  {} bytes\n", data.len());

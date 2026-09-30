@@ -27,12 +27,12 @@ pub fn ascii_hex_to_u32(sin: &str) -> u32 {
 /// Convert a hex ASCII byte buffer to a byte array.
 ///
 /// e.g. `"00AABB"` => `[0x00, 0xAA, 0xBB]`
-pub fn u8_hex_string_to_u8s<'a>(sin: &'a [u8], sout: &'a mut [u8]) -> &'a [u8] {
+pub fn u8_hex_string_to_u8s<'a, 'b>(sin: &'a [u8], sout: &'b mut [u8]) -> &'b mut [u8] {
     let s = sin.len() / 2;
     for i in 0..s {
         sout[i] = ascii_octet_to_hex(sin[i * 2], sin[i * 2 + 1]);
     }
-    &sout[..s]
+    &mut sout[..s]
 }
 
 /// Convert an ASCII hex digit to its numeric value.
