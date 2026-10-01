@@ -31,8 +31,8 @@ setup_log!(false);
 //
 #[derive(PartialEq, Clone, Copy)]
 enum PARSER_AUTOMATON {
-    Init,
     Idle,
+    Init,
     Body,
     Escape,
     End1,
