@@ -36,10 +36,7 @@ pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
         #![allow(clippy::manual_unwrap_or_default)]
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c() as my_c_str).to_str() {
-            Ok(x) => x,
-            Err(_y) => "",
-        }
+        core::str::from_utf8_unchecked(CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c() as my_c_str).to_bytes())
     }
 }
 /// Free the register description string allocated by BMP.
@@ -464,20 +461,13 @@ pub fn bmp_supported_boards() -> &'static str {
     unsafe {
         let boards = rn_bmp_cmd_c::list_enabled_boards();
 
-        let output = CStr::from_ptr(boards as my_c_str).to_str();
-        if let Ok(x) = output {
-            return x;
-        }
+        return core::str::from_utf8_unchecked(CStr::from_ptr(boards as my_c_str).to_bytes());
     }
-    "--error--"
 }
 /// Get the BMP firmware version string.
 pub fn bmp_get_version() -> &'static str {
     unsafe {
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string() as my_c_str).to_str() {
-            Ok(x) => x,
-            _ => "??",
-        }
+        core::str::from_utf8_unchecked(CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string() as my_c_str).to_bytes())
     }
 }
 /// Execute a BMP monitor command.

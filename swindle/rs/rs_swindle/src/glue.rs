@@ -22,14 +22,8 @@ pub extern "C" fn gdb_out(fmt: *const u8) {
     e.begin();
     e.add("O");
 
-    let slice: &str;
-    unsafe {
-        slice = match CStr::from_ptr(fmt as my_c_str).to_str() {
-            Ok(x) => x,
-            Err(_y) => return,
-        };
-    }
-    e.hex_and_add(slice);
+    let slice = unsafe { CStr::from_ptr(fmt as my_c_str).to_bytes() };
+    e.hex_and_add_u8(slice);
     e.end();
 }
 

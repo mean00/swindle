@@ -177,8 +177,7 @@ impl encoder {
     ///
     /// Used for GDB `O` packets (console output) where text must be
     /// hex-encoded.
-    pub fn hex_and_add(&mut self, data: &str) {
-        let mut byt = data.as_bytes();
+    pub fn hex_and_add_u8(&mut self, mut byt: &[u8]) {
         let buffer = get_temp_buffer();
         while !byt.is_empty() {
             let n = core::cmp::min(byt.len(), TEMP_BUFFER_SIZE / 2);
@@ -188,6 +187,10 @@ impl encoder {
             self.add_u8(&buffer[..2 * n]);
             byt = &byt[n..];
         }
+    }
+
+    pub fn hex_and_add(&mut self, data: &str) {
+        self.hex_and_add_u8(data.as_bytes())
     }
     /// Add raw bytes to the current packet, escaping special characters.
     ///
