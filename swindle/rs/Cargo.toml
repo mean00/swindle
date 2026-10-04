@@ -7,7 +7,11 @@ resolver = "2"
 
 [workspace.dependencies]
 
-rust_esprit = { path = "../../esprit/rust/rust_esprit"}
+# `default-features = false` on purpose: the platform backend (`bluepill` /
+# `rp2040` / `esp32`) must be chosen explicitly by the consumer, otherwise an
+# RP2040 build would silently pull in the bluepill Rust backends and fail to
+# link (undefined `_rcuClockApb1`, …).  See esprit/rust/rp2xxx/README.md.
+rust_esprit = { path = "../../esprit/rust/rust_esprit", default-features = false }
 ufmt = { version = "0.2.0", default-features = false }
 heapless = { version = "0.9.3", features = ["ufmt"]}
 
