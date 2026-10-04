@@ -13,7 +13,12 @@
 #include "lnBMP_reset.h"
 #include <cstring>
 #include "bmp_riscv_extra.h"
-#include "lnTimerWatch.h"
+extern "C" {
+    void* ln_hw_stopwatch_create(uint32_t index);
+    void ln_hw_stopwatch_setup(void* sw);
+    void ln_hw_stopwatch_start(void* sw);
+    void ln_hw_stopwatch_wait(void* sw, uint16_t ticks);
+}
 
 extern "C"
 {
@@ -48,7 +53,7 @@ extern "C"
 #define SDI_RX_SAMPLE_NS 625u
 #define TIMER_TO_USE 4 // Remember then our timer starts at 0, not 1 so this is timer6 for STM32
 
-static lnTimerWatch *sdi_watch = NULL;
+static void *sdi_watch = NULL;
 static uint32_t sdi_ticks_per_us = 0;
 
 static uint32_t sdi_ticks_low1;
@@ -92,13 +97,13 @@ static void sdiInitTimer()
 {
     if (!sdi_watch)
     {
-        sdi_watch = new lnTimerWatch(TIMER_TO_USE); // Use TIMER4 which maps to TIM5
+        sdi_watch = ln_hw_stopwatch_create(TIMER_TO_USE); // Use TIMER4 which maps to TIM5
 
         Peripherals per = (Peripherals)(pTIMER0 + TIMER_TO_USE);
         uint32_t clock = lnPeripherals::getClock(per);
         sdi_ticks_per_us = clock / 1000000;
 
-        sdi_watch->setup();
+        ln_hw_stopwatch_setup(sdi_watch);
     }
 }
 
@@ -265,11 +270,11 @@ void sdi_pinmode_leave()
 
 static inline LN_ALWAYS_INLINE void sdiSendCell(const uint16_t low_ticks)
 {
-    sdi_watch->start();
+    ln_hw_stopwatch_start(sdi_watch);
     sdiPadLow();
-    sdi_watch->wait(low_ticks);
+    ln_hw_stopwatch_wait(sdi_watch, low_ticks);
     sdiPadRelease();
-    sdi_watch->wait(sdi_ticks_tbit);
+    ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_tbit);
 }
 
 static inline LN_ALWAYS_INLINE void sdiSendBit(const uint32_t bit)
@@ -299,15 +304,15 @@ static uint32_t sdiSampleWord()
 
     for (int i = 0; i < SDI_WORD_BITS; i++)
     {
-        sdi_watch->start();
+        ln_hw_stopwatch_start(sdi_watch);
         sdiLevelShifterAsOutput();
         sdiPadLow();
-        sdi_watch->wait(sdi_ticks_low1);
+        ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_low1);
         sdiPadRelease();
         sdiLevelShifterAsInput();
-        sdi_watch->wait(sdi_ticks_sample);
+        ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_sample);
         word = (word << 1) | (sdiReadPad() ? 1U : 0U);
-        sdi_watch->wait(sdi_ticks_tbit);
+        ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_tbit);
     }
     return word;
 }
