@@ -162,6 +162,7 @@ name = "rs_afio_bluepill"
 version = "0.1.0"
 dependencies = [
  "rs_bluepill",
+ "rs_rcu_bluepill",
 ]
 
 [[package]]
@@ -221,6 +222,8 @@ version = "0.1.0"
 name = "rs_pinout48_bluepill"
 version = "0.1.0"
 dependencies = [
+ "rs_afio_bluepill",
+ "rs_dma_bluepill",
  "rs_gpio_bluepill",
 ]
 
@@ -258,10 +261,10 @@ dependencies = [
 name = "rs_timer_bluepill"
 version = "0.1.0"
 dependencies = [
- "rs_afio_bluepill",
  "rs_bluepill",
  "rs_dma_bluepill",
  "rs_gpio_bluepill",
+ "rs_pinout48_bluepill",
  "rs_rcu_bluepill",
 ]
 
