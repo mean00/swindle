@@ -218,6 +218,13 @@ name = "rs_multi_pulse_rp2xxx"
 version = "0.1.0"
 
 [[package]]
+name = "rs_pinout48_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_gpio_bluepill",
+]
+
+[[package]]
 name = "rs_rcu_bluepill"
 version = "0.1.0"
 dependencies = [
@@ -241,7 +248,9 @@ version = "0.1.0"
 name = "rs_timer_bluepill"
 version = "0.1.0"
 dependencies = [
+ "rs_afio_bluepill",
  "rs_bluepill",
+ "rs_dma_bluepill",
  "rs_gpio_bluepill",
  "rs_rcu_bluepill",
 ]
@@ -298,6 +307,7 @@ dependencies = [
  "rs_i2c_rp2xxx",
  "rs_multi_pulse_bluepill",
  "rs_multi_pulse_rp2xxx",
+ "rs_pinout48_bluepill",
  "rs_rcu_bluepill",
  "rs_spi_bluepill",
  "rs_spi_rp2xxx",
