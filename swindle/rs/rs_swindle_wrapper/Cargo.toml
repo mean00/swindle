@@ -11,16 +11,19 @@ hosted = ["rsbmp/hosted"]
 sdi = ["rsbmp/sdi"]
 # Platform backend for rust_esprit — exactly one of these (see
 # esprit/rust/rp2xxx/README.md); selected by swindle/rs/CMakeLists.txt.
-bluepill = ["rsbmp/bluepill"]
+bluepill = ["rsbmp/bluepill", "rs_swindle_leds/bluepill"]
 bluepill48 = ["rsbmp/bluepill48"]
 bluepill64 = ["rsbmp/bluepill64"]
 rp2040 = ["rsbmp/rp2040"]
 esp32 = ["rsbmp/esp32"]
+# Single WS2812B led (CMake: USE_WS2812), bluepill compatible targets only
+ws2812 = ["rs_swindle_leds/ws2812"]
 
 default =  ["native"]
 
 [dependencies]
 rsbmp = { path="../rs_swindle"}
+rs_swindle_leds = { path="../rs_swindle_leds"}
 rust_esprit = { workspace = true, optional = true }
 
 [lib]

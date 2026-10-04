@@ -1,30 +1,20 @@
 /**
  * @file swindle_gd32_ws2812.cpp
- * @brief GD32F303 board initialisation with WS2812 LED support
+ * @brief GD32F303 / CH32V3x board initialisation with WS2812 LED support
+ *        The WS2812 breathing lives in swindle/rs/rs_swindle_leds (feature ws2812)
  */
 
-/*
-    On the RP2040 gum stick boards the led is driven by GPIO26, it is NOT open drain
-*/
 #include "esprit.h"
 #include "lnBmpTask.h"
-static const lnPin ledPins[] = {LN_SYSTEM_LED, PA8, PB13};
-#define NB_LEDS (sizeof(ledPins) / sizeof(lnPin))
-
-#include "lnWS2812B_timer.h"
-#include "xsin_table.h"
-
-#define PIN_WS2812 PB4
 
 extern "C" void user_init();
+extern "C" void swindle_leds_run(); // rs_swindle_leds, never returns
 extern void bmp_gpio_init_once();
 extern void gdb_task(void *param);
 /**
  */
 void setup()
 {
-    lnRemapTimerPin(2, PartialRemap); // remap timer 2 to pb4/pb5
-    lnPinMode(PIN_WS2812, lnPWM);
 }
 // user_init() — called from loop(), overrides bridge.cpp's empty version
 // Initialises SWD pins and creates the socket runner FreeRTOS task.
@@ -39,32 +29,6 @@ void loop()
 {
     Logger("Starting Swindle\n");
     user_init();
-    WS2812B_timer *ws = new WS2812B_timer(1, PIN_WS2812);
-    ws->begin();
-    bool onoff = true;
-    int pix = 0;
-    int inc = STEP;
-    while (1)
-    {
-        uint32_t wait = xsin[pix];
-        ws->setLedColor(0, wait, 0, 0);
-        ws->update();
-        pix += inc;
-        if (inc == STEP)
-        {
-            if (pix > 180 - STEP)
-            {
-                inc = -inc;
-            }
-        }
-        else
-        {
-            if (pix == 0)
-            {
-                inc = -inc;
-            }
-        }
-        lnDelayMs(6);
-    }
+    swindle_leds_run();
 }
 //
