@@ -2,7 +2,7 @@
 edition = "2024"
 
 [workspace]
-members=["rs_swindle","rs_swindle_wrapper"]
+members=["rs_swindle","rs_swindle_wrapper","rs_swindle_leds"]
 resolver = "2"
 
 [workspace.dependencies]
