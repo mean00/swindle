@@ -143,6 +143,123 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs_adc_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+ "rs_dma_bluepill",
+ "rs_gpio_bluepill",
+ "rs_rcu_bluepill",
+ "rs_timer_bluepill",
+]
+
+[[package]]
+name = "rs_adc_rp2xxx"
+version = "0.1.0"
+
+[[package]]
+name = "rs_afio_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+]
+
+[[package]]
+name = "rs_bluepill"
+version = "0.1.0"
+
+[[package]]
+name = "rs_dma_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+ "rs_rcu_bluepill",
+]
+
+[[package]]
+name = "rs_exti_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_afio_bluepill",
+ "rs_bluepill",
+ "rs_gpio_bluepill",
+]
+
+[[package]]
+name = "rs_gpio_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+]
+
+[[package]]
+name = "rs_i2c_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+ "rs_gpio_bluepill",
+ "rs_rcu_bluepill",
+]
+
+[[package]]
+name = "rs_i2c_rp2xxx"
+version = "0.1.0"
+
+[[package]]
+name = "rs_multi_pulse_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+ "rs_gpio_bluepill",
+]
+
+[[package]]
+name = "rs_multi_pulse_rp2xxx"
+version = "0.1.0"
+
+[[package]]
+name = "rs_rcu_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+]
+
+[[package]]
+name = "rs_spi_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+ "rs_gpio_bluepill",
+ "rs_rcu_bluepill",
+]
+
+[[package]]
+name = "rs_spi_rp2xxx"
+version = "0.1.0"
+
+[[package]]
+name = "rs_timer_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+ "rs_gpio_bluepill",
+ "rs_rcu_bluepill",
+]
+
+[[package]]
+name = "rs_timer_rp2xxx"
+version = "0.1.0"
+
+[[package]]
+name = "rs_uart_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_dma_bluepill",
+ "rs_gpio_bluepill",
+ "rs_rcu_bluepill",
+]
+
+[[package]]
 name = "rsbmp"
 version = "0.1.0"
 dependencies = [
@@ -173,6 +290,20 @@ dependencies = [
  "cfg-if",
  "cty",
  "heapless 0.7.17",
+ "rs_adc_bluepill",
+ "rs_adc_rp2xxx",
+ "rs_exti_bluepill",
+ "rs_gpio_bluepill",
+ "rs_i2c_bluepill",
+ "rs_i2c_rp2xxx",
+ "rs_multi_pulse_bluepill",
+ "rs_multi_pulse_rp2xxx",
+ "rs_rcu_bluepill",
+ "rs_spi_bluepill",
+ "rs_spi_rp2xxx",
+ "rs_timer_bluepill",
+ "rs_timer_rp2xxx",
+ "rs_uart_bluepill",
  "ufmt",
 ]
 
