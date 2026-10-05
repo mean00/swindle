@@ -1,0 +1,29 @@
+[package]
+name = "rs_swindle_leds"
+version = "0.1.0"
+edition.workspace = true
+
+# Background LED activity of Swindle (what used to be loop() in
+# src/swindle_gd32.cpp and src/swindle_gd32_ws2812.cpp).
+#
+# The variant is selected by cargo features, set by swindle/rs/CMakeLists.txt:
+#   bluepill            GD32F3 / CH32V3xx boards
+#   bluepill + ws2812   same, with a single WS2812B LED (CMake: USE_WS2812)
+# RP2040 / RP2350 : no feature, the crate is empty (their LED code is still in C++).
+
+[features]
+bluepill = [
+    "dep:rs_gpio_bluepill",
+    "dep:rs_rcu_bluepill",
+    "dep:rust_esprit",
+    "rust_esprit/bluepill",
+]
+bluepill48 = ["bluepill", "rust_esprit/bluepill48", "ws2812b?/bluepill48"]
+bluepill64 = ["bluepill", "rust_esprit/bluepill64", "ws2812b?/bluepill64"]
+ws2812 = ["bluepill", "dep:ws2812b"]
+
+[dependencies]
+rust_esprit = { workspace = true, optional = true }
+rs_gpio_bluepill = { path = "../../../esprit/rust/bluepill/rs_gpio_bluepill", optional = true }
+rs_rcu_bluepill = { path = "../../../esprit/rust/bluepill/rs_rcu_bluepill", optional = true }
+ws2812b = { path = "../../../esprit/rust/libraries/ws2812b", optional = true }
