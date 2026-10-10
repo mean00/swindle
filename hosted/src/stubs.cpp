@@ -28,11 +28,9 @@ extern "C"
  */
 void xAssert(int a)
 {
-    printf("******* FAILURE *********\n");
-    printf("******* FAILURE *********\n");
-    printf("******* FAILURE *********\n");
-    printf("******* FAILURE *********\n");
-    exit(0);
+    (void)a;
+    fprintf(stderr, "******* HOSTED ASSERTION FAILURE *********\n");
+    exit(1);
 }
 
 /**
@@ -151,7 +149,10 @@ extern "C" void do_assert(const char *z)
 /**
  * @brief Stub: putchar (no-op).
  */
-extern "C" void _putchar(char) {};
+extern "C" void _putchar(char c)
+{
+    fputc(c, stdout);
+}
 
 /**
  * @brief Stub: set wait state.

@@ -120,17 +120,18 @@ set(SRC
     ${H}/lnDebug.cpp
     ${H}/stubs.cpp
     ${H}/dm_decoder.cpp
+    ${H}/gdb_decoder.cpp
     ${H}/bmp_qtserial.cpp
-    # ${H}/bmp_qtnetwork.h ${H}/bmp_qtnetwork.cpp
     ${H}/esp_qtnetwork.cpp
     ${H}/esp_qtnetwork.h
     ${H}/esp_bridge.cpp
     ${H}/esp_eventgroup.cpp
     ../esprit/src/lnSocketRunner.cpp)
-# ${H}/bmp_remote_rv.cpp)
 
 add_executable(swindle_hosted ${SRC})
 include_directories(../swindle/src/net)
+target_include_directories(swindle_hosted PRIVATE ${CMAKE_BINARY_DIR}/generated)
+target_compile_options(swindle_hosted PRIVATE -include platformgenerated.h)
 target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
 target_link_libraries(swindle_hosted PRIVATE rsbmp_wrapper)
 target_link_libraries(swindle_hosted PRIVATE esprit_dev)

@@ -23,6 +23,7 @@
 void decoderDMReg(int reg, uint32_t value);
 #if 1
 #undef QBMPLOG
+#undef QBMPLOGH
 #undef QBMPLOGN
 #define QBMPLOG(...)                                                                                                   \
     {                                                                                                                  \

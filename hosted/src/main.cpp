@@ -1,37 +1,21 @@
 /**
  * @file main.cpp
- * @brief Hosted-mode entry point: GDB server loop over TCP or RTT
- *
- * Original license from Black Magic Debug project:
- * This file is part of the Black Magic Debug project.
- *
- * Copyright (C) 2011  Black Sphere Technologies Ltd.
- * Written by Gareth McMullin <gareth@blacksphere.co.nz>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * @brief Hosted-mode entry point: GDB server loop over TCP.
  */
 
 #include <QCoreApplication>
 #include <QDebug>
 #include <QObject>
 #include <QThread>
-#include <QTimer>
 #include <QtGlobal>
-//
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 #include "lnLWIP.h"
-//
-//
+#include "hosted_constants.h"
+#include "gdb_decoder.h"
+
 extern "C"
 {
 #include "exception.h"
@@ -42,77 +26,60 @@ extern "C"
 #include "morse.h"
 #include "target.h"
 }
-//--
+
 #define LN_ARCH LN_ARCH_ARM
 #include "lnSocketRunner.h"
 
-// Defines expected by bmp_net_gdb.h before inclusion
-#define RUNNER_GDB_PORT 2000
-#define DEBUGME printf
+#define RUNNER_GDB_PORT DEFAULT_GDB_TCP_PORT
+#define DEBUGME(...) do {} while (0)
 
-// Use the canonical socketRunnerGdb from the firmware tree
+// Intercept rngdb_send_data_c from bmp_net_gdb.h to decode replies on the fly
+#define rngdb_send_data_c orig_rngdb_send_data_c
 #include "../../swindle/src/net/bmp_net_gdb.h"
+#undef rngdb_send_data_c
 
-//
-//-----
+extern "C" void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
+{
+    gdb_decode_outgoing(ptr, sz);
+    orig_rngdb_send_data_c(sz, ptr);
+}
 
-//
-bool running = true;
 extern void initTcpLayer();
-//
 extern "C" void platform_timeout_init();
-
-//
+extern "C" void platform_init(int argc, char **argv);
 
 /**
- * @brief Custom Qt message handler that redirects to stderr.
+ * @brief Custom Qt message handler that redirects messages to stderr.
  */
-void customHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+static void customHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
+    (void)type;
+    (void)context;
     QByteArray localMsg = msg.toLocal8Bit();
     fprintf(stderr, "%s", localMsg.constData());
 }
-//
-//
-//
-//
 
 /**
- * @brief Exit the Qt application (called from BMP core on shutdown).
+ * @brief Exit application cleanly on BMP shutdown.
  */
-void exit_from_bmp()
+extern "C" void exit_from_bmp()
 {
     QCoreApplication::exit(0);
 }
 
 /**
- * @brief Trampoline called periodically to poll the GDB stub.
+ * @brief lwIP network event callback.
  */
-void trampoline()
+static void sys_network(lnLwipEvent evt, void *arg)
 {
-    rngdbstub_poll();
-    // printf("Pending : %d\n",server->hasPendingConnections());
+    (void)arg;
+    printf("[Network] lwIP system event: 0x%x\n", static_cast<unsigned int>(evt));
 }
 
-extern "C" void platform_init(int argc, char **argv);
-
-/**
- * @brief lwIP system event callback (stub for hosted build).
- * @param evt  lwIP event type.
- * @param arg  User argument.
- */
-void sys_network(lnLwipEvent evt, void *arg)
-{
-    printf("Got sys event %x\n,evt");
-}
-
-lnFastEventGroup network_eventGroup;
+static lnFastEventGroup s_network_eventGroup;
 
 /**
  * @brief Process socket events for a given runner.
- * @param runner   The socket runner to process.
- * @param global   Global events (Up/Down).
- * @param locl     Local events (per-runner).
  */
 void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
 {
@@ -121,34 +88,31 @@ void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
 }
 
 /**
- * @brief GDB server thread.
- *
- * Initialises the platform, starts the TCP server, and runs the
- * event loop that processes socket events for the GDB stub.
+ * @brief Background thread hosting the GDB TCP server.
  */
-class gdbThread : public QThread
+class GdbServerThread : public QThread
 {
   protected:
     void run() override
     {
-        // QTimer mytimer;
-        // QObject::connect(&mytimer, &QTimer::timeout, trampoline);
-        // mytimer.start(100);
-        // qInfo() << "Running in thread:" << QThread::currentThread();
-        //
-        const char *argv[2] = {"", NULL};
-        platform_init((int)0, (char **)argv);
+        const char *argv[2] = {"", nullptr};
+        platform_init(0, const_cast<char **>(argv));
         initTcpLayer();
-        lnLWIP::start(sys_network, NULL);
-        network_eventGroup.takeOwnership();
-        runnerGdb = new socketRunnerGdb(network_eventGroup, 0);
+        lnLWIP::start(sys_network, nullptr);
+
+        s_network_eventGroup.takeOwnership();
+        runnerGdb = new socketRunnerGdb(s_network_eventGroup, 0);
         runnerGdb->sendEvent(socketRunner::Up);
-        uint32_t mask = (0xffffffffUL);
+
+        uint32_t mask = 0xffffffffUL;
         mask &= ~(socketRunner::CanWrite << 0);
         const uint32_t global_mask = (socketRunner::Up | socketRunner::Down);
-        while (1)
+
+        printf("[GDB Server] Listening on localhost:%d\n", DEFAULT_GDB_TCP_PORT);
+
+        while (true)
         {
-            uint32_t events = network_eventGroup.waitEvents(mask, 20);
+            uint32_t events = s_network_eventGroup.waitEvents(mask, EVENT_POLL_TIMEOUT_MS);
             uint32_t global_events = events & global_mask;
             uint32_t local_events = events & (~global_mask);
             process_sockets(runnerGdb, global_events, local_events);
@@ -157,44 +121,70 @@ class gdbThread : public QThread
 };
 
 /**
- * @brief Application entry point.
- *
- * Installs a custom message handler, starts the GDB thread,
- * and enters the Qt event loop.
- * @param argc  Argument count.
- * @param argv  Argument vector.
- * @return Application exit code.
+ * @brief Hook into GDB packet reception to decode commands on the fly.
  */
-int main(int argc, char **argv)
+static void hosted_rngdbstub_run_intercept(uint32_t len, const uint8_t *data)
 {
-    qWarning() << "======================";
-    qWarning() << "* Qt Swindle Hosted  *";
-    qWarning() << "======================";
-    QCoreApplication a(argc, argv);
-    qInstallMessageHandler(customHandler);
+    gdb_decode_incoming(data, len);
+    rngdbstub_run(len, data);
+}
 
-    // go!
-    gdbThread *t = new gdbThread;
-    platform_timeout_init();
-    t->start();
-    a.exec();
-    return 0;
+// Redirect socketRunnerGdb::process_incoming_data() to the decoding interceptor
+#define rngdbstub_run hosted_rngdbstub_run_intercept
+#include "bmp_net_gdb.cpp"
+#undef rngdbstub_run
+
+static constexpr size_t TEMP_BUFFER_WORDS = 1024;
+static uint32_t s_temp_buffer[TEMP_BUFFER_WORDS];
+
+extern "C" uint8_t *get_temp_buffer_c(uint32_t size)
+{
+    if (size >= sizeof(s_temp_buffer))
+    {
+        fprintf(stderr, "Buffer request size %u exceeds %zu\n", size, sizeof(s_temp_buffer));
+        exit(1);
+    }
+    return reinterpret_cast<uint8_t *>(s_temp_buffer);
 }
 
 /**
- * @brief BMP test stub (unused).
+ * @brief Application entry point.
  */
-extern "C" void rv_test(void);
-extern "C" void bmp_test(void)
+int main(int argc, char **argv)
 {
-    //    rv_test();
-}
+    // Check command line arguments and environment for GDB decoding flag
+    for (int i = 1; i < argc; ++i)
+    {
+        if (strcmp(argv[i], "--decode-gdb") == 0 || strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "-g") == 0)
+        {
+            gdb_decoder_set_enabled(true);
+        }
+        else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
+        {
+            printf("Usage: swindle_hosted [options]\n");
+            printf("Options:\n");
+            printf("  --decode-gdb, -d, -g  Decode GDB commands on the fly in human-readable format\n");
+            printf("  --help, -h            Show this help message\n");
+            return 0;
+        }
+    }
 
-#include "bmp_net_gdb.cpp"
+    if (getenv("SWINDLE_DECODE_GDB") != nullptr)
+    {
+        gdb_decoder_set_enabled(true);
+    }
 
-static uint32_t xxxx[1024];
-extern "C" uint8_t *get_temp_buffer_c(uint32_t size)
-{
-    xAssert(size < 1024);
-    return (uint8_t *)xxxx;
+    qWarning() << "======================";
+    qWarning() << "*  Swindle Hosted    *";
+    qWarning() << "======================";
+
+    QCoreApplication app(argc, argv);
+    qInstallMessageHandler(customHandler);
+
+    platform_timeout_init();
+
+    GdbServerThread *thread = new GdbServerThread;
+    thread->start();
+
+    return app.exec();
 }
