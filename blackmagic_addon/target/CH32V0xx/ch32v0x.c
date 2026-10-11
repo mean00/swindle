@@ -60,6 +60,16 @@ typedef struct
     {                                                                                                                  \
     }
 
+#if 0
+#define VERIFY
+int Logger_C(const char *fmt, ...);
+#define LOG Logger_C
+#else
+#define LOG(...)                                                                                                       \
+    {                                                                                                                  \
+    }
+#endif
+
 static const command_s ch32v0x_cmd_list[] = {
     {NULL, NULL, NULL},
 };
@@ -321,27 +331,51 @@ static void ch32v0x_add_flash(target_s *target, const uint32_t addr, const size_
     target_add_flash(target, flash);
 }
 //
+extern bool bmp_mem_read_c(uint32_t address, uint32_t len, uint8_t *data);
 static bool small_ch32v30_write_page(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size)
 {
+    LOG("Write small page at 0x%x size=%d\n", addr, page_size);
     ch32v0x_priv_s *priv = (ch32v0x_priv_s *)target->target_storage;
     if (page_size != priv->page_size)
     {
         DEBUG_ERROR("CH32V0: Wrong page size \n");
+        LOG("Wrong size in writing  \n");
         return false;
     }
     if ((addr & (priv->page_size - 1)) != 0)
     {
         DEBUG_ERROR("CH32V0: Wrong page alignment \n");
+        LOG("Wrong alignment in writing  \n");
         return false;
     }
-    return ch32v0x_flash_write(target->flash, addr, src, page_size);
+    bool r = ch32v0x_flash_write(target->flash, addr, src, page_size);
+    if (!r)
+        return false;
+#ifdef VERIFY
+#define DUMP_SIZE 64
+    uint8_t data[DUMP_SIZE];
+    bmp_mem_read_c(addr, DUMP_SIZE, data);
+    uint32_t i, j;
+    for (i = 0; i < DUMP_SIZE;)
+    {
+        LOG("\n\t0x%08x:", addr + i);
+        for (j = 0; j < 16; j++)
+        {
+            LOG(" 0x%02x,", data[i + j]);
+        }
+        i += 16;
+    }
+#endif
+    return true;
 }
 static bool small_ch32v30_erase_page(target_s *target, uint32_t addr)
 {
+    LOG("Erase small page at 0x%x\n", addr);
     ch32v0x_priv_s *priv = (ch32v0x_priv_s *)target->target_storage;
     if ((addr & (priv->page_size - 1)) != 0)
     {
         DEBUG_ERROR("CH32V0: Erase: Wrong page alignment \n");
+        LOG("Erase error\n");
         return false;
     }
     return ch32v0x_flash_erase(target->flash, addr, priv->page_size);
@@ -349,6 +383,7 @@ static bool small_ch32v30_erase_page(target_s *target, uint32_t addr)
 static uint32_t small_ch32v30_page_size(target_s *t)
 {
     ch32v0x_priv_s *priv = (ch32v0x_priv_s *)t->target_storage;
+    LOG("Get small page size=%d\n", priv->page_size);
     return priv->page_size;
 }
 
@@ -393,6 +428,17 @@ static void ch32v003_reset(target_s *const target)
     if (hart->dbg_module->dmi_bus->invalidate_caches)
         hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
 
+    /* Clear haltreq and ackreset now that the core is halted at reset */
+    riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel);
+
+    /* Enable ebreakm in dcsr (0x7b0, bit 15) so software breakpoints enter debug mode */
+    uint32_t dcsr = 0U;
+    if (riscv_csr_read(hart, 0x7b0U, &dcsr))
+    {
+        dcsr |= 0x00008000U; /* RV_DCSR_EBREAK_MACHINE */
+        riscv_csr_write(hart, 0x7b0U, &dcsr);
+    }
+
     target_check_error(target);
 }
 
@@ -402,6 +448,8 @@ bool ch32v003x_probe(target_s *const target)
     uint32_t ram_size = RAM_SIZE;
     uint32_t page_size = 64;
     uint32_t family = 0;
+
+    LOG("Probing CH32V00X\n");
 
     switch (idcode & CH32V0X_IDCODE_MASK)
     {
