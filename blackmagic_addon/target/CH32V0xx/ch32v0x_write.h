@@ -72,14 +72,12 @@ static inline bool ch32v0x_write_inner(void *target, uint32_t start_addr, const 
             __asm__ volatile("fence" ::: "memory");
 #endif
             WRITE_CMD(CH32V0X_FMC_CTL_BUFLOAD);
-#ifdef WAIT_BETWEEN_BUFLOAD
             (void)READ_CTRL(); /* dummy read: lets the posted APB write land before STATR is polled */
-            if (!ch32v0x_flash_wait_not_busy(target) || !ch32v0x_flash_check_complete(target, dest))
+            if (!ch32v0x_flash_wait_not_busy(target))
             {
                 result = false;
                 break;
             }
-#endif
             dest += 4;
             data += 4;
         }

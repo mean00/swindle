@@ -470,5 +470,13 @@ unsafe extern "C" {
     pub fn bmp_get_arch_c() -> cty::c_uint;
 }
 unsafe extern "C" {
+    pub fn bmp_riscv_read_csr_c(csr: cty::c_uint, val: *mut cty::c_uint) -> bool;
+}
+unsafe extern "C" {
+    pub fn bmp_riscv_write_csr_c(csr: cty::c_uint, val: cty::c_uint) -> bool;
+}
+unsafe extern "C" {
     pub fn bmp_gpio_reset();
 }
+
+

@@ -1,0 +1,97 @@
+# 104blackmagic_riscv_enable_ebreakm.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# 1. On targets that latch RV_HART_FLAG_DATA_GPR_ONLY (such as CH32V003 when early 64-bit
+#    misa probe returns cmderr=2 / not supported), Blackmagic routed all CSR reads and writes
+#    through the program buffer by executing CPU instructions (csrr a0, reg / csrw reg, a0).
+#    Per the RISC-V Debug Specification (sections 3.6 & 4.8), Debug Mode Registers (0x7b0..0x7bf,
+#    including dcsr 0x7b0 and dpc 0x7b1) cannot be accessed via CPU CSR instructions; attempting
+#    to do so triggers an illegal instruction exception. Debug Mode registers must always be
+#    accessed via abstract commands directly. Routing them to progbuf caused all writes to dcsr
+#    to silently fail and be dropped.
+#
+# 2. Vanilla Blackmagic set RV_DCSR_EBREAK_MACHINE only in riscv_halt_resume() on continue, but
+#    not during single-step, and not during riscv_attach() or riscv_reset(). As a result, software
+#    breakpoints (ebreak) failed to halt into debug mode immediately after attach or reset.
+#
+# FIX
+# ---
+# 1. In riscv_csr_read() and riscv_csr_write(), exempt debug registers 0x7b0..0x7bf from progbuf
+#    routing and progbuf fallback, forcing them to always use abstract commands directly.
+#
+# 2. Enable ebreakm (RV_DCSR_EBREAK_MACHINE) in dcsr during riscv_attach() and riscv_reset(), and
+#    preserve it during single-stepping in riscv_halt_resume().
+#
+--- a/src/target/riscv_debug.c	2026-10-11 15:26:41.951820577 +0200
++++ b/src/target/riscv_debug.c	2026-10-11 15:38:49.989192514 +0200
+@@ -829,7 +829,8 @@
+ 	const uint8_t access_width = (reg & RV_CSR_FORCE_MASK) ? riscv_csr_access_width(reg) : hart->access_width;
+ 	DEBUG_TARGET("Reading %u-bit CSR %03x\n", access_width, reg & ~RV_CSR_FORCE_MASK);
+ 	/* If the read must be completed using the progbuf mechanism, switch to doing that */
+-	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR)
++	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++		((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU))
+ 		return riscv_csr_progbuf_read(hart, reg, data);
+ 	/* Set up the register read and wait for it to complete */
+ 	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
+@@ -842,6 +843,7 @@
+ 		 * only GPR access using abstract commands. NB: we have no recourse if no progbuf regs are implemented.
+ 		 */
+ 		if (hart->status == RISCV_HART_NOT_SUPP && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++			((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU) &&
+ 			hart->progbuf_size > 0U) {
+ 			hart->flags |= RV_HART_FLAG_DATA_GPR_ONLY;
+ 			return riscv_csr_read(hart, reg, data);
+@@ -1027,7 +1029,8 @@
+ 	const uint8_t access_width = (reg & RV_CSR_FORCE_MASK) ? riscv_csr_access_width(reg) : hart->access_width;
+ 	DEBUG_TARGET("Writing %u-bit CSR %03x\n", access_width, reg & ~RV_CSR_FORCE_MASK);
+ 	/* If the write must be completed using the progbuf mechanism, switch to doing that */
+-	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR)
++	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++		((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU))
+ 		return riscv_csr_progbuf_write(hart, reg, data);
+ 	/* Set up the data registers based on the Hart native access size */
+ 	if (!riscv_csr_write_data(hart, data, access_width))
+@@ -1044,6 +1047,7 @@
+ 		 * only GPR access using abstract commands. NB: we have no recourse if no progbuf regs are implemented.
+ 		 */
+ 		if (hart->status == RISCV_HART_NOT_SUPP && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++			((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU) &&
+ 			hart->progbuf_size > 0U) {
+ 			hart->flags |= RV_HART_FLAG_DATA_GPR_ONLY;
+ 			return riscv_csr_write(hart, reg, data);
+@@ -1275,6 +1279,12 @@
+ 		const uint32_t tdata2 = 0U;
+ 		riscv_config_trigger(hart, trigger, RISCV_TRIGGER_MODE_UNUSED, &tdata1, &tdata2);
+ 	}
++	/* Enable ebreakm in dcsr so ebreak instructions enter debug mode */
++	uint32_t dcsr = 0U;
++	if (riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr)) {
++		dcsr |= RV_DCSR_EBREAK_MACHINE;
++		riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr);
++	}
+ 	return true;
+ }
+ 
+@@ -1333,7 +1343,7 @@
+ 	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
+ 		return;
+ 	if (step)
+-		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT;
++		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT | RV_DCSR_EBREAK_MACHINE;
+ 	else {
+ 		stepping_config &= ~(RV_DCSR_STEP);
+ 		stepping_config |= RV_DCSR_EBREAK_MACHINE;
+@@ -1473,6 +1483,12 @@
+ 	if (hart->dbg_module->dmi_bus->invalidate_caches)
+ 		hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
+ 	riscv_halt_request(target);
++	/* Enable ebreakm in dcsr after reset so ebreak instructions enter debug mode */
++	uint32_t dcsr = 0U;
++	if (riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr)) {
++		dcsr |= RV_DCSR_EBREAK_MACHINE;
++		riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr);
++	}
+ 	target_check_error(target);
+ }

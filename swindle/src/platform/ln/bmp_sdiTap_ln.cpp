@@ -13,12 +13,7 @@
 #include "lnBMP_reset.h"
 #include <cstring>
 #include "bmp_riscv_extra.h"
-extern "C" {
-    void* ln_hw_stopwatch_create(uint32_t index);
-    void ln_hw_stopwatch_setup(void* sw);
-    void ln_hw_stopwatch_start(void* sw);
-    void ln_hw_stopwatch_wait(void* sw, uint16_t ticks);
-}
+#include "lnTimerWatch.h"
 
 extern "C"
 {
@@ -47,13 +42,13 @@ extern "C"
 #include "sdi_template.h"
 }
 
-#define SDI_TBIT_NS 1200u
-#define SDI_LOW1_NS 250u
-#define SDI_LOW0_NS 900u
-#define SDI_RX_SAMPLE_NS 625u
+#define SDI_TBIT_NS 1400u
+#define SDI_LOW1_NS 200u
+#define SDI_LOW0_NS 1050u
+#define SDI_RX_SAMPLE_NS 630u
 #define TIMER_TO_USE 4 // Remember then our timer starts at 0, not 1 so this is timer6 for STM32
 
-static void *sdi_watch = NULL;
+static lnTimerWatch *sdi_watch = NULL;
 static uint32_t sdi_ticks_per_us = 0;
 
 static uint32_t sdi_ticks_low1;
@@ -97,13 +92,13 @@ static void sdiInitTimer()
 {
     if (!sdi_watch)
     {
-        sdi_watch = ln_hw_stopwatch_create(TIMER_TO_USE); // Use TIMER4 which maps to TIM5
+        sdi_watch = new lnTimerWatch(TIMER_TO_USE); // Use TIMER4 which maps to TIM5
 
         Peripherals per = (Peripherals)(pTIMER0 + TIMER_TO_USE);
         uint32_t clock = lnPeripherals::getClock(per);
         sdi_ticks_per_us = clock / 1000000;
 
-        ln_hw_stopwatch_setup(sdi_watch);
+        sdi_watch->setup();
     }
 }
 
@@ -250,11 +245,7 @@ void sdi_pinmode_enter()
     }
     sdiMode = true;
 
-    if (!sdiEntryLogged)
-    {
-        sdiLogEntry();
-        sdiEntryLogged = true;
-    }
+    sdiLogEntry();
 }
 
 void sdi_pinmode_leave()
@@ -270,11 +261,11 @@ void sdi_pinmode_leave()
 
 static inline LN_ALWAYS_INLINE void sdiSendCell(const uint16_t low_ticks)
 {
-    ln_hw_stopwatch_start(sdi_watch);
+    sdi_watch->start();
     sdiPadLow();
-    ln_hw_stopwatch_wait(sdi_watch, low_ticks);
+    sdi_watch->waitOffset(low_ticks);
     sdiPadRelease();
-    ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_tbit);
+    sdi_watch->waitOffset(sdi_ticks_tbit);
 }
 
 static inline LN_ALWAYS_INLINE void sdiSendBit(const uint32_t bit)
@@ -304,15 +295,15 @@ static uint32_t sdiSampleWord()
 
     for (int i = 0; i < SDI_WORD_BITS; i++)
     {
-        ln_hw_stopwatch_start(sdi_watch);
+        sdi_watch->start();
         sdiLevelShifterAsOutput();
         sdiPadLow();
-        ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_low1);
+        sdi_watch->waitOffset(sdi_ticks_low1);
         sdiPadRelease();
         sdiLevelShifterAsInput();
-        ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_sample);
+        sdi_watch->waitOffset(sdi_ticks_sample);
         word = (word << 1) | (sdiReadPad() ? 1U : 0U);
-        ln_hw_stopwatch_wait(sdi_watch, sdi_ticks_tbit);
+        sdi_watch->waitOffset(sdi_ticks_tbit);
     }
     return word;
 }
