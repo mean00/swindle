@@ -284,7 +284,7 @@ static bool ch32v0x_flash_write_flashstub(target_flash_s *const flash, target_ad
 
         if (!stub_success)
         {
-            DEBUG_ERROR("CH32V003 Flash stub failed at 0x%08" PRIx32 " (MARK = %" PRIu32 ")\n", addr, 0);
+            DEBUG_ERROR("CH32V00x Flash stub failed at 0x%08" PRIx32 " (MARK = %" PRIu32 ")\n", addr, 0);
             WRITE_FLASH_REG(target, CTLR, ctlr_saved);
             return false;
         }
@@ -316,15 +316,8 @@ static void ch32v0x_add_flash(target_s *target, const uint32_t addr, const size_
     flash->erased = 0xff;
     flash->erase = ch32v0x_flash_erase;
 #if CH32V003_FLASHSTUB
-    if (family == 3)
-    {
-        flash->prepare = ch32v0x_flash_prepare_flashstub;
-        flash->write = ch32v0x_flash_write_flashstub;
-    }
-    else
-    {
-        flash->write = ch32v0x_flash_write;
-    }
+    flash->prepare = ch32v0x_flash_prepare_flashstub;
+    flash->write = ch32v0x_flash_write_flashstub;
 #else
     flash->write = ch32v0x_flash_write;
 #endif
