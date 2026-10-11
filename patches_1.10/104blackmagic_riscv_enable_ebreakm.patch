@@ -1,0 +1,37 @@
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -1274,6 +1274,12 @@
+ 		const uint32_t tdata2 = 0U;
+ 		riscv_config_trigger(hart, trigger, RISCV_TRIGGER_MODE_UNUSED, &tdata1, &tdata2);
+ 	}
++	/* Enable ebreakm in dcsr so ebreak instructions enter debug mode */
++	uint32_t dcsr = 0U;
++	if (riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr)) {
++		dcsr |= RV_DCSR_EBREAK_MACHINE;
++		riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr);
++	}
+ 	return true;
+ }
+ 
+@@ -1333,7 +1339,7 @@
+ 	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
+ 		return;
+ 	if (step)
+-		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT;
++		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT | RV_DCSR_EBREAK_MACHINE;
+ 	else {
+ 		stepping_config &= ~(RV_DCSR_STEP);
+ 		stepping_config |= RV_DCSR_EBREAK_MACHINE;
+@@ -1473,6 +1479,12 @@
+ 	if (hart->dbg_module->dmi_bus->invalidate_caches)
+ 		hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
+ 	riscv_halt_request(target);
++	/* Enable ebreakm in dcsr after reset so ebreak instructions enter debug mode */
++	uint32_t dcsr = 0U;
++	if (riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr)) {
++		dcsr |= RV_DCSR_EBREAK_MACHINE;
++		riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr);
++	}
+ 	target_check_error(target);
+ }
+ 
