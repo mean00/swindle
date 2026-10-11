@@ -690,5 +690,13 @@ pub fn bmp_riscv_read_csr(csr: u32) -> Option<u32> {
         }
     }
 }
+
+/// Write a RISC-V CSR.
+///
+/// Returns `true` on success, `false` if failed or not RISC-V.
+pub fn bmp_riscv_write_csr(csr: u32, val: u32) -> bool {
+    unsafe { rn_bmp_cmd_c::bmp_riscv_write_csr_c(csr, val) }
+}
 // EOF
+
 

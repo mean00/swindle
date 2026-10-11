@@ -154,5 +154,6 @@ uint32_t target_mw_page_size(void);
 #define BMP_ARCH_RISCV 2
 uint32_t bmp_get_arch_c();
 bool bmp_riscv_read_csr_c(uint32_t csr, uint32_t *val);
+bool bmp_riscv_write_csr_c(uint32_t csr, uint32_t val);
 // EOF
 void bmp_gpio_reset();

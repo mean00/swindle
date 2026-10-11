@@ -13,6 +13,7 @@ extern "C"
 #include "rtt_if.h"
 #include "target.h"
 #include "target_internal.h"
+#include "riscv_debug.h"
 }
 //
 // C++
@@ -810,5 +811,17 @@ extern "C" bool bmp_riscv_read_csr_c(uint32_t csr, uint32_t *val)
 
     return target_reg_read(cur_target, 128 + csr, val, sizeof(*val)) == sizeof(*val);
 }
+
+extern "C" bool bmp_riscv_write_csr_c(uint32_t csr, uint32_t val)
+{
+    if (!cur_target)
+        return false;
+
+    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
+        return false;
+
+    return target_reg_write(cur_target, 128 + csr, &val, sizeof(val)) == sizeof(val);
+}
 // EOF
+
 

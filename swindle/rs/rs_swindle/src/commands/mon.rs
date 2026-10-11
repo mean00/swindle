@@ -1230,7 +1230,7 @@ fn parse_csr_name_or_num(arg: &str) -> Option<u32> {
     }
 }
 
-/// Handle `mon csr <name|hex>` — read and dump RISC-V CSR.
+/// Handle `mon csr <name|hex> [value]` — read or write RISC-V CSR.
 pub fn _csr(_command: &str, args: &[&str]) -> bool {
     if !bmp::bmp_is_riscv() {
         gdb_println!("Error: Target architecture is not RISC-V.");
@@ -1239,7 +1239,7 @@ pub fn _csr(_command: &str, args: &[&str]) -> bool {
     }
 
     if args.is_empty() {
-        gdb_println!("usage: mon csr <name|number>");
+        gdb_println!("usage: mon csr <name|number> [value]");
         encoder::reply_e01();
         return false;
     }
@@ -1254,19 +1254,41 @@ pub fn _csr(_command: &str, args: &[&str]) -> bool {
         }
     };
 
-    match bmp::bmp_riscv_read_csr(csr_num) {
-        Some(val) => {
-            gdb_println!("CSR 0x", Hex(csr_num), " = ", Hex(val));
+    if args.len() > 1 {
+        let val_arg = args[1].trim();
+        let val = match parse_csr_name_or_num(val_arg) {
+            Some(v) => v,
+            None => {
+                gdb_println!("Invalid CSR value: ", val_arg);
+                encoder::reply_e01();
+                return false;
+            }
+        };
+        if bmp::bmp_riscv_write_csr(csr_num, val) {
+            gdb_println!("CSR 0x", Hex(csr_num), " written with ", Hex(val));
             encoder::reply_ok();
             true
-        }
-        None => {
-            gdb_println!("Failed to read CSR 0x", Hex(csr_num));
+        } else {
+            gdb_println!("Failed to write CSR 0x", Hex(csr_num));
             encoder::reply_e01();
             false
         }
+    } else {
+        match bmp::bmp_riscv_read_csr(csr_num) {
+            Some(val) => {
+                gdb_println!("CSR 0x", Hex(csr_num), " = ", Hex(val));
+                encoder::reply_ok();
+                true
+            }
+            None => {
+                gdb_println!("Failed to read CSR 0x", Hex(csr_num));
+                encoder::reply_e01();
+                false
+            }
+        }
     }
 }
+
 
 //-- EOF --
 
