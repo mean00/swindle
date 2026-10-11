@@ -31,7 +31,7 @@
 # files that need the speed, so it is a source property here rather than a build
 # type for the whole firmware, whose SWD timing was brought up with the size flags.
 if(SWINDLE_WITH_SDI)
-  set_source_files_properties(bmp_sdiTap_ln.cpp PROPERTIES COMPILE_OPTIONS "-O2")
+  set_source_files_properties(bmp_sdiTap_ln.cpp PROPERTIES COMPILE_OPTIONS "-O2;-fno-omit-frame-pointer")
   set(SDI_SOURCES bmp_sdiTap_ln.cpp)
 else()
   set(SDI_SOURCES ../../template/bmp_riscv_extra_stubs.cpp)
