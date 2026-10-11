@@ -1,3 +1,28 @@
+# 104blackmagic_riscv_enable_ebreakm.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# 1. On targets that latch RV_HART_FLAG_DATA_GPR_ONLY (such as CH32V003 when early 64-bit
+#    misa probe returns cmderr=2 / not supported), Blackmagic routed all CSR reads and writes
+#    through the program buffer by executing CPU instructions (csrr a0, reg / csrw reg, a0).
+#    Per the RISC-V Debug Specification (sections 3.6 & 4.8), Debug Mode Registers (0x7b0..0x7bf,
+#    including dcsr 0x7b0 and dpc 0x7b1) cannot be accessed via CPU CSR instructions; attempting
+#    to do so triggers an illegal instruction exception. Debug Mode registers must always be
+#    accessed via abstract commands directly. Routing them to progbuf caused all writes to dcsr
+#    to silently fail and be dropped.
+#
+# 2. Vanilla Blackmagic set RV_DCSR_EBREAK_MACHINE only in riscv_halt_resume() on continue, but
+#    not during single-step, and not during riscv_attach() or riscv_reset(). As a result, software
+#    breakpoints (ebreak) failed to halt into debug mode immediately after attach or reset.
+#
+# FIX
+# ---
+# 1. In riscv_csr_read() and riscv_csr_write(), exempt debug registers 0x7b0..0x7bf from progbuf
+#    routing and progbuf fallback, forcing them to always use abstract commands directly.
+#
+# 2. Enable ebreakm (RV_DCSR_EBREAK_MACHINE) in dcsr during riscv_attach() and riscv_reset(), and
+#    preserve it during single-stepping in riscv_halt_resume().
+#
 --- a/src/target/riscv_debug.c	2026-10-11 15:26:41.951820577 +0200
 +++ b/src/target/riscv_debug.c	2026-10-11 15:38:49.989192514 +0200
 @@ -829,7 +829,8 @@
@@ -70,4 +95,3 @@
 +	}
  	target_check_error(target);
  }
- 
