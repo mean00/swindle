@@ -799,4 +799,16 @@ extern "C" bool bmp_run_riscv_benchmark2_c(void)
 
     return riscv32_run_benchmark2(cur_target);
 }
+
+extern "C" bool bmp_riscv_read_csr_c(uint32_t csr, uint32_t *val)
+{
+    if (!cur_target)
+        return false;
+
+    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
+        return false;
+
+    return target_reg_read(cur_target, 128 + csr, val, sizeof(*val)) == sizeof(*val);
+}
 // EOF
+

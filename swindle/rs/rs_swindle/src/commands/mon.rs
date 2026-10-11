@@ -123,7 +123,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 35] = [
+const mon_command_tree: [CommandTree; 36] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -139,6 +139,14 @@ const mon_command_tree: [CommandTree; 35] = [
         cb: CallbackType::text(_crash),
         start_separator: 0,
         next_separator: 0,
+    },
+    CommandTree {
+        command: "csr",
+        min_args: 1,
+        require_connected: true,
+        cb: CallbackType::text(_csr),
+        start_separator: b' ',
+        next_separator: b' ',
     },
     CommandTree {
         command: "map",
@@ -406,7 +414,7 @@ const mon_command_tree: [CommandTree; 35] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 32] = [
+const help_tree: [HelpTree; 33] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -430,6 +438,10 @@ const help_tree: [HelpTree; 32] = [
     HelpTree {
         command: "ch32v3_option_byte",
         help: "Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f.",
+    },
+    HelpTree {
+        command: "csr name|hex",
+        help: "Read and dump RISC-V CSR (e.g. mon csr dcsr, mon csr 0x7b0). Only for RISC-V targets.",
     },
     HelpTree {
         command: "delay value",
@@ -1178,4 +1190,83 @@ pub fn _breakpoint_count(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
+fn parse_csr_name_or_num(arg: &str) -> Option<u32> {
+    match arg {
+        "mstatus" => Some(0x300),
+        "misa" => Some(0x301),
+        "mie" => Some(0x304),
+        "mtvec" => Some(0x305),
+        "mscratch" => Some(0x340),
+        "mepc" => Some(0x341),
+        "mcause" => Some(0x342),
+        "mtval" => Some(0x343),
+        "mip" => Some(0x344),
+        "tselect" => Some(0x7a0),
+        "tdata1" => Some(0x7a1),
+        "tdata2" => Some(0x7a2),
+        "tdata3" => Some(0x7a3),
+        "tinfo" => Some(0x7a4),
+        "dcsr" => Some(0x7b0),
+        "dpc" => Some(0x7b1),
+        "dscratch0" => Some(0x7b2),
+        "dscratch1" => Some(0x7b3),
+        _ => {
+            let s = arg.strip_prefix("0x").or_else(|| arg.strip_prefix("0X")).unwrap_or(arg);
+            let mut val: u32 = 0;
+            if s.is_empty() {
+                return None;
+            }
+            for &b in s.as_bytes() {
+                let digit = match b {
+                    b'0'..=b'9' => (b - b'0') as u32,
+                    b'a'..=b'f' => (b - b'a' + 10) as u32,
+                    b'A'..=b'F' => (b - b'A' + 10) as u32,
+                    _ => return None,
+                };
+                val = (val << 4) | digit;
+            }
+            Some(val)
+        }
+    }
+}
+
+/// Handle `mon csr <name|hex>` — read and dump RISC-V CSR.
+pub fn _csr(_command: &str, args: &[&str]) -> bool {
+    if !bmp::bmp_is_riscv() {
+        gdb_println!("Error: Target architecture is not RISC-V.");
+        encoder::reply_e01();
+        return false;
+    }
+
+    if args.is_empty() {
+        gdb_println!("usage: mon csr <name|number>");
+        encoder::reply_e01();
+        return false;
+    }
+
+    let csr_arg = args[0].trim();
+    let csr_num = match parse_csr_name_or_num(csr_arg) {
+        Some(num) => num,
+        None => {
+            gdb_println!("Invalid CSR name or number: ", csr_arg);
+            encoder::reply_e01();
+            return false;
+        }
+    };
+
+    match bmp::bmp_riscv_read_csr(csr_num) {
+        Some(val) => {
+            gdb_println!("CSR 0x", Hex(csr_num), " = ", Hex(val));
+            encoder::reply_ok();
+            true
+        }
+        None => {
+            gdb_println!("Failed to read CSR 0x", Hex(csr_num));
+            encoder::reply_e01();
+            false
+        }
+    }
+}
+
 //-- EOF --
+

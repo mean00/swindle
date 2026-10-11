@@ -675,4 +675,20 @@ pub fn bmp_run_riscv_benchmark() -> bool {
 pub fn bmp_run_riscv_benchmark2() -> bool {
     unsafe { bmp_run_riscv_benchmark2_c() }
 }
+
+/// Read a RISC-V CSR.
+///
+/// Returns `Some(value)` on success, `None` if the target is not attached,
+/// not RISC-V, or if reading the CSR failed.
+pub fn bmp_riscv_read_csr(csr: u32) -> Option<u32> {
+    let mut val: u32 = 0;
+    unsafe {
+        if rn_bmp_cmd_c::bmp_riscv_read_csr_c(csr, &mut val) {
+            Some(val)
+        } else {
+            None
+        }
+    }
+}
 // EOF
+
