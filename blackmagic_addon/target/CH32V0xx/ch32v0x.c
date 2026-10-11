@@ -398,7 +398,7 @@ static const sw_breakpoint_helpers ch32v0_sw_breakpoint_helper = {.page_size = s
 #define RV_DM_CTRL_SYSTEM_RESET (1U << 1U)
 #define RV_DM_STAT_ALL_RESET (1U << 19U)
 
-static void ch32v003_reset(target_s *const target)
+static void __attribute__((unused)) ch32v003_reset(target_s *const target)
 {
     riscv_hart_s *const hart = riscv_hart_struct(target);
 
@@ -488,7 +488,7 @@ bool ch32v003x_probe(target_s *const target)
 
     /* Override reset handler to fix halt-on-reset race condition */
     target->target_options |= TOPT_INHIBIT_NRST;
-    target->reset = ch32v003_reset;
+    // target->reset = ch32v003_reset;
 
     const uint32_t flash_size = ch32v0x_read_flash_size(target);
 
