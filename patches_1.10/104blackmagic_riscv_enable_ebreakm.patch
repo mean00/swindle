@@ -1,6 +1,42 @@
---- a/src/target/riscv_debug.c
-+++ b/src/target/riscv_debug.c
-@@ -1274,6 +1274,12 @@
+--- a/src/target/riscv_debug.c	2026-10-11 15:26:41.951820577 +0200
++++ b/src/target/riscv_debug.c	2026-10-11 15:38:49.989192514 +0200
+@@ -829,7 +829,8 @@
+ 	const uint8_t access_width = (reg & RV_CSR_FORCE_MASK) ? riscv_csr_access_width(reg) : hart->access_width;
+ 	DEBUG_TARGET("Reading %u-bit CSR %03x\n", access_width, reg & ~RV_CSR_FORCE_MASK);
+ 	/* If the read must be completed using the progbuf mechanism, switch to doing that */
+-	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR)
++	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++		((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU))
+ 		return riscv_csr_progbuf_read(hart, reg, data);
+ 	/* Set up the register read and wait for it to complete */
+ 	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
+@@ -842,6 +843,7 @@
+ 		 * only GPR access using abstract commands. NB: we have no recourse if no progbuf regs are implemented.
+ 		 */
+ 		if (hart->status == RISCV_HART_NOT_SUPP && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++			((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU) &&
+ 			hart->progbuf_size > 0U) {
+ 			hart->flags |= RV_HART_FLAG_DATA_GPR_ONLY;
+ 			return riscv_csr_read(hart, reg, data);
+@@ -1027,7 +1029,8 @@
+ 	const uint8_t access_width = (reg & RV_CSR_FORCE_MASK) ? riscv_csr_access_width(reg) : hart->access_width;
+ 	DEBUG_TARGET("Writing %u-bit CSR %03x\n", access_width, reg & ~RV_CSR_FORCE_MASK);
+ 	/* If the write must be completed using the progbuf mechanism, switch to doing that */
+-	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR)
++	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++		((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU))
+ 		return riscv_csr_progbuf_write(hart, reg, data);
+ 	/* Set up the data registers based on the Hart native access size */
+ 	if (!riscv_csr_write_data(hart, data, access_width))
+@@ -1044,6 +1047,7 @@
+ 		 * only GPR access using abstract commands. NB: we have no recourse if no progbuf regs are implemented.
+ 		 */
+ 		if (hart->status == RISCV_HART_NOT_SUPP && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++			((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU) &&
+ 			hart->progbuf_size > 0U) {
+ 			hart->flags |= RV_HART_FLAG_DATA_GPR_ONLY;
+ 			return riscv_csr_write(hart, reg, data);
+@@ -1275,6 +1279,12 @@
  		const uint32_t tdata2 = 0U;
  		riscv_config_trigger(hart, trigger, RISCV_TRIGGER_MODE_UNUSED, &tdata1, &tdata2);
  	}
@@ -13,7 +49,7 @@
  	return true;
  }
  
-@@ -1333,7 +1339,7 @@
+@@ -1333,7 +1343,7 @@
  	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
  		return;
  	if (step)
@@ -22,7 +58,7 @@
  	else {
  		stepping_config &= ~(RV_DCSR_STEP);
  		stepping_config |= RV_DCSR_EBREAK_MACHINE;
-@@ -1473,6 +1479,12 @@
+@@ -1473,6 +1483,12 @@
  	if (hart->dbg_module->dmi_bus->invalidate_caches)
  		hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
  	riscv_halt_request(target);
