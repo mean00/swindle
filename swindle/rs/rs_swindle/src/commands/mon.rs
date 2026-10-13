@@ -827,24 +827,31 @@ pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
+fn common_scan<F>(name: &str, scan_fn: F) -> bool
+where
+    F: FnOnce() -> bool,
+{
+    bmplog!("{}:\n", name);
+    // The scan may detach from the current target and attach a different one:
+    // cached lines are target-specific and must be dropped.
+    crate::mem_cache::invalidate();
+
+    if !scan_fn() {
+        bmpwarning!("{} failed!\n", name);
+        return false;
+    }
+    os_detach();
+    encoder::reply_ok();
+    true
+}
+
 /*
    Detect stuff connected to the SWD interface
    Try to use the fastest speed
 */
 /// Handle `mon swdp_scan` — probe SWD bus for ARM devices.
 pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
-    bmplog!("swdp_scan:\n");
-    // The scan may detach from the current target and attach a different one:
-    // cached lines are target-specific and must be dropped.
-    crate::mem_cache::invalidate();
-
-    if !bmp::swdp_scan() {
-        bmpwarning!("swdp failed!\n");
-        return false;
-    }
-    os_detach();
-    encoder::reply_ok();
-    true
+    common_scan("swdp_scan", bmp::swdp_scan)
 }
 /*
    Detect stuff connected to the SWD interface
@@ -852,18 +859,7 @@ pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
 */
 /// Handle `mon rvswdp_scan` — probe for RISC-V devices.
 pub fn _rvswdp_scan(_command: &str, _args: &[&str]) -> bool {
-    bmplog!("rvswdp_scan:\n");
-    // The scan may detach from the current target and attach a different one:
-    // cached lines are target-specific and must be dropped.
-    crate::mem_cache::invalidate();
-
-    if !bmp::rvswdp_scan() {
-        bmpwarning!("rvswdp_scan failed!\n");
-        return false;
-    }
-    os_detach();
-    encoder::reply_ok();
-    true
+    common_scan("rvswdp_scan", bmp::rvswdp_scan)
 }
 // NOTE: the SDI handlers that used to sit here (_sdi_scan, _sdi_wire) moved to
 // the optional SDI module crate::riscv_extra — riscv_extra_sdi.rs with the
