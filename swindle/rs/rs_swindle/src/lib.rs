@@ -77,8 +77,8 @@ mod riscv_extra;
 mod rtt_consts;
 mod setting_keys;
 mod settings;
-//mod sync_cell;
-//mod rpc;
+mod sync_cell;
+pub use sync_cell::SyncCell;
 pub mod rpc_common;
 pub mod rpc_common_generated;
 // Feature-gated modules: native vs hosted

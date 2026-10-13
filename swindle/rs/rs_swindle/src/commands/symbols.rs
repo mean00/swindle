@@ -53,16 +53,7 @@ const symbols_to_collect: [list_of_symbols; NB_OF_SYMBOL_TABLE] = [
     },
 ];
 /// Bookkeeping state for the symbol parser iteration.
-use core::cell::UnsafeCell;
-
-// Safe: only accessed from single-threaded embedded context
-struct SyncCell<T>(UnsafeCell<T>);
-unsafe impl<T> Sync for SyncCell<T> {}
-impl<T> SyncCell<T> {
-    const fn new(val: T) -> Self { SyncCell(UnsafeCell::new(val)) }
-    fn get(&self) -> T where T: Copy { unsafe { *self.0.get() } }
-    fn set(&self, val: T) where T: Copy { unsafe { *self.0.get() = val; } }
-}
+use crate::SyncCell;
 
 #[derive(Clone, Copy)]
 struct parser_index {

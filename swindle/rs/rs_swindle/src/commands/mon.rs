@@ -75,30 +75,7 @@ crate::gdb_print_init!();
 pub const MAX_SPACE: usize = 40;
 pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 //
-use core::cell::UnsafeCell;
-
-// Safe: only accessed from single-threaded embedded context
-struct SyncCell<T>(UnsafeCell<T>);
-unsafe impl<T> Sync for SyncCell<T> {}
-impl<T> SyncCell<T> {
-    const fn new(val: T) -> Self {
-        SyncCell(UnsafeCell::new(val))
-    }
-    fn get(&self) -> T
-    where
-        T: Copy,
-    {
-        unsafe { *self.0.get() }
-    }
-    fn set(&self, val: T)
-    where
-        T: Copy,
-    {
-        unsafe {
-            *self.0.get() = val;
-        }
-    }
-}
+use crate::SyncCell;
 
 static targetCommandTree: SyncCell<Option<&'static [CommandTree]>> = SyncCell::new(None);
 static targetHelpTree: SyncCell<Option<&'static [HelpTree]>> = SyncCell::new(None);
