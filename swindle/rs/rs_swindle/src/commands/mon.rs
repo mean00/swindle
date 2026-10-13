@@ -688,7 +688,7 @@ fn _riscv_confirm(_command: &str, args: &[&str]) -> bool {
     true
 }
 //
-fn print_help_tree(helptree: &[HelpTree]) {
+pub(crate) fn print_help_tree(prefix: &str, helptree: &[HelpTree]) {
     let mut mxsize: usize = 0;
     for i in helptree {
         if i.command.len() > mxsize {
@@ -702,7 +702,7 @@ fn print_help_tree(helptree: &[HelpTree]) {
         let cmd = i.command;
         let len = cmd.len();
         let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
-        gdb_print!("mon ", &cmd, " ", &pad);
+        gdb_print!(prefix, &cmd, " ", &pad);
         gdb_println!(": ", &(i.help));
     }
 }
@@ -710,13 +710,13 @@ fn print_help_tree(helptree: &[HelpTree]) {
 fn _mon_help(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("Help, use mon [cmd] [params] :\n");
     gdb_print!("-----------------------------\n");
-    print_help_tree(&help_tree);
+    print_help_tree("mon ", &help_tree);
     match get_custom_target_help() {
         None => (),
         Some(x) => {
             gdb_print!("Board specific commands :\n");
             gdb_print!("------------------------\n");
-            print_help_tree(x);
+            print_help_tree("mon ", x);
         }
     }
 
@@ -1136,23 +1136,10 @@ pub fn platform_nrst_set_val(set: u32) {
 /// Set the NRST pin with configurable pulse/holdoff delays.
 #[unsafe(no_mangle)]
 pub fn swindle_nrst_set_val(set: u32) {
-    let delay: u32 = match set {
-        0 => {
-            // clear
-            let d = settings::get_or_default(RESET_HOLDOFF_DURATION, 10);
-            //       gdb_print!("reset off, holdoff  {} \n", d);
-            set_nrst(false);
-            d
-        }
-        _ => {
-            // set
-            let d = settings::get_or_default(RESET_PULSE_DURATION, 10);
-            //gdb_print!("reset on, duration  {} \n", d);
-            set_nrst(true);
-            d
-        }
-    };
-    delay_ms(delay);
+    let is_set = set != 0;
+    set_nrst(is_set);
+    let key = if is_set { RESET_PULSE_DURATION } else { RESET_HOLDOFF_DURATION };
+    delay_ms(settings::get_or_default(key, 10));
 }
 /// Handle `mon breakpoint_info` — show HW breakpoint/watchpoint count.
 pub fn _breakpoint_count(_command: &str, _args: &[&str]) -> bool {

@@ -8,7 +8,6 @@
 //! - `mon rtt status` — show current RTT state
 //! - `mon rtt help` — show RTT help
 
-use crate::commands::mon::{MAX_SPACE, spacebar};
 use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
 use crate::encoder::encoder;
 use crate::parsing_util;
@@ -118,23 +117,7 @@ pub fn _rtt(_command: &str, args: &[&str]) -> bool {
  */
 /// Show RTT help.
 fn _help(_command: &str, _args: &[&str]) -> bool {
-    let mut mxsize: usize = 0;
-    for i in rtt_help_tree {
-        if i.command.len() > mxsize {
-            mxsize = i.command.len();
-        }
-    }
-    if mxsize > MAX_SPACE {
-        panic!("padding too big");
-    }
-    for i in rtt_help_tree {
-        let cmd = i.command;
-        let len = cmd.len();
-        let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
-        gdb_print!("mon rtt  ", &cmd);
-        gdb_print!(" ", &pad);
-        gdb_println!(": ", &(i.help));
-    }
+    crate::commands::mon::print_help_tree("mon rtt  ", &rtt_help_tree);
     encoder::reply_ok();
     true
 }
