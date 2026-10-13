@@ -79,43 +79,34 @@ fn common_z(set: bool, args: &[&str]) -> bool {
         }
 
         // mw breakpoint
-        if set {
-            encoder::reply_bool(add_mw_breakpoint(address));
+        let ok = if set {
+            add_mw_breakpoint(address)
         } else {
-            encoder::reply_bool(remove_mw_breakpoint(address));
-        }
+            remove_mw_breakpoint(address)
+        };
+        encoder::reply_bool(ok);
         return true;
     }
 
-    if set
-    // add
-    {
-        //--
-        //--
-        if breakpoint_watchpoint == Breakpoints::Execute_SW {
-            encoder::reply_bool(add_sw_breakpoint(address, len));
-            return true;
-        }
-        bmplog!("adding breakpoint at 0x{:x}\n", address);
-        encoder::reply_bool(bmp::bmp_add_breakpoint(
-            Breakpoints::to_bmp(&breakpoint_watchpoint),
-            address,
-            len,
-        ));
-        //--
-        return true;
-    }
-    // remove
     if breakpoint_watchpoint == Breakpoints::Execute_SW {
-        encoder::reply_bool(remove_sw_breakpoint(address, len));
+        let ok = if set {
+            add_sw_breakpoint(address, len)
+        } else {
+            remove_sw_breakpoint(address, len)
+        };
+        encoder::reply_bool(ok);
         return true;
     }
-    bmplog!("removing breakpoint at 0x{:x}\n", address);
-    encoder::reply_bool(bmp::bmp_remove_breakpoint(
-        Breakpoints::to_bmp(&breakpoint_watchpoint),
-        address,
-        len,
-    ));
+
+    let bmp_type = Breakpoints::to_bmp(&breakpoint_watchpoint);
+    let ok = if set {
+        bmplog!("adding breakpoint at 0x{:x}\n", address);
+        bmp::bmp_add_breakpoint(bmp_type, address, len)
+    } else {
+        bmplog!("removing breakpoint at 0x{:x}\n", address);
+        bmp::bmp_remove_breakpoint(bmp_type, address, len)
+    };
+    encoder::reply_bool(ok);
     true
 }
 /*

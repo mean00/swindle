@@ -41,22 +41,11 @@ struct list_of_breakpoints {
 impl list_of_breakpoints {
     /// Find the index of a breakpoint by address.
     fn lookup_index(&self, adr: u32) -> Option<usize> {
-        for i in 0..self.breakpoint.len() {
-            let this_adr = self.breakpoint[i].address;
-            if this_adr == adr {
-                return Some(i);
-            }
-        }
-        None
+        self.breakpoint.iter().position(|b| b.address == adr)
     }
     /// Check if a breakpoint at `adr` already exists.
     fn is_present(&self, adr: u32) -> bool {
-        for item in self.breakpoint.iter() {
-            if item.address == adr {
-                return true;
-            }
-        }
-        false
+        self.lookup_index(adr).is_some()
     }
     /// Get the breakpoint entry at index `dex`.
     fn at(&self, dex: usize) -> &address_old_opcode {
