@@ -88,10 +88,7 @@ impl freertos_switch_handler for freertos_switch_handler_m33 {
         // push_ascending decrements pointer first, then writes. So the
         // *last* push lands at the lowest address (top_of_stack).
         // Push exception frame first (higher addresses), then R4..R11, then PSPLIM/EXC_RETURN.
-        self.gpr.push_ascending(16, 17); // xpsr
-        self.gpr.push_ascending(14, 16); // LR, PC
-        self.gpr.push_ascending(12, 13); // R12
-        self.gpr.push_ascending(0, 4);   // R0,R1,R2,R3
+        self.gpr.push_exception_frame();
         self.gpr.push_ascending(4, 12);  // R4..R11
         // EXC_RETURN: real PendSV saves r3 (EXC_RETURN value) after PSPLIM
         self.gpr.write_ascending(EXC_RETURN);
@@ -113,10 +110,7 @@ impl freertos_switch_handler for freertos_switch_handler_m33 {
         // Skip PSPLIM and EXC_RETURN (first 2 words = 8 bytes)
         self.gpr.pointer += 8;
         self.gpr.pop_ascending(4, 12); // r4..r11
-        self.gpr.pop_ascending(0, 4); // r0..r3
-        self.gpr.pop_ascending(12, 13); // R12
-        self.gpr.pop_ascending(14, 16); // LR/PC
-        self.gpr.pop_ascending(16, 17); // XPSR
+        self.gpr.pop_exception_frame();
         // Set SP (R13) to the top of the saved stack frame.
         self.gpr.registers[13] = self.gpr.pointer;
         true

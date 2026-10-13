@@ -61,10 +61,7 @@ impl freertos_switch_handler for freertos_switch_handler_m4f {
         bmplog!("Pusing registers to stack at 0x{:x}\n", self.gpr.pointer);
         
         // Push the core exception frame
-        self.gpr.push_ascending(16, 17); // xpsr
-        self.gpr.push_ascending(14, 16); // LR, PC
-        self.gpr.push_ascending(12, 13); // R12
-        self.gpr.push_ascending(0, 4);   // R0,R1,R2,R3
+        self.gpr.push_exception_frame();
         
         // We do not push actual FPU registers (S16-S31) here to save time and space,
         // so we must use an EXC_RETURN value that indicates no FPU context was saved manually.
@@ -99,10 +96,7 @@ impl freertos_switch_handler for freertos_switch_handler_m4f {
             self.gpr.pointer += 64;
         }
 
-        self.gpr.pop_ascending(0, 4); // r0..r3
-        self.gpr.pop_ascending(12, 13); // R12
-        self.gpr.pop_ascending(14, 16); // LR/PC
-        self.gpr.pop_ascending(16, 17); // XPSR
+        self.gpr.pop_exception_frame();
         
         self.gpr.registers[13] = self.gpr.pointer;
         true

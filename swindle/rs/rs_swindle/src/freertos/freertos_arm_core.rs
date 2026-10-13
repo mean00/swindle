@@ -103,4 +103,22 @@ impl freertos_cortexm_core {
         self.pointer += 4 * (last - first) as u32;
         ret
     }
+
+    /// Pushes the standard Cortex-M hardware exception frame:
+    /// xPSR, PC, LR, R12, and R0..R3.
+    pub fn push_exception_frame(&mut self) -> bool {
+        self.push_ascending(16, 17) // xpsr
+            && self.push_ascending(14, 16) // LR, PC
+            && self.push_ascending(12, 13) // R12
+            && self.push_ascending(0, 4) // R0, R1, R2, R3
+    }
+
+    /// Pops the standard Cortex-M hardware exception frame:
+    /// R0..R3, R12, LR, PC, and xPSR.
+    pub fn pop_exception_frame(&mut self) -> bool {
+        self.pop_ascending(0, 4) // r0..r3
+            && self.pop_ascending(12, 13) // R12
+            && self.pop_ascending(14, 16) // LR/PC
+            && self.pop_ascending(16, 17) // XPSR
+    }
 }

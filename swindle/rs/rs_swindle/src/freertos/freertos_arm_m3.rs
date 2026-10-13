@@ -74,10 +74,7 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
         
         // CM3/CM4 (No FPU) Layout:
         // push_ascending decrements pointer first, then writes.
-        self.gpr.push_ascending(16, 17); // xpsr
-        self.gpr.push_ascending(14, 16); // LR, PC
-        self.gpr.push_ascending(12, 13); // R12
-        self.gpr.push_ascending(0, 4);   // R0,R1,R2,R3
+        self.gpr.push_exception_frame();
         self.gpr.push_ascending(4, 12);  // R4..R11 (lowest address = top_of_stack)
 
         self.gpr.registers[13] = self.gpr.pointer;
@@ -91,10 +88,7 @@ impl freertos_switch_handler for freertos_switch_handler_m3 {
         self.gpr.pointer = address;
         // CM3/CM4 (No FPU) Layout:
         self.gpr.pop_ascending(4, 12); // r4..r11
-        self.gpr.pop_ascending(0, 4); // r0..r3
-        self.gpr.pop_ascending(12, 13); // R12
-        self.gpr.pop_ascending(14, 16); // LR/PC
-        self.gpr.pop_ascending(16, 17); // XPSR
+        self.gpr.pop_exception_frame();
         // Set SP (R13) to the top of the saved stack frame.
         self.gpr.registers[13] = self.gpr.pointer;
         true

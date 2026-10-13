@@ -79,6 +79,42 @@ impl rv32_gprs {
         bmp_write_mem32(self.pointer, &xin);
         self.pointer += 4_u32;
     }
+
+    /// Pushes the cached internal state (`gprs`, `mstatus`, `pc`) back into physical hardware.
+    pub fn write_cur_registers(&self) -> bool {
+        for i in 1..32 {
+            crate::bmp::bmp_write_register(i as u32, self.gprs[i]);
+        }
+        // mstatus is CSR 0x300. BMP maps CSRs at GDB offset 128.
+        crate::bmp::bmp_write_register(0x300 + 128, self.mstatus);
+        crate::bmp::bmp_write_register(32, self.pc);
+        true
+    }
+
+    /// Reads the physical hardware state (`gprs`, `mstatus`, `pc`) and caches it internally.
+    pub fn read_cur_registers(&mut self) -> bool {
+        let regs = crate::bmp::bmp_read_registers();
+        if regs.len() < 33 {
+            crate::bmpwarning!("Incorrect # of registers {}", regs.len());
+            return false;
+        }
+        self.gprs[1..32].copy_from_slice(&regs[1..32]);
+        self.sp = regs[2];
+        self.pc = regs[32];
+
+        // mstatus is CSR 0x300. BMP maps CSRs at GDB offset 128.
+        if let Some(ms) = crate::bmp::bmp_read_register(0x300 + 128) {
+            self.mstatus = ms;
+        } else {
+            self.mstatus = 0;
+        }
+        true
+    }
+
+    /// Retrieves the current stack pointer.
+    pub fn get_sp(&self) -> u32 {
+        self.sp
+    }
 }
 
 /// Factory function that inspects the binary's debug symbols to determine which RISC-V 

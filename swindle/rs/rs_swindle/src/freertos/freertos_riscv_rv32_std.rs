@@ -10,7 +10,6 @@
 /// - xCriticalNesting (offset 116)
 /// - mstatus (offset 120)
 
-use crate::bmp::{bmp_read_registers, bmp_write_register, bmp_read_register};
 use crate::freertos::freertos_trait::freertos_switch_handler;
 use super::freertos_riscv_common::rv32_gprs;
 
@@ -32,34 +31,13 @@ impl freertos_switch_handler for FreeRTOSSwitchHandlerRV32Std {
     /// Pushes the cached internal state (`gprs`, `mstatus`, `pc`) back into the 
     /// physical hardware via the debugger interface.
     fn write_cur_registers(&self) -> bool {
-        for i in 1..32 {
-            bmp_write_register(i as u32, self.gprs.gprs[i]);
-        }
-        // mstatus is CSR 0x300. BMP maps CSRs at GDB offset 128.
-        bmp_write_register(0x300 + 128, self.gprs.mstatus);
-        bmp_write_register(32, self.gprs.pc);
-        true
+        self.gprs.write_cur_registers()
     }
 
     /// Reads the physical hardware state (`gprs`, `mstatus`, `pc`) via the debugger 
     /// interface and caches it internally.
     fn read_cur_registers(&mut self) -> bool {
-        let regs = bmp_read_registers();
-        if regs.len() < 33 {
-            crate::bmpwarning!("Incorrect # of registers {}", regs.len());
-            return false;
-        }
-        self.gprs.gprs[1..32].copy_from_slice(&regs[1..32]);
-        self.gprs.sp = regs[2];
-        self.gprs.pc = regs[32];
-        
-        // mstatus is CSR 0x300. BMP maps CSRs at GDB offset 128.
-        if let Some(ms) = bmp_read_register(0x300 + 128) {
-            self.gprs.mstatus = ms;
-        } else {
-            self.gprs.mstatus = 0;
-        }
-        true
+        self.gprs.read_cur_registers()
     }
 
     /// Serializes the current internal cached state out to the target's memory (stack)
@@ -95,6 +73,6 @@ impl freertos_switch_handler for FreeRTOSSwitchHandlerRV32Std {
 
     /// Retrieves the current stack pointer
     fn get_sp(&self) -> u32 {
-        self.gprs.sp
+        self.gprs.get_sp()
     }
 }
