@@ -35,10 +35,6 @@ use super::{CommandTree, exec_one};
 use crate::encoder::encoder;
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
 
-use crate::bmp;
-use crate::bmp::MemoryBlock;
-use crate::bmp::bmp_get_mapping;
-use crate::bmp::mapping::{Flash, Ram};
 use crate::commands::CallbackType;
 use crate::commands::mon::_qRcmd;
 use crate::commands::q_thread::{
@@ -229,17 +225,6 @@ fn _qSupported(_command: &str, _args: &[&str]) -> bool {
 //
 // Read memory map
 //
-// the full command is qXfer:features:read:target.xml:0,50d
-// we assume it fits (?)
-const height: &str = "00000000";
-fn hex8(digit: u32, buffer: &mut [u8], e: &mut encoder) {
-    let pfix: &str = digit.numtoa_str(16, buffer);
-    if pfix.len() < 8 {
-        e.add(&height[0..(8 - pfix.len())]);
-    }
-    e.add(pfix);
-}
-//
 // qXfer:features:read:target.xml:d9c,83b
 
 /// Handle `qXfer` — read XML data (memory map, target features).
@@ -281,29 +266,26 @@ fn _qXfer_features_regs(arg: &str) -> bool {
     }
 
     // offset & size in hex
-    let reply = bmp::bmp_register_description();
-    let reply_size = reply.len();
+    let reply_size = crate::target_xml::get_target_xml_len();
 
     if reply_size == 0 {
-        bmp::bmp_drop_register_description();
         encoder::reply_e01();
         return true;
     }
 
     if start_address >= reply_size {
-        bmp::bmp_drop_register_description();
         encoder::simple_send("l");
         return true;
     }
 
-    //
+    let remaining = reply_size - start_address;
+    let is_last = remaining <= length;
+
     let mut e = encoder::new();
     e.begin();
-    e.add("m");
-    let end_pos = core::cmp::min(start_address + length, reply_size);
-    e.add(&reply[start_address..end_pos]);
+    e.add(if is_last { "l" } else { "m" });
+    crate::target_xml::send_target_xml_chunk(&mut e, start_address, length);
     e.end();
-    bmp::bmp_drop_register_description();
     true
 }
 //
@@ -311,49 +293,37 @@ fn _qXfer_features_regs(arg: &str) -> bool {
 //
 fn _qXfer_memory_map(arg: &str) -> bool {
     let start_address: usize;
-    let _length: usize;
+    let length: usize;
     match validate_q_query(arg) {
-        None => return false,
+        None => {
+            encoder::reply_e01();
+            return true;
+        }
         Some((a, b)) => {
             start_address = a;
-            _length = b;
+            length = b;
         }
     }
-    if start_address != 0 {
+
+    let reply_size = crate::memory_map_xml::get_memory_map_xml_len();
+
+    if reply_size == 0 {
+        encoder::reply_e01();
+        return true;
+    }
+
+    if start_address >= reply_size {
         encoder::simple_send("l");
         return true;
     }
 
+    let remaining = reply_size - start_address;
+    let is_last = remaining <= length;
+
     let mut e = encoder::new();
-    let mut buffer: [u8; 20] = [0; 20];
-
     e.begin();
-    e.add("m<memory-map>");
-
-    {
-        let ram: Vec<MemoryBlock> = bmp_get_mapping(Ram);
-        for i in ram {
-            e.add("<memory type=\"ram\" start=\"0x");
-            hex8(i.start_address, &mut buffer, &mut e);
-            e.add("\" length=\"0x");
-            hex8(i.length, &mut buffer, &mut e);
-            e.add("\"/>");
-        }
-    }
-    {
-        let flash: Vec<MemoryBlock> = bmp_get_mapping(Flash);
-        for i in flash {
-            e.add("<memory type=\"flash\" start=\"0x");
-            hex8(i.start_address, &mut buffer, &mut e);
-            e.add("\" length=\"0x");
-            hex8(i.length, &mut buffer, &mut e);
-            e.add("\">");
-            e.add("<property name=\"blocksize\">0x");
-            hex8(i.block_size, &mut buffer, &mut e);
-            e.add("</property></memory>");
-        }
-    }
-    e.add("</memory-map>");
+    e.add(if is_last { "l" } else { "m" });
+    crate::memory_map_xml::send_memory_map_xml_chunk(&mut e, start_address, length);
     e.end();
     true
 }

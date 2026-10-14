@@ -350,29 +350,15 @@ extern "C" bool bmp_read_all_registers_c(unsigned int *regs)
     return true;
 }
 
-void *copy = NULL;
+// Stubbed out: target XML generation is now handled directly in Rust (target_xml.rs)
 extern "C" const char *bmp_target_description_c()
 {
-    if (!bmp_attached_c())
-        return "";
-    const char *c = target_regs_description(cur_target);
-    if (!c)
-        return "";
-    copy = (void *)c;
-    return c;
+    return "";
 }
 
-extern "C" void free(void *__ptr)
-
-    ;
-//
 extern "C" void bmp_target_description_clear_c(const unsigned char *data)
 {
-    if (copy)
-    {
-        free(copy);
-        copy = NULL;
-    }
+    (void)data;
 }
 //
 extern "C" bool bmp_ch32v3xx_write_user_option_byte_c(uint8_t memory_conf)
@@ -759,6 +745,27 @@ extern "C" uint32_t bmp_get_arch_c()
     if (!cur_target)
         return 0;
     return TOPT_GET_ARCH(cur_target->target_options);
+}
+
+extern "C" uint32_t bmp_get_target_options_c()
+{
+    if (!cur_target)
+        return 0;
+    return cur_target->target_options;
+}
+
+extern "C" bool bmp_get_riscv_info_c(uint8_t *address_width, uint32_t *extensions)
+{
+    if (!cur_target || TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
+        return false;
+    const riscv_hart_s *hart = riscv_hart_struct(cur_target);
+    if (!hart)
+        return false;
+    if (address_width)
+        *address_width = hart->address_width;
+    if (extensions)
+        *extensions = hart->extensions;
+    return true;
 }
 
 extern "C" bool riscv32_run_benchmark(target_s *target);

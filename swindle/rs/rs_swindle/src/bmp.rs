@@ -24,6 +24,7 @@ pub enum mapping {
 pub struct MemoryBlock {
     pub start_address: u32,
     pub length: u32,
+    #[allow(dead_code)]
     pub block_size: u32,
 }
 
@@ -32,6 +33,7 @@ pub struct MemoryBlock {
 /// Returns a string containing the GDB XML register description for the
 /// currently attached target. This is used by GDB to understand the register
 /// set (names, types, groups).
+#[allow(dead_code)]
 pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
@@ -43,6 +45,7 @@ pub fn bmp_register_description() -> &'static str {
 ///
 /// Must be called after `bmp_register_description()` to avoid leaking the
 /// C-allocated string buffer.
+#[allow(dead_code)]
 pub fn bmp_drop_register_description() {
     unsafe { rn_bmp_cmd_c::bmp_target_description_clear_c() }
 }
@@ -626,6 +629,24 @@ pub fn bmp_get_arch() -> bmp_arch {
             crate::rn_bmp_cmd_c::BMP_ARCH_ARM => bmp_arch::BMP_ARCH_ARM,
             crate::rn_bmp_cmd_c::BMP_ARCH_RISCV => bmp_arch::BMP_ARCH_RISCV,
             _ => bmp_arch::BMP_ARCH_NONE,
+        }
+    }
+}
+
+/// Get the target's raw target_options bitmask.
+pub fn bmp_get_target_options() -> u32 {
+    unsafe { rn_bmp_cmd_c::bmp_get_target_options_c() }
+}
+
+/// Get RISC-V hart info (address width in bits, ISA extension flags).
+pub fn bmp_get_riscv_info() -> Option<(u8, u32)> {
+    let mut width: u8 = 0;
+    let mut exts: u32 = 0;
+    unsafe {
+        if rn_bmp_cmd_c::bmp_get_riscv_info_c(&mut width, &mut exts) {
+            Some((width, exts))
+        } else {
+            None
         }
     }
 }

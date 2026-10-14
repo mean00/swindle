@@ -153,6 +153,8 @@ uint32_t target_mw_page_size(void);
 #define BMP_ARCH_ARM 1
 #define BMP_ARCH_RISCV 2
 uint32_t bmp_get_arch_c();
+uint32_t bmp_get_target_options_c();
+bool bmp_get_riscv_info_c(uint8_t *address_width, uint32_t *extensions);
 bool bmp_riscv_read_csr_c(uint32_t csr, uint32_t *val);
 bool bmp_riscv_write_csr_c(uint32_t csr, uint32_t val);
 // EOF

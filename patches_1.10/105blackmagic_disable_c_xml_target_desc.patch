@@ -1,0 +1,179 @@
+# 105blackmagic_disable_c_xml_target_desc.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# Target description XML (target.xml) and memory map XML (memory-map.xml) are now
+# generated directly on the Rust side (swindle/rs/rs_swindle/src/target_xml.rs and
+# memory_map_xml.rs) in zero-heap streaming fashion.
+#
+# The legacy C implementations in Blackmagic:
+# - cortexm_build_target_description() / cortexm_target_description()
+# - riscv_build_target_description() / riscv_target_description()
+# - mem_map_ram() / mem_map_flash() / target_mem_map_chunk()
+# - target_regs_description()
+# are no longer called and used heap allocations (malloc) and format strings that
+# bloated the firmware binary.
+#
+# FIX
+# ---
+# 1. In cortexm.c:
+#    - #if 0 the SPR/SYS/TrustZone XML descriptor tables and static asserts.
+#    - Update target_is_cortexm() to check target->attach == cortexm_attach instead of regs_description.
+#    - Comment out target->regs_description = cortexm_target_description in cortexm_probe().
+#    - #if 0 cortexm_build_target_fpu_description, cortexm_build_target_secext_description,
+#      cortexm_build_target_description, and cortexm_target_description.
+#
+# 2. In riscv_debug.c:
+#    - #if 0 the GPR/CSR/FPU XML descriptor tables and static assert.
+#    - Comment out forward declaration of riscv_target_description.
+#    - Comment out target->regs_description = riscv_target_description in riscv_debug_probe().
+#    - #if 0 riscv_build_target_fpu_description, riscv_build_target_description,
+#      and riscv_target_description.
+#
+# 3. In target.c:
+#    - #if 0 map_begin and map_end strings.
+#    - #if 0 mem_map_ram, mem_map_flash, and target_mem_map_chunk.
+#    - #if 0 target_regs_description.
+#
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -143,6 +143,7 @@
+  * 'associative array'.
+  */
+ 
++#if 0
+ // Strings for the names of the Cortex-M's special purpose registers.
+ static const char *cortex_m_sp_names[CORTEXM_SP_REG_COUNT] = {
+ 	"sp",
+@@ -237,6 +238,7 @@
+ );
+ 
+ // clang-format on
++#endif
+ 
+ static void cortexm_cache_clean(
+ 	target_s *const target, const target_addr32_t addr, const size_t len, const bool invalidate)
+@@ -279,7 +281,7 @@
+ 
+ bool target_is_cortexm(const target_s *target)
+ {
+-	return target != NULL && target->regs_description == cortexm_target_description;
++	return target != NULL && target->attach == cortexm_attach;
+ }
+ 
+ uint32_t cortexm_demcr_read(const target_s *target)
+@@ -352,7 +354,7 @@
+ 	target_mem32_write32(target, CORTEXM_CPACR, cpacr);
+ 	bool is_cortexmf = target_mem32_read32(target, CORTEXM_CPACR) == cpacr;
+ 
+-	target->regs_description = cortexm_target_description;
++	// target->regs_description = cortexm_target_description;
+ 	target->regs_read = cortexm_regs_read;
+ 	target->regs_write = cortexm_regs_write;
+ 	target->reg_read = cortexm_reg_read;
+@@ -1454,6 +1456,7 @@
+  *      <reg name="d15" bitsize="64" type="float"/>
+  *  </feature>"
+  */
++#if 0
+ static size_t cortexm_build_target_fpu_description(char *const buffer, const size_t max_length)
+ {
+ 	size_t offset = 0U;
+@@ -1692,3 +1695,4 @@
+ 		cortexm_build_target_description(description, description_length, target->target_options);
+ 	return description;
+ }
++#endif
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -155,6 +155,7 @@
+ 	RV_HALT_CAUSE_RESET = (5U << 6U),
+ } riscv_halt_cause_e;
+ 
++#if 0
+ // clang-format off
+ /* General-purpose register name strings */
+ static const char *const riscv_gpr_names[RV_GPRS_COUNT] = {
+@@ -271,6 +272,7 @@
+ 	"GPR array length mismatch! GPR type array should have the same length as GPR name array."
+ );
+ // clang-format on
++#endif
+ 
+ static void riscv_dm_init(riscv_dm_s *dbg_module);
+ static bool riscv_hart_init(riscv_hart_s *hart);
+@@ -285,7 +287,7 @@
+ static void riscv_hart_discover_triggers(riscv_hart_s *hart);
+ static void riscv_hart_memory_access_type(target_s *target);
+ 
+-static const char *riscv_target_description(target_s *target);
++// static const char *riscv_target_description(target_s *target);
+ 
+ static bool riscv_check_error(target_s *target);
+ static void riscv_halt_request(target_s *target);
+@@ -542,7 +544,7 @@
+ 	target->attach = riscv_attach;
+ 	target->detach = riscv_detach;
+ 
+-	target->regs_description = riscv_target_description;
++	// target->regs_description = riscv_target_description;
+ 
+ 	target->check_error = riscv_check_error;
+ 	target->halt_request = riscv_halt_request;
+@@ -1535,6 +1537,7 @@
+  *      <reg name="fcsr" bitsize="32" regnum="68" save-restore="no"/>
+  *  </feature>
+  */
++#if 0
+ static size_t riscv_build_target_fpu_description(char *const buffer, size_t max_length, size_t fpu_size)
+ {
+ 	const size_t first_fpu_register = RV_FPU_GDB_OFFSET;             // see riscv_debug.h
+@@ -1686,3 +1689,4 @@
+ 		(void)riscv_build_target_description(description, description_length, hart->address_width, hart->extensions);
+ 	return description;
+ }
++#endif
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -57,8 +57,10 @@
+ 	{NULL, NULL, NULL},
+ };
+ 
++#if 0
+ static const char map_begin[] = "<memory-map>";
+ static const char map_end[] = "</memory-map>";
++#endif
+ 
+ target_s *target_new(void)
+ {
+@@ -259,6 +261,7 @@
+ 	return true;
+ }
+ 
++#if 0
+ static ssize_t mem_map_ram(char *const buffer, const size_t length, const target_ram_s *const ram)
+ {
+ 	return snprintf(buffer, length, "<memory type=\"ram\" start=\"0x%08" PRIx32 "\" length=\"0x%" PRIx32 "\"/>",
+@@ -319,6 +322,7 @@
+ 		start_offset, target->map_transfer_offset);
+ 	return 0U;
+ }
++#endif
+ 
+ void target_print_progress(platform_timeout_s *const timeout)
+ {
+@@ -655,12 +659,14 @@
+  * GDB supplies request `qXfer:features:read:target.xml:`. The pointer returned by this call
+  * must be passed to `free()` on conclusion of its use.
+  */
++#if 0
+ const char *target_regs_description(target_s *target)
+ {
+ 	if (target->regs_description)
+ 		return target->regs_description(target);
+ 	return NULL;
+ }
++#endif
+ 
+ uint32_t target_mem32_read32(target_s *target, target_addr32_t addr)
+ {

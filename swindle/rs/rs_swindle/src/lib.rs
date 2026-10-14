@@ -97,6 +97,8 @@ cfg_if::cfg_if! {
 // rtt and sw_breakpoints are at crate root (contents are #[cfg] guarded)
 mod rtt;
 mod sw_breakpoints;
+pub mod target_xml;
+pub mod memory_map_xml;
 // USB vs non-USB transport
 cfg_if::cfg_if! {
     if #[cfg(not(any(feature = "hosted", feature = "network")))] {

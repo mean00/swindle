@@ -470,6 +470,12 @@ unsafe extern "C" {
     pub fn bmp_get_arch_c() -> cty::c_uint;
 }
 unsafe extern "C" {
+    pub fn bmp_get_target_options_c() -> cty::c_uint;
+}
+unsafe extern "C" {
+    pub fn bmp_get_riscv_info_c(address_width: *mut u8, extensions: *mut u32) -> bool;
+}
+unsafe extern "C" {
     pub fn bmp_riscv_read_csr_c(csr: cty::c_uint, val: *mut cty::c_uint) -> bool;
 }
 unsafe extern "C" {

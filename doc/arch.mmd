@@ -1,0 +1,182 @@
+graph TD
+    %% -------------------------------------------------------------
+    %% LAYER 1: CLIENTS & EXTERNAL INTERFACES
+    %% -------------------------------------------------------------
+    subgraph Layer1 ["1. Client Layer"]
+        GDBClient["GDB / LLDB Debugger"]
+        Console["Target Serial / RTT Terminal"]
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 2: TRANSPORT & I/O
+    %% -------------------------------------------------------------
+    subgraph Layer2 ["2. Transport Layer"]
+        USB_GDB["USB CDC GDB Port TinyUSB"]
+        USB_UART["USB CDC Serial Bridge"]
+        TCP_Socket["TCP/IP Socket Server (Hosted)"]
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 3: PROTOCOL & COMMAND DISPATCH (RUST SWINDLE CORE)
+    %% -------------------------------------------------------------
+    subgraph Layer3 ["3. Swindle Protocol & Command Engine (Rust)"]
+        StreamDecoder["Packet Decoder (gdb_stream automaton)"]
+        PacketEncoder["Packet Encoder & Checksum (encoder)"]
+        CmdDispatcher["Command Dispatcher (commands::exec)"]
+
+        subgraph CmdModules ["Command Handlers"]
+            CmdRun["Execution Control (vCont, c, s, k)"]
+            CmdMem["Memory Access (m, X)"]
+            CmdReg["Register Access (g, p, P)"]
+            CmdBkpt["Breakpoint & Watchpoint (Z, z)"]
+            CmdFlash["Flash Programming (vFlash)"]
+            CmdMon["Monitor & Config (mon)"]
+            CmdQuery["Queries & XML Target Description (q)"]
+        end
+
+        subgraph XMLGenerators ["XML Streaming Generators (Rust, Zero-Alloc)"]
+            TargetXML["Register XML Generator (target_xml.rs)"]
+            MemMapXML["Memory Map XML Generator (memory_map_xml.rs)"]
+            XmlSink["Unified XML Sink (XmlSink: Count / Stream)"]
+        end
+
+        subgraph CoreHelpers ["Core Helpers & State"]
+            MemCache["Line Read Cache (16-byte prefetch)"]
+            SWBkptMgr["Software & Flash Breakpoint Manager"]
+            SettingsKV["Settings Storage (NVRAM / Flash KV)"]
+            SyncCellState["Thread-Safe Shared State (SyncCell)"]
+        end
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 4: TARGET OS & SUB-SYSTEM INTROSPECTION (RUST)
+    %% -------------------------------------------------------------
+    subgraph Layer4 ["4. Introspection & Services (Rust)"]
+        FreeRTOSEngine["FreeRTOS Kernel Inspector"]
+        subgraph FreeRTOSSub ["FreeRTOS Components"]
+            TCBList["TCB & Task Crawler (freertos_list)"]
+            ThreadIDMap["Thread ID Registry (freertos_hashtcb)"]
+            CoreContext["Stack Frame Unwinder (ARM CM0/3/4/33, RV32)"]
+        end
+        RTTEngine["SEGGER RTT Engine (Buffer Discovery & Polling)"]
+        RPCEngine["RPC Layer (Target Server & Host Client)"]
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 5: BLACKMAGIC GLUE & C FFI SEAM
+    %% -------------------------------------------------------------
+    subgraph Layer5 ["5. Blackmagic Bridge & FFI (C / C++)"]
+        RustFFI["Rust C-FFI Bindings (bmp.rs / rn_bmp_cmd_c)"]
+        BMPBridge["Swindle BMP Interface Bridge (bmp_interface_c.cpp)"]
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 6: BLACKMAGIC PROBE CORE (C)
+    %% -------------------------------------------------------------
+    subgraph Layer6 ["6. Black Magic Probe (BMP) Core Subsystems (C)"]
+        TargetEngine["Target Manager (target.c & target_s, C XML Disabled)"]
+        TargetProber["Target Auto-Probe & Detection (target_probe.c)"]
+        FlashDrivers["Flash Memory Drivers (target_flash.c & algorithms)"]
+
+        subgraph ArchDrivers ["Architecture & Core Drivers"]
+            CortexM["ARM Cortex-M Driver (cortexm.c)"]
+            CortexA["ARM Cortex-A/R Driver (cortexar.c)"]
+            RISCVCore["RISC-V 32/64 Debug Module (riscv32.c & riscv_debug.c)"]
+            VendorTargets["Vendor Specifics (CH32Vx, STM32, RP2040, etc.)"]
+        end
+
+        subgraph DebugTransports ["Debug Access Ports & Wire Transports"]
+            ADIv5["ARM CoreSight ADIv5 / ADIv6 (adiv5.c & DP/AP)"]
+            RISCV_DTM["RISC-V DTM (Debug Transport Module)"]
+            SWD_Transport["SWD Bus Protocol (swdptap)"]
+            RVSWD_Transport["RVSWD 2-Wire Protocol (rvswdp)"]
+            SDI_Transport["WCH SDI 1-Wire Protocol (sdiTap)"]
+            JTAG_Transport["JTAG Bus Scanner & TAP (jtagtap)"]
+        end
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 7: HARDWARE & PHY LAYER
+    %% -------------------------------------------------------------
+    subgraph Layer7 ["7. Physical Hardware & Pin Drivers"]
+        GPIO_PIO["Hardware Pins & PIO (RP2040 PIO / GD32 Fast GPIO)"]
+        TargetMCU["Target Device (ARM Cortex-M / RISC-V SoC)"]
+    end
+
+    %% -------------------------------------------------------------
+    %% CONNECTIONS (STATIC LAYERED RELATIONSHIPS)
+    %% -------------------------------------------------------------
+    GDBClient --- USB_GDB
+    GDBClient --- TCP_Socket
+    Console --- USB_UART
+
+    USB_GDB --- StreamDecoder
+    TCP_Socket --- StreamDecoder
+    PacketEncoder --- USB_GDB
+    PacketEncoder --- TCP_Socket
+
+    StreamDecoder --> CmdDispatcher
+    CmdDispatcher --> PacketEncoder
+
+    CmdDispatcher --> CmdRun
+    CmdDispatcher --> CmdMem
+    CmdDispatcher --> CmdReg
+    CmdDispatcher --> CmdBkpt
+    CmdDispatcher --> CmdFlash
+    CmdDispatcher --> CmdMon
+    CmdDispatcher --> CmdQuery
+
+    CmdMem --> MemCache
+    CmdBkpt --> SWBkptMgr
+    CmdMon --> SettingsKV
+    CmdMon --> SyncCellState
+    CmdQuery --> FreeRTOSEngine
+    CmdQuery --> RTTEngine
+    CmdQuery --> TargetXML
+    CmdQuery --> MemMapXML
+    TargetXML --> XmlSink
+    MemMapXML --> XmlSink
+    XmlSink --> PacketEncoder
+    TargetXML --> RustFFI
+    MemMapXML --> RustFFI
+
+    FreeRTOSEngine --> TCBList
+    FreeRTOSEngine --> ThreadIDMap
+    FreeRTOSEngine --> CoreContext
+
+    CmdDispatcher --> RustFFI
+    MemCache --> RustFFI
+    SWBkptMgr --> RustFFI
+    FreeRTOSEngine --> RustFFI
+    RTTEngine --> RustFFI
+    CmdMon --> RustFFI
+    CmdRun --> RustFFI
+    CmdReg --> RustFFI
+    CmdFlash --> RustFFI
+
+    RustFFI --> BMPBridge
+    BMPBridge --> TargetEngine
+    BMPBridge --> TargetProber
+    BMPBridge --> FlashDrivers
+
+    TargetEngine --> CortexM
+    TargetEngine --> CortexA
+    TargetEngine --> RISCVCore
+    TargetEngine --> VendorTargets
+
+    CortexM --> ADIv5
+    CortexA --> ADIv5
+    RISCVCore --> RISCV_DTM
+
+    ADIv5 --> SWD_Transport
+    ADIv5 --> JTAG_Transport
+    RISCV_DTM --> RVSWD_Transport
+    RISCV_DTM --> SDI_Transport
+    RISCV_DTM --> JTAG_Transport
+
+    SWD_Transport --> GPIO_PIO
+    RVSWD_Transport --> GPIO_PIO
+    SDI_Transport --> GPIO_PIO
+    JTAG_Transport --> GPIO_PIO
+
+    GPIO_PIO --> TargetMCU

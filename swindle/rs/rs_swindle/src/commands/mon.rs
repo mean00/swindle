@@ -817,9 +817,6 @@ pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
     exec_one(&mon_command_tree, rcmd)
 }
 
-/*
- *
- */
 /// Handle `mon version` — display firmware version.
 pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
     gdb_println!("", bmp::bmp_get_version());
