@@ -14,6 +14,7 @@ extern "C"
 #include "target.h"
 #include "target_internal.h"
 #include "riscv_debug.h"
+#include "adiv5.h"
 }
 //
 // C++
@@ -33,6 +34,9 @@ extern "C"
     target_s *cur_target;
     target_s *last_target;
     bool shutdown_bmda;
+    bool connect_assert_nrst = false;
+    unsigned cortexm_wait_timeout = 2000;
+    bool debug_bmp = false;
 
     // ---------------------------------------------------------------
     // Phase 0 instrumentation: global wire-transaction counters.
@@ -571,6 +575,149 @@ extern "C" unsigned int bmp_poll_target_c(unsigned int *watchpoint)
     *watchpoint = watch; // warning ! 32 bits address only!
     return reason;
 }
+extern "C" bool parse_enable_or_disable(const char *value, bool *out)
+{
+    const size_t value_len = strlen(value);
+    if (value_len && !strncmp(value, "enable", value_len))
+        *out = true;
+    else if (value_len && !strncmp(value, "disable", value_len))
+        *out = false;
+    else {
+        gdb_out("'enable' or 'disable' argument must be provided\n");
+        return false;
+    }
+    return true;
+}
+
+static void display_target(size_t idx, target_s *target, void *context)
+{
+    (void)context;
+    const char attached = target->attached ? '*' : ' ';
+    const char *const core_name = target->core;
+    if (!strcmp(target->driver, "ARM Cortex-M"))
+        gdb_outf("***%2u %c Unknown %s Designer 0x%x Part ID 0x%x %s\n", (unsigned)idx, attached, target->driver,
+                 target->designer_code, target->part_id, core_name ? core_name : "");
+    else
+        gdb_outf("%2u %3c  %s %s\n", (unsigned)idx, attached, target->driver, core_name ? core_name : "");
+}
+
+#if CONFIG_BMDA == 1
+extern "C" bool bmda_swd_scan_targetid(uint32_t targetid);
+extern "C" bool bmda_rvswd_scan(void);
+#else
+extern "C" bool adiv5_swd_scan_targetid(uint32_t targetid);
+extern "C" bool rvswd_scan(void);
+#endif
+
+extern "C" bool cmd_swd_scan(const target_s *target, int argc, const char **argv)
+{
+    (void)target;
+    volatile uint32_t targetid = 0;
+    if (argc > 1 && argv && argv[1])
+        targetid = strtoul(argv[1], NULL, 0);
+
+    const char *volt = platform_target_voltage();
+    if (volt)
+        gdb_outf("Target voltage: %s\n", volt);
+
+    if (connect_assert_nrst)
+        platform_nrst_set_val(true);
+
+    bool scan_result = false;
+    TRY(EXCEPTION_ALL) {
+#if CONFIG_BMDA == 1
+        scan_result = bmda_swd_scan_targetid(targetid);
+#else
+        scan_result = adiv5_swd_scan_targetid(targetid);
+#endif
+    } CATCH() {
+    case EXCEPTION_TIMEOUT:
+        gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
+        break;
+    case EXCEPTION_ERROR:
+        gdb_outf("Exception: %s\n", exception_frame.msg);
+        break;
+    default:
+        break;
+    }
+
+    if (!scan_result) {
+        platform_target_clk_output_enable(false);
+        platform_nrst_set_val(false);
+        gdb_out("SWD scan failed!\n");
+        return false;
+    }
+
+    target_foreach(display_target, NULL);
+    platform_target_clk_output_enable(false);
+    return true;
+}
+
+extern "C" bool cmd_rvswd_scan(const target_s *target, int argc, const char **argv)
+{
+    (void)target;
+    (void)argc;
+    (void)argv;
+
+    const char *volt = platform_target_voltage();
+    if (volt)
+        gdb_outf("Target voltage: %s\n", volt);
+
+    if (connect_assert_nrst)
+        platform_nrst_set_val(true);
+
+    bool scan_result = false;
+    TRY(EXCEPTION_ALL) {
+#if CONFIG_BMDA == 1
+        scan_result = bmda_rvswd_scan();
+#else
+        scan_result = rvswd_scan();
+#endif
+    } CATCH() {
+    case EXCEPTION_TIMEOUT:
+        gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
+        break;
+    case EXCEPTION_ERROR:
+        gdb_outf("Exception: %s\n", exception_frame.msg);
+        break;
+    default:
+        break;
+    }
+
+    if (!scan_result) {
+        platform_target_clk_output_enable(false);
+        platform_nrst_set_val(false);
+        gdb_out("RVSWD scan failed!\n");
+        return false;
+    }
+
+    target_foreach(display_target, NULL);
+    platform_target_clk_output_enable(false);
+    return true;
+}
+
+extern "C" int command_process(target_s *const target, const char *cmd_buffer)
+{
+    if (!target || !cmd_buffer || !*cmd_buffer)
+        return -1;
+
+    char buf[128];
+    strncpy(buf, cmd_buffer, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    const char *argv[16];
+    int argc = 0;
+    char *token_state = NULL;
+    for (char *part = strtok_r(buf, " \t", &token_state); part && argc < 15; part = strtok_r(NULL, " \t", &token_state))
+        argv[argc++] = part;
+    argv[argc] = NULL;
+
+    if (argc == 0)
+        return -1;
+
+    return target_command(target, argc, argv);
+}
+
 extern "C" bool bmp_mon_c(const char *str)
 {
     if (command_process(cur_target, str) == 0)

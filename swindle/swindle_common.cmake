@@ -222,8 +222,9 @@ set(BOARDS
 
 # -------
 set(BM_SRC
-    ${S}/command.c ${S}/exception.c ${S}/hex_utils.c
+    ${S}/exception.c ${S}/hex_utils.c
     ${S}/maths_utils.c
+   # ${S}/command.c (obsoleted by Rust Swindle mon / bmp_interface_c.cpp)
    # ${S}/timing.c
     # ${S}/rtt.c ${S}/remote.c ${S}/gdb_main.c ${S}/gdb_packet.c ${S}/crc32.c ${S}/morse.c
     CACHE INTERNAL "")
