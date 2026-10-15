@@ -1,0 +1,206 @@
+# 60blackmagic_rp2040_spi_merged.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# Consolidates RP2040-specific and SPI flash robustness patches (formerly 46, 58, 87bis):
+#
+# 1. RP2040 CRC32 hardware acceleration (formerly patch 46):
+#    Calculating memory checksums (GDB 'compare-sections' or verify) over SWD/DAP word-by-word
+#    is slow. The RP2040 has a DMA controller with built-in CRC32 computation hardware (sniff
+#    engine). By uploading a tiny execution stub into target RAM and configuring the DMA engine,
+#    flash/RAM CRC32 verification runs orders of magnitude faster.
+#
+# 2. RP2040 Core 1 reset during flash programming (formerly patch 58):
+#    The RP2040 is a dual-core Cortex-M0+ SoC sharing external QSPI flash mapped to XIP memory.
+#    When reprogramming flash, the debugger must take the SSI controller out of XIP mode to execute
+#    flash write/erase commands. If core 1 is left running, any instruction fetch or data read from
+#    the flash memory range causes bus faults, hard faults, or corrupted flash operations.
+#
+# 3. SPI Flash error checking and loop robustness (formerly patch 87bis):
+#    In rp_flash_put_get() and generic SPI flash routines (mass_erase, sector_erase, flash_write),
+#    the code polled target status or QSPI FIFO flags in tight loops without checking if the target
+#    reported a communication fault. If the target was disconnected, halted unexpectedly, or had an
+#    SWD fault, the loop hung indefinitely.
+#
+# FIX
+# ---
+# 1. In rp2040.c, implement rp_crc32() using the RP2040 DMA hardware stub (rp2040_crc32.stub) to
+#    calculate CRC32 directly on the target and bind it to target->crc32 in rp2040_probe().
+#
+# 2. In rp2040.c rp_flash_prepare(), assert RP_PSM_FRCE_OFF_PROC1_BITS in the Power-on State Machine
+#    (PSM FRCE_OFF) to hold core 1 in reset before exiting XIP mode. In rp_flash_resume(), release
+#    core 1 from reset after flash XIP mode is restored.
+#
+# 3. In rp2040.c rp_flash_put_get() and spi.c bmp_spi_mass_erase(), bmp_spi_flash_erase(), and
+#    bmp_spi_flash_write(), add target_check_error(target) checks inside the busy-wait polling loops
+#    to immediately abort and return false on communication or target errors.
+#
+diff --git a/src/target/rp2040.c b/src/target/rp2040.c
+index 179d088d..e57c4000 100644
+--- a/src/target/rp2040.c
++++ b/src/target/rp2040.c
+@@ -151,9 +151,14 @@
+ #define RP_RESETS_BASE_ADDR            0x4000c000U
+ #define RP_RESETS_RESET                (RP_RESETS_BASE_ADDR + 0x00U)
+ #define RP_RESETS_RESET_DONE           (RP_RESETS_BASE_ADDR + 0x08U)
++#define RP_RESETS_RESET_DMA_BITS       (1U << 2)
+ #define RP_RESETS_RESET_IO_QSPI_BITS   0x00000040U
+ #define RP_RESETS_RESET_PADS_QSPI_BITS 0x00000200U
+ 
++#define RP_PSM_BASE_ADDR               0x40010000U
++#define RP_PSM_FRCE_OFF                (RP_PSM_BASE_ADDR + 0x04U)
++#define RP_PSM_FRCE_OFF_PROC1_BITS     (1U << 16U)
++
+ #define RP_BOOTROM_FUNC_TABLE_ADDR      0x00000014U
+ #define RP_BOOTROM_FUNC_TABLE_TAG(x, y) ((uint8_t)(x) | ((uint8_t)(y) << 8U))
+ 
+@@ -199,6 +204,8 @@ static void rp_flash_exit_xip(target_s *target);
+ static void rp_flash_enter_xip(target_s *target);
+ static void rp_flash_connect_internal(target_s *target);
+ static void rp_flash_flush_cache(target_s *target);
++// MEANX
++static bool rp_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32);
+ 
+ static void rp_add_flash(target_s *const target)
+ {
+@@ -245,6 +252,7 @@ bool rp2040_probe(target_s *const target)
+ 	target->target_storage = priv_storage;
+ 
+ 	target->driver = "RP2040";
++	target->crc32 = rp_crc32;
+ 	target->target_options |= TOPT_INHIBIT_NRST;
+ 	target->attach = rp_attach;
+ 	target->enter_flash_mode = rp_flash_prepare;
+@@ -324,6 +332,8 @@ static void rp_spi_restore(target_s *const target)
+ static bool rp_flash_prepare(target_s *const target)
+ {
+ 	DEBUG_TARGET("%s\n", __func__);
++	/* Hold core 1 in reset so it can't execute from flash (or anything else) while we reprogram it */
++	target_mem32_write32(target, RP_PSM_FRCE_OFF | RP_REG_ACCESS_WRITE_ATOMIC_BITSET, RP_PSM_FRCE_OFF_PROC1_BITS);
+ 	/* Suspend the cache, come out of XIP */
+ 	rp_flash_connect_internal(target);
+ 	rp_flash_exit_xip(target);
+@@ -341,6 +351,8 @@ static bool rp_flash_resume(target_s *const target)
+ 	/* Flush the cache and resume XIP */
+ 	rp_flash_flush_cache(target);
+ 	rp_flash_enter_xip(target);
++	/* Release core 1 from reset now that the flash is back in XIP mode */
++	target_mem32_write32(target, RP_PSM_FRCE_OFF | RP_REG_ACCESS_WRITE_ATOMIC_BITCLR, RP_PSM_FRCE_OFF_PROC1_BITS);
+ 	target_mem32_write32(target, CORTEXM_AIRCR, CORTEXM_AIRCR_VECTKEY | CORTEXM_AIRCR_SYSRESETREQ);
+ 	return true;
+ }
+@@ -531,6 +543,8 @@ static void rp_flash_put_get(
+ 		// APB load costs 4 cycles, so only do it on idle loops (our budget is 48 cyc/byte)
+ 		if (idle && rp_flash_was_aborted(target))
+ 			break;
++		if (target_check_error(target))
++			break;
+ 	}
+ 	rp_spi_chip_select(target, RP_GPIO_QSPI_CS_DRIVE_HIGH);
+ }
+@@ -726,3 +740,66 @@ bool rp2040_rescue_probe(adiv5_access_port_s *const ap)
+ 
+ 	return true;
+ }
++
++#include "../../../blackmagic_addon/flashstub/rp2040_crc32.stub"
++#define RP_CRC_STUB_ADDR 0x20000000
++//#define RP_CRC_STUB_ADDR 0x20040000 // scratch
++
++void *bmp_get_temporary_buffer(uint32_t asked);
++
++/*
++  * if it returns false, we use the "normal" crc32
++  *
++  */
++bool rp_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32)
++{
++	bool ret = false;
++	uint8_t *rp_crc32_buf = bmp_get_temporary_buffer(RP2040_CRC32_BIN_LEN + 4);
++	if (size < 100)
++		return false; // if it is small it's not worth it
++	// is the area we are CRCing collides with the stub ?
++	if ((start_address >= RP_CRC_STUB_ADDR) && (start_address < RP2040_CRC32_BIN_LEN + RP_CRC_STUB_ADDR + 4))
++		return false;
++	if ((start_address <= RP_CRC_STUB_ADDR) && (start_address + size) > RP_CRC_STUB_ADDR)
++		return false;
++	// not aligned
++	if (start_address & 3)
++		return false;
++	if (size & 3) // TODO FIXME we can deal with that
++		return false;
++	// -----------------------------
++	//  RESET DMA
++	// -----------------------------
++	uint32_t dma_reset = target_mem32_read32(target, RP_RESETS_RESET);
++	dma_reset &= ~(RP_RESETS_RESET_DMA_BITS);
++	target_mem32_write32(target, RP_RESETS_RESET, dma_reset | RP_RESETS_RESET_DMA_BITS);
++	// Step1 : copy the ram to a temp buffer
++	target_mem32_read(target, rp_crc32_buf, RP_CRC_STUB_ADDR, RP2040_CRC32_BIN_LEN + 4);
++	target_mem32_write32(target, RP_RESETS_RESET, dma_reset);
++	// step2 : Upload the stub
++	target_mem32_write(target, RP_CRC_STUB_ADDR + 4, rp2040_crc32_bin, RP2040_CRC32_BIN_LEN);
++
++	uint32_t target_source_address = start_address;
++	uint32_t target_source_length = size;
++
++#if 0 // test data
++#define TEST_VECTOR_ADDR (RP_CRC_STUB_ADDR + 200)
++	//const uint8_t test_vector[10] = "123456789"; // 0xfc891918
++	const uint8_t test_vector[] = "Hello, World!"; // 0x19270120
++	target_source_address = TEST_VECTOR_ADDR;
++	target_source_length = strlen((const char *)test_vector);
++	target_mem32_write(target, TEST_VECTOR_ADDR, test_vector, target_source_length);
++#endif
++	// step3 : run the stub, the 3rd param is the scratch buffer where the DMA will write
++	if (!cortexm_run_stub(target, RP_CRC_STUB_ADDR + 4, //
++			target_source_length, target_source_address, RP_CRC_STUB_ADDR, RP_CRC_STUB_ADDR)) {
++		target->reg_read(target, 1, crc32, 4); // oytput in r1
++		*crc32 ^= 0xFFFFFFFFU;
++		//DEBUG_WARN( "\n>>RP HW CRC  ADDR:0x%x Len=%d CRC=:0x%x \n ", target_source_address, target_source_length, *crc32);
++		ret = true;
++	}
++	// step4 : replace the ram
++	target_mem32_write(target, RP_CRC_STUB_ADDR, rp_crc32_buf, RP2040_CRC32_BIN_LEN + 4);
++done_and_done:
++	return ret;
++}
+diff --git a/src/target/spi.c b/src/target/spi.c
+index 872c68f4..20da90f4 100644
+--- a/src/target/spi.c
++++ b/src/target/spi.c
+@@ -162,6 +162,8 @@ bool bmp_spi_mass_erase(target_flash_s *const flash, platform_timeout_s *const p
+ 	while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY) {
+ 		if (print_progess)
+ 			target_print_progress(print_progess);
++		if (target_check_error(target))
++			return false;
+ 	}
+ 
+ 	return true;
+@@ -178,8 +180,10 @@ static bool bmp_spi_flash_erase(target_flash_s *const flash, const target_addr_t
+ 
+ 	spi_flash->run_command(
+ 		target, SPI_FLASH_CMD_SECTOR_ERASE | SPI_FLASH_OPCODE(spi_flash->sector_erase_opcode), addr - flash->start);
+-	while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY)
+-		continue;
++	while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY) {
++		if (target_check_error(target))
++			return false;
++	}
+ 	return true;
+ }
+ 
+@@ -197,8 +201,10 @@ static bool bmp_spi_flash_write(
+ 
+ 		const size_t amount = MIN(length - offset, spi_flash->page_size);
+ 		spi_flash->write(target, SPI_FLASH_CMD_PAGE_PROGRAM, begin + offset, buffer + offset, amount);
+-		while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY)
+-			continue;
++		while (bmp_spi_read_status(target, spi_flash) & SPI_FLASH_STATUS_BUSY) {
++			if (target_check_error(target))
++				return false;
++		}
+ 	}
+ 	return true;
+ }

@@ -1,0 +1,400 @@
+# 112blackmagic_target_flash_merged.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# Consolidates Target common, flash subsystem, breakpoint framework, and XML cleanup patches
+# (formerly patches 11, 47, 50, 51, 53, 55, and common parts of 82bis, 85bis, 105):
+#
+# 1. Target Architecture & Option Tracking (formerly patch 82bis, 47):
+#    Blackmagic needed a clean, unified way to tag target architectures (ARM vs RISC-V) in
+#    target->target_options using bitfields (TOP_ARCH_SHIFT) so higher-level debug code can
+#    determine the architecture without fragile string comparisons on target->driver.
+#
+# 2. Software Breakpoint Framework & Query Helpers (formerly patches 50, 51):
+#    Provides generic target hooks for software breakpoints (sw_breakpoint_add, sw_breakpoint_remove)
+#    and exports target_breakpoint_available() to report remaining hardware breakpoint and
+#    watchpoint registers to the caller.
+#
+# 3. Flash Programming Error Handling & Erase Optimization (formerly patches 53, 55):
+#    - Buffered flash writes must immediately abort on the first write error rather than continuing
+#      to flash garbage into subsequent flash blocks.
+#    - Variable size erase block support allows CH32V targets with differing sector/block sizes
+#      to use the largest possible erase blocks, speeding up erase times considerably.
+#
+# 4. Binary Footprint & XML Generation Cleanups (formerly patches 11, 85bis, 105):
+#    - Redirects printf to embedded printf to avoid bringing in full standard C library printf bloat.
+#    - Adds DMI operation counters and benchmark timing fields to target struct for performance profiling.
+#    - Disables obsolete C XML memory map chunk generators (mem_map_ram, mem_map_flash) in target.c
+#      and target_flash.c, as zero-heap XML streaming is now done on the Rust side.
+#
+# FIX
+# ---
+# 1. In src/include/target.h:
+#    - Define TOPT_GET_ARCH, TOPT_SET_ARCH, TOPT_ARCH_ARM, and TOPT_ARCH_RISCV macros.
+#    - Declare sw_breakpoint hook functions and target_breakpoint_available().
+#
+# 2. In src/target/target.c:
+#    - Implement target_breakpoint_available() and software breakpoint framework handlers.
+#    - Integrate architecture options and DMI benchmark counters.
+#    - Disable obsolete C mem_map XML generation functions (#if 0).
+#
+# 3. In src/target/target_flash.c:
+#    - In target_flash_write_buffered(), immediately abort and fail if target_check_error() or
+#      a block write fails.
+#    - Support variable block erase sizes to accelerate flash erasing.
+#    - Disable legacy C memory map XML chunk formatting.
+#
+# 4. In src/target/target_internal.h & target_probe.h:
+#    - Declare helper prototypes for software breakpoints and option tweaking.
+#
+diff --git a/src/include/target.h b/src/include/target.h
+index ce0be5d1..db383f9e 100644
+--- a/src/include/target.h
++++ b/src/include/target.h
+@@ -38,6 +38,17 @@ typedef SSIZE_T ssize_t;
+ typedef int32_t mode_t;
+ #endif /* _MSC_VER */
+ 
++// MEANX
++#define TOP_ARCH_SHIFT   28
++#define TOPT_GET_ARCH(x) ((x >> TOP_ARCH_SHIFT) & 3)
++#define TOPT_SET_ARCH(value, arch)                                           \
++	{                                                                        \
++		value = (value & ~(3 << TOP_ARCH_SHIFT)) | (arch << TOP_ARCH_SHIFT); \
++	}
++#define TOPT_ARCH_ARM   1
++#define TOPT_ARCH_RISCV 2
++// /MEANX
++
+ typedef struct target target_s;
+ typedef uint32_t target_addr32_t;
+ typedef uint64_t target_addr64_t;
+@@ -74,6 +85,10 @@ bool target_mem64_read(target_s *target, void *dest, target_addr64_t src, size_t
+ bool target_mem32_write(target_s *target, target_addr_t dest, const void *src, size_t len);
+ bool target_mem64_write(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ bool target_mem_access_needs_halt(target_s *target);
++/* Non-halting memory access: try to perform memory I/O without stopping the CPU.
++ * Returns true if the operation was performed, false if the target cannot do it. */
++bool target_mem_read_nostop(target_s *target, void *dest, target_addr64_t src, size_t len);
++bool target_mem_write_nostop(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ /* Flash memory access functions */
+ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len);
+ bool target_flash_write(target_s *target, target_addr_t dest, const void *src, size_t len);
+diff --git a/src/target/target.c b/src/target/target.c
+index 226266ad..f3da5176 100644
+--- a/src/target/target.c
++++ b/src/target/target.c
+@@ -43,6 +43,9 @@ target_s *target_list = NULL;
+ 
+ #define FLASH_WRITE_BUFFER_CEILING 1024U
+ 
++#define snprintf snprintf_
++int snprintf_(char *buffer, size_t count, const char *format, ...);
++
+ static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
+ static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
+ static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
+@@ -54,8 +57,10 @@ const command_s target_cmd_list[] = {
+ 	{NULL, NULL, NULL},
+ };
+ 
++#if 0
+ static const char map_begin[] = "<memory-map>";
+ static const char map_end[] = "</memory-map>";
++#endif
+ 
+ target_s *target_new(void)
+ {
+@@ -256,6 +261,7 @@ bool target_enter_flash_mode_stub(target_s *target)
+ 	return true;
+ }
+ 
++#if 0
+ static ssize_t mem_map_ram(char *const buffer, const size_t length, const target_ram_s *const ram)
+ {
+ 	return snprintf(buffer, length, "<memory type=\"ram\" start=\"0x%08" PRIx32 "\" length=\"0x%" PRIx32 "\"/>",
+@@ -316,6 +322,7 @@ size_t target_mem_map_chunk(
+ 		start_offset, target->map_transfer_offset);
+ 	return 0U;
+ }
++#endif
+ 
+ void target_print_progress(platform_timeout_s *const timeout)
+ {
+@@ -394,6 +401,40 @@ bool target_mem_access_needs_halt(target_s *target)
+ 	return !(target->target_options & TOPT_NON_HALTING_MEM_IO);
+ }
+ 
++/* Try to read memory from the target without halting the CPU. Returns true if the
++ * read was performed, false if the target cannot do non-halting memory I/O. */
++bool target_mem_read_nostop(target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
++{
++	if (target->mem_read_nostop)
++		return target->mem_read_nostop(target, dest, src, len);
++	/*
++	 * No explicit non-halting hook. If the target advertises non-halting memory
++	 * I/O (TOPT_NON_HALTING_MEM_IO, eg. Cortex-M), its generic mem_read is safe
++	 * to call while the CPU keeps running, so use it.
++	 */
++	if (target->target_options & TOPT_NON_HALTING_MEM_IO) {
++		if (target->mem_read)
++			target->mem_read(target, dest, src, len);
++		return true;
++	}
++	return false;
++}
++
++/* Try to write memory to the target without halting the CPU. Returns true if the
++ * write was performed, false if the target cannot do non-halting memory I/O. */
++bool target_mem_write_nostop(target_s *const target, const target_addr64_t dest, const void *const src, const size_t len)
++{
++	if (target->mem_write_nostop)
++		return target->mem_write_nostop(target, dest, src, len);
++	/* Same TOPT fallback as target_mem_read_nostop above */
++	if (target->target_options & TOPT_NON_HALTING_MEM_IO) {
++		if (target->mem_write)
++			target->mem_write(target, dest, src, len);
++		return true;
++	}
++	return false;
++}
++
+ /* Register access functions */
+ size_t target_reg_read(target_s *target, uint32_t reg, void *data, size_t max)
+ {
+@@ -618,12 +659,14 @@ size_t target_regs_size(target_s *target)
+  * GDB supplies request `qXfer:features:read:target.xml:`. The pointer returned by this call
+  * must be passed to `free()` on conclusion of its use.
+  */
++#if 0
+ const char *target_regs_description(target_s *target)
+ {
+ 	if (target->regs_description)
+ 		return target->regs_description(target);
+ 	return NULL;
+ }
++#endif
+ 
+ uint32_t target_mem32_read32(target_s *target, target_addr32_t addr)
+ {
+@@ -691,6 +734,33 @@ void tc_printf(target_s *target, const char *fmt, ...)
+ 	va_list ap;
+ 	va_start(ap, fmt);
+ 	target->tc->printf(target->tc, fmt, ap);
+-	(void)fflush(stdout);
++	// MEANX (void)fflush(stdout);
+ 	va_end(ap);
+ }
++
++// MEANX
++
++bool breakpoint_available(target_s *target)
++{
++	return !target->no_hw_breakpoint;
++}
++
++void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch)
++{
++	if (target->breakpoint_watchpoint_count) {
++		target->breakpoint_watchpoint_count(target, brk, wtch);
++		return;
++	}
++	*brk = 0;
++	*wtch = 0;
++}
++
++bool target_has_hw_breakpoint(target_s *const target)
++{
++	return !target->no_hw_breakpoint;
++}
++
++const sw_breakpoint_helpers *target_get_mw_helpers(target_s *const target)
++{
++	return target->sw_breakpoint_helpers;
++}
+diff --git a/src/target/target_flash.c b/src/target/target_flash.c
+index f18b9396..51cb1dea 100644
+--- a/src/target/target_flash.c
++++ b/src/target/target_flash.c
+@@ -161,6 +161,19 @@ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len)
+ 
+ 		/* Align the start address to the erase block size */
+ 		const target_addr_t local_start_addr = addr & ~(flash->blocksize - 1U);
++		size_t best_blocksize = flash->blocksize;
++		size_t padded_len = len + (addr - local_start_addr);
++
++		if (flash->erasesizes) {
++			for (int i = 0; flash->erasesizes[i] != 0; i++) {
++				size_t S = flash->erasesizes[i];
++				if ((local_start_addr & (S - 1U)) == 0 && padded_len >= S) {
++					if (S > best_blocksize) {
++						best_blocksize = S;
++					}
++				}
++			}
++		}
+ 
+ 		/* Check if we can use mass erase, i.e. if the erase range covers the entire flash address space */
+ 		const bool can_use_mass_erase =
+@@ -168,7 +181,7 @@ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len)
+ 
+ 		/* Calculate the address at the end of the erase block */
+ 		const target_addr_t local_end_addr =
+-			can_use_mass_erase ? flash->start + flash->length : local_start_addr + flash->blocksize;
++			can_use_mass_erase ? flash->start + flash->length : local_start_addr + best_blocksize;
+ 
+ 		if (!flash_prepare(flash, can_use_mass_erase ? FLASH_OPERATION_MASS_ERASE : FLASH_OPERATION_ERASE))
+ 			return false;
+@@ -176,7 +189,7 @@ bool target_flash_erase(target_s *target, target_addr_t addr, size_t len)
+ 		DEBUG_TARGET("%s: %08" PRIx32 "+%" PRIu32 "\n", __func__, local_start_addr, local_end_addr - local_start_addr);
+ 		/* Erase flash, either a single aligned block size or a full mass erase */
+ 		result &= can_use_mass_erase ? flash->mass_erase(flash, NULL) :
+-									   flash->erase(flash, local_start_addr, flash->blocksize);
++									   flash->erase(flash, local_start_addr, best_blocksize);
+ 		if (!result) {
+ 			DEBUG_ERROR("Erase failed at %" PRIx32 "\n", local_start_addr);
+ 			break;
+@@ -282,6 +295,12 @@ static bool flash_buffered_flush(target_flash_s *flash)
+ 			DEBUG_TARGET("%s: %08" PRIx32 "+%" PRIu32 "\n", "target_flash_write", (uint32_t)(aligned_addr + offset),
+ 				(uint32_t)flash->writesize);
+ 			result &= flash->write(flash, aligned_addr + offset, src + offset, flash->writesize);
++			if (!result) { // MEANX abort at first error
++				flash->buf_addr_base = UINT32_MAX;
++				flash->buf_addr_low = UINT32_MAX;
++				flash->buf_addr_high = 0;
++				return false;
++			}
+ 		}
+ 
+ 		flash->buf_addr_base = UINT32_MAX;
+@@ -301,7 +320,8 @@ static bool flash_buffered_write(target_flash_s *flash, target_addr_t dest, cons
+ 		/* Check for base address change */
+ 		if (base_addr != flash->buf_addr_base) {
+ 			result &= flash_buffered_flush(flash);
+-
++			if (!result)
++				return false; // MEANX
+ 			/* Setup buffer */
+ 			flash->buf_addr_base = base_addr;
+ 			memset(flash->buf, flash->erased, flash->writebufsize);
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+index 59b7bbfe..b4b1924e 100644
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -63,6 +63,7 @@ struct target_flash {
+ 	target_addr32_t start;            /* Start address of flash */
+ 	size_t length;                    /* Flash length */
+ 	size_t blocksize;                 /* Erase block size */
++	const size_t *erasesizes;         /* Optional 0-terminated array of additional erase block sizes */
+ 	size_t writesize;                 /* Write operation size, must be <= blocksize/writebufsize */
+ 	size_t writebufsize;              /* Size of write buffer, this is calculated and not set in target code */
+ 	uint8_t erased;                   /* Byte erased state */
+@@ -121,6 +122,19 @@ _Static_assert(sizeof(breakwatch_s) == 40U, "Breakwatch size unexpected");
+ 
+ #define MAX_CMDLINE 81
+ 
++/* 
++ * These option functions are meant to be used by software breakpoint.
++ * In particular they should aim at minimal write size (page) and
++ * they must not disturb too much the target. NO FLASHSTUB 
++ */
++struct sw_breakpoint_helpers_s {
++	uint32_t (*page_size)(target_s *t);
++	bool (*page_erase)(target_s *target, uint32_t addr);
++	bool (*page_write)(target_s *target, uint32_t addr, const uint8_t *src, uint32_t page_size);
++};
++
++typedef struct sw_breakpoint_helpers_s sw_breakpoint_helpers;
++
+ typedef void (*priv_free_func)(void *flash);
+ 
+ struct target {
+@@ -135,6 +149,11 @@ struct target {
+ 	void (*mem_read)(target_s *target, void *dest, target_addr64_t src, size_t len);
+ 	void (*mem_write)(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ 
++	/* Non-halting memory access functions: perform memory I/O without stopping the CPU.
++	 * Return true if the operation was performed, false if the target cannot do it. */
++	bool (*mem_read_nostop)(target_s *target, void *dest, target_addr64_t src, size_t len);
++	bool (*mem_write_nostop)(target_s *target, target_addr64_t dest, const void *src, size_t len);
++
+ 	/* Register access functions */
+ 	size_t regs_size;
+ 	const char *(*regs_description)(target_s *target);
+@@ -162,6 +181,14 @@ struct target {
+ 	bool (*enter_flash_mode)(target_s *target);
+ 	bool (*exit_flash_mode)(target_s *target);
+ 
++	/* CRC32 function */
++	bool (*crc32)(target_s *target, target_addr32_t start_adress, size_t size, uint32_t *crc32);
++
++	/* Software breakpoint helpers */
++	const struct sw_breakpoint_helpers_s *sw_breakpoint_helpers;
++	bool no_hw_breakpoint;
++	void (*breakpoint_watchpoint_count)(target_s *const target, uint32_t *brk, uint32_t *wtch);
++
+ 	/* Target-defined options */
+ 	uint32_t target_options;
+ 
+@@ -207,11 +234,15 @@ struct target {
+ extern const command_s platform_cmd_list[];
+ #endif
+ 
++const sw_breakpoint_helpers *target_get_mw_helpers(target_s *const target);
++void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
++bool target_has_hw_breakpoint(target_s *const target);
+ void target_print_progress(platform_timeout_s *timeout);
+ void target_ram_map_free(target_s *target);
+ void target_flash_map_free(target_s *target);
+ void target_mem_map_free(target_s *target);
+ void target_add_commands(target_s *target, const command_s *cmds, const char *name);
++bool breakpoint_available(target_s *target);
+ void target_add_ram32(target_s *target, target_addr32_t start, uint32_t len);
+ void target_add_ram64(target_s *target, target_addr64_t start, uint64_t len);
+ void target_add_flash(target_s *target, target_flash_s *flash);
+@@ -239,7 +270,7 @@ bool target_check_error(target_s *target);
+ #if defined(__MINGW32__) || defined(__MINGW64__) || defined(__CYGWIN__)
+ #define TC_FORMAT_ATTR __attribute__((format(__MINGW_PRINTF_FORMAT, 2, 3)))
+ #elif defined(__GNUC__) || defined(__clang__)
+-#define TC_FORMAT_ATTR __attribute__((format(printf, 2, 3)))
++#define TC_FORMAT_ATTR //MEANX__attribute__((format(printf, 2, 3)))
+ #else
+ #define TC_FORMAT_ATTR
+ #endif
+diff --git a/src/target/target_probe.h b/src/target/target_probe.h
+index 4463906d..e76c9036 100644
+--- a/src/target/target_probe.h
++++ b/src/target/target_probe.h
+@@ -23,14 +23,19 @@
+ #include "target.h"
+ #include "adiv5.h"
+ 
++/* -- MEANX -- */
++void bmp_tweak_options(uint32_t *opt);
++
+ #define STRINGIFY(x) #x
+ /* Probe launch macro used by the CPU-generic layers to then call CPU-specific routines safely */
+-#define PROBE(x)                                    \
+-	do {                                            \
+-		DEBUG_TARGET("Calling %s\n", STRINGIFY(x)); \
+-		if ((x)(target))                            \
+-			return true;                            \
+-		target_check_error(target);                 \
++#define PROBE(x)                                          \
++	do {                                                  \
++		DEBUG_TARGET("Calling %s\n", STRINGIFY(x));       \
++		if ((x)(target)) {                                \
++			bmp_tweak_options(&(target->target_options)); \
++			return true;                                  \
++		}                                                 \
++		target_check_error(target);                       \
+ 	} while (0)
+ 
+ /*
+@@ -113,5 +118,6 @@ bool stm32c5_probe(target_s *target);
+ bool zynq7_probe(target_s *target);
+ 
+ void lpc55_dp_prepare(adiv5_debug_port_s *dp);
++bool ch32v3xx_probe(target_s *target);
+ 
+ #endif /* TARGET_TARGET_PROBE_H */

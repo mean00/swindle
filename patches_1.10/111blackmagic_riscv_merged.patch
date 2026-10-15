@@ -1,0 +1,1762 @@
+# 111blackmagic_riscv_merged.patch
+#
+# WHY THIS PATCH EXISTS
+# ---------------------
+# Consolidates all RISC-V debug module fixes, performance optimizations, fault tolerance,
+# and protocol enhancements (formerly patches 13, 21, 26, 89, 92, 93, 94, 95, 100, 101, 102,
+# 103, 104, and RISC-V portions of 82bis, 83bis, 85bis, 105):
+#
+# 1. Fault tolerance on 1-wire transports (SDI / RVSWD) (patches 100, 101, 102, 103):
+#    - Per riscv_fault.md F1/F2: Quiesces the abstractauto streaming pipeline before writes
+#      that must not race an active command (progbuf neutralise, abstractauto=0, a0/a1 restores).
+#      Saves and restores dpc around program buffer execution per RISC-V Debug Spec 3.7.
+#    - Per riscv_fault.md F3: Asserts haltreq before reset is triggered and holds it across
+#      ndmreset / nRST reactivation so the hart halts at the reset vector rather than running
+#      startup code before halting.
+#    - Per riscv_fault.md F5: Re-issues faulted memory read windows (up to 8 attempts) when
+#      detected, preventing spurious section read failures.
+#    - Per riscv_fault.md F5/12.6/12.8: Single-wire SDI cannot report dropped DMI transfers
+#      in real time and may repeat stale data; performs two-pass consensus reading with
+#      element-level fallback and end-of-transfer abstractioncs check.
+#
+# 2. CSR and ebreak handling (patch 104):
+#    - Debug registers (dcsr 0x7b0, dpc 0x7b1, etc.) cannot be accessed via CPU instructions
+#      in progbuf (triggers illegal instruction). Exempts 0x7b0..0x7bf from progbuf fallback.
+#    - Enables ebreakm in dcsr during riscv_attach() and riscv_reset() and preserves it during
+#      single-stepping so software breakpoints immediately halt into debug mode.
+#
+# 3. RV32E support (patches 93, 95):
+#    - RV32E has 16 GPRs instead of 32. Vanilla code mapped GDB register 32 (PC) to x16 on
+#      RV32E targets (such as CH32V003), causing E01 errors on 'load' and 'set $pc'.
+#    - Fixes flashstub execution on RV32E to write to the PC register properly.
+#
+# 4. DMI and performance optimizations (patches 85bis, 89):
+#    - Lean ADI DTM DMI path driving TAR/DRW directly without per-op RDBUFF flush + status poll.
+#    - Abstractauto streaming memory read/write pipelines and sysbus autoexec support.
+#
+# 5. Reset & command robustness (patches 92, 94, 26):
+#    - Drops RV_DM_STAT_ALL_RESET poll in riscv_reset() which caused 1-second hangs on RP2350
+#      RISC-V harts that clear allhavereset upon reset.
+#    - Adds a 200ms timeout to riscv_command_wait_complete() to prevent infinite lockups on disconnect.
+#    - Explicitly reports errors when watchpoint allocation fails.
+#
+# 6. RVSWD & target metadata (patches 13, 21, 82bis, 105):
+#    - Adds native RVSWD debug protocol support.
+#    - Declares RISC-V flashstub hooks.
+#    - Tags RISC-V architecture in target options (TOPT_ARCH_RISCV).
+#    - Disables obsolete C XML target descriptions in riscv_debug.c (handled by Rust).
+#
+# FIX
+# ---
+# 1. In riscv_debug.c:
+#    - Exempt 0x7b0..0x7bf debug registers from progbuf in riscv_csr_read/write.
+#    - Set RV_DCSR_EBREAK_MACHINE in riscv_attach(), riscv_reset(), and riscv_halt_resume().
+#    - In riscv_reset(), hold haltreq across reset and remove allhavereset polling.
+#    - Add timeout to riscv_command_wait_complete().
+#    - In riscv_dmi_write(), invalidate DMI caches when requested.
+#
+# 2. In riscv32.c:
+#    - Fix GPR count on RV32E so PC (reg 32) is accessed via CSR dpc (0x7b1) rather than x16.
+#    - Implement retry loop (RV_MEM_READ_RETRIES) and SDI read confirmation in riscv32_mem_read().
+#    - Implement pipeline quiesce and dpc save/restore in progbuf memory read/write routines.
+#
+# 3. In riscv_adi_dtm.c:
+#    - Implement lean direct DMI access driving TAR/DRW without per-op status polling.
+#
+# 4. In riscv_debug.h:
+#    - Add shared RV_DM_ABSTRACTAUTO, RV_HART_FLAG_MEMORY_ABSTAUTO, and timing/status definitions.
+#
+diff --git a/src/target/riscv32.c b/src/target/riscv32.c
+index a4dca1be..81d34fcd 100644
+--- a/src/target/riscv32.c
++++ b/src/target/riscv32.c
+@@ -30,7 +30,6 @@
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+-
+ #include "general.h"
+ #include "target.h"
+ #include "target_internal.h"
+@@ -83,6 +82,103 @@
+ #define RV_SW_A1_A0 (RV_STORE_WORD | RV_RS2_A1 | RV_RS1_A0) // 0x00b52023U // sw a1, 0(a0)
+ #define RV_SH_A1_A0 (RV_STORE_HALF | RV_RS2_A1 | RV_RS1_A0) // 0x00b51023U // sh a1, 0(a0)
+ #define RV_SB_A1_A0 (RV_STORE_BYTE | RV_RS2_A1 | RV_RS1_A0) // 0x00b50023U // sb a1, 0(a0)
++/* RV32I opcode: post-increment the pointer in a0 by one word (abstractauto streaming) */
++#define RV_ADDI_A0_A0_4 0x00450513U // addi a0, a0, 4
++
++/*
++ * BMP 103: diagnostics for a transport that cannot report a lost access.
++ *
++ * ENABLE_DEBUG is 0 on the embedded builds, so every DEBUG_WARN() in this file compiles to
++ * nothing on the probe - the probe's own log sink is Logger(), and it is the channel the SDI
++ * tap's traces use. These lines are only emitted while the memory path is instrumented
++ * (`mon memlog on`, bmp_mem_log_enabled, riscv_fault.md §9), because a log write during a GDB
++ * reply is exactly what §9 had to move behind that switch; the readable-but-silent alternative
++ * for the same numbers is `mon riscv_confirm`, which reads the counters below.
++ */
++#if defined(PLATFORM_HAS_DEBUG) && PLATFORM_HAS_DEBUG
++#define RV_MEMLOG(...) DEBUG_WARN(__VA_ARGS__)
++#else
++extern bool bmp_mem_log_enabled;
++extern void Logger(const char *fmt, ...);
++#define RV_MEMLOG(...)           \
++	do {                         \
++		if (bmp_mem_log_enabled) \
++			Logger(__VA_ARGS__); \
++	} while (0)
++#endif
++
++/*
++ * BMP 103: the streaming sub-paths of the program buffer reader and writer, switchable at
++ * runtime with `mon riscv_stream on|off`. It is the A/B knob riscv_fault.md §12.9 measures
++ * with: one read, one wire, and only this implementation detail differing - the streaming path
++ * (patch 86) reads DATA0 without ever waiting for the command that read starts, the
++ * word-at-a-time path waits for every one of them. On by default, so nothing changes for a
++ * target that is not being investigated.
++ */
++bool riscv32_progbuf_stream_enabled = true;
++
++/*
++ * BMP 103: what the confirmed read saw. These are the *silent* losses - the ones no status bit
++ * reports, which is why a counter is the only way to tell "the transport is sound" from "the
++ * transport is sound today". `mon riscv_confirm` prints them.
++ */
++typedef struct riscv_confirm_stats {
++	uint32_t windows;          /* read windows confirmed: two passes compared */
++	uint32_t disagreeing;      /* windows whose two passes disagreed */
++	uint32_t elements;         /* elements settled one at a time after a disagreement */
++	uint32_t faults;           /* passes that reported a fault and were re-issued */
++	uint32_t latched;          /* transfers that ended with a latched command error */
++	uint32_t autoexec;         /* abstractauto writes that did not take on the first try */
++	uint32_t last_address;     /* where the most recent disagreement was */
++	uint32_t last_first_pass;  /* what the first pass answered there */
++	uint32_t last_second_pass; /* and what the second pass answered there */
++} riscv_confirm_stats_s;
++
++static riscv_confirm_stats_s riscv_confirm_stats;
++
++/*
++ * The three functions the probe's `mon` commands use. Plain values, so the layout of the
++ * struct above stays private to this file. `out` is filled with as many of the counters as
++ * fit and the total count is returned, which is what makes adding a counter harmless.
++ */
++void bmp_riscv32_set_progbuf_stream(const bool enable)
++{
++	riscv32_progbuf_stream_enabled = enable;
++}
++
++bool bmp_riscv32_get_progbuf_stream(void)
++{
++	return riscv32_progbuf_stream_enabled;
++}
++
++void bmp_riscv32_reset_confirm_stats(void)
++{
++	memset(&riscv_confirm_stats, 0, sizeof(riscv_confirm_stats));
++}
++
++uint32_t bmp_riscv32_confirm_stats(uint32_t *const out, const uint32_t words)
++{
++	const uint8_t *const fields = (const uint8_t *)&riscv_confirm_stats;
++	const uint32_t count = sizeof(riscv_confirm_stats) / sizeof(uint32_t);
++	if (out) {
++		const uint32_t limit = words < count ? words : count;
++		for (uint32_t i = 0; i < limit; ++i)
++			memcpy(&out[i], fields + i * sizeof(uint32_t), sizeof(uint32_t));
++	}
++	return count;
++}
++
++/*
++ * BMP 103: the numbers the confirmed read is built from. The window and element sizes are patch
++ * 98's, measured on this silicon (T11 of ch32v0x_silicon_tests: an element read twice either
++ * agrees, or its third read is the right one); the attempt counts are small on purpose - a
++ * window that will not settle in three tries is not a window this defect is losing, and the
++ * caller is better served by an answer than by a loop.
++ */
++#define RV_READ_CONFIRM_WINDOW 128U
++#define RV_READ_CONFIRM_ELEMENT 4U
++#define RV_READ_CONFIRM_TRIES 3U
++#define RV_AUTOEXEC_CONFIRM_TRIES 3U
+ 
+ static size_t riscv32_reg_read(target_s *target, uint32_t reg, void *data, size_t max);
+ static size_t riscv32_reg_write(target_s *target, uint32_t reg, const void *data, size_t max);
+@@ -91,7 +187,19 @@ static void riscv32_regs_write(target_s *target, const void *data);
+ 
+ static int riscv32_breakwatch_set(target_s *target, breakwatch_s *breakwatch);
+ static int riscv32_breakwatch_clear(target_s *target, breakwatch_s *breakwatch);
++static bool riscv32_mem_read_nostop(target_s *target, void *dest, target_addr64_t src, size_t len);
++static bool riscv32_mem_write_nostop(target_s *target, target_addr64_t dest, const void *src, size_t len);
++
++/* Benchmarks memory access methods and selects the best one */
++void riscv32_benchmark_register(target_s *target);
++
++static const char *riscv32_target_arch(target_s *target)
++{
++	(void)target;
++	return "RISCV";
++}
+ 
++#define PROBED_ARCH TOPT_ARCH_RISCV
+ bool riscv32_probe(target_s *const target)
+ {
+ 	/* 'E' base ISA has 16 GPRs + PC, 'I' base ISA has 32 GPRs + PC */
+@@ -105,6 +213,10 @@ bool riscv32_probe(target_s *const target)
+ 	target->reg_read = riscv32_reg_read;
+ 	target->mem_read = riscv32_mem_read;
+ 	target->mem_write = riscv32_mem_write;
++	target->mem_read_nostop = riscv32_mem_read_nostop;
++	target->mem_write_nostop = riscv32_mem_write_nostop;
++
++	riscv32_benchmark_register(target);
+ 
+ 	target->breakwatch_set = riscv32_breakwatch_set;
+ 	target->breakwatch_clear = riscv32_breakwatch_clear;
+@@ -121,7 +233,8 @@ bool riscv32_probe(target_s *const target)
+ 		break;
+ 	case JEP106_MANUFACTURER_WCH:
+ 		PROBE(ch32v003x_probe);
+-		PROBE(ch32vx_probe);
++		//PROBE(ch32vx_probe);
++		PROBE(ch32v3xx_probe);
+ 		break;
+ 	default:
+ 		break;
+@@ -177,9 +290,17 @@ static size_t riscv32_reg_read(target_s *target, const uint32_t reg, void *data,
+ 		return 0;
+ 	/* Grab the hart structure  */
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (reg < 32)
++	/*
++	 * The 'E' base ISA has only 16 GPRs (x0..x15) where 'I' has 32 (x0..x31), so GDB's
++	 * register numbers differ between the two: in the E case the PC register immediately
++	 * follows x15 instead of x31 (see riscv_build_target_description()). Use the same GPR
++	 * count the register file and the target description are generated with, or the PC
++	 * register gets mis-decoded into an out of range GPR that the DM then rejects.
++	 */
++	const uint32_t gprs_count = hart->extensions & RV_ISA_EXT_EMBEDDED ? 16U : 32U;
++	if (reg < gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, RV_GPR_BASE + reg, data));
+-	if (reg == 32)
++	if (reg == gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, RV_DPC, data));
+ 	if (reg >= RV_CSR_GDB_OFFSET)
+ 		return riscv32_bool_to_4(riscv_csr_read(hart, reg - RV_CSR_GDB_OFFSET, data));
+@@ -201,9 +322,11 @@ static size_t riscv32_reg_write(target_s *const target, const uint32_t reg, cons
+ 		return 0;
+ 	/* Grab the hart structure  */
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (reg < 32)
++	/* See riscv32_reg_read() for why the GPR count and thus the PC register number shift */
++	const uint32_t gprs_count = hart->extensions & RV_ISA_EXT_EMBEDDED ? 16U : 32U;
++	if (reg < gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_GPR_BASE + reg, data));
+-	if (reg == 32)
++	if (reg == gprs_count)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, RV_DPC, data));
+ 	if (reg >= RV_CSR_GDB_OFFSET)
+ 		return riscv32_bool_to_4(riscv_csr_write(hart, reg - RV_CSR_GDB_OFFSET, data));
+@@ -342,10 +465,23 @@ static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const
+ 		return;
+ 	uint8_t *const data = (uint8_t *)dest;
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+-		uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-		/* Wait for the current read cycle to complete */
+-		while (status & RV_SYSBUS_STATUS_BUSY) {
+-			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++		uint32_t value = 0;
++		/*
++		 * BMP 85 fast path: read the data register directly and let the DMI response
++		 * status act as the busy indicator (the platform DMI layer retries a bounded
++		 * number of times while the DM answers "busy", i.e. the access is in flight).
++		 * Fall back to the proven CTRLSTATUS busy-poll only if the target never
++		 * surfaced the data - safety valve for parts/variants that answer DATA0
++		 * reads differently while a system-bus access is still pending.
++		 */
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value)) {
++			uint32_t status = RV_SYSBUS_STATUS_BUSY;
++			/* Wait for the current read cycle to complete */
++			while (status & RV_SYSBUS_STATUS_BUSY) {
++				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++					return;
++			}
++			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+ 				return;
+ 		}
+ 		/* If this would be the last read, clean up the access control register */
+@@ -353,13 +489,9 @@ static void riscv32_sysbus_mem_native_read(riscv_hart_s *const hart, void *const
+ 			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, 0))
+ 				return;
+ 		}
+-		uint32_t value = 0;
+ 		/* Read back and unpack the data for this block */
+-		if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_DATA0, &value))
+-			return;
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+-	riscv_sysbus_check(hart);
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_read(riscv_hart_s *const hart, void *const dest, const target_addr_t src,
+@@ -475,17 +607,23 @@ static void riscv32_sysbus_mem_native_write(riscv_hart_s *const hart, const targ
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Pack the data for this block and write it */
+ 		const uint32_t value = riscv32_pack_data(data + offset, access_width);
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value))
+-			return;
+-
+-		uint32_t status = RV_SYSBUS_STATUS_BUSY;
+-		/* Wait for the current write cycle to complete */
+-		while (status & RV_SYSBUS_STATUS_BUSY) {
+-			if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++		/*
++		 * BMP 85 fast path: the DMI write response status doubles as the busy
++		 * indicator (the platform DMI layer retries a bounded number of times while
++		 * the DM answers "busy"). Only fall back to the CTRLSTATUS busy-poll and a
++		 * re-write if the target never accepted the value.
++		 */
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value)) {
++			uint32_t status = RV_SYSBUS_STATUS_BUSY;
++			/* Wait for the current write cycle to complete */
++			while (status & RV_SYSBUS_STATUS_BUSY) {
++				if (!riscv_dm_read(hart->dbg_module, RV_DM_SYSBUS_CTRLSTATUS, &status))
++					return;
++			}
++			if (!riscv_dm_write(hart->dbg_module, RV_DM_SYSBUS_DATA0, value))
+ 				return;
+ 		}
+ 	}
+-	riscv_sysbus_check(hart);
+ }
+ 
+ static void riscv32_sysbus_mem_adjusted_write(riscv_hart_s *const hart, const target_addr_t dest, const void *const src,
+@@ -599,6 +737,127 @@ static void riscv32_sysbus_mem_write(
+ 		riscv32_sysbus_mem_adjusted_write(hart, address, data, remainder, native_access_width, native_access_length);
+ }
+ 
++/* Non-halting memory I/O: use the system bus so the CPU keeps executing.
++ * Returns false if the target cannot do this right now, in which case the
++ * caller should fall back to halting memory access. */
++static bool riscv32_mem_read_nostop(
++	target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	if (!(hart->flags & RV_HART_CAP_HAS_SYSBUS))
++		return false;
++	if (len == 0)
++		return true;
++	riscv32_sysbus_mem_read(hart, dest, (target_addr_t)src, len);
++	riscv_sysbus_check(hart);
++	if (hart->status != RISCV_HART_NO_ERROR) {
++		DEBUG_WARN("riscv: system bus fault during non-halting read; falling back to halting I/O\n");
++		return false;
++	}
++	return true;
++}
++
++static bool riscv32_mem_write_nostop(
++	target_s *const target, const target_addr64_t dest, const void *const src, const size_t len)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	if (!(hart->flags & RV_HART_CAP_HAS_SYSBUS))
++		return false;
++	if (len == 0)
++		return true;
++	riscv32_sysbus_mem_write(hart, (target_addr_t)dest, src, len);
++	riscv_sysbus_check(hart);
++	if (hart->status != RISCV_HART_NO_ERROR) {
++		DEBUG_WARN("riscv: system bus fault during non-halting write; falling back to halting I/O\n");
++		return false;
++	}
++	return true;
++}
++
++/* How many times a bounce register is put back after a program buffer run before giving up */
++#define RISCV_PROGBUF_RESTORE_TRIES 2U
++
++/*
++ * BMP 100: put a GPR back the way a program buffer run found it, and make sure it landed.
++ *
++ * The DMI link drops the odd write (the Debug Module answers the access but the transfer never
++ * lands - the ch006 investigation in ch32v0x_silicon_tests is that happening during reads), and a
++ * write issued while an abstract command is still executing is discarded by the Debug Module
++ * (spec 3.12.7), so a restore can be lost with nothing to show for it: a0 is then left holding
++ * the advanced address (one addi a0, a0, 4 per executed program) and a1 the last word the program
++ * transferred. The write is therefore verified by reading the register back, and retried a bounded
++ * number of times. Only the low word is compared: the upper half of a transfer wider than the Hart
++ * is not defined by the spec, while on a 32-bit Hart the low word is the whole register.
++ */
++static bool riscv32_progbuf_restore_gpr(
++	riscv_hart_s *const hart, const uint16_t reg, const uint32_t value[RV_DPC_WORDS])
++{
++	for (uint32_t attempt = 0; attempt < RISCV_PROGBUF_RESTORE_TRIES; ++attempt) {
++		uint32_t readback[RV_DPC_WORDS] = {0U};
++		if (riscv_csr_write(hart, reg, value) && riscv_csr_read(hart, reg, readback) &&
++			readback[0] == value[0])
++			return true;
++	}
++	RV_MEMLOG("riscv: GPR %04x could not be put back after program buffer execution (%08" PRIx32 ")\n", reg,
++		value[0]);
++	return false;
++}
++
++/*
++ * BMP 100: a register write that must not race the abstract command an autoexec'd data0 access has
++ * just started. Touching command, abstractauto, progbuf or the data registers while a command is
++ * executing sets cmderr to 1 and the access is discarded - "Attempts to write them while busy is
++ * set does not change their value" (spec 3.12.7, 3.12.8, 3.12.11, 3.12.12; the vendor documents
++ * the same rule at sdi.txt:1258), which is exactly how a register restore, or the write that drops
++ * the autoexec stream, can go missing. riscv_command_wait_complete() waits for busy to clear *and*
++ * consumes cmderr, so it is used to quiesce the pipeline first. The write is attempted even if that
++ * did not work out: a write the Debug Module rejects is ignored, while leaving the autoexec stream
++ * armed would re-run a stale command on the next data0 access - i.e. during the restores.
++ */
++static bool riscv32_progbuf_quiesced_write(riscv_hart_s *const hart, const uint8_t address, const uint32_t value)
++{
++	const bool quiesced = riscv_command_wait_complete(hart);
++	return riscv_dm_write(hart->dbg_module, address, value) && quiesced;
++}
++
++/*
++ * BMP 103: arm or drop the abstractauto stream and, on a transport that cannot be trusted to
++ * deliver the write, make sure it landed. The drop is the one that matters: a lost drop leaves
++ * the stream armed, so the next DATA0 access - the a0/a1 restores at the end of the read -
++ * re-runs a stale command and the register comes back wrong. BMP 100's quiesce stops the drop
++ * racing an executing command; this is about it never having arrived at all. The read-back is a
++ * *register* read, not a data access, so it cannot disturb the stream it is checking.
++ */
++static bool riscv32_autoexec_confirmed_write(riscv_hart_s *const hart, const uint32_t value)
++{
++	uint32_t readback = 0;
++	for (size_t attempt = 0; attempt < RV_AUTOEXEC_CONFIRM_TRIES; ++attempt) {
++		/* The write must not race a command an earlier DATA0 read has just started (BMP 100) */
++		const bool quiesced = riscv_command_wait_complete(hart);
++		if (riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, value) && quiesced &&
++			riscv_dm_read(hart->dbg_module, RV_DM_ABSTRACTAUTO, &readback) && readback == value)
++			return true;
++		riscv_confirm_stats.autoexec++;
++		RV_MEMLOG("riscv: abstractauto = %08" PRIx32 " did not take (read back %08" PRIx32 "), writing it again\n",
++			value, readback);
++	}
++	return false;
++}
++
++/*
++ * Every abstractauto write this file makes goes through here, so the confirmation costs a
++ * transport that can report nothing, and a target on a transport that can keeps the traffic it
++ * had (the drop still goes through the quiescing write BMP 100 introduced).
++ */
++static bool riscv32_autoexec_write(riscv_hart_s *const hart, const uint32_t value)
++{
++	if (hart->dbg_module->dmi_bus->read_confirm)
++		return riscv32_autoexec_confirmed_write(hart, value);
++	if (!value)
++		return riscv32_progbuf_quiesced_write(hart, RV_DM_ABSTRACTAUTO, 0U);
++	return riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, value);
++}
++
+ static void riscv32_progbuf_mem_read(
+ 	riscv_hart_s *const hart, void *const dest, const target_addr_t src, const size_t len)
+ {
+@@ -620,21 +879,120 @@ static void riscv32_progbuf_mem_read(
+ 	default:
+ 		return;
+ 	}
++	/*
++	 * BMP 86: if there is room for the streaming loop (load + post-increment +
++	 * ebreak), stream native-width words through the program buffer using
++	 * abstractauto: the pipeline advances one word per DATA0 read instead of
++	 * re-issuing a command, polling and performing a CSR round-trip per word.
++	 */
++	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U &&
++		riscv32_progbuf_stream_enabled;
+ 	/* Fill the program buffer */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_read))
+-		return;
+-	/* Append literal ebreak (if impebreak is not reached) */
+-	if (hart->progbuf_size > 1U) {
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK))
++	if (stream) {
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_LW_A1_A0) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_ADDI_A0_A0_4) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK))
+ 			return;
++	} else if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_read)) {
++		return;
++	} else if (hart->progbuf_size > 1U &&
++		!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK)) {
++		/* Append literal ebreak (if impebreak is not reached) */
++		return;
+ 	}
+ 
+-	uint32_t a0_save = 0;
+-	uint32_t a1_save = 0;
+-	riscv_csr_read(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_read(hart, RV_GPR_A1, &a1_save);
++	/* 4 words: a 64-bit or 128-bit transfer must not write past the end of these */
++	uint32_t a0_save[RV_DPC_WORDS] = {0U};
++	uint32_t a1_save[RV_DPC_WORDS] = {0U};
++	riscv_csr_read(hart, RV_GPR_A0, a0_save);
++	riscv_csr_read(hart, RV_GPR_A1, a1_save);
+ 
+ 	uint8_t *const data = (uint8_t *)dest;
++
++	if (stream) {
++		/*
++		 * BMP 86: abstractauto streaming read.
++		 *
++		 * Program: lw a1, 0(a0); addi a0, a0, 4; ebreak. With the read-a1
++		 * command armed with POSTEXEC and AUTOEXECDATA_0 set, every DATA0 read
++		 * returns the word the previous autoexec loaded and re-runs the command,
++		 * so the pipeline advances one word per read instead of one word per
++		 * command+poll+CSR round-trip. The first read returns a1's stale value
++		 * and is discarded. The program buffer is neutralised before the last
++		 * autoexec so the pipeline never issues a load past the requested range.
++		 */
++		bool result = true;
++		/* dpc is saved before the first program buffer execution of this read (spec 3.7) */
++		uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++		const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
++		/* Set the source address in GPR a0 (no postexec) */
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_REG_ACCESS_32_BIT | RV_GPR_A0) ||
++			!riscv_command_wait_complete(hart))
++			result = false;
++		/* Prime the pipeline: read a1 out to data0, then progbuf loads word 0 */
++		if (result &&
++			(!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_READ | RV_REG_XFER | RV_ABST_POSTEXEC |
++					RV_REG_ACCESS_32_BIT | RV_GPR_A1) ||
++				!riscv_command_wait_complete(hart)))
++			result = false;
++		if (result && !riscv32_autoexec_write(hart, RV_ABSTRACTAUTO_AUTOEXECDATA_0))
++			result = false;
++		/* Single word: neutralise before even the priming autoexec can load past it */
++		if (result && len == 4U)
++			result = riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_ADDI_A0_A0_4);
++		/* First data access: returns the stale a1 value, discarded */
++		uint32_t discard = 0;
++		result &= riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &discard);
++		/* Stream words 0..N-3 under the live program (their autoexec loads land in range) */
++		for (size_t offset = 0; result && offset + 8U < len; offset += 4U) {
++			uint32_t value = 0;
++			result = riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value);
++			if (result)
++				riscv32_unpack_data(data + offset, value, RV_MEM_ACCESS_32_BIT);
++		}
++		/*
++		 * Neutralise the program buffer before the autoexec that captures the last word. That
++		 * write must not race the execution the data0 read above has just started, so the
++		 * pipeline is quiesced first.
++		 */
++		if (result)
++			result = riscv32_progbuf_quiesced_write(hart, RV_DM_PROGBUF_BASE + 0U, RV_ADDI_A0_A0_4);
++		/* Word N-2 (its autoexec captures word N-1 without issuing a load) */
++		if (result && len > 4U) {
++			uint32_t value = 0;
++			result = riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value);
++			if (result)
++				riscv32_unpack_data(data + len - 8U, value, RV_MEM_ACCESS_32_BIT);
++		}
++		/*
++		 * Drop autoexec so the final read pulls word N-1 without further activity, and quiesce
++		 * first: that write must not race the execution the read above has just started. It is
++		 * attempted even after giving up on the data, or the armed autoexec would re-run a stale
++		 * command on the next data0 access - which is exactly what the restores below are.
++		 */
++		if (!riscv32_autoexec_write(hart, 0U))
++			result = false;
++		if (result) {
++			uint32_t value = 0;
++			result = riscv_dm_read(hart->dbg_module, RV_DM_DATA0, &value);
++			if (result)
++				riscv32_unpack_data(data + len - 4U, value, RV_MEM_ACCESS_32_BIT);
++		}
++		/* Whatever happened, put a0/a1 and dpc back the way this read found them */
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++		if (guard_dpc)
++			result &= riscv_dpc_guard_end(hart, dpc_save);
++		return;
++	}
++
++	/* Executing the program buffer may clobber dpc: save it around the run (spec 3.7) */
++	uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
++
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Write the source address to DATA0 */
+ 		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, src + offset))
+@@ -654,8 +1012,11 @@ static void riscv32_progbuf_mem_read(
+ 		riscv32_unpack_data(data + offset, value, access_width);
+ 	}
+ 
+-	riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++	/* Whatever happened, put a0/a1 and dpc back the way this read found them */
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++	if (guard_dpc)
++		riscv_dpc_guard_end(hart, dpc_save);
+ }
+ 
+ static void riscv32_progbuf_mem_write(
+@@ -679,21 +1040,85 @@ static void riscv32_progbuf_mem_write(
+ 	default:
+ 		return;
+ 	}
++	/*
++	 * BMP 86: if there is room for the streaming loop (store + post-increment +
++	 * ebreak), stream native-width words through the program buffer using
++	 * abstractauto: one write command primes the loop and every subsequent
++	 * DATA0 write re-executes it, so N words cost 1 command + N DATA0 writes
++	 * with no per-word polls.
++	 */
++	const bool stream = access_width == RV_MEM_ACCESS_32_BIT && hart->progbuf_size >= 3U &&
++		riscv32_progbuf_stream_enabled;
+ 	/* Fill the program buffer */
+-	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_write))
+-		return;
+-	/* Append literal ebreak (if impebreak is not reached) */
+-	if (hart->progbuf_size > 1U) {
+-		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK))
++	if (stream) {
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_SW_A1_A0) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_ADDI_A0_A0_4) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 2U, RV_EBREAK))
+ 			return;
++	} else if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE, progbuf_write)) {
++		return;
++	} else if (hart->progbuf_size > 1U &&
++		!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 1U, RV_EBREAK)) {
++		/* Append literal ebreak (if impebreak is not reached) */
++		return;
+ 	}
+ 
+-	uint32_t a0_save = 0;
+-	uint32_t a1_save = 0;
+-	riscv_csr_read(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_read(hart, RV_GPR_A1, &a1_save);
++	/* 4 words: a 64-bit or 128-bit transfer must not write past the end of these */
++	uint32_t a0_save[RV_DPC_WORDS] = {0U};
++	uint32_t a1_save[RV_DPC_WORDS] = {0U};
++	riscv_csr_read(hart, RV_GPR_A0, a0_save);
++	riscv_csr_read(hart, RV_GPR_A1, a1_save);
+ 
+ 	const uint8_t *const data = (const uint8_t *)src;
++
++	if (stream) {
++		bool result = true;
++		/* dpc is saved before the first program buffer execution of this write (spec 3.7) */
++		uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++		const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
++		/* Set the destination address in GPR a0 (no postexec) */
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, dest) ||
++			!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_REG_ACCESS_32_BIT | RV_GPR_A0) ||
++			!riscv_command_wait_complete(hart))
++			result = false;
++		/* Prime the pipeline: first word into a1, store it and advance a0 */
++		if (result &&
++			(!riscv_dm_write(hart->dbg_module, RV_DM_DATA0, riscv32_pack_data(data, RV_MEM_ACCESS_32_BIT)) ||
++				!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++					RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | RV_ABST_POSTEXEC |
++						RV_REG_ACCESS_32_BIT | RV_GPR_A1) ||
++				!riscv_command_wait_complete(hart)))
++			result = false;
++		/* Stream the remaining words under abstractauto (SRAM keeps up with the link) */
++		if (result && len > 4U) {
++			if (!riscv_dm_write(hart->dbg_module, RV_DM_ABSTRACTAUTO, RV_ABSTRACTAUTO_AUTOEXECDATA_0))
++				result = false;
++			for (size_t offset = 4U; result && offset < len; offset += 4U)
++				result = riscv_dm_write(hart->dbg_module, RV_DM_DATA0,
++					riscv32_pack_data(data + offset, RV_MEM_ACCESS_32_BIT));
++			/*
++			 * Drop autoexec before the completion check, quiescing first: the write must not
++			 * race the store the last data0 write above has just started.
++			 */
++			if (!riscv32_progbuf_quiesced_write(hart, RV_DM_ABSTRACTAUTO, 0U))
++				result = false;
++		}
++		/* Make sure the last streamed store has actually completed */
++		result &= riscv_command_wait_complete(hart);
++
++		/* Whatever happened, put a0/a1 and dpc back the way this write found them */
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++		result &= riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++		if (guard_dpc)
++			result &= riscv_dpc_guard_end(hart, dpc_save);
++		return;
++	}
++
++	/* Executing the program buffer may clobber dpc: save it around the run (spec 3.7) */
++	uint32_t dpc_save[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = riscv_dpc_guard_begin(hart, dpc_save);
++
+ 	for (size_t offset = 0; offset < len; offset += access_length) {
+ 		/* Prepare the destination address in GPR A0 */
+ 		const uint32_t dest_a0 = dest + offset;
+@@ -713,10 +1138,244 @@ static void riscv32_progbuf_mem_write(
+ 			break;
+ 	}
+ 
+-	riscv_csr_write(hart, RV_GPR_A0, &a0_save);
+-	riscv_csr_write(hart, RV_GPR_A1, &a1_save);
++	/* Whatever happened, put a0/a1 and dpc back the way this write found them */
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A0, a0_save);
++	riscv32_progbuf_restore_gpr(hart, RV_GPR_A1, a1_save);
++	if (guard_dpc)
++		riscv_dpc_guard_end(hart, dpc_save);
++}
++
++/*
++ * BMP 102: a faulted memory read window is re-issued before it is reported.
++ *
++ * The debug module on these parts drops the odd transfer - a mis-decoded DMI frame on the
++ * bit-banged SDI transport is one way (riscv_fault.md §10.2/§12), a dropped DMI write is
++ * another (the V006 measurements counted 26 lost data1 writes in 7638 transfers) - and the
++ * path then reports a failure that has nothing to do with the address: measured on a
++ * CH32V003 over SDI, one 13 KB .text window in three faults, and the same window read again
++ * comes back clean, twice, with every section matching.
++ *
++ * A faulted window is therefore read again instead of being handed to the caller: the
++ * alternative is GDB aborting a section load or a compare-sections verify on a single
++ * dropped frame. This costs a healthy target nothing - the loop is only entered after a
++ * path has already set hart->status, so the first pass, and every successful read on every
++ * part, is exactly the traffic it was before - and it costs a *faulted* window the same
++ * window again, which is what the depth below is about.
++ *
++ * Why eight attempts: the fault rate is per *word* (~1e-4 on a 13 KB read in one window in
++ * three, 3300 words), so a window re-issued once still has most of its original chance of
++ * faulting again - a window that faults is not a window that is broken. Eight attempts take
++ * the chance of a *reported* failure from ~0.3 to ~1e-4, which is what makes a bulk read of
++ * a whole section trustworthy rather than usually-working. Re-issuing is bounded and only
++ * ever on the path where the failure was *detected* (the caller got an error, not the
++ * previous answer - F8 in riscv_fault.md), so a genuinely unreadable address pays eight
++ * accesses and then reports what the first one found.
++ *
++ * Reads only, all three read paths (system bus, program buffer and abstract). A write is not
++ * idempotent - a faulted write may or may not have landed, and re-issuing one is what would
++ * corrupt a flash access. Re-issuing a *read* through the program buffer re-runs a load and
++ * a post-increment; BMP 100 already puts a0 and a1 back whatever the run did, so the retry
++ * cannot leave the hart in a different state than the attempt before it did.
++ */
++/*
++ * BMP 103: the transfer is not over until the module says it is.
++ *
++ * minichlink ends every bulk read the same way (DefaultWaitForDoneOp(dev, 0) after
++ * DefaultReadBinaryBlob, pgm-wch-linke.c): it looks at the abstraction control/status once more
++ * and refuses the data if a command error is latched. The streaming reader has no such point -
++ * patch 86 reads DATA0 without ever waiting for the command that read starts - so an
++ * autoexec'd access that faulted (an address the module will not reach, a command it rejected,
++ * a hart in the wrong state) is nowhere in the answer the caller is handed. This is that
++ * missing point: one status read per transfer.
++ */
++static void riscv32_check_transfer_complete(riscv_hart_s *const hart)
++{
++	uint32_t status = 0;
++	if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status))
++		return;
++	if (!((status >> 8U) & RISCV_HART_OTHER))
++		return;
++	hart->status = (status >> 8U) & RISCV_HART_OTHER;
++	riscv_confirm_stats.latched++;
++	RV_MEMLOG("riscv: transfer ended with a command error %u latched (abstractioncs = %08" PRIx32 ")\n",
++		(unsigned)hart->status, status);
++}
++
++/*
++ * Ask the module to drop its command error, and keep asking until it agrees.
++ *
++ * The clear is a write, and the write is what this transport loses: a clear that did not land
++ * leaves the module ignoring every command after it, which is how one dropped frame becomes a
++ * whole window of read failures (patch 102's "one 13 KB window in three faulted, and the same
++ * window read again is clean"). Reading the register back is what tells a clear that landed
++ * from one that did not - minichlink reads it back for the same reason.
++ */
++static bool riscv32_clear_command_error(riscv_hart_s *const hart)
++{
++	uint32_t status = 0;
++	for (size_t attempt = 0; attempt < RV_READ_CONFIRM_TRIES; ++attempt) {
++		if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, RISCV_HART_OTHER << 8U))
++			return false;
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status))
++			return false;
++		if (!(status & (RISCV_HART_OTHER << 8U)))
++			return true;
++	}
++	RV_MEMLOG("riscv: command error %08" PRIx32 " would not clear\n", status);
++	return false;
++}
++
++/*
++ * One unconfirmed pass over a request, through whichever method this hart routes to. Returns
++ * false if the pass did not complete cleanly, having left the module able to be asked again.
++ */
++static bool riscv32_mem_read_once(
++	riscv_hart_s *const hart, void *const dest, const target_addr64_t src, const size_t len)
++{
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
++		riscv32_sysbus_mem_read(hart, dest, (target_addr_t)src, len);
++		/* BMP 85: a system-bus fault is recorded in the module's control/status, not cmderr */
++		riscv_sysbus_check(hart);
++		return hart->status == RISCV_HART_NO_ERROR;
++	}
++
++	if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		riscv32_progbuf_mem_read(hart, dest, src, len);
++	else
++		riscv32_abstract_mem_read(hart, dest, src, len);
++	/* BMP 103: the end-of-transfer check the streaming reader never had */
++	riscv32_check_transfer_complete(hart);
++	if (hart->status == RISCV_HART_NO_ERROR)
++		return true;
++	riscv_confirm_stats.faults++;
++	/*
++	 * A module left with a command error set ignores every command after it, so the error is
++	 * dropped here rather than carried into the re-issue: a clear that landed means the next
++	 * attempt starts from a module that is listening again.
++	 */
++	if (riscv32_clear_command_error(hart))
++		hart->status = RISCV_HART_NO_ERROR;
++	return false;
++}
++
++/*
++ * BMP 103: the evidence this exercise exists for. The two passes disagreed, and here is what
++ * each of them said. A lost access is expected to answer as a zero word (the data register
++ * reads back 0) or as a word belonging to another address, and both are visible in the pair;
++ * the first differing element is kept for `mon riscv_confirm`, and at most four are logged, so
++ * a marginal session cannot flood the log with one bad window.
++ */
++static void riscv32_report_read_disagreement(
++	const target_addr64_t src, const uint8_t *const first, const uint8_t *const second, const size_t len)
++{
++	size_t differing = 0;
++	bool recorded = false;
++	for (size_t element = 0; element < len; element += RV_READ_CONFIRM_ELEMENT) {
++		uint32_t a = 0;
++		uint32_t b = 0;
++		const size_t element_len =
++			len - element < RV_READ_CONFIRM_ELEMENT ? len - element : RV_READ_CONFIRM_ELEMENT;
++		if (!memcmp(first + element, second + element, element_len))
++			continue;
++		memcpy(&a, first + element, element_len);
++		memcpy(&b, second + element, element_len);
++		if (!recorded) {
++			recorded = true;
++			riscv_confirm_stats.last_address = (uint32_t)(src + element);
++			riscv_confirm_stats.last_first_pass = a;
++			riscv_confirm_stats.last_second_pass = b;
++		}
++		if (differing < 4U)
++			RV_MEMLOG("riscv: read @ %08" PRIx32 ": pass 1 said %08" PRIx32 ", pass 2 said %08" PRIx32 "\n",
++				(uint32_t)(src + element), a, b);
++		++differing;
++	}
++	RV_MEMLOG("riscv: read @ %08" PRIx32 " len %zu: the two passes disagreed on %zu element(s)\n", (uint32_t)src,
++		len, differing);
++}
++
++/*
++ * BMP 103: the confirmed read, scoped to a transport that cannot report a lost access.
++ *
++ * The debug module answers a read that never happened with the *previous* answer while `busy`
++ * and `cmderr` both stay clear, so no status bit a caller can poll reports the window and patch
++ * 102 - which re-issues what a path *reports* - can never fire on one. Nothing in the DM says
++ * "this access ran", so an element is confirmed the way the silicon tests validated it: read it
++ * again and compare. This is patch 98's scheme; the difference is that it is selected by the
++ * transport (dmi_bus->read_confirm) instead of being imposed on every RISC-V part, where it
++ * doubles the read traffic of silicon that does not have the defect.
++ *
++ * A window is read twice. A window whose two passes agree is settled. When they disagree the
++ * elements they disagree about are settled one at a time - an element read twice either agrees,
++ * or its third read is the right one (T11 of ch32v0x_silicon_tests) - so a dropped block costs
++ * a few accesses instead of a second pass over the whole window.
++ */
++static void riscv32_mem_read_confirmed(
++	riscv_hart_s *const hart, void *const dest, const target_addr64_t src, const size_t len)
++{
++	/* Not `data`: the DEBUG_PROTO block in the caller declares one of those */
++	uint8_t *const buf = (uint8_t *)dest;
++	for (size_t offset = 0; offset < len; offset += RV_READ_CONFIRM_WINDOW) {
++		const size_t window = len - offset < RV_READ_CONFIRM_WINDOW ? len - offset : RV_READ_CONFIRM_WINDOW;
++		uint8_t *const window_data = buf + offset;
++		const target_addr64_t window_src = src + offset;
++		uint8_t retry[RV_READ_CONFIRM_WINDOW] = {0};
++		bool settled = false;
++		bool have_two_passes = false;
++
++		riscv_confirm_stats.windows++;
++		/*
++		 * A window is good once a pass ran clean and a second pass agreed with it. A fault is
++		 * not fatal in itself - riscv32_mem_read_once() has already dropped the command error
++		 * the module was left with, so the window can simply be asked for again - and only a
++		 * window that never settles carries the fault on to the caller, which is what a real
++		 * bus error does.
++		 */
++		for (size_t attempt = 0; attempt < RV_READ_CONFIRM_TRIES && !settled; ++attempt) {
++			if (!riscv32_mem_read_once(hart, window_data, window_src, window))
++				continue;
++			if (!riscv32_mem_read_once(hart, retry, window_src, window))
++				continue;
++			have_two_passes = true;
++			settled = !memcmp(window_data, retry, window);
++		}
++		if (settled)
++			continue;
++		/*
++		 * The two passes disagree. Name the difference on the log, keep the newest answer for
++		 * the elements that never settle, and settle the rest one element at a time.
++		 */
++		riscv_confirm_stats.disagreeing++;
++		riscv_confirm_stats.last_address = (uint32_t)window_src;
++		riscv_confirm_stats.last_first_pass = 0;
++		riscv_confirm_stats.last_second_pass = 0;
++		if (have_two_passes)
++			riscv32_report_read_disagreement(window_src, window_data, retry, window);
++		for (size_t element = 0; element < window; element += RV_READ_CONFIRM_ELEMENT) {
++			const size_t element_len =
++				window - element < RV_READ_CONFIRM_ELEMENT ? window - element : RV_READ_CONFIRM_ELEMENT;
++			uint8_t *const element_data = window_data + element;
++			/* Both passes agree on this element: it is settled */
++			if (have_two_passes && !memcmp(element_data, retry + element, element_len))
++				continue;
++			const target_addr64_t element_src = window_src + element;
++			uint8_t element_buf[RV_READ_CONFIRM_ELEMENT];
++			riscv_confirm_stats.elements++;
++			for (size_t pass = 0; pass < RV_READ_CONFIRM_TRIES; ++pass) {
++				if (!riscv32_mem_read_once(hart, element_buf, element_src, element_len))
++					continue;
++				/* Two reads of the element agree: it is settled */
++				if (!memcmp(element_data, element_buf, element_len))
++					break;
++				/* They disagree: keep the re-issued answer, which T11 measured as the good one */
++				memcpy(element_data, element_buf, element_len);
++			}
++		}
++	}
+ }
+ 
++#define RV_MEM_READ_RETRIES 7U
++
+ void riscv32_mem_read(target_s *const target, void *const dest, const target_addr64_t src, const size_t len)
+ {
+ 	/* If we're asked to do a 0-byte read, do nothing */
+@@ -726,12 +1385,34 @@ void riscv32_mem_read(target_s *const target, void *const dest, const target_add
+ 	}
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
+-		riscv32_sysbus_mem_read(hart, dest, src, len);
+-	else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+-		riscv32_progbuf_mem_read(hart, dest, src, len);
+-	else
+-		riscv32_abstract_mem_read(hart, dest, src, len);
++	for (uint32_t attempt = 0;; ++attempt) {
++		/*
++		 * BMP 103: a transport that cannot report a lost access gets the confirmed read -
++		 * patch 98's two-pass scheme, selected by the transport instead of by the part.
++		 */
++		if (hart->dbg_module->dmi_bus->read_confirm)
++			riscv32_mem_read_confirmed(hart, dest, src, len);
++		else if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
++			riscv32_sysbus_mem_read(hart, dest, src, len);
++			/* BMP 85: check for (and report) any system-bus fault once per top-level call */
++			riscv_sysbus_check(hart);
++		} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++			riscv32_progbuf_mem_read(hart, dest, src, len);
++		else
++			riscv32_abstract_mem_read(hart, dest, src, len);
++		/* BMP 102: a faulted read window is re-issued before it is reported */
++		if (hart->status == RISCV_HART_NO_ERROR || attempt >= RV_MEM_READ_RETRIES)
++			break;
++		RV_MEMLOG("riscv: memory read @ %08" PRIx32 " len %zu faulted (%u), re-issuing\n", (uint32_t)src, len,
++			(unsigned)hart->status);
++		/*
++		 * The re-issue has to start from a clean verdict: the paths above set hart->status
++		 * on failure and only a later success clears it, so a stale verdict would make the
++		 * re-issue read as a failure however well it went. The path sets it again if it does
++		 * fail - this is a read, so clearing the field cannot lose anything but the report.
++		 */
++		hart->status = RISCV_HART_NO_ERROR;
++	}
+ 
+ #if ENABLE_DEBUG
+ 	DEBUG_PROTO("%s: @ %08" PRIx32 " len %zu:", __func__, (uint32_t)src, len);
+@@ -770,9 +1451,11 @@ void riscv32_mem_write(target_s *const target, const target_addr64_t dest, const
+ 		return;
+ 
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS)
++	if (hart->flags & RV_HART_FLAG_MEMORY_SYSBUS) {
+ 		riscv32_sysbus_mem_write(hart, dest, src, len);
+-	else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
++		/* BMP 85: check for (and report) any system-bus fault once per top-level call */
++		riscv_sysbus_check(hart);
++	} else if (hart->flags & RV_HART_FLAG_MEMORY_PROGBUF)
+ 		riscv32_progbuf_mem_write(hart, dest, src, len);
+ 	else
+ 		riscv32_abstract_mem_write(hart, dest, src, len);
+@@ -826,7 +1509,7 @@ static int riscv32_breakwatch_set(target_s *const target, breakwatch_s *const br
+ 	}
+ 	/* Grab the address to set the breakwatch on and configure the hardware */
+ 	const uint32_t address = breakwatch->addr;
+-	const bool result = riscv_config_trigger(hart, trigger, mode, &config, &address);
++	const bool result = riscv_config_trigger32(hart, trigger, mode, config, address);
+ 	/* If configuration succeeds, store the trigger index in the breakwatch structure */
+ 	if (result)
+ 		breakwatch->reserved[0] = trigger;
+@@ -839,5 +1522,83 @@ static int riscv32_breakwatch_clear(target_s *const target, breakwatch_s *const
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	const uint32_t config = RV32_MATCH_ADDR_DATA_TRIGGER;
+ 	const uint32_t address = 0;
+-	return riscv_config_trigger(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, &config, &address) ? 0 : -1;
++	return riscv_config_trigger32(hart, breakwatch->reserved[0], RISCV_TRIGGER_MODE_UNUSED, config, address) ? 0 : -1;
++}
++
++/*
++ *   Small helper function to translate target to hart and simplify parameters
++ *   We assume it is 32 bits
++ */
++static inline bool riscv32_target_csr_write(target_s *target, const uint16_t reg, uint32_t val)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	return riscv_csr_write(hart, reg, &val);
++}
++
++/*
++ *   Small helper function to translate target to hart and simplify parameters
++ *   We assume it is 32 bits
++ */
++static inline bool riscv32_target_csr_read(target_s *target, const uint16_t reg, uint32_t *val)
++{
++	riscv_hart_s *const hart = riscv_hart_struct(target);
++	return riscv_csr_read(hart, reg, val);
++}
++
++/*
++ *   Execute code on the target with the signature void function(a,b,c,d)
++ *       - codexec is the address the code to tun is located at
++ *       - param1/2/3/4 will end up as the 4 parameters of the stub function
++ *
++ *   The flashstub must not use the stack at all.
++ *   It returns true on success, false on error
++ *   There is a built-in timeout of 10 seconds
++ */
++bool riscv32_run_stub(
++	target_s *target, uint32_t loadaddr, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4)
++{
++	bool ret = false;
++	uint32_t pc = 0;
++	uint32_t mie = 0;
++	uint32_t zero = 0;
++	const uint32_t pc_reg = (riscv_hart_struct(target)->extensions & RV_ISA_EXT_EMBEDDED) ? 16U : 32U;
++	// save PC & MIE
++	target->reg_read(target, pc_reg, &pc, 4);
++	riscv32_target_csr_read(target, RV_CSR_MIE, &mie);
++	riscv32_target_csr_write(target, RV_CSR_MIE, zero); // disable interrupt
++	target->reg_write(target, RISCV_REG_A0, &param1, 4);
++	target->reg_write(target, RISCV_REG_A1, &param2, 4);
++	target->reg_write(target, RISCV_REG_A2, &param3, 4);
++	target->reg_write(target, RISCV_REG_A3, &param4, 4);
++	target->reg_write(target, pc_reg, &loadaddr, 4);
++
++	target->halt_resume(target, false); // go!
++	platform_timeout_s timeout;
++	platform_timeout_set(&timeout, 10000);
++	target_halt_reason_e reason = TARGET_HALT_RUNNING;
++	while (reason == TARGET_HALT_RUNNING) {
++		if (platform_timeout_is_expired(&timeout)) {
++			reason = TARGET_HALT_ERROR;
++			break;
++		}
++		reason = target->halt_poll(target, NULL);
++	}
++	switch (reason) {
++	case TARGET_HALT_BREAKPOINT:
++		ret = true;
++		break;
++	case TARGET_HALT_ERROR: // room left here for more detailed handling
++	default:
++		break;
++	}
++	target->halt_request(target);
++	if (ret) {
++		uint32_t a0;
++		target->reg_read(target, RISCV_REG_A0, &a0, 4);
++		ret = (a0 == 0);
++	}
++	// restore PC & MIE
++	riscv32_target_csr_write(target, RV_CSR_MIE, mie); // put back MIE
++	target->reg_write(target, pc_reg, &pc, 4);
++	return ret;
+ }
+diff --git a/src/target/riscv_adi_dtm.c b/src/target/riscv_adi_dtm.c
+index f4669331..1521fe19 100644
+--- a/src/target/riscv_adi_dtm.c
++++ b/src/target/riscv_adi_dtm.c
+@@ -36,6 +36,7 @@
+ 
+ static bool riscv_adi_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
+ static bool riscv_adi_dmi_write(riscv_dmi_s *dmi, uint32_t address, uint32_t value);
++static void riscv_adi_invalidate_caches(riscv_dmi_s *dmi);
+ 
+ void riscv_adi_dtm_handler(adiv5_access_port_s *const ap)
+ {
+@@ -56,6 +57,7 @@ void riscv_adi_dtm_handler(adiv5_access_port_s *const ap)
+ 
+ 	dmi_ap->dmi.read = riscv_adi_dmi_read;
+ 	dmi_ap->dmi.write = riscv_adi_dmi_write;
++	dmi_ap->dmi.invalidate_caches = riscv_adi_invalidate_caches;
+ 	riscv_dmi_init(&dmi_ap->dmi);
+ 
+ 	/* If we failed to find any DMs or Harts, free the structure */
+@@ -68,13 +70,41 @@ void riscv_adi_dtm_handler(adiv5_access_port_s *const ap)
+ static bool riscv_adi_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
+ {
+ 	adiv5_access_port_s *const ap = ((riscv_dmi_ap_s *)dmi)->ap;
+-	adiv5_mem_read(ap, value, address << 2U, 4U);
+-	return adiv5_dp_error(ap->dp) == 0U;
++	/*
++	 * BMP 89 lean DMI path: drive the AP TAR/DRW registers directly instead of
++	 * going through adiv5_mem_read_bytes(). The SELECT1/SELECT/CSW writes are
++	 * skipped by the shadow caches (BMP 83/88), and skipping the generic mem
++	 * accessor drops its trailing RDBUFF flush, so a warm DMI read costs
++	 * TAR + DRW + RDBUFF (the latter is inherent to SWD AP reads).
++	 * The per-op CTRL/STAT error poll is dropped as well: SWD-level faults are
++	 * reported through dp->fault (cleared per op, as the removed CTRL/STAT poll
++	 * used to do), and abstract-command errors are caught by the RISC-V layer's
++	 * ABSTRACTCS/DMSTATUS checks.
++	 */
++	ap->dp->fault = 0;
++	adiv5_ap_write(ap, ADIV5_AP_TAR_LOW, address << 2U);
++	*value = adiv5_ap_read(ap, ADIV5_AP_DRW);
++	return ap->dp->fault == 0;
++}
++
++static void riscv_adi_invalidate_caches(riscv_dmi_s *const dmi)
++{
++	/* DMI accesses go through the AP TAR/DRW shadow caches (BMP 83/88).
++	 * Drop them after a reset. */
++	adiv5_ap_invalidate_caches(((riscv_dmi_ap_s *)dmi)->ap);
+ }
+ 
+ static bool riscv_adi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
+ {
+ 	adiv5_access_port_s *const ap = ((riscv_dmi_ap_s *)dmi)->ap;
+-	adiv5_mem_write(ap, address << 2U, &value, 4U);
+-	return adiv5_dp_error(ap->dp) == 0U;
++	/*
++	 * BMP 89 lean DMI path: TAR + DRW only. Skipping the generic mem accessor
++	 * removes both the trailing RDBUFF flush and the per-op CTRL/STAT poll, so
++	 * a warm DMI write costs exactly TAR + data. The next access's TAR write
++	 * serialises the bus, so the dropped flush is not needed on SWD.
++	 */
++	ap->dp->fault = 0;
++	adiv5_ap_write(ap, ADIV5_AP_TAR_LOW, address << 2U);
++	adiv5_ap_write(ap, ADIV5_AP_DRW, value);
++	return ap->dp->fault == 0;
+ }
+diff --git a/src/target/riscv_debug.c b/src/target/riscv_debug.c
+index 0047b91f..796ce576 100644
+--- a/src/target/riscv_debug.c
++++ b/src/target/riscv_debug.c
+@@ -155,6 +155,7 @@ typedef enum riscv_halt_cause {
+ 	RV_HALT_CAUSE_RESET = (5U << 6U),
+ } riscv_halt_cause_e;
+ 
++#if 0
+ // clang-format off
+ /* General-purpose register name strings */
+ static const char *const riscv_gpr_names[RV_GPRS_COUNT] = {
+@@ -271,6 +272,7 @@ static_assert(ARRAY_LENGTH(riscv_gpr_names) == ARRAY_LENGTH(riscv_gpr_types),
+ 	"GPR array length mismatch! GPR type array should have the same length as GPR name array."
+ );
+ // clang-format on
++#endif
+ 
+ static void riscv_dm_init(riscv_dm_s *dbg_module);
+ static bool riscv_hart_init(riscv_hart_s *hart);
+@@ -285,7 +287,7 @@ static uint32_t riscv_hart_discover_isa(riscv_hart_s *hart);
+ static void riscv_hart_discover_triggers(riscv_hart_s *hart);
+ static void riscv_hart_memory_access_type(target_s *target);
+ 
+-static const char *riscv_target_description(target_s *target);
++// static const char *riscv_target_description(target_s *target);
+ 
+ static bool riscv_check_error(target_s *target);
+ static void riscv_halt_request(target_s *target);
+@@ -496,6 +498,8 @@ static bool riscv_hart_init(riscv_hart_s *const hart)
+ 	if (!target)
+ 		return false;
+ 
++	TOPT_SET_ARCH(target->target_options, TOPT_ARCH_RISCV);
++
+ 	/* Grab a reference to the DMI and DM structures and do preliminary setup of the target structure */
+ 	riscv_dm_ref(hart->dbg_module);
+ 	target->driver = "RISC-V";
+@@ -540,7 +544,7 @@ static bool riscv_hart_init(riscv_hart_s *const hart)
+ 	target->attach = riscv_attach;
+ 	target->detach = riscv_detach;
+ 
+-	target->regs_description = riscv_target_description;
++	// target->regs_description = riscv_target_description;
+ 
+ 	target->check_error = riscv_check_error;
+ 	target->halt_request = riscv_halt_request;
+@@ -601,13 +605,27 @@ static bool riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, cons
+ 	return result;
+ }
+ 
++uint32_t bmp_rv_tx_counter = 0;
++
++void bmp_rv_tx_reset_c(void)
++{
++	bmp_rv_tx_counter = 0;
++}
++
++uint32_t bmp_rv_tx_count_c(void)
++{
++	return bmp_rv_tx_counter;
++}
++
+ bool riscv_dm_read(riscv_dm_s *dbg_module, const uint8_t address, uint32_t *const value)
+ {
++	bmp_rv_tx_counter++;
+ 	return riscv_dmi_read(dbg_module->dmi_bus, dbg_module->base + address, value);
+ }
+ 
+ bool riscv_dm_write(riscv_dm_s *dbg_module, const uint8_t address, const uint32_t value)
+ {
++	bmp_rv_tx_counter++;
+ 	return riscv_dmi_write(dbg_module->dmi_bus, dbg_module->base + address, value);
+ }
+ 
+@@ -744,9 +762,11 @@ static uint32_t riscv_csr_access_width(const uint16_t reg)
+ 
+ bool riscv_command_wait_complete(riscv_hart_s *const hart)
+ {
++	platform_timeout_s timeout;
++	platform_timeout_set(&timeout, 200U);
+ 	uint32_t status = RV_DM_ABST_STATUS_BUSY;
+ 	while (status & RV_DM_ABST_STATUS_BUSY) {
+-		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status))
++		if (!riscv_dm_read(hart->dbg_module, RV_DM_ABST_CTRLSTATUS, &status) || platform_timeout_is_expired(&timeout))
+ 			return false;
+ 	}
+ 	/* Shift out and mask off the command status, then reset the status on the Hart */
+@@ -776,6 +796,10 @@ static bool riscv_csr_read_data(riscv_hart_s *const hart, void *const data, cons
+ 
+ static bool riscv_csr_progbuf_read(riscv_hart_s *const hart, const uint16_t reg, void *const data)
+ {
++	/* Executing the program buffer below may clobber dpc, so save it first (spec 3.7). Accessing
++	 * dpc itself is exempt - asking for dpc in order to read dpc would be a loop. */
++	uint32_t dpc[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = (reg & RV_CSR_ADDR_MASK) != RV_DPC && riscv_dpc_guard_begin(hart, dpc);
+ 	/* Set up the program buffer to read out the target CSR */
+ 	if (!riscv_dm_write(hart->dbg_module, RV_DM_PROGBUF_BASE + 0U, RV_CSRR_A0 | ((reg & RV_CSR_ADDR_MASK) << 20U)))
+ 		return false;
+@@ -795,7 +819,11 @@ static bool riscv_csr_progbuf_read(riscv_hart_s *const hart, const uint16_t reg,
+ 	/* Now try to read out the requested data from a0 at the requested size */
+ 	result &= riscv_csr_read(hart, RV_GPR_A0 | (reg & RV_CSR_FORCE_MASK), data);
+ 	/* Whatever happened, now put back a0 from before */
+-	return riscv_csr_write(hart, RV_GPR_A0, a0_value) && result;
++	result &= riscv_csr_write(hart, RV_GPR_A0, a0_value);
++	/* And dpc, if executing the program buffer could have clobbered it (spec 3.7) */
++	if (guard_dpc)
++		result &= riscv_dpc_guard_end(hart, dpc);
++	return result;
+ }
+ 
+ bool riscv_csr_read(riscv_hart_s *const hart, const uint16_t reg, void *const data)
+@@ -803,7 +831,8 @@ bool riscv_csr_read(riscv_hart_s *const hart, const uint16_t reg, void *const da
+ 	const uint8_t access_width = (reg & RV_CSR_FORCE_MASK) ? riscv_csr_access_width(reg) : hart->access_width;
+ 	DEBUG_TARGET("Reading %u-bit CSR %03x\n", access_width, reg & ~RV_CSR_FORCE_MASK);
+ 	/* If the read must be completed using the progbuf mechanism, switch to doing that */
+-	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR)
++	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++		((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU))
+ 		return riscv_csr_progbuf_read(hart, reg, data);
+ 	/* Set up the register read and wait for it to complete */
+ 	if (!riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
+@@ -816,6 +845,7 @@ bool riscv_csr_read(riscv_hart_s *const hart, const uint16_t reg, void *const da
+ 		 * only GPR access using abstract commands. NB: we have no recourse if no progbuf regs are implemented.
+ 		 */
+ 		if (hart->status == RISCV_HART_NOT_SUPP && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++			((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU) &&
+ 			hart->progbuf_size > 0U) {
+ 			hart->flags |= RV_HART_FLAG_DATA_GPR_ONLY;
+ 			return riscv_csr_read(hart, reg, data);
+@@ -842,8 +872,129 @@ static bool riscv_csr_write_data(riscv_hart_s *const hart, const void *const dat
+ 	return true;
+ }
+ 
++/*
++ * BMP 100: dpc preservation around program buffer execution (RISC-V Debug spec 3.7).
++ *
++ * "Executing the Program Buffer may clobber dpc. If that is the case, it must be possible to
++ * read/write dpc using an abstract command with postexec not set. The debugger must attempt to
++ * save dpc between halting and executing a Program Buffer, and then restore dpc before leaving
++ * Debug Mode."
++ *
++ * The save therefore has to be an abstract command carrying dpc itself in its register transfer
++ * and with no program buffer of its own - anything that ran a program buffer to fetch dpc would
++ * be running the very thing that clobbers it, and would read the clobbered value instead. It is
++ * tried at the width the Hart was probed with and then at half that, so a Debug Module that only
++ * implements 32-bit transfers (the V003 answers cmderr = 2 to a wider one) is still handled.
++ *
++ * Paying for that around every program buffer execution would be pure loss on a part that does
++ * not clobber dpc, so the first execution measures it: the value after the execution is compared
++ * with the value before it, and the Hart is made to pay from then on only if they differ. That
++ * measurement is also what says on the probe's log which kind of part this is.
++ */
++static bool riscv_dpc_read(riscv_hart_s *const hart, uint32_t dpc[RV_DPC_WORDS])
++{
++	/* Looking at dpc is not the caller's verdict on the Hart: leave the status as it was */
++	const riscv_hart_status_e status = hart->status;
++	for (uint8_t width = hart->access_width; width >= 32U; width >>= 1U) {
++		if (riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_READ | RV_REG_XFER | riscv_hart_access_width(width) |
++					RV_DPC) &&
++			riscv_command_wait_complete(hart) && riscv_csr_read_data(hart, dpc, width)) {
++			hart->status = status;
++			return true;
++		}
++	}
++	hart->status = status;
++	return false;
++}
++
++static bool riscv_dpc_write(riscv_hart_s *const hart, const uint32_t dpc[RV_DPC_WORDS])
++{
++	/* As above: putting dpc back is not the caller's verdict on the Hart either */
++	const riscv_hart_status_e status = hart->status;
++	for (uint8_t width = hart->access_width; width >= 32U; width >>= 1U) {
++		if (riscv_csr_write_data(hart, dpc, width) &&
++			riscv_dm_write(hart->dbg_module, RV_DM_ABST_COMMAND,
++				RV_DM_ABST_CMD_ACCESS_REG | RV_ABST_WRITE | RV_REG_XFER | riscv_hart_access_width(width) |
++					RV_DPC) &&
++			riscv_command_wait_complete(hart)) {
++			hart->status = status;
++			return true;
++		}
++	}
++	hart->status = status;
++	return false;
++}
++
++/*
++ * BMP 100: called before a program buffer run. Returns true if dpc was saved and the matching
++ * riscv_dpc_guard_end() has to be called, false if this Hart needs nothing done - or cannot have
++ * anything done, which has been reported on the probe's log by then.
++ */
++bool riscv_dpc_guard_begin(riscv_hart_s *const hart, uint32_t dpc[RV_DPC_WORDS])
++{
++	if (hart->dpc_guard == RV_DPC_GUARD_OPAQUE)
++		return false;
++	/*
++	 * An execution that did not complete cleanly (a bus error or an exception inside the program
++	 * buffer) can move dpc even where a clean one does not, so stop trusting the measurement.
++	 */
++	if (hart->dpc_guard == RV_DPC_GUARD_STABLE && hart->status == RISCV_HART_NO_ERROR)
++		return false;
++	if (!riscv_dpc_read(hart, dpc)) {
++		hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++		DEBUG_WARN("riscv: dpc cannot be read without running the program buffer, so it cannot be "
++				   "protected across program buffer execution\n");
++		return false;
++	}
++	return true;
++}
++
++/*
++ * BMP 100: called after a program buffer run started by the matching riscv_dpc_guard_begin().
++ * Returns false if dpc is no longer known to hold what it did before the run.
++ */
++bool riscv_dpc_guard_end(riscv_hart_s *const hart, const uint32_t dpc[RV_DPC_WORDS])
++{
++	/* Already known to clobber dpc: put the saved value back without paying for another read */
++	if (hart->dpc_guard == RV_DPC_GUARD_CLOBBERS) {
++		if (!riscv_dpc_write(hart, dpc)) {
++			hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++			DEBUG_WARN("riscv: dpc could not be restored, the Hart's program counter is now wrong\n");
++			return false;
++		}
++		return true;
++	}
++	uint32_t now[RV_DPC_WORDS] = {0U};
++	if (!riscv_dpc_read(hart, now)) {
++		hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++		DEBUG_WARN("riscv: dpc cannot be read back after program buffer execution, so it can no "
++				   "longer be protected\n");
++		return false;
++	}
++	if (now[0] == dpc[0]) {
++		hart->dpc_guard = RV_DPC_GUARD_STABLE;
++		DEBUG_INFO("riscv: dpc survives program buffer execution on this part, no longer saving it\n");
++		return true;
++	}
++	hart->dpc_guard = RV_DPC_GUARD_CLOBBERS;
++	DEBUG_WARN("riscv: program buffer execution clobbers dpc (%08" PRIx32 " -> %08" PRIx32 "), it is now "
++			   "saved and restored around every execution\n",
++		dpc[0], now[0]);
++	if (!riscv_dpc_write(hart, dpc)) {
++		hart->dpc_guard = RV_DPC_GUARD_OPAQUE;
++		DEBUG_WARN("riscv: dpc could not be restored, the Hart's program counter is now wrong\n");
++		return false;
++	}
++	return true;
++}
++
+ static bool riscv_csr_progbuf_write(riscv_hart_s *const hart, const uint16_t reg, const void *const data)
+ {
++	/* Executing the program buffer below may clobber dpc, so save it first (spec 3.7). Accessing
++	 * dpc itself is exempt - protecting dpc by rewriting dpc would undo the access. */
++	uint32_t dpc[RV_DPC_WORDS] = {0U};
++	const bool guard_dpc = (reg & RV_CSR_ADDR_MASK) != RV_DPC && riscv_dpc_guard_begin(hart, dpc);
+ 	/* Read out a0 to keep it safe as the actions below clobber it */
+ 	uint32_t a0_value[4];
+ 	if (!riscv_csr_read(hart, RV_GPR_A0, a0_value))
+@@ -868,7 +1019,11 @@ static bool riscv_csr_progbuf_write(riscv_hart_s *const hart, const uint16_t reg
+ 	/* Wait for both the register write and progbuf execution to complete */
+ 	result &= riscv_command_wait_complete(hart);
+ 	/* Whatever happened, now put back a0 from before */
+-	return riscv_csr_write(hart, RV_GPR_A0, a0_value) && result;
++	result &= riscv_csr_write(hart, RV_GPR_A0, a0_value);
++	/* And dpc, if executing the program buffer could have clobbered it (spec 3.7) */
++	if (guard_dpc)
++		result &= riscv_dpc_guard_end(hart, dpc);
++	return result;
+ }
+ 
+ bool riscv_csr_write(riscv_hart_s *const hart, const uint16_t reg, const void *const data)
+@@ -876,7 +1031,8 @@ bool riscv_csr_write(riscv_hart_s *const hart, const uint16_t reg, const void *c
+ 	const uint8_t access_width = (reg & RV_CSR_FORCE_MASK) ? riscv_csr_access_width(reg) : hart->access_width;
+ 	DEBUG_TARGET("Writing %u-bit CSR %03x\n", access_width, reg & ~RV_CSR_FORCE_MASK);
+ 	/* If the write must be completed using the progbuf mechanism, switch to doing that */
+-	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR)
++	if ((hart->flags & RV_HART_FLAG_DATA_GPR_ONLY) && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++		((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU))
+ 		return riscv_csr_progbuf_write(hart, reg, data);
+ 	/* Set up the data registers based on the Hart native access size */
+ 	if (!riscv_csr_write_data(hart, data, access_width))
+@@ -893,6 +1049,7 @@ bool riscv_csr_write(riscv_hart_s *const hart, const uint16_t reg, const void *c
+ 		 * only GPR access using abstract commands. NB: we have no recourse if no progbuf regs are implemented.
+ 		 */
+ 		if (hart->status == RISCV_HART_NOT_SUPP && (reg & RV_CSR_TYPE_MASK) != RV_CSR_TYPE_GPR &&
++			((reg & RV_CSR_ADDR_MASK) < 0x7b0U || (reg & RV_CSR_ADDR_MASK) > 0x7bfU) &&
+ 			hart->progbuf_size > 0U) {
+ 			hart->flags |= RV_HART_FLAG_DATA_GPR_ONLY;
+ 			return riscv_csr_write(hart, reg, data);
+@@ -947,6 +1104,37 @@ uint8_t riscv_mem_access_width(const riscv_hart_s *const hart, const target_addr
+ 	return access_width;
+ }
+ 
++/* All possible match modes */
++#define RV32_MATCH_MASK 0x00000007U
++
++bool riscv_config_trigger32(riscv_hart_s *const hart, const uint32_t trigger, const riscv_trigger_state_e mode,
++	const uint32_t config, const uint32_t address)
++{
++	/*
++	 * Select the trigger and write the new configuration to it provided by config.
++	 * tdata1 (RV_TRIG_DATA_1) becomes mcontrol (match control) for this -
++	 * see §5.2.9 pg53 of the RISC-V debug spec v0.13.2 for more details.
++	 */
++	bool result = riscv_csr_write(hart, RV_TRIG_SELECT | RV_CSR_FORCE_32_BIT, &trigger) &&
++		riscv_csr_write(hart, RV_TRIG_DATA_1, &config) && riscv_csr_write(hart, RV_TRIG_DATA_2, &address);
++	if (result) {
++		/* If that succeeds, verify the mode was taken into account */
++		uint32_t read_back;
++		result = riscv_csr_read(hart, RV_TRIG_DATA_1, &read_back) &&
++			((read_back & RV32_MATCH_MASK) == (config & RV32_MATCH_MASK));
++		if (!result) {
++			read_back = 0;
++			riscv_csr_write(hart, RV_TRIG_DATA_1, &read_back);
++		}
++	}
++	if (result) {
++		/* If that succeeds, update the slot with the new mode it's in */
++		hart->trigger_uses[trigger] &= ~RV_TRIGGER_MODE_MASK;
++		hart->trigger_uses[trigger] |= mode;
++	}
++	return result;
++}
++
+ static void riscv_hart_discover_triggers(riscv_hart_s *const hart)
+ {
+ 	/* Discover how many breakpoints this hart supports */
+@@ -1014,7 +1202,7 @@ static void riscv_hart_discover_triggers(riscv_hart_s *const hart)
+ static void riscv_hart_memory_access_type(target_s *const target)
+ {
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+-	hart->flags &= (uint8_t)~RV_HART_FLAG_MEMORY_SYSBUS;
++	hart->flags &= (uint16_t)~(RV_HART_FLAG_MEMORY_SYSBUS | RV_HART_CAP_HAS_SYSBUS);
+ 	uint32_t sysbus_status;
+ 	/*
+ 	 * Try reading the system bus access control and status register.
+@@ -1024,7 +1212,7 @@ static void riscv_hart_memory_access_type(target_s *const target)
+ 		!(sysbus_status & RV_DM_SYSBUS_STATUS_ADDR_WIDTH_MASK))
+ 		return;
+ 	/* If all the checks passed, we now have a valid system bus so can proceed with using it for memory access */
+-	hart->flags |= RV_HART_FLAG_MEMORY_SYSBUS | (sysbus_status & RV_HART_FLAG_ACCESS_WIDTH_MASK);
++	hart->flags |= RV_HART_FLAG_MEMORY_SYSBUS | RV_HART_CAP_HAS_SYSBUS | (sysbus_status & RV_HART_FLAG_ACCESS_WIDTH_MASK);
+ 	/* System Bus also means the target can have memory read without halting */
+ 	target->target_options |= TOPT_NON_HALTING_MEM_IO;
+ 	/* Make sure the system bus is not in any kind of error state */
+@@ -1093,6 +1281,12 @@ bool riscv_attach(target_s *const target)
+ 		const uint32_t tdata2 = 0U;
+ 		riscv_config_trigger(hart, trigger, RISCV_TRIGGER_MODE_UNUSED, &tdata1, &tdata2);
+ 	}
++	/* Enable ebreakm in dcsr so ebreak instructions enter debug mode */
++	uint32_t dcsr = 0U;
++	if (riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr)) {
++		dcsr |= RV_DCSR_EBREAK_MACHINE;
++		riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr);
++	}
+ 	return true;
+ }
+ 
+@@ -1151,7 +1345,7 @@ static void riscv_halt_resume(target_s *target, const bool step)
+ 	if (!riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &stepping_config))
+ 		return;
+ 	if (step)
+-		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT;
++		stepping_config |= RV_DCSR_STEP | RV_DCSR_STOP_TIME | RV_DCSR_STOP_COUNT | RV_DCSR_EBREAK_MACHINE;
+ 	else {
+ 		stepping_config &= ~(RV_DCSR_STEP);
+ 		stepping_config |= RV_DCSR_EBREAK_MACHINE;
+@@ -1230,12 +1424,46 @@ static void riscv_reset(target_s *const target)
+ {
+ 	riscv_hart_s *const hart = riscv_hart_struct(target);
+ 	bool has_reset = false;
++	/*
++	 * Request a halt before anything is reset. "When a hart comes out of reset and haltreq or
++	 * resethaltreq are set, the hart will immediately enter Debug Mode" (spec 3.4/3.2), and
++	 * ndmreset below resets everything *except* the Debug Module, so a request made here is
++	 * still there when the hart comes out of reset. Asking for the halt only afterwards - as
++	 * this function used to - leaves the hart running from the reset vector until the request
++	 * lands, which over SDI at 8-48MHz is hundreds to thousands of instructions of the target's
++	 * startup code, so 'monitor reset halt' does not stop at the entry point. The request is
++	 * dropped again by riscv_halt_request() at the end of this function, once the hart has
++	 * actually halted. Note this part implements neither resethaltreq nor the
++	 * setresethaltreq/clrresethaltreq bits (sdi.txt Table 3-4), so haltreq is the only mechanism
++	 * it offers; on a part that does implement them this is simply the same request made earlier.
++	 */
++	riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HALT_REQ);
+ 	/* If the target does not have the nRST pin inhibited, use that to initiate reset */
+ 	if (!(target->target_options & TOPT_INHIBIT_NRST)) {
+ 		platform_nrst_set_val(true);
+-		has_reset = riscv_dm_poll_state(hart->dbg_module, RV_DM_STAT_ALL_RESET);
+ 		platform_nrst_set_val(false);
+-		/* In theory we're done at this point and no debug state was perturbed */
++		/*
++		 * nRST is a full-system reset that also resets the DM itself, so there is no
++		 * dmstatus bit that can ever confirm it: on debug-spec v0.13 targets such as
++		 * the RP2350, dmstatus bit 19 is allhavereset and is cleared by the reset, so
++		 * the old RV_DM_STAT_ALL_RESET poll burned the full 500 ms timeout on every
++		 * reset (twice: once here and once in the ndmreset fallback below). Instead,
++		 * wait for the DM to come back up and re-activate it, then treat nRST as the
++		 * reset having happened. Re-activating it is also the first chance to (re)assert
++		 * the halt request made above: nRST resets the Debug Module itself, so a request
++		 * made before it is gone with it.
++		 */
++		platform_timeout_s timeout;
++		platform_timeout_set(&timeout, 500U);
++		do {
++			const uint32_t control = RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ;
++			uint32_t readback = control;
++			if (riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, control) &&
++				riscv_dm_read(hart->dbg_module, RV_DM_CONTROL, &readback) &&
++				(readback & RV_DM_CTRL_ACTIVE))
++				break;
++		} while (!platform_timeout_is_expired(&timeout));
++		has_reset = true;
+ 	}
+ 
+ 	/*
+@@ -1243,14 +1471,26 @@ static void riscv_reset(target_s *const target)
+ 	 * when reset is requested, use the ndmreset bit to perform a system reset
+ 	 */
+ 	if (!has_reset) {
+-		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_SYSTEM_RESET);
++		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL,
++			hart->hartsel | RV_DM_CTRL_SYSTEM_RESET | RV_DM_CTRL_HALT_REQ);
+ 		riscv_dm_poll_state(hart->dbg_module, RV_DM_STAT_ALL_RESET);
+-		/* Complete the reset by resetting ndmreset */
+-		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel);
++		/* Complete the reset by resetting ndmreset, holding the halt request across it */
++		riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HALT_REQ);
+ 	}
+-	/* Acknowledge the reset */
+-	riscv_dm_write(hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HART_ACK_RESET);
++	/* Acknowledge the reset, still holding the halt request */
++	riscv_dm_write(
++		hart->dbg_module, RV_DM_CONTROL, hart->hartsel | RV_DM_CTRL_HART_ACK_RESET | RV_DM_CTRL_HALT_REQ);
++	/* The debug domain may have been reset by nRST or ndmreset: invalidate any
++	 * AP CSW / DP-SELECT write caches held by the DMI bus (BMP 83). */
++	if (hart->dbg_module->dmi_bus->invalidate_caches)
++		hart->dbg_module->dmi_bus->invalidate_caches(hart->dbg_module->dmi_bus);
+ 	riscv_halt_request(target);
++	/* Enable ebreakm in dcsr after reset so ebreak instructions enter debug mode */
++	uint32_t dcsr = 0U;
++	if (riscv_csr_read(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr)) {
++		dcsr |= RV_DCSR_EBREAK_MACHINE;
++		riscv_csr_write(hart, RV_DCSR | RV_CSR_FORCE_32_BIT, &dcsr);
++	}
+ 	target_check_error(target);
+ }
+ 
+@@ -1297,6 +1537,7 @@ static void riscv_reset(target_s *const target)
+  *      <reg name="fcsr" bitsize="32" regnum="68" save-restore="no"/>
+  *  </feature>
+  */
++#if 0
+ static size_t riscv_build_target_fpu_description(char *const buffer, size_t max_length, size_t fpu_size)
+ {
+ 	const size_t first_fpu_register = RV_FPU_GDB_OFFSET;             // see riscv_debug.h
+@@ -1448,3 +1689,4 @@ static const char *riscv_target_description(target_s *const target)
+ 		(void)riscv_build_target_description(description, description_length, hart->address_width, hart->extensions);
+ 	return description;
+ }
++#endif
+diff --git a/src/target/riscv_debug.h b/src/target/riscv_debug.h
+index 85b2ce52..52f9f701 100644
+--- a/src/target/riscv_debug.h
++++ b/src/target/riscv_debug.h
+@@ -102,6 +102,24 @@ typedef enum riscv_match_size {
+ #define RV_HART_FLAG_MEMORY_SYSBUS      (1U << 4U)
+ #define RV_HART_FLAG_DATA_GPR_ONLY      (1U << 5U) /* Hart supports Abstract Data commands for GPRs only */
+ #define RV_HART_FLAG_MEMORY_PROGBUF     (1U << 6U)
++#define RV_HART_FLAG_MEMORY_ABSTAUTO    (1U << 7U) /* Abstract commands with AUTOEXECDATA_0 streaming */
++#define RV_HART_CAP_HAS_SYSBUS          (1U << 8U)
++
++/*
++ * This enum describes how a Hart treats dpc when a program buffer is executed, which the RISC-V
++ * Debug spec leaves implementation defined and which decides whether dpc has to be saved around
++ * program buffer execution (spec 3.7).
++ */
++typedef enum riscv_dpc_guard {
++	/* Not measured yet: dpc is read before an execution and checked (and put back) after it */
++	RV_DPC_GUARD_UNKNOWN = 0,
++	/* Measured: dpc survives program buffer execution, so there is nothing left to do */
++	RV_DPC_GUARD_STABLE = 1,
++	/* Measured: program buffer execution clobbers dpc, so it is saved and restored every time */
++	RV_DPC_GUARD_CLOBBERS = 2,
++	/* dpc cannot be read without running a program buffer, so it cannot be protected at all */
++	RV_DPC_GUARD_OPAQUE = 3,
++} riscv_dpc_guard_e;
+ 
+ typedef struct riscv_dmi riscv_dmi_s;
+ 
+@@ -116,11 +134,23 @@ struct riscv_dmi {
+ 	uint8_t idle_cycles;
+ 	uint8_t address_width;
+ 	uint8_t fault;
++	/*
++	 * BMP 103: true when this transport cannot tell a delivered access from a lost one, so a
++	 * read has to be confirmed by a second pass instead of being trusted (riscv_fault.md F5,
++	 * §12.6). The single-wire SDI bus carries no DMI status word: ch32_sdi_dmi_read() reports
++	 * success for any frame it managed to send, whatever the target did with it. Off by
++	 * default, so a DMI that can report (JTAG, RVSWD, ADI) is untouched.
++	 */
++	bool read_confirm;
+ 
+ 	void (*prepare)(target_s *target);
+ 	void (*quiesce)(target_s *target);
+ 	bool (*read)(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
+ 	bool (*write)(riscv_dmi_s *dmi, uint32_t address, uint32_t value);
++	/* Invalidate any AP CSW / DP-SELECT write caches held by the DMI bus
++	 * implementation, after a reset that may have cleared the debug domain
++	 * (BMP 83). NULL if the bus holds no such caches. */
++	void (*invalidate_caches)(riscv_dmi_s *dmi);
+ };
+ 
+ /* This structure represent a DMI bus that is accessed via an ADI AP */
+@@ -147,9 +177,11 @@ typedef struct riscv_hart {
+ 	uint32_t hartsel;
+ 	uint8_t access_width;
+ 	uint8_t address_width;
+-	uint8_t flags;
++	uint16_t flags;
+ 	uint8_t progbuf_size;
+ 	riscv_hart_status_e status;
++	/* How this Hart treats dpc across program buffer execution (spec 3.7), see riscv_dpc_guard_e */
++	riscv_dpc_guard_e dpc_guard;
+ 
+ 	uint32_t extensions;
+ 	uint32_t vendorid;
+@@ -181,6 +213,7 @@ typedef struct riscv_hart {
+ #define RV_DM_DATA3             0x07U
+ #define RV_DM_ABST_CTRLSTATUS   0x16U
+ #define RV_DM_ABST_COMMAND      0x17U
++#define RV_DM_ABSTRACTAUTO      0x18U
+ #define RV_DM_PROGBUF_BASE      0x20U
+ #define RV_DM_SYSBUS_CTRLSTATUS 0x38U
+ #define RV_DM_SYSBUS_ADDR0      0x39U
+@@ -207,6 +240,8 @@ typedef struct riscv_hart {
+ 
+ #define RV_ABST_MEM_ADDR_POST_INC 0x00080000U
+ #define RV_ABST_MEM_ACCESS_SHIFT  20U
++/* Bit 0 of the ABSTRACTAUTO register (0x18): re-run the abstract command on every DATA0 access */
++#define RV_ABSTRACTAUTO_AUTOEXECDATA_0 (1U << 0U)
+ 
+ #define RV_SYSBUS_MEM_ADDR_POST_INC 0x00010000U
+ #define RV_SYSBUS_MEM_READ_ON_ADDR  0x00100000U
+@@ -216,6 +251,8 @@ typedef struct riscv_hart {
+ 
+ /* dpc -> Debug Program Counter */
+ #define RV_DPC 0x7b1U
++/* dpc is XLEN wide: 4 words covers a 128-bit abstract command transfer without truncating it */
++#define RV_DPC_WORDS 4U
+ /* The GPR base defines the starting register space address for the CPU state registers */
+ #define RV_GPR_BASE 0x1000U
+ /* The FP base defines the starting register space address for the floating point registers */
+@@ -306,6 +343,14 @@ typedef struct riscv_hart {
+ #define RV_FPU_GDB_OFFSET     33
+ #define RV_FPU_GDB_CSR_OFFSET 66
+ 
++// General purpose registers
++#define RISCV_REG_A0 10
++#define RISCV_REG_A1 11
++#define RISCV_REG_A2 12
++#define RISCV_REG_A3 13
++#define RISCV_REG_PC 32
++#define RISCV_REG_SP 2
++
+ /* JTAG DTM function declarations */
+ #ifdef CONFIG_RISCV
+ void riscv_jtag_dtm_handler(uint8_t dev_index);
+@@ -327,9 +372,13 @@ bool riscv_dm_write(riscv_dm_s *dbg_module, uint8_t address, uint32_t value);
+ bool riscv_command_wait_complete(riscv_hart_s *hart);
+ bool riscv_csr_read(riscv_hart_s *hart, uint16_t reg, void *data);
+ bool riscv_csr_write(riscv_hart_s *hart, uint16_t reg, const void *data);
++bool riscv_dpc_guard_begin(riscv_hart_s *hart, uint32_t dpc[RV_DPC_WORDS]);
++bool riscv_dpc_guard_end(riscv_hart_s *hart, const uint32_t dpc[RV_DPC_WORDS]);
+ riscv_match_size_e riscv_breakwatch_match_size(size_t size);
+ bool riscv_config_trigger(
+ 	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, const void *config, const void *address);
++bool riscv_config_trigger32(
++	riscv_hart_s *hart, uint32_t trigger, riscv_trigger_state_e mode, uint32_t config, uint32_t address);
+ 
+ bool riscv_attach(target_s *target);
+ void riscv_detach(target_s *target);
+@@ -341,4 +390,15 @@ uint32_t riscv32_pack_data(const void *src, uint8_t access_width);
+ void riscv32_mem_read(target_s *target, void *dest, target_addr64_t src, size_t len);
+ void riscv32_mem_write(target_s *target, target_addr64_t dest, const void *src, size_t len);
+ 
++/*
++ *   Execute code on the target with the signature void stub_function(a,b,c,d)
++ *       - codexec is the address the code to run is located at
++ *       - param1/2/3/4 will end up as the 4 parameters of the stub function
++ *       
++ *   The flashstub must not use the stack at all.
++ *   The flashstub must return 0 on success, not 0 on error
++ *   There is a built-in timeout of 10 seconds
++ */
++bool riscv32_run_stub(target_s *target, uint32_t loadaddr, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3);
++
+ #endif /*TARGET_RISCV_DEBUG_H*/
