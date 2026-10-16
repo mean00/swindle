@@ -18,15 +18,18 @@
 #define RAM_SIZE 2 // default RAM size, 2kB on the CH32V003 family
 #define RAM_ADDRESS 0x20000000UL
 /*
- * The 0x0000 0000 region is a boot alias ("Aliased to Flash or system memory",
- * chapter 1.2/option byte MODE) and is what a CH32V003 ELF is linked at, so it
- * is the window exposed to GDB. The FPEC itself only decodes the physical
- * CodeFlash window 0x0800 0000-0x0800 3FFF (table 16-1), so every address
- * handed to FLASH_ADDR or written for the fast-program buffer load has to be
- * translated by FLASH_OFFSET first.
+ * Flash memory layout (CH32V003 Reference Manual V1.3, Table 1-1 and Table 16-1):
+ * - Physical CodeFlash window: 0x08000000 - 0x08003FFF
+ * - Boot alias region:         0x00000000 - 0x00003FFF
+ * Both regions are declared so that ELFs linked at either base address can be
+ * flashed by GDB. The FPEC itself decodes the physical window, so addresses
+ * handed to FLASH_ADDR or fast-program buffer loads are translated to FLASH_PHYSICAL_ADDRESS.
  */
-#define FLASH_ADDRESS 0x00000000UL
-#define FLASH_OFFSET 0x08000000UL
+#define FLASH_ALIAS_ADDRESS    0x00000000UL
+#define FLASH_PHYSICAL_ADDRESS 0x08000000UL
+#define FLASH_ADDRESS          FLASH_ALIAS_ADDRESS
+#define FLASH_OFFSET           FLASH_PHYSICAL_ADDRESS
+#define CH32V0X_FLASH_BLOCK_SIZE 512U
 
 /*
  * Flash programming (CH32V003 Reference Manual V1.3, chapter 16 "FLASH").

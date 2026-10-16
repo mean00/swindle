@@ -78,7 +78,7 @@ static size_t ch32v0x_read_flash_size(target_s *const target)
 {
     return target_mem32_read16(target, CH32V0X_ESIG_FLASH_CAP);
 }
-static const size_t ch32v0_erase_sizes[] = {512, 0};
+static const size_t ch32v0_erase_sizes[] = {CH32V0X_FLASH_BLOCK_SIZE, 0};
 
 static void ch32v0x_read_uid(target_s *const target, uint8_t *const uid)
 {
@@ -490,7 +490,10 @@ bool ch32v003x_probe(target_s *const target)
     target_add_commands(target, ch32v0x_cmd_list, "CH32V0");
     target_mem_map_free(target);
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
-    ch32v0x_add_flash(target, FLASH_ADDRESS, (size_t)flash_size * 1024U, 512, 512, family);
+    ch32v0x_add_flash(target, FLASH_ALIAS_ADDRESS, (size_t)flash_size * 1024U, CH32V0X_FLASH_BLOCK_SIZE,
+                      CH32V0X_FLASH_BLOCK_SIZE, family);
+    ch32v0x_add_flash(target, FLASH_PHYSICAL_ADDRESS, (size_t)flash_size * 1024U, CH32V0X_FLASH_BLOCK_SIZE,
+                      CH32V0X_FLASH_BLOCK_SIZE, family);
     target->sw_breakpoint_helpers = &ch32v0_sw_breakpoint_helper;
     /*
      * A CH32V003 has no usable hardware breakpoints, so say so to the GDB layer
