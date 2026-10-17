@@ -3,7 +3,6 @@
 //! Replaces the C++ `BMPUsbLogger` class in `bmp_cdc_logger.cpp`.
 //! Provides a dedicated CDC‑ACM virtual COM port for debug log output.
 
-use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
@@ -12,25 +11,18 @@ use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
 //  Logger CDC event handler
 // ---------------------------------------------------------------------------
 
-/// Thin handler that implements `CdcEventHandler` for the logger CDC.
-struct LoggerCdcHandler {
-    logger: *mut UsbLogger,
-}
+/// Handler that implements `CdcEventHandler` for the logger CDC.
+struct LoggerCdcHandler;
 
 impl CdcEventHandler for LoggerCdcHandler {
     fn handle(&self, _interface: i32, event: CdcEvent, _payload: u32) {
-        let l = unsafe { &mut *self.logger };
-        match event {
-            CdcEvent::SessionStart => {
-                l.connected.store(true, Ordering::Relaxed);
-            }
-            CdcEvent::SessionEnd => {
-                // ignore
-            }
-            _ => {}
+        if event == CdcEvent::SessionStart {
+            UsbLogger::instance().connected.store(true, Ordering::Relaxed);
         }
     }
 }
+
+static LOGGER_HANDLER: LoggerCdcHandler = LoggerCdcHandler;
 
 // ---------------------------------------------------------------------------
 //  UsbLogger
@@ -62,10 +54,8 @@ impl UsbLogger {
             });
         }
 
-        // Now use pointer to the static location (stable, never moves)
-        let logger_ptr: *mut UsbLogger = unsafe { LOGGER_CDC.as_mut_ptr() };
-        let handler = Box::new(LoggerCdcHandler { logger: logger_ptr });
-        unsafe { &mut *logger_ptr }.cdc = Cdc::new(instance, handler);
+        let this = Self::instance();
+        this.cdc = Cdc::new_static(instance, &LOGGER_HANDLER);
 
         LOGGER_CDC_INITIALIZED.store(true, Ordering::Relaxed);
     }
@@ -85,10 +75,10 @@ impl UsbLogger {
 
     /// Returns the number of bytes available for writing.
     pub fn write_available() -> u32 {
-        // The Cdc doesn't expose writeAvailable directly,
-        // but we can approximate by trying to write a small amount.
-        // For now, return a reasonable default.
-        64
+        if !LOGGER_CDC_INITIALIZED.load(Ordering::Relaxed) {
+            return 0;
+        }
+        Self::instance().cdc.write_available() as u32
     }
 }
 

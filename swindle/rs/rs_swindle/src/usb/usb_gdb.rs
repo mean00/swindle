@@ -5,7 +5,6 @@
 //! session events, and provides read/write primitives for the
 //! GDB stub.
 
-use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
@@ -29,17 +28,12 @@ const GDB_BUFFER_SIZE: usize = 1024;
 //  GDB CDC event handler
 // ---------------------------------------------------------------------------
 
-/// Thin handler that implements `CdcEventHandler` for the C++ USB stack.
-///
-/// Holds a raw pointer to the `GdbCdc` static.  This is the cookie passed
-/// to `lncdc_set_event_handler`.
-struct GdbCdcHandler {
-    gdb: *mut GdbCdc,
-}
+/// Handler that implements `CdcEventHandler` for the C++ USB stack.
+struct GdbCdcHandler;
 
 impl CdcEventHandler for GdbCdcHandler {
     fn handle(&self, _interface: i32, event: CdcEvent, _payload: u32) {
-        let gdb = unsafe { &mut *self.gdb };
+        let gdb = GdbCdc::instance();
         match event {
             CdcEvent::DataAvailable => {
                 gdb.event_group.set_events(GDB_CDC_DATA_AVAILABLE);
@@ -67,6 +61,8 @@ impl CdcEventHandler for GdbCdcHandler {
         }
     }
 }
+
+static GDB_HANDLER: GdbCdcHandler = GdbCdcHandler;
 
 // ---------------------------------------------------------------------------
 //  GDB CDC public handle
@@ -109,13 +105,8 @@ impl GdbCdc {
             });
         }
 
-        // Take pointer from static location (stable, never moves)
-        let gdb_ptr: *mut GdbCdc = unsafe { GDB_CDC.as_mut_ptr() };
-
-        // Build the handler (which points back to the GdbCdc) and create
-        // the real Cdc.
-        let handler = Box::new(GdbCdcHandler { gdb: gdb_ptr });
-        unsafe { &mut *gdb_ptr }.cdc = Cdc::new(instance, handler);
+        let this = Self::instance();
+        this.cdc = Cdc::new_static(instance, &GDB_HANDLER);
 
         GDB_CDC_INITIALIZED.store(true, Ordering::Relaxed);
     }

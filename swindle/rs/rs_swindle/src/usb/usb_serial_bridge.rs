@@ -26,14 +26,12 @@ const USB_EVENTS: u32 = USB_EVENT_READ | USB_EVENT_WRITE;
 //  Bridge CDC event handler
 // ---------------------------------------------------------------------------
 
-/// Thin handler that implements `CdcEventHandler` for the bridge CDC.
-struct BridgeCdcHandler {
-    bridge: *mut UsbSerialBridge,
-}
+/// Handler that implements `CdcEventHandler` for the bridge CDC.
+struct BridgeCdcHandler;
 
 impl CdcEventHandler for BridgeCdcHandler {
     fn handle(&self, _interface: i32, event: CdcEvent, payload: u32) {
-        let b = unsafe { &mut *self.bridge };
+        let b = UsbSerialBridge::instance();
         match event {
             CdcEvent::DataAvailable => {
                 b.event_group.set_events(USB_EVENT_READ);
@@ -56,6 +54,8 @@ impl CdcEventHandler for BridgeCdcHandler {
         }
     }
 }
+
+static BRIDGE_CDC_HANDLER: BridgeCdcHandler = BridgeCdcHandler;
 
 // ---------------------------------------------------------------------------
 //  Bridge serial event handler
@@ -153,9 +153,8 @@ impl UsbSerialBridge {
         bridge.serial.set_speed(baud);
         bridge.serial.enable_rx(false);
 
-        // Create CDC with event handler
-        let cdc_handler = Box::new(BridgeCdcHandler { bridge: bridge_ptr });
-        bridge.cdc = Cdc::new(usb_instance, cdc_handler);
+        // Create CDC with static event handler
+        bridge.cdc = Cdc::new_static(usb_instance, &BRIDGE_CDC_HANDLER);
 
         BRIDGE_INITIALIZED.store(true, Ordering::Relaxed);
     }

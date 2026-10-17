@@ -344,6 +344,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs_tinyusb"
+version = "0.1.0"
+dependencies = [
+ "cty",
+]
+
+[[package]]
 name = "rs_uart_bluepill"
 version = "0.1.0"
 dependencies = [
@@ -416,6 +423,7 @@ dependencies = [
  "rs_timer_bluepill",
  "rs_timer_rp2xxx",
  "rs_timer_wrapped",
+ "rs_tinyusb",
  "rs_uart_bluepill",
  "rs_uart_wrapped",
  "ufmt",
