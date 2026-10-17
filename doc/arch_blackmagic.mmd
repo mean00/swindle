@@ -1,0 +1,200 @@
+graph TD
+    %% -------------------------------------------------------------
+    %% LAYER 1: SWINDLE INGRESS & FFI BOUNDARY
+    %% -------------------------------------------------------------
+    subgraph Layer1 ["1. Swindle Ingress Boundary (Callers into Blackmagic)"]
+        SwindleRust["Swindle Rust Core (rs_swindle / bmp.rs)"]
+        SwindleBridge["Swindle BMP C-Interface Bridge (bmp_interface_c.cpp)"]
+        SwindleHelpers["Swindle BMP Helpers & Stubs (bmp_helpers.cpp: replaces exception/hex/maths/stm32_uid; gdb_reg omitted)"]
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 2: BLACKMAGIC CORE TARGET FRAMEWORK
+    %% -------------------------------------------------------------
+    subgraph Layer2 ["2. Blackmagic Target Core (blackmagic/src/target/)"]
+        TargetOps["Polymorphic Target Object (target.c / target_s)"]
+        TargetList["Active Target & Target List (target_list, cur_target)"]
+        TargetFlash["Flash Memory Manager (target_flash.c / target_flash_s)"]
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 3: BLACKMAGIC CPU ARCHITECTURE DRIVERS
+    %% -------------------------------------------------------------
+    subgraph Layer3 ["3. CPU Architecture Drivers (blackmagic/src/target/)"]
+        subgraph CortexM_Sub ["ARM Cortex-M Architecture Subsystem"]
+            CortexC["Cortex Architecture Core (cortex.c)"]
+            CortexMC["Cortex-M Debug & NVIC/FPB/DWT (cortexm.c)"]
+        end
+
+        subgraph RISCV_Sub ["RISC-V 32 Architecture Subsystem"]
+            RiscvDebug["RISC-V Debug Module 0.13 Engine (riscv_debug.c)"]
+            Riscv32["RISC-V 32-bit Target Driver (riscv32.c)"]
+        end
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 4: BLACKMAGIC TARGET SILICON DRIVERS (COMPILED IN SWINDLE)
+    %% -------------------------------------------------------------
+    subgraph Layer4 ["4. Target Silicon Drivers (blackmagic/src/target/)"]
+        subgraph STMFamily ["STMicroelectronics Drivers"]
+            STM32F1["STM32 F1 / GD32F1 / MM32 / AT32 (stm32f1.c)"]
+            STM32F4["STM32 F4 / GD32F4 (stm32f4.c)"]
+            STM32G0["STM32 G0 (stm32g0.c)"]
+            STM32H5["STM32 H5 / STM32C5 (stm32h5.c)"]
+            STM32H7["STM32 H7 (stm32h7.c)"]
+            STM32L4["STM32 L4 (stm32l4.c)"]
+        end
+
+        subgraph RPiFamily ["Raspberry Pi Drivers"]
+            RP2040["RP2040 Dual Cortex-M0+ & Rescue (rp2040.c)"]
+            RP2350["RP2350 Dual Cortex-M33 / Hazard3 (rp2350.c)"]
+        end
+
+        subgraph WCHFamily ["WCH Driver"]
+            CH32F1["CH32F1 ARM Cortex-M3 (ch32f1.c)"]
+        end
+
+        subgraph NordicFamily ["Nordic Drivers"]
+            NRF51["nRF51 Series (nrf51.c)"]
+            NRF91["nRF91 Series (nrf91.c)"]
+        end
+
+        subgraph NXPFamily ["NXP Drivers"]
+            LPCCommon["LPC Common Routines (lpc_common.c)"]
+            LPC11XX["LPC11xx (lpc11xx.c)"]
+            LPC15XX["LPC15xx (lpc15xx.c)"]
+            LPC17XX["LPC17xx (lpc17xx.c)"]
+        end
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 5: DEBUG TRANSPORT MODULES & INTERCONNECTS (ADI / DTM)
+    %% -------------------------------------------------------------
+    subgraph Layer5 ["5. Debug Transport & Access Port Layers (blackmagic/src/target/)"]
+        subgraph CoreSightADI ["ARM CoreSight ADI Subsystem"]
+            ADIC["ADI Common Interface (adi.c)"]
+            ADIV5["ADIv5 Debug & Access Port (adiv5.c / DP, MEM-AP)"]
+            ADIV6["ADIv6 Debug & Access Port (adiv6.c)"]
+            ADIV5_SWD["ADIv5 SWD Transport (adiv5_swd.c)"]
+        end
+
+        subgraph RISCV_DTM ["RISC-V Debug Transport"]
+            RiscvAdiDtm["RISC-V DTM over CoreSight MEM-AP (riscv_adi_dtm.c)"]
+        end
+
+        subgraph SPI_Sub ["SPI Flash Subsystem"]
+            SFDPC["SFDP Parameter Parser (sfdp.c)"]
+            SPIC["SPI Driver Interface (spi.c)"]
+        end
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 6: HOSTED MODE REMOTE PROTOCOL (COMPILED IN SWINDLE_HOSTED)
+    %% -------------------------------------------------------------
+    subgraph Layer6 ["6. Hosted Platform Remote Bridge (blackmagic/src/platforms/hosted/)"]
+        subgraph HostedBridge ["BMDA Hosted Remote Client Subsystem"]
+            BmpRemote["Remote BMP Driver (bmp_remote.c)"]
+            HostedPlatform["Hosted Platform Setup (platform.c, debug.c, utils.c, cli.c)"]
+            ProtoV0["Protocol V0 / V0 SWD / JTAG / ADIv5 (protocol_v0*.c)"]
+            ProtoV1_V3["Protocol V1 / V2 / V3 & ADIv5 (protocol_v1..v3*.c)"]
+            ProtoV4["Protocol V4 ADIv5 & RISC-V (protocol_v4*.c)"]
+            HostedJtag["Hosted JTAG Scanner & Devices (jtag_scan.c, jtag_devs.c, adiv5_jtag.c)"]
+        end
+    end
+
+    %% -------------------------------------------------------------
+    %% LAYER 7: EGRESS TO WIRE & HARDWARE INTERFACES
+    %% -------------------------------------------------------------
+    subgraph Layer7 ["7. Low-Level Egress (Hardware TAPs & Physical Targets)"]
+        SWD_Proc["SWD Procedure Interface (swdptap / swd_proc_s)"]
+        Remote_Link["Hosted Remote Socket / Serial Link"]
+        TargetSoC["Target MCUs & Flash (STM32, RP2040/RP2350, CH32F1, nRF51/91, LPC)"]
+    end
+
+    %% -------------------------------------------------------------
+    %% STATIC LAYER CONNECTIONS & FLOW OF CONTROL
+    %% -------------------------------------------------------------
+    SwindleRust --> SwindleBridge
+    SwindleBridge --> SwindleHelpers
+
+    SwindleBridge --> TargetOps
+    SwindleBridge --> TargetList
+    SwindleBridge --> TargetFlash
+    SwindleBridge --> ADIV5_SWD
+    SwindleBridge --> CortexMC
+    SwindleBridge --> Riscv32
+    SwindleBridge --> RiscvDebug
+
+    TargetOps --> TargetList
+    TargetOps --> CortexMC
+    TargetOps --> Riscv32
+    TargetOps --> TargetFlash
+
+    TargetOps --> STM32F1
+    TargetOps --> STM32F4
+    TargetOps --> STM32G0
+    TargetOps --> STM32H5
+    TargetOps --> STM32H7
+    TargetOps --> STM32L4
+    TargetOps --> RP2040
+    TargetOps --> RP2350
+    TargetOps --> CH32F1
+    TargetOps --> NRF51
+    TargetOps --> NRF91
+    TargetOps --> LPC11XX
+    TargetOps --> LPC15XX
+    TargetOps --> LPC17XX
+
+    CortexMC --> CortexC
+    CortexMC --> ADIV5
+    CortexMC --> SwindleHelpers
+
+    Riscv32 --> RiscvDebug
+    RiscvDebug --> RiscvAdiDtm
+    RiscvDebug --> SwindleHelpers
+
+    STM32F1 --> SwindleHelpers
+    STM32F4 --> SwindleHelpers
+    STM32G0 --> SwindleHelpers
+    STM32H5 --> SwindleHelpers
+    STM32H7 --> SwindleHelpers
+    STM32L4 --> SwindleHelpers
+
+    LPC11XX --> LPCCommon
+    LPC15XX --> LPCCommon
+    LPC17XX --> LPCCommon
+
+    STM32F1 --> ADIV5
+    RP2040 --> ADIV5
+    RP2350 --> ADIV5
+    RP2350 --> RiscvDebug
+    CH32F1 --> ADIV5
+    NRF51 --> ADIV5
+    NRF91 --> ADIV5
+    LPCCommon --> ADIV5
+
+    TargetFlash --> SFDPC
+    TargetFlash --> SPIC
+
+    RiscvAdiDtm --> ADIV5
+    ADIV5 --> ADIC
+    ADIV6 --> ADIC
+    ADIV5 --> ADIV5_SWD
+
+    BmpRemote --> HostedPlatform
+    BmpRemote --> ProtoV0
+    BmpRemote --> ProtoV1_V3
+    BmpRemote --> ProtoV4
+    BmpRemote --> HostedJtag
+    ProtoV0 --> ADIV5
+    ProtoV1_V3 --> ADIV5
+    ProtoV4 --> ADIV5
+    ProtoV4 --> RiscvDebug
+    HostedJtag --> ADIV5
+
+    ADIV5_SWD --> SWD_Proc
+    BmpRemote --> Remote_Link
+
+    SWD_Proc --> TargetSoC
+    Remote_Link --> TargetSoC
+    SPIC --> TargetSoC
