@@ -7,7 +7,7 @@ use ws2812b::Ws2812b;
 
 pub fn run() -> ! {
     // The timer driver configures the pin, the timer and the partial TIM3 remap (PB4)
-    let mut strip = Ws2812b::<WS2812_NB_LEDS>::new(WS2812_PIN);
+    let mut strip = Ws2812b::<WS2812_NB_LEDS, WS2812_PIN>::new();
     if strip.begin().is_err() {
         // No LED available, nothing to animate
         loop {

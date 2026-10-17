@@ -221,12 +221,8 @@ set(BOARDS
     CACHE INTERNAL "")
 
 # -------
+# BM_SRC is now empty: exception.c, hex_utils.c, and maths_utils.c are replaced by bmp_helpers.cpp
 set(BM_SRC
-    ${S}/exception.c ${S}/hex_utils.c
-    ${S}/maths_utils.c
-   # ${S}/command.c (obsoleted by Rust Swindle mon / bmp_interface_c.cpp)
-   # ${S}/timing.c
-    # ${S}/rtt.c ${S}/remote.c ${S}/gdb_main.c ${S}/gdb_packet.c ${S}/crc32.c ${S}/morse.c
     CACHE INTERNAL "")
 # ------
 set(BM_TARGET
@@ -237,9 +233,9 @@ set(BM_TARGET
     ${T}/cortex.c
     ${T}/cortexm.c
     ${T}/target_flash.c
-    ${T}/gdb_reg.c
+    # ${T}/gdb_reg.c (replaced by bmp_helpers.cpp)
     ${T}/target.c
-    ${T}/stm32_common.c
+    # ${T}/stm32_common.c (replaced by bmp_helpers.cpp)
     # ${T}/riscv64.c ${S}/gdb_hostio.c ${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c ${T}/cortexa.c
     # ${T}/lmi.c ${T}/target_probe.c
     CACHE INTERNAL "")

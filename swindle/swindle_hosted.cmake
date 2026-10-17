@@ -39,6 +39,9 @@ include_directories(../esprit/arm_gd32fx/boards/bluepill)
 include_directories(${HOSTED} ${BMP_EXTRA}/hosted/)
 # ${BMP}/src{,/include,/target} now come from bmp_core (linked below).
 # ===========================================================================================
+set(BRIDGE_SRCS
+    ${B}/bmp_helpers.cpp
+    CACHE INTERNAL "")
 
 set(BM_HOSTED
     ${HOSTED}/bmp_remote.c
