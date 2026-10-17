@@ -6,11 +6,15 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QObject>
+#include <QSocketNotifier>
 #include <QThread>
 #include <QtGlobal>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <termios.h>
+#include <unistd.h>
 
 #include "lnLWIP.h"
 #include "hosted_constants.h"
@@ -59,11 +63,48 @@ static void customHandler(QtMsgType type, const QMessageLogContext &context, con
     fprintf(stderr, "%s", localMsg.constData());
 }
 
+static struct termios s_orig_termios;
+static bool s_termios_saved = false;
+
+static void restore_terminal()
+{
+    if (s_termios_saved)
+    {
+        tcsetattr(STDIN_FILENO, TCSANOW, &s_orig_termios);
+        s_termios_saved = false;
+    }
+}
+
+static void setup_terminal()
+{
+    if (isatty(STDIN_FILENO))
+    {
+        if (tcgetattr(STDIN_FILENO, &s_orig_termios) == 0)
+        {
+            s_termios_saved = true;
+            atexit(restore_terminal);
+
+            struct termios raw = s_orig_termios;
+            raw.c_lflag &= ~(ICANON | ECHO);
+            raw.c_cc[VMIN] = 1;
+            raw.c_cc[VTIME] = 0;
+            tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+        }
+    }
+}
+
+static void signal_handler(int sig)
+{
+    restore_terminal();
+    _exit(128 + sig);
+}
+
 /**
  * @brief Exit application cleanly on BMP shutdown.
  */
 extern "C" void exit_from_bmp()
 {
+    restore_terminal();
     QCoreApplication::exit(0);
 }
 
@@ -110,13 +151,22 @@ class GdbServerThread : public QThread
 
         printf("[GDB Server] Listening on localhost:%d\n", DEFAULT_GDB_TCP_PORT);
 
-        while (true)
+        while (!isInterruptionRequested())
         {
             uint32_t events = s_network_eventGroup.waitEvents(mask, EVENT_POLL_TIMEOUT_MS);
             uint32_t global_events = events & global_mask;
             uint32_t local_events = events & (~global_mask);
             process_sockets(runnerGdb, global_events, local_events);
         }
+
+        target_list_free();
+        if (runnerGdb)
+        {
+            runnerGdb->disconnectClient();
+            delete runnerGdb;
+            runnerGdb = nullptr;
+        }
+        printf("[GDB Server] Stopped.\n");
     }
 };
 
@@ -181,10 +231,49 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     qInstallMessageHandler(customHandler);
 
+    setup_terminal();
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
     platform_timeout_init();
 
     GdbServerThread *thread = new GdbServerThread;
     thread->start();
 
-    return app.exec();
+    QSocketNotifier stdin_notifier(STDIN_FILENO, QSocketNotifier::Read);
+    QObject::connect(&stdin_notifier, &QSocketNotifier::activated, [&]() {
+        char ch = 0;
+        ssize_t n = ::read(STDIN_FILENO, &ch, 1);
+        if (n <= 0)
+        {
+            stdin_notifier.setEnabled(false);
+            return;
+        }
+        if (ch == 'q' || ch == 'Q')
+        {
+            printf("\n[Host] 'q' pressed, exiting cleanly...\n");
+            fflush(stdout);
+            thread->requestInterruption();
+            s_network_eventGroup.setEvents(socketRunner::Down);
+            thread->wait(1000);
+            restore_terminal();
+            QCoreApplication::quit();
+        }
+    });
+
+    printf("[Host] Press 'q' to quit.\n");
+    fflush(stdout);
+
+    int ret = app.exec();
+
+    if (thread->isRunning())
+    {
+        thread->requestInterruption();
+        s_network_eventGroup.setEvents(socketRunner::Down);
+        thread->wait(1000);
+    }
+    delete thread;
+    restore_terminal();
+
+    return ret;
 }
