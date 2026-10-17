@@ -145,6 +145,10 @@ extern "C" int gdb_if_init(void)
     // start logger CDC via Rust-owned instance
     rn_logger_cdc_init(LN_LOGGER_INSTANCE);
 #endif
+#if defined(USE_RP2040) || defined(USE_RP2350)
+    lnPinMode(LN_UART_RX, lnUART);
+    lnPinMode(LN_UART_TX, lnUART);
+#endif
     // start USB↔UART bridge via Rust-owned instance
     rn_serial_bridge_init(LN_USB_INSTANCE, LN_SERIAL_INSTANCE, 115200);
     lnCreateTask(reinterpret_cast<TaskFunction_t>(rn_serial_bridge_task), "usbserial", TASK_BMP_SERIAL_STACK_SIZE, NULL, TASK_BMP_SERIAL_PRIORITY);
