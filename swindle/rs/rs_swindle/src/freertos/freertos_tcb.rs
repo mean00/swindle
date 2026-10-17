@@ -184,6 +184,15 @@ pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
         }
     }
     bmplog!("---- scanning done ----\n");
+
+    // Prune dead tasks from the TCB-to-TID map to prevent stale mapping
+    // when tasks are deleted and memory is recycled.
+    let mut live_tcbs: heapless::Vec<u32, { crate::freertos::freertos_hashtcb::MAX_FREERTOS_TASKS }> = heapless::Vec::new();
+    for task in &cache.data {
+        let _ = live_tcbs.push(task.tcb_addr);
+    }
+    get_hashtcb().prune_dead(&live_tcbs);
+
     bmplog!("---- dumping ----\n");
     for t in &cache.data {
         t.print_tcb();

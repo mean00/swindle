@@ -124,6 +124,8 @@ pub fn os_attach(cpuid: u32) {
 pub fn os_detach() {
     get_switcher().switcher = None;
     freertos_clear_symbols();
+    freertos_invalidate_cache();
+    freertos_hashtcb::get_hashtcb().clear();
 }
 
 /// Checks if OS thread awareness is currently active and capable of context switching.

@@ -3,7 +3,6 @@
 //! Maintains a persistent hash map mapping raw TCB memory addresses to deterministic,
 //! sequential integer Thread IDs for GDB. This ensures that even if FreeRTOS 
 //! compilation options change, the debugger presents stable thread IDs.
-use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 setup_log!(false);
 //use crate::gdb_print;
@@ -11,15 +10,14 @@ setup_log!(false);
 crate::gdb_print_init!();
 use crate::bmp;
 
-/// Maps a raw Task Control Block memory address to an artificial integer Thread ID.
-pub struct tcb_to_tid {
-    tcb: u32,
-    tid: u32,
-}
+use heapless::LinearMap;
+
+pub const MAX_FREERTOS_TASKS: usize = 32;
 
 /// Global registry of known OS tasks.
+/// Maps TCB address -> 1-based sequential Thread ID.
 pub struct hashed_tcb {
-    list: Vec<tcb_to_tid>,
+    map: LinearMap<u32, u32, MAX_FREERTOS_TASKS>,
     index: u32,
 }
 // SAFETY: hashed_tcb is only used in a single-threaded debugger context.
@@ -29,32 +27,53 @@ impl hashed_tcb {
     /// Creates a new empty `hashed_tcb` starting at index 1.
     pub fn new() -> Self {
         hashed_tcb {
-            list: Vec::new(),
+            map: LinearMap::new(),
             index: 1,
         }
     }
     
     /// Clears the thread map, resetting the index counter back to 1.
     pub fn clear(&mut self) {
-        self.list.clear();
+        self.map.clear();
         self.index = 1;
     }
-    
-    /// Retrieves the Thread ID for a given TCB address, assigning a new one if unseen.
-    pub fn get(&mut self, tcb: u32) -> u32 {
-        for i in &self.list {
-            if i.tcb == tcb {
-                return i.tid;
+
+    /// Prune any TCB entry from the map that is no longer in the set of live tasks.
+    /// This prevents address recycling bugs when tasks are deleted and created.
+    pub fn prune_dead(&mut self, live_tcbs: &[u32]) {
+        // Collect dead keys first (without dynamic allocation)
+        let mut dead: heapless::Vec<u32, MAX_FREERTOS_TASKS> = heapless::Vec::new();
+        for (tcb, _) in self.map.iter() {
+            if !live_tcbs.contains(tcb) {
+                let _ = dead.push(*tcb);
             }
         }
-        // not found create a new one
-        let new_entry: tcb_to_tid = tcb_to_tid {
-            tcb,
-            tid: self.index,
-        };
-        self.list.push(new_entry);
-        self.index += 1;
-        self.index - 1 // the last entry
+        for tcb in dead {
+            self.map.remove(&tcb);
+        }
+    }
+    
+    /// Retrieves the Thread ID for a given TCB address, assigning a new sequential one if unseen.
+    pub fn get(&mut self, tcb: u32) -> u32 {
+        if let Some(&tid) = self.map.get(&tcb) {
+            return tid;
+        }
+
+        // If map is full, evict the oldest entry to make room
+        if self.map.is_full() {
+            let first_key = self.map.keys().next().copied();
+            if let Some(key) = first_key {
+                self.map.remove(&key);
+            }
+        }
+
+        let tid = self.index;
+        self.index = self.index.wrapping_add(1);
+        if self.index == 0 {
+            self.index = 1; // Thread ID 0 is invalid in GDB protocol
+        }
+        let _ = self.map.insert(tcb, tid);
+        tid
     }
 }
 
@@ -78,9 +97,7 @@ pub fn dump_hash_info() {
     let mut regs: [u32; 16] = [0; 16];
     let info = get_hashtcb();
     gdb_println!("Hash index = ", Hex(info.index));
-    for i in &info.list {
-        let val: u32 = i.tcb;
-        let id: u32 = i.tid;
+    for (&val, &id) in info.map.iter() {
         gdb_println!("------------ID: ", Hex(id), "-----------");
         gdb_print!("TCB:  ", Hex(val));
         bmp::bmp_read_mem32(val, &mut regs[0..1]);
