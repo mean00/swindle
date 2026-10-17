@@ -17,7 +17,7 @@ set(CMAKE_AUTOMOC ON)
 # find_package(Qt5 COMPONENTS Network SerialPort REQUIRED)
 find_package(
   Qt6
-  COMPONENTS Network SerialPort
+  COMPONENTS Network SerialPort Widgets
   REQUIRED)
 
 add_definitions("-DCONFIG_BMDA")
@@ -114,9 +114,8 @@ add_subdirectory(../swindle lnswindle)
 # CFLAGS ${LN_LTO_RUST_FLAGS} ) corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 
 set(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(SRC
+set(COMMON_SRC
     ${H}/timeout.cpp
-    ${H}/main.cpp
     ${H}/lnDebug.cpp
     ${H}/stubs.cpp
     ${H}/dm_decoder.cpp
@@ -126,10 +125,14 @@ set(SRC
     ${H}/esp_qtnetwork.h
     ${H}/esp_bridge.cpp
     ${H}/esp_eventgroup.cpp
+    ${H}/gdb_server_thread.h
+    ${H}/gdb_server_common.cpp
     ../esprit/src/lnSocketRunner.cpp)
 
-add_executable(swindle_hosted ${SRC})
 include_directories(../swindle/src/net)
+
+# CLI executable
+add_executable(swindle_hosted ${H}/main.cpp ${COMMON_SRC})
 target_include_directories(swindle_hosted PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(swindle_hosted PRIVATE -include platformgenerated.h)
 target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
@@ -142,9 +145,23 @@ target_link_libraries(swindle_hosted PRIVATE libswindle)
 target_link_libraries(swindle_hosted PRIVATE embeddedPrintf usb-1.0)
 target_link_libraries(swindle_hosted PRIVATE Qt6::Core Qt6::Network Qt6::SerialPort)
 
+# Qt6 GUI executable
+add_executable(swindle_hosted_qt ${H}/main_qt.cpp ${COMMON_SRC})
+target_include_directories(swindle_hosted_qt PRIVATE ${CMAKE_BINARY_DIR}/generated)
+target_compile_options(swindle_hosted_qt PRIVATE -include platformgenerated.h)
+target_compile_definitions(swindle_hosted_qt PRIVATE LN_ARCH=LN_ARCH_ARM)
+target_link_libraries(swindle_hosted_qt PRIVATE rsbmp_wrapper)
+target_link_libraries(swindle_hosted_qt PRIVATE esprit_dev)
+target_link_libraries(swindle_hosted_qt PRIVATE swindle_interface)
+target_link_libraries(swindle_hosted_qt PRIVATE libswindle)
+target_link_libraries(swindle_hosted_qt PRIVATE swindle_interface)
+target_link_libraries(swindle_hosted_qt PRIVATE libswindle)
+target_link_libraries(swindle_hosted_qt PRIVATE embeddedPrintf usb-1.0)
+target_link_libraries(swindle_hosted_qt PRIVATE Qt6::Core Qt6::Widgets Qt6::Network Qt6::SerialPort)
+
 # Qt6 adds -mno-direct-extern-access which clang rejects
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  foreach(qt_target Qt6::Core Qt6::Network Qt6::SerialPort swindle_hosted)
+  foreach(qt_target Qt6::Core Qt6::Widgets Qt6::Network Qt6::SerialPort swindle_hosted swindle_hosted_qt)
     get_target_property(qt_iflags ${qt_target} INTERFACE_COMPILE_OPTIONS)
     if(qt_iflags)
       string(REPLACE "-mno-direct-extern-access" "" qt_iflags "${qt_iflags}")

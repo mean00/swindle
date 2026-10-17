@@ -1,13 +1,12 @@
 /**
  * @file main.cpp
- * @brief Hosted-mode entry point: GDB server loop over TCP.
+ * @brief Hosted-mode entry point: GDB server loop over TCP (CLI version).
  */
 
 #include <QCoreApplication>
 #include <QDebug>
 #include <QObject>
 #include <QSocketNotifier>
-#include <QThread>
 #include <QtGlobal>
 #include <csignal>
 #include <cstdio>
@@ -16,41 +15,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "lnLWIP.h"
-#include "hosted_constants.h"
-#include "gdb_decoder.h"
-
-extern "C"
-{
-#include "exception.h"
-#include "gdb_if.h"
-#include "gdb_main.h"
-#include "gdb_packet.h"
-#include "general.h"
-#include "morse.h"
-#include "target.h"
-}
-
-#define LN_ARCH LN_ARCH_ARM
-#include "lnSocketRunner.h"
-
-#define RUNNER_GDB_PORT DEFAULT_GDB_TCP_PORT
-#define DEBUGME(...) do {} while (0)
-
-// Intercept rngdb_send_data_c from bmp_net_gdb.h to decode replies on the fly
-#define rngdb_send_data_c orig_rngdb_send_data_c
-#include "../../swindle/src/net/bmp_net_gdb.h"
-#undef rngdb_send_data_c
-
-extern "C" void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
-{
-    gdb_decode_outgoing(ptr, sz);
-    orig_rngdb_send_data_c(sz, ptr);
-}
-
-extern void initTcpLayer();
-extern "C" void platform_timeout_init();
-extern "C" void platform_init(int argc, char **argv);
+#include "gdb_server_thread.h"
 
 /**
  * @brief Custom Qt message handler that redirects messages to stderr.
@@ -109,95 +74,6 @@ extern "C" void exit_from_bmp()
 }
 
 /**
- * @brief lwIP network event callback.
- */
-static void sys_network(lnLwipEvent evt, void *arg)
-{
-    (void)arg;
-    printf("[Network] lwIP system event: 0x%x\n", static_cast<unsigned int>(evt));
-}
-
-static lnFastEventGroup s_network_eventGroup;
-
-/**
- * @brief Process socket events for a given runner.
- */
-void process_sockets(socketRunner *runner, uint32_t global, uint32_t locl)
-{
-    uint32_t limited = (locl >> runner->shift()) & socketRunner::Mask;
-    runner->process_events(limited | global);
-}
-
-/**
- * @brief Background thread hosting the GDB TCP server.
- */
-class GdbServerThread : public QThread
-{
-  protected:
-    void run() override
-    {
-        const char *argv[2] = {"", nullptr};
-        platform_init(0, const_cast<char **>(argv));
-        initTcpLayer();
-        lnLWIP::start(sys_network, nullptr);
-
-        s_network_eventGroup.takeOwnership();
-        runnerGdb = new socketRunnerGdb(s_network_eventGroup, 0);
-        runnerGdb->sendEvent(socketRunner::Up);
-
-        uint32_t mask = 0xffffffffUL;
-        mask &= ~(socketRunner::CanWrite << 0);
-        const uint32_t global_mask = (socketRunner::Up | socketRunner::Down);
-
-        printf("[GDB Server] Listening on localhost:%d\n", DEFAULT_GDB_TCP_PORT);
-
-        while (!isInterruptionRequested())
-        {
-            uint32_t events = s_network_eventGroup.waitEvents(mask, EVENT_POLL_TIMEOUT_MS);
-            uint32_t global_events = events & global_mask;
-            uint32_t local_events = events & (~global_mask);
-            process_sockets(runnerGdb, global_events, local_events);
-        }
-
-        target_list_free();
-        if (runnerGdb)
-        {
-            runnerGdb->disconnectClient();
-            delete runnerGdb;
-            runnerGdb = nullptr;
-        }
-        printf("[GDB Server] Stopped.\n");
-    }
-};
-
-/**
- * @brief Hook into GDB packet reception to decode commands on the fly.
- */
-static void hosted_rngdbstub_run_intercept(uint32_t len, const uint8_t *data)
-{
-    gdb_decode_incoming(data, len);
-    rngdbstub_run(len, data);
-}
-
-// Redirect socketRunnerGdb::process_incoming_data() to the decoding interceptor
-#define rngdbstub_run hosted_rngdbstub_run_intercept
-#include "bmp_net_gdb.cpp"
-#undef rngdbstub_run
-
-static constexpr size_t TEMP_BUFFER_WORDS = 1024;
-static uint32_t s_temp_buffer[TEMP_BUFFER_WORDS];
-
-extern "C" uint8_t *get_temp_buffer_c(uint32_t size)
-{
-    if (size >= sizeof(s_temp_buffer))
-    {
-        fprintf(stderr, "Buffer request size %u exceeds %zu\n", size, sizeof(s_temp_buffer));
-        exit(1);
-    }
-    return reinterpret_cast<uint8_t *>(s_temp_buffer);
-}
-
-/**
  * @brief Application entry point.
  */
 int main(int argc, char **argv)
@@ -253,8 +129,7 @@ int main(int argc, char **argv)
         {
             printf("\n[Host] 'q' pressed, exiting cleanly...\n");
             fflush(stdout);
-            thread->requestInterruption();
-            s_network_eventGroup.setEvents(socketRunner::Down);
+            thread->stopServer();
             thread->wait(1000);
             restore_terminal();
             QCoreApplication::quit();
@@ -268,8 +143,7 @@ int main(int argc, char **argv)
 
     if (thread->isRunning())
     {
-        thread->requestInterruption();
-        s_network_eventGroup.setEvents(socketRunner::Down);
+        thread->stopServer();
         thread->wait(1000);
     }
     delete thread;
