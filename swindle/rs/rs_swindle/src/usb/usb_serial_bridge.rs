@@ -12,15 +12,26 @@ use rust_esprit::{Serial, SerialEvent, SerialEventHandler};
 use rust_esprit::delay_ms;
 
 // ---------------------------------------------------------------------------
-//  Constants
+//  Constants & Typed Events
 // ---------------------------------------------------------------------------
 
 const BRIDGE_BUFFER_SIZE: usize = 256;
 
-const SERIAL_EVENT: u32 = 1 << 0;
-const USB_EVENT_READ: u32 = 1 << 1;
-const USB_EVENT_WRITE: u32 = 1 << 2;
-const USB_EVENTS: u32 = USB_EVENT_READ | USB_EVENT_WRITE;
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct BridgeEvent(pub u32);
+
+impl BridgeEvent {
+    pub const SERIAL_EVENT: Self = Self(1 << 0);
+    pub const USB_EVENT_READ: Self = Self(1 << 1);
+    pub const USB_EVENT_WRITE: Self = Self(1 << 2);
+    pub const ALL: Self = Self((1 << 0) | (1 << 1) | (1 << 2));
+
+    #[inline(always)]
+    pub fn contains(self, other: Self) -> bool {
+        (self.0 & other.0) != 0
+    }
+}
 
 // ---------------------------------------------------------------------------
 //  Bridge CDC event handler
@@ -34,10 +45,10 @@ impl CdcEventHandler for BridgeCdcHandler {
         let b = UsbSerialBridge::instance();
         match event {
             CdcEvent::DataAvailable => {
-                b.event_group.set_events(USB_EVENT_READ);
+                b.event_group.set_events(BridgeEvent::USB_EVENT_READ.0);
             }
             CdcEvent::WriteAvailable => {
-                b.event_group.set_events(USB_EVENT_WRITE);
+                b.event_group.set_events(BridgeEvent::USB_EVENT_WRITE.0);
             }
             CdcEvent::SessionStart => {
                 if !b.connected.load(Ordering::Relaxed) {
@@ -61,16 +72,14 @@ static BRIDGE_CDC_HANDLER: BridgeCdcHandler = BridgeCdcHandler;
 //  Bridge serial event handler
 // ---------------------------------------------------------------------------
 
-struct BridgeSerialHandler {
-    bridge: *mut UsbSerialBridge,
-}
+struct BridgeSerialHandler;
 
 impl SerialEventHandler for BridgeSerialHandler {
     fn handle(&self, event: SerialEvent) {
-        let b = unsafe { &mut *self.bridge };
+        let b = UsbSerialBridge::instance();
         match event {
             SerialEvent::DataAvailable | SerialEvent::TxDone => {
-                b.event_group.set_events(SERIAL_EVENT);
+                b.event_group.set_events(BridgeEvent::SERIAL_EVENT.0);
             }
         }
     }
@@ -140,12 +149,10 @@ impl UsbSerialBridge {
             });
         }
 
-        // Use pointer to static location (stable, never moves)
-        let bridge_ptr: *mut UsbSerialBridge = unsafe { BRIDGE.as_mut_ptr() };
-        let bridge = unsafe { &mut *bridge_ptr };
+        let bridge = Self::instance();
 
         // Attach serial event handler
-        let serial_handler = Box::new(BridgeSerialHandler { bridge: bridge_ptr });
+        let serial_handler = Box::new(BridgeSerialHandler);
         bridge.serial.set_event_handler(serial_handler);
 
         // Init serial
@@ -174,20 +181,20 @@ impl UsbSerialBridge {
         delay_ms(50); // let the GDB part start first
 
         loop {
-            let ev = this.event_group.wait_events(SERIAL_EVENT | USB_EVENTS, 20);
+            let ev = BridgeEvent(this.event_group.wait_events(BridgeEvent::ALL.0, 20));
             Self::run_usb_to_serial(ev);
             Self::run_serial_to_usb(ev);
         }
     }
 
     /// Pump data from USB CDC to UART serial.
-    fn run_usb_to_serial(ev: u32) -> bool {
+    fn run_usb_to_serial(ev: BridgeEvent) -> bool {
         let this = Self::instance();
         loop {
             match this.usb2serial.txing {
                 false => {
                     // Idle: try to read from USB
-                    if (ev & USB_EVENT_READ) == 0 {
+                    if !ev.contains(BridgeEvent::USB_EVENT_READ) {
                         return false;
                     }
                     let nb = this.cdc.read(&mut this.usb2serial.buffer);
@@ -215,7 +222,7 @@ impl UsbSerialBridge {
                     if this.usb2serial.dex >= this.usb2serial.limit {
                         this.usb2serial.txing = false;
                         // Re-evaluate at next loop
-                        this.event_group.set_events(USB_EVENTS);
+                        this.event_group.set_events((BridgeEvent::USB_EVENT_READ.0) | (BridgeEvent::USB_EVENT_WRITE.0));
                     }
                     return true;
                 }
@@ -224,7 +231,7 @@ impl UsbSerialBridge {
     }
 
     /// Pump data from UART serial to USB CDC.
-    fn run_serial_to_usb(ev: u32) -> bool {
+    fn run_serial_to_usb(ev: BridgeEvent) -> bool {
         let this = Self::instance();
 
         // If not connected, just purge serial rx
@@ -238,7 +245,7 @@ impl UsbSerialBridge {
             match this.serial2usb.txing {
                 false => {
                     // Idle: try to read from serial
-                    if (ev & SERIAL_EVENT) == 0 {
+                    if !ev.contains(BridgeEvent::SERIAL_EVENT) {
                         return false;
                     }
                     let (nb, ptr) = this.serial.get_read_pointer();
@@ -280,7 +287,7 @@ impl UsbSerialBridge {
                     this.serial2usb.dex += consumed as usize;
                     if this.serial2usb.dex >= this.serial2usb.limit {
                         this.serial2usb.txing = false;
-                        this.event_group.set_events(SERIAL_EVENT);
+                        this.event_group.set_events(BridgeEvent::SERIAL_EVENT.0);
                     }
                     true
                 }

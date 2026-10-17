@@ -15,12 +15,25 @@ use crate::bmp;
 use crate::rtt;
 
 // ---------------------------------------------------------------------------
-//  Constants
+//  Constants & Typed Events
 // ---------------------------------------------------------------------------
 
-const GDB_CDC_DATA_AVAILABLE: u32 = 1 << 0;
-const GDB_SESSION_START: u32 = 1 << 1;
-const GDB_SESSION_END: u32 = 1 << 2;
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct GdbEvent(pub u32);
+
+impl GdbEvent {
+    pub const NONE: Self = Self(0);
+    pub const DATA_AVAILABLE: Self = Self(1 << 0);
+    pub const SESSION_START: Self = Self(1 << 1);
+    pub const SESSION_END: Self = Self(1 << 2);
+
+    #[inline(always)]
+    pub fn contains(self, other: Self) -> bool {
+        (self.0 & other.0) != 0
+    }
+}
+
 const GDB_MAX_POLLING_PERIOD_MS: u32 = 20;
 const GDB_BUFFER_SIZE: usize = 1024;
 
@@ -36,7 +49,7 @@ impl CdcEventHandler for GdbCdcHandler {
         let gdb = GdbCdc::instance();
         match event {
             CdcEvent::DataAvailable => {
-                gdb.event_group.set_events(GDB_CDC_DATA_AVAILABLE);
+                gdb.event_group.set_events(GdbEvent::DATA_AVAILABLE.0);
             }
             CdcEvent::WriteAvailable => {
                 // Ignored for GDB CDC
@@ -46,14 +59,14 @@ impl CdcEventHandler for GdbCdcHandler {
                     bmp_io_begin_session();
                 }
                 gdb.in_session.store(true, Ordering::Relaxed);
-                gdb.event_group.set_events(GDB_SESSION_START);
+                gdb.event_group.set_events(GdbEvent::SESSION_START.0);
             }
             CdcEvent::SessionEnd => {
                 unsafe {
                     bmp_io_end_session();
                 }
                 gdb.in_session.store(false, Ordering::Relaxed);
-                gdb.event_group.set_events(GDB_SESSION_END);
+                gdb.event_group.set_events(GdbEvent::SESSION_END.0);
             }
             CdcEvent::SetSpeed => {
                 // Ignored for GDB CDC
@@ -123,10 +136,12 @@ impl GdbCdc {
     }
 
     /// Wait for CDC events with a timeout.
-    pub fn wait_events() -> u32 {
+    pub fn wait_events() -> GdbEvent {
         let this = Self::instance();
-        this.event_group
-            .wait_events(0xffff, GDB_MAX_POLLING_PERIOD_MS as i32)
+        GdbEvent(
+            this.event_group
+                .wait_events(0xffff, GDB_MAX_POLLING_PERIOD_MS as i32),
+        )
     }
 
     /// Check if a GDB session is active.
@@ -239,21 +254,21 @@ pub extern "C" fn rngdb_gdb_task() {
                 }
             }
         }
-        if ev != 0 {
-            if ev & GDB_SESSION_START != 0 {
+        if ev != GdbEvent::NONE {
+            if ev.contains(GdbEvent::SESSION_START) {
                 rtt::swindle_reinit_rtt();
                 unsafe {
                     rngdbstub_init();
                 }
                 connected = true;
             }
-            if ev & GDB_SESSION_END != 0 {
+            if ev.contains(GdbEvent::SESSION_END) {
                 unsafe {
                     rngdbstub_shutdown();
                 }
                 connected = false;
             }
-            if ev & GDB_CDC_DATA_AVAILABLE != 0 {
+            if ev.contains(GdbEvent::DATA_AVAILABLE) {
                 GdbCdc::process_pending_data();
             }
         }

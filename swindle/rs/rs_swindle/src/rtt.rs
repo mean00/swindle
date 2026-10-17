@@ -29,10 +29,17 @@ const RTT_SIGNATURE_LEN: usize = 11;
 const TRANSFER_BUFFER_SIZE: usize = 512;
 const RTT_POLLING_DEFAULT_PERIOD: u32 = 20;
 const RTT_POLL_ROUNDUP: u32 = 1 << 16; // wrap time every 64k ms 
-//
 unsafe extern "C" {
     fn swindle_rtt_send_data_to_host(index: u32, len: u32, data: *const u8);
     fn swindle_rtt_room_available_to_host(index: u32) -> u32;
+}
+
+/// Safe slice wrapper for transmitting RTT data to the host.
+#[inline(always)]
+pub fn rtt_send_data_to_host(index: u32, data: &[u8]) {
+    unsafe {
+        swindle_rtt_send_data_to_host(index, data.len() as u32, data.as_ptr());
+    }
 }
 #[allow(dead_code)]
 pub extern "C" fn swindle_rtt_room_available_to_device(index: u32) -> u32 {
@@ -498,10 +505,8 @@ pub extern "C" fn swindle_read_rtt_channel(
     swindle_rtt_release_target(halted);
     // do something with it
     let offset: usize = extra as usize;
-    unsafe {
-        let ptr = get_transfer_buffer();
-        swindle_rtt_send_data_to_host(index as u32, chunk, ptr.add(offset));
-    }
+    let slice = unsafe { core::slice::from_raw_parts(get_transfer_buffer().add(offset), chunk as usize) };
+    rtt_send_data_to_host(index as u32, slice);
     // the usable part is RTT_BUFFER[ extra, (extra+chunk)]
     // TODO
     true
