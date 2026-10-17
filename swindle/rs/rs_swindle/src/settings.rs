@@ -143,14 +143,9 @@ pub fn init_settings() {
 }
 // C interface
 
-#[cfg(feature = "hosted")]
-type my_c_str = *const i8;
-#[cfg(not(feature = "hosted"))]
-type my_c_str = *const u8;
-
 /// Set a setting from C code (C-compatible entry point).
 #[unsafe(no_mangle)]
-extern "C" fn bmp_settings_set(key: my_c_str, value: u32) -> bool {
+extern "C" fn bmp_settings_set(key: *const core::ffi::c_char, value: u32) -> bool {
     let c_str = unsafe { core::ffi::CStr::from_ptr(key) };
     match c_str.to_str() {
         Ok(x) => {
@@ -163,7 +158,7 @@ extern "C" fn bmp_settings_set(key: my_c_str, value: u32) -> bool {
 //
 /// Get a setting from C code, with a default value (C-compatible entry point).
 #[unsafe(no_mangle)]
-extern "C" fn bmp_settings_get_or_default(key: my_c_str, def: u32) -> u32 {
+extern "C" fn bmp_settings_get_or_default(key: *const core::ffi::c_char, def: u32) -> u32 {
     let c_str = unsafe { core::ffi::CStr::from_ptr(key) };
     match c_str.to_str() {
         Ok(x) => get_or_default(x, def),
@@ -173,7 +168,7 @@ extern "C" fn bmp_settings_get_or_default(key: my_c_str, def: u32) -> u32 {
 //
 /// Remove a setting from C code (C-compatible entry point).
 #[unsafe(no_mangle)]
-extern "C" fn bmp_settings_unset(key: my_c_str) -> bool {
+extern "C" fn bmp_settings_unset(key: *const core::ffi::c_char) -> bool {
     let c_str = unsafe { core::ffi::CStr::from_ptr(key) };
     match c_str.to_str() {
         Ok(x) => remove(x),

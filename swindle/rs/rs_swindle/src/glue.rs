@@ -7,22 +7,17 @@
 use crate::encoder::encoder;
 use core::ffi::CStr;
 //
-#[cfg(feature = "hosted")]
-type my_c_str = *const i8;
-#[cfg(not(feature = "hosted"))]
-type my_c_str = *const u8;
-
 /// Send hex-encoded text to the GDB console (C-compatible entry point).
 ///
 /// Called from C code via `extern "C"`. Takes a null-terminated string pointer
 /// and sends it as a GDB `O` packet (hex-encoded console output).
 #[unsafe(no_mangle)]
-pub extern "C" fn gdb_out(fmt: *const u8) {
+pub extern "C" fn gdb_out(fmt: *const core::ffi::c_char) {
     let mut e = encoder::new();
     e.begin();
     e.add("O");
 
-    let slice = unsafe { CStr::from_ptr(fmt as my_c_str).to_bytes() };
+    let slice = unsafe { CStr::from_ptr(fmt).to_bytes() };
     e.hex_and_add_u8(slice);
     e.end();
 }

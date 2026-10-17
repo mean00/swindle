@@ -7,18 +7,83 @@
 use crate::commands::run::HaltState;
 use crate::rn_bmp_cmd_c;
 use alloc::vec::Vec;
-use core::ffi::CStr;
+use core::ffi::{CStr, c_char};
 use core::ptr::null;
 use core::ptr::null_mut;
-
-#[cfg(feature = "hosted")]
-type my_c_str = *const i8;
-#[cfg(not(feature = "hosted"))]
-type my_c_str = *const u8;
 
 pub enum mapping {
     Flash = 0,
     Ram = 1,
+}
+
+/// Standardized error type for BMP hardware and protocol operations.
+#[allow(dead_code)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(i32)]
+pub enum BmpError {
+    NotAttached = 1,
+    BusFault = 2,
+    Timeout = 3,
+    ProtocolError = 4,
+    Unsupported = 5,
+    Exception(i32) = 6,
+}
+
+/// Zero-sized token representing an attached target session.
+/// Guarantees that target operations are only called within an attached context.
+#[allow(dead_code)]
+#[derive(Copy, Clone, Debug)]
+pub struct AttachedTarget {
+    _private: (),
+}
+
+#[allow(dead_code)]
+impl AttachedTarget {
+    /// Obtain an AttachedTarget token if a target is currently attached.
+    #[inline(always)]
+    pub fn current() -> Option<Self> {
+        if bmp_attached() {
+            Some(AttachedTarget { _private: () })
+        } else {
+            None
+        }
+    }
+
+    /// Read target memory into a byte slice.
+    #[inline(always)]
+    pub fn read_mem(&self, address: u32, data: &mut [u8]) -> Result<(), BmpError> {
+        if bmp_read_mem(address, data) {
+            Ok(())
+        } else {
+            Err(BmpError::BusFault)
+        }
+    }
+
+    /// Write target memory from a byte slice.
+    #[inline(always)]
+    pub fn write_mem(&self, address: u32, data: &[u8]) -> Result<(), BmpError> {
+        if bmp_mem_write(address, data) {
+            Ok(())
+        } else {
+            Err(BmpError::BusFault)
+        }
+    }
+
+    /// Read a target register.
+    #[inline(always)]
+    pub fn read_register(&self, reg: u32) -> Result<u32, BmpError> {
+        bmp_read_register(reg).ok_or(BmpError::BusFault)
+    }
+
+    /// Write a target register.
+    #[inline(always)]
+    pub fn write_register(&self, reg: u32, value: u32) -> Result<(), BmpError> {
+        if bmp_write_register(reg, value) {
+            Ok(())
+        } else {
+            Err(BmpError::BusFault)
+        }
+    }
 }
 
 pub struct MemoryBlock {
@@ -38,7 +103,7 @@ pub fn bmp_register_description() -> &'static str {
     //
     unsafe {
         #![allow(clippy::manual_unwrap_or_default)]
-        core::str::from_utf8_unchecked(CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c() as my_c_str).to_bytes())
+        core::str::from_utf8_unchecked(CStr::from_ptr(rn_bmp_cmd_c::bmp_target_description_c() as *const c_char).to_bytes())
     }
 }
 /// Free the register description string allocated by BMP.
@@ -218,7 +283,7 @@ pub fn bmp_flash_write(addr: u32, data: &[u8]) -> bool {
 pub fn bmp_get_target_name() -> &'static str {
     unsafe {
         #![allow(clippy::manual_unwrap_or_default)]
-        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_driver_name_c() as my_c_str).to_str() {
+        match CStr::from_ptr(rn_bmp_cmd_c::bmp_get_driver_name_c() as *const c_char).to_str() {
             Ok(x) => x,
             _ => "",
         }
@@ -464,13 +529,13 @@ pub fn bmp_supported_boards() -> &'static str {
     unsafe {
         let boards = rn_bmp_cmd_c::list_enabled_boards();
 
-        return core::str::from_utf8_unchecked(CStr::from_ptr(boards as my_c_str).to_bytes());
+        return core::str::from_utf8_unchecked(CStr::from_ptr(boards as *const c_char).to_bytes());
     }
 }
 /// Get the BMP firmware version string.
 pub fn bmp_get_version() -> &'static str {
     unsafe {
-        core::str::from_utf8_unchecked(CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string() as my_c_str).to_bytes())
+        core::str::from_utf8_unchecked(CStr::from_ptr(rn_bmp_cmd_c::bmp_get_version_string() as *const c_char).to_bytes())
     }
 }
 /// Execute a BMP monitor command.
@@ -557,6 +622,12 @@ pub fn bmp_try<F: FnMut()>(mut f: F) -> Result<(), i32> {
     } else {
         Err(result as i32)
     }
+}
+
+/// Execute a closure within a BMP exception handling context and return `Result<(), BmpError>`.
+#[allow(dead_code)]
+pub fn bmp_try_res<F: FnMut()>(f: F) -> Result<(), BmpError> {
+    bmp_try(f).map_err(BmpError::Exception)
 }
 /// Enable or disable the target reset pin control.
 pub fn _bmp_enable_reset_pin(enabled: bool) {
