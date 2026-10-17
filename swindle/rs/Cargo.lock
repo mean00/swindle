@@ -354,6 +354,7 @@ dependencies = [
 name = "rs_uart_bluepill"
 version = "0.1.0"
 dependencies = [
+ "cty",
  "rs_bluepill",
  "rs_dma_bluepill",
  "rs_esprit",
@@ -404,6 +405,8 @@ dependencies = [
  "rs_adc_bluepill",
  "rs_adc_rp2xxx",
  "rs_adc_wrapped",
+ "rs_afio_bluepill",
+ "rs_dma_bluepill",
  "rs_esprit",
  "rs_exti_bluepill",
  "rs_exti_wrapped",
