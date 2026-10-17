@@ -12,7 +12,7 @@ use rust_esprit::{Serial, SerialEvent, SerialEventHandler};
 use rust_esprit::delay_ms;
 
 // ---------------------------------------------------------------------------
-//  Constants & Typed Events
+//  Constants & Strongly-Typed Event Mask
 // ---------------------------------------------------------------------------
 
 const BRIDGE_BUFFER_SIZE: usize = 256;
@@ -22,10 +22,13 @@ const BRIDGE_BUFFER_SIZE: usize = 256;
 pub struct BridgeEvent(pub u32);
 
 impl BridgeEvent {
-    pub const SERIAL_EVENT: Self = Self(1 << 0);
-    pub const USB_EVENT_READ: Self = Self(1 << 1);
-    pub const USB_EVENT_WRITE: Self = Self(1 << 2);
-    pub const ALL: Self = Self((1 << 0) | (1 << 1) | (1 << 2));
+    #[allow(dead_code)]
+    pub const NONE: Self = Self(0);
+    pub const UART_RX: Self = Self(1 << 0);
+    pub const UART_TX_DONE: Self = Self(1 << 1);
+    pub const USB_RX: Self = Self(1 << 2);
+    pub const USB_TX_READY: Self = Self(1 << 3);
+    pub const ALL: Self = Self(0x0f);
 
     #[inline(always)]
     pub fn contains(self, other: Self) -> bool {
@@ -45,10 +48,10 @@ impl CdcEventHandler for BridgeCdcHandler {
         let b = UsbSerialBridge::instance();
         match event {
             CdcEvent::DataAvailable => {
-                b.event_group.set_events(BridgeEvent::USB_EVENT_READ.0);
+                b.event_group.set_events(BridgeEvent::USB_RX.0);
             }
             CdcEvent::WriteAvailable => {
-                b.event_group.set_events(BridgeEvent::USB_EVENT_WRITE.0);
+                b.event_group.set_events(BridgeEvent::USB_TX_READY.0);
             }
             CdcEvent::SessionStart => {
                 if !b.connected.load(Ordering::Relaxed) {
@@ -78,32 +81,62 @@ impl SerialEventHandler for BridgeSerialHandler {
     fn handle(&self, event: SerialEvent) {
         let b = UsbSerialBridge::instance();
         match event {
-            SerialEvent::DataAvailable | SerialEvent::TxDone => {
-                b.event_group.set_events(BridgeEvent::SERIAL_EVENT.0);
+            SerialEvent::DataAvailable => {
+                b.event_group.set_events(BridgeEvent::UART_RX.0);
+            }
+            SerialEvent::TxDone => {
+                b.event_group.set_events(BridgeEvent::UART_TX_DONE.0);
             }
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-//  Pump state machine helper
+//  Directional State Machine
 // ---------------------------------------------------------------------------
 
-struct Pump {
-    txing: bool,
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum DirectionState {
+    /// Idle: waiting for input data from source.
+    Idle,
+    /// Transmitting: buffer holds data [dex..limit], sending to destination.
+    Transmitting,
+    /// Blocked: destination cannot accept more data; waiting for ready event.
+    Blocked,
+}
+
+struct DirectionChannel {
+    state: DirectionState,
     dex: usize,
     limit: usize,
     buffer: [u8; BRIDGE_BUFFER_SIZE],
 }
 
-impl Pump {
+impl DirectionChannel {
     const fn new() -> Self {
-        Pump {
-            txing: false,
+        DirectionChannel {
+            state: DirectionState::Idle,
             dex: 0,
             limit: 0,
             buffer: [0u8; BRIDGE_BUFFER_SIZE],
         }
+    }
+
+    #[inline(always)]
+    fn reset(&mut self) {
+        self.state = DirectionState::Idle;
+        self.dex = 0;
+        self.limit = 0;
+    }
+
+    #[inline(always)]
+    fn remaining(&self) -> usize {
+        self.limit.saturating_sub(self.dex)
+    }
+
+    #[inline(always)]
+    fn slice(&self) -> &[u8] {
+        &self.buffer[self.dex..self.limit]
     }
 }
 
@@ -119,8 +152,8 @@ pub struct UsbSerialBridge {
     serial: Serial,
     event_group: EventGroup,
     connected: AtomicBool,
-    usb2serial: Pump,
-    serial2usb: Pump,
+    usb2serial: DirectionChannel,
+    serial2usb: DirectionChannel,
 }
 
 static mut BRIDGE: core::mem::MaybeUninit<UsbSerialBridge> = core::mem::MaybeUninit::uninit();
@@ -144,8 +177,8 @@ impl UsbSerialBridge {
                 serial: Serial::new(serial_instance, BRIDGE_BUFFER_SIZE as u32, true),
                 event_group: EventGroup::new(),
                 connected: AtomicBool::new(false),
-                usb2serial: Pump::new(),
-                serial2usb: Pump::new(),
+                usb2serial: DirectionChannel::new(),
+                serial2usb: DirectionChannel::new(),
             });
         }
 
@@ -182,114 +215,122 @@ impl UsbSerialBridge {
 
         loop {
             let ev = BridgeEvent(this.event_group.wait_events(BridgeEvent::ALL.0, 20));
-            Self::run_usb_to_serial(ev);
-            Self::run_serial_to_usb(ev);
+            Self::step_usb_to_serial(ev);
+            Self::step_serial_to_usb(ev);
         }
     }
 
-    /// Pump data from USB CDC to UART serial.
-    fn run_usb_to_serial(ev: BridgeEvent) -> bool {
+    /// Pure reactive state machine step: USB CDC -> Hardware UART.
+    fn step_usb_to_serial(ev: BridgeEvent) {
         let this = Self::instance();
+
+        // If Blocked, unblock upon UART TX completion
+        if this.usb2serial.state == DirectionState::Blocked && ev.contains(BridgeEvent::UART_TX_DONE) {
+            this.usb2serial.state = DirectionState::Transmitting;
+        }
+
+        // State Machine Loop (progresses immediately until waiting for an event)
         loop {
-            match this.usb2serial.txing {
-                false => {
-                    // Idle: try to read from USB
-                    if !ev.contains(BridgeEvent::USB_EVENT_READ) {
-                        return false;
+            match this.usb2serial.state {
+                DirectionState::Idle => {
+                    // Try to read next batch from USB if USB_RX signaled
+                    if !ev.contains(BridgeEvent::USB_RX) {
+                        break;
                     }
                     let nb = this.cdc.read(&mut this.usb2serial.buffer);
                     if nb <= 0 {
-                        return false;
+                        break;
                     }
-                    this.usb2serial.txing = true;
-                    this.usb2serial.limit = nb as usize;
                     this.usb2serial.dex = 0;
-                    // Fall through to try sending immediately
+                    this.usb2serial.limit = nb as usize;
+                    this.usb2serial.state = DirectionState::Transmitting;
                 }
-                true => {
-                    // Sending: pump data to serial
-                    let avail = this.usb2serial.limit - this.usb2serial.dex;
-                    if avail == 0 {
-                        this.usb2serial.txing = false;
-                        return true;
+                DirectionState::Transmitting => {
+                    if this.usb2serial.remaining() == 0 {
+                        this.usb2serial.reset();
+                        continue;
                     }
-                    let ptr = &this.usb2serial.buffer[this.usb2serial.dex..this.usb2serial.limit];
-                    let txed = this.serial.transmit_no_block(ptr);
-                    if txed <= 0 {
-                        return false; // wait for tx done event
+                    let sent = this.serial.transmit_no_block(this.usb2serial.slice());
+                    if sent <= 0 {
+                        // UART transmit buffer full; wait for UART_TX_DONE event
+                        this.usb2serial.state = DirectionState::Blocked;
+                        break;
                     }
-                    this.usb2serial.dex += txed as usize;
-                    if this.usb2serial.dex >= this.usb2serial.limit {
-                        this.usb2serial.txing = false;
-                        // Re-evaluate at next loop
-                        this.event_group.set_events((BridgeEvent::USB_EVENT_READ.0) | (BridgeEvent::USB_EVENT_WRITE.0));
+                    this.usb2serial.dex += sent as usize;
+                    if this.usb2serial.remaining() == 0 {
+                        this.usb2serial.reset();
+                        continue;
                     }
-                    return true;
+                }
+                DirectionState::Blocked => {
+                    // Waiting for UART_TX_DONE event
+                    break;
                 }
             }
         }
     }
 
-    /// Pump data from UART serial to USB CDC.
-    fn run_serial_to_usb(ev: BridgeEvent) -> bool {
+    /// Pure reactive state machine step: Hardware UART -> USB CDC.
+    fn step_serial_to_usb(ev: BridgeEvent) {
         let this = Self::instance();
 
-        // If not connected, just purge serial rx
         if !this.connected.load(Ordering::Relaxed) {
             this.serial.purge_rx();
-            return false;
+            this.serial2usb.reset();
+            return;
         }
 
-        // loop
-        {
-            match this.serial2usb.txing {
-                false => {
-                    // Idle: try to read from serial
-                    if !ev.contains(BridgeEvent::SERIAL_EVENT) {
-                        return false;
+        // If Blocked, unblock upon USB TX ready
+        if this.serial2usb.state == DirectionState::Blocked && ev.contains(BridgeEvent::USB_TX_READY) {
+            this.serial2usb.state = DirectionState::Transmitting;
+        }
+
+        // State Machine Loop
+        loop {
+            match this.serial2usb.state {
+                DirectionState::Idle => {
+                    // Try to read from UART ring buffer if UART_RX signaled
+                    if !ev.contains(BridgeEvent::UART_RX) {
+                        break;
                     }
                     let (nb, ptr) = this.serial.get_read_pointer();
                     if nb <= 0 {
-                        return false;
+                        break;
                     }
-                    let nb = core::cmp::min(nb as usize, BRIDGE_BUFFER_SIZE);
-                    // Copy from serial ring buffer
+                    let count = core::cmp::min(nb as usize, BRIDGE_BUFFER_SIZE);
                     unsafe {
                         core::ptr::copy_nonoverlapping(
                             ptr,
                             this.serial2usb.buffer.as_mut_ptr(),
-                            nb,
+                            count,
                         );
                     }
-                    this.serial.consume(nb as u32);
-                    this.serial2usb.txing = true;
+                    this.serial.consume(count as u32);
                     this.serial2usb.dex = 0;
-                    this.serial2usb.limit = nb;
-                    true
+                    this.serial2usb.limit = count;
+                    this.serial2usb.state = DirectionState::Transmitting;
                 }
-                true => {
-                    // Sending: pump data to USB
-                    if !this.connected.load(Ordering::Relaxed) {
-                        this.serial2usb.txing = false;
-                        return false;
+                DirectionState::Transmitting => {
+                    if this.serial2usb.remaining() == 0 {
+                        this.serial2usb.reset();
+                        continue;
                     }
-                    let avail = this.serial2usb.limit - this.serial2usb.dex;
-                    if avail == 0 {
-                        this.serial2usb.txing = false;
-                        return true;
-                    }
-                    let ptr = &this.serial2usb.buffer[this.serial2usb.dex..this.serial2usb.limit];
-                    let consumed = this.cdc.write(ptr);
-                    if consumed <= 0 {
-                        return false; // wait for write available
+                    let written = this.cdc.write(this.serial2usb.slice());
+                    if written <= 0 {
+                        // USB CDC output buffer full; wait for USB_TX_READY
+                        this.serial2usb.state = DirectionState::Blocked;
+                        break;
                     }
                     this.cdc.flush();
-                    this.serial2usb.dex += consumed as usize;
-                    if this.serial2usb.dex >= this.serial2usb.limit {
-                        this.serial2usb.txing = false;
-                        this.event_group.set_events(BridgeEvent::SERIAL_EVENT.0);
+                    this.serial2usb.dex += written as usize;
+                    if this.serial2usb.remaining() == 0 {
+                        this.serial2usb.reset();
+                        continue;
                     }
-                    true
+                }
+                DirectionState::Blocked => {
+                    // Waiting for USB_TX_READY event
+                    break;
                 }
             }
         }
