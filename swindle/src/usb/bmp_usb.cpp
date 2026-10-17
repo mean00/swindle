@@ -11,6 +11,7 @@
 #include "include/lnUsbDFUrt.h"
 #include "include/lnUsbStack.h"
 #include "lnBMP_usb_descriptor.h"
+#include "lnBmpTask.h"
 
 extern "C"
 {
@@ -40,6 +41,7 @@ extern "C" void rn_usb_cdc_logger(int n, const uint8_t *data);
 extern "C" uint32_t rn_usb_cdc_write_available();
 // Rust-owned USB↔UART bridge
 extern "C" void rn_serial_bridge_init(uint32_t usb_instance, int32_t serial_instance, int32_t baud);
+extern "C" void rn_serial_bridge_task();
 extern "C" void rn_serial_bridge_write(int n, const uint8_t *data);
 extern "C" bool swindle_write_rtt_channel(uint32_t channel, uint32_t size, const uint8_t *data);
 // host -> device
@@ -145,6 +147,7 @@ extern "C" int gdb_if_init(void)
 #endif
     // start USB↔UART bridge via Rust-owned instance
     rn_serial_bridge_init(LN_USB_INSTANCE, LN_SERIAL_INSTANCE, 115200);
+    lnCreateTask(reinterpret_cast<TaskFunction_t>(rn_serial_bridge_task), "usbserial", TASK_BMP_SERIAL_STACK_SIZE, NULL, TASK_BMP_SERIAL_PRIORITY);
     // init DFU
     lnUsbDFURT::addDFURTCb(goDfu);
     usb->start();
