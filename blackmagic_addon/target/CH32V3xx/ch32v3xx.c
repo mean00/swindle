@@ -806,8 +806,8 @@ bool ch32v3xx_probe(target_s *target)
     target_mem_map_free(target);
     target_add_ram32(target, RAM_ADDRESS, ram_size * 1024U);
     ch32v3x_add_flash(target, 0x0, (size_t)flash_size * 1024U, erase_size, write_size);
+    ch32v3x_add_flash(target, FLASH_OFFSET, (size_t)flash_size * 1024U, erase_size, write_size);
     target_add_commands(target, ch32v3x_cmd_list, target->driver);
-    return true;
 
     target->sw_breakpoint_helpers = &ch32_sw_breakpoint_heper;
 
@@ -815,6 +815,7 @@ bool ch32v3xx_probe(target_s *target)
     if (target->breakpoint_watchpoint_count)
         target->breakpoint_watchpoint_count(target, &brk_count, &watch_count);
     target->no_hw_breakpoint = !brk_count;
+    return true;
 }
 /**
  * \briegf unlock option bytes
