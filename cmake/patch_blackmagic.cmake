@@ -81,17 +81,15 @@ apply_patch_if_needed5(patched110 110blackmagic_arm_adi_merged.patch
 apply_patch_if_needed5(patched111 111blackmagic_riscv_merged.patch
                        "RISC-V optimizations, DMI accessor, RV32E support, fault fixes, SDI read confirmation (merged 13, 21, 26, 89, 92-95, 100-104, and RISC-V parts of 82bis, 83bis, 85bis, 105)")
 
-# --- Target Common & Flash ---
-# Merged into 112:
-#   apply_patch_if_needed5(patched11 11blackmagic_use_embedded_printf.patch "use embedded printf ")
+# --- Target Common & Flash Headers ---
+# Merged into 112 (target.c and target_flash.c omitted as they are replaced by rs_swindle and bmp_helpers.cpp):
 #   apply_patch_if_needed5(patched47 47blackmagic_tweak_options.patch "patch option field after probe")
 #   apply_patch_if_needed5(patched50 50blackmagic_export_breakpoint_available.patch "export a helper function to query the # of hw breakoint/watchpoint")
 #   apply_patch_if_needed5(patched51 51blackmagic_add_sw_breakpoint_framework.patch "hook in the data needed to attach sw breakpoints to target")
-#   apply_patch_if_needed5(patched53 53blackmagic_abort_on_flash_error.patch "abort buffered flash write as soon as there is one error")
 #   apply_patch_if_needed5(patched55 55blackmagic_variable_erase_size.patch "use variable size erase block to speed up erasee on ch32vxx")
-#   and Target/Flash common portions of: 85bis, 105
+#   and Target/Flash common portions of: 82bis, 85bis, 105
 apply_patch_if_needed5(patched112 112blackmagic_target_flash_merged.patch
-                       "Target common & flash improvements, sw breakpoints, variable erase (merged 11, 47, 50, 51, 53, 55, and common parts of 85bis, 105)")
+                       "Target common & flash headers, sw breakpoints, variable erase (merged 47, 50, 51, 55, and common parts of 82bis, 85bis, 105)")
 apply_patch_if_needed5(patched113 113blackmagic_remove_setjmp_longjmp.patch
                        "remove setjmp/longjmp, in-band fault propagation")
 
