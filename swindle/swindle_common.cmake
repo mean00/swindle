@@ -232,7 +232,7 @@ set(BM_TARGET
     ${T}/adiv6.c
     ${T}/cortex.c
     ${T}/cortexm.c
-    ${T}/target_flash.c
+    # ${T}/target_flash.c (replaced by rs_swindle/flash_manager.rs)
     # ${T}/gdb_reg.c (replaced by bmp_helpers.cpp)
     ${T}/target.c
     # ${T}/stm32_common.c (replaced by bmp_helpers.cpp)

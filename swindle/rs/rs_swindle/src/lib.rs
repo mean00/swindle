@@ -55,6 +55,7 @@ mod commands;
 mod crc;
 mod decoder;
 mod encoder;
+pub mod flash_manager;
 mod freertos;
 mod glue;
 mod mem_cache;

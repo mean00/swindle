@@ -27,6 +27,7 @@ extern "C"
 #include "maths_utils.h"
 #include "hex_utils.h"
 #include "target.h"
+#include "target_internal.h"
 #include "stm32_common.h"
 
 /* --------------------------------------------------------------------------
@@ -155,6 +156,66 @@ bool stm32_uid(target_s *const target, const target_addr_t uid_base)
     }
     tc_printf(target, "0x%s\n", uid_hex);
     return true;
+}
+
+/* --------------------------------------------------------------------------
+ * target_flash helpers for Rust flash_manager
+ * -------------------------------------------------------------------------- */
+target_flash_s *target_get_flash(target_s *target)
+{
+    return target ? target->flash : nullptr;
+}
+
+bool target_get_flash_mode(target_s *target)
+{
+    return target ? target->flash_mode : false;
+}
+
+bool target_enter_flash_mode_helper(target_s *target)
+{
+    if (!target)
+        return false;
+    if (target->flash_mode)
+        return true;
+
+    bool result = true;
+    if (target->enter_flash_mode)
+        result = target->enter_flash_mode(target);
+    else
+        target_reset(target);
+
+    if (result)
+        target->flash_mode = true;
+    return result;
+}
+
+bool target_exit_flash_mode_helper(target_s *target)
+{
+    if (!target)
+        return false;
+    if (!target->flash_mode)
+        return true;
+
+    bool result = true;
+    if (target->exit_flash_mode)
+        result = target->exit_flash_mode(target);
+    else
+        target_reset(target);
+
+    target->flash_mode = false;
+    return result;
+}
+
+bool target_has_mass_erase(target_s *target)
+{
+    return target && (target->mass_erase != nullptr);
+}
+
+bool target_mass_erase_call(target_s *target, platform_timeout_s *timeout)
+{
+    if (target && target->mass_erase)
+        return target->mass_erase(target, timeout);
+    return false;
 }
 
 } // extern "C"
