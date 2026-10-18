@@ -54,8 +54,8 @@ uint32_t remote_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, 
         LOGG("  *** VALUE=0x%x\n", reply);
         return reply;
         break;
-    case 0xff: // raise
-        raise_exception(EXCEPTION_ERROR, "Low level remote exception");
+    case 0xff: // remote probe fault
+        dp->fault = 1U;
         break;
     case SWD_ACK_OK:
         xAssert(0); // should not happen, ok is zero!

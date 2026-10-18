@@ -92,6 +92,8 @@ apply_patch_if_needed5(patched111 111blackmagic_riscv_merged.patch
 #   and Target/Flash common portions of: 85bis, 105
 apply_patch_if_needed5(patched112 112blackmagic_target_flash_merged.patch
                        "Target common & flash improvements, sw breakpoints, variable erase (merged 11, 47, 50, 51, 53, 55, and common parts of 85bis, 105)")
+apply_patch_if_needed5(patched113 113blackmagic_remove_setjmp_longjmp.patch
+                       "remove setjmp/longjmp, in-band fault propagation")
 
 # ---------------------------------------------------------------------------
 # Previously merged / disabled patches (preserved comments)

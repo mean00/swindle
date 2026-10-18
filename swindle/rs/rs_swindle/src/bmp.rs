@@ -680,29 +680,17 @@ pub fn bmp_raise_exception() {
         rn_bmp_cmd_c::bmp_raise_exception_c();
     }
 }
-extern "C" fn trampoline<F: FnMut()>(ctx: *mut core::ffi::c_void) {
-    let closure = unsafe { &mut *(ctx as *mut F) };
-    closure();
-}
-
-/// Execute a closure within a BMP exception handling context.
-///
-/// Returns `Ok(())` if execution succeeds, or `Err(exception_type)` if a
-/// longjmp/exception occurs in the underlying C code.
+#[allow(dead_code)]
 pub fn bmp_try<F: FnMut()>(mut f: F) -> Result<(), i32> {
-    let ctx = &mut f as *mut _ as *mut core::ffi::c_void;
-    let result = unsafe { rn_bmp_cmd_c::bmp_execute_with_catch_c(Some(trampoline::<F>), ctx) };
-    if result == 0 {
-        Ok(())
-    } else {
-        Err(result as i32)
-    }
+    f();
+    Ok(())
 }
 
 /// Execute a closure within a BMP exception handling context and return `Result<(), BmpError>`.
 #[allow(dead_code)]
-pub fn bmp_try_res<F: FnMut()>(f: F) -> Result<(), BmpError> {
-    bmp_try(f).map_err(BmpError::Exception)
+pub fn bmp_try_res<F: FnMut()>(mut f: F) -> Result<(), BmpError> {
+    f();
+    Ok(())
 }
 /// Enable or disable the target reset pin control.
 pub fn _bmp_enable_reset_pin(enabled: bool) {

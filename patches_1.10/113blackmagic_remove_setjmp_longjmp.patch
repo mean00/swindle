@@ -1,0 +1,105 @@
+--- a/src/include/exception.h
++++ b/src/include/exception.h
+@@ -41,7 +41,6 @@
+ #ifndef INCLUDE_EXCEPTION_H
+ #define INCLUDE_EXCEPTION_H
+ 
+-#include <setjmp.h>
+ #include <stdint.h>
+ 
+ #define EXCEPTION_ERROR   0x01U
+@@ -53,30 +52,18 @@
+ struct exception {
+ 	uint32_t type;
+ 	const char *msg;
+-	/* private */
+-	uint32_t mask;
+-	jmp_buf jmpbuf;
+-	exception_s *outer;
+ };
+ 
+ extern exception_s *innermost_exception;
+ 
+-#define TRY(type_mask)                           \
+-	exception_s exception_frame;                 \
+-	exception_frame.type = 0U;                   \
+-	exception_frame.mask = (type_mask);          \
+-	exception_frame.outer = innermost_exception; \
+-	innermost_exception = &exception_frame;      \
+-	if (setjmp(exception_frame.jmpbuf) == 0)
+-
+-#define CATCH()                                  \
+-	innermost_exception = exception_frame.outer; \
+-	if (exception_frame.type)                    \
+-		switch (exception_frame.type)
+-
+-#define RETHROW              \
+-	if (innermost_exception) \
+-	raise_exception(exception_frame->type, exception_frame->msg)
++#define TRY(type_mask)                                 \
++	const exception_s exception_frame = {0U, ""};      \
++	(void)exception_frame;                             \
++	if (1)
++
++#define CATCH() else for (volatile int _exc = 0; _exc;) switch (_exc)
++
++#define RETHROW do {} while (0)
+ 
+ void raise_exception(uint32_t type, const char *msg);
+ 
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -1178,7 +1178,7 @@
+ 	}
+ 
+ 	if (reason == TARGET_HALT_ERROR)
+-		raise_exception(EXCEPTION_ERROR, "Target lost in stub");
++		return false;
+ 
+ 	if (reason != TARGET_HALT_BREAKPOINT) {
+ 		DEBUG_WARN(" Reason %d\n", reason);
+--- a/src/target/adiv5_interface.h
++++ b/src/target/adiv5_interface.h
+@@ -170,9 +170,9 @@
+ 		DEBUG_WARN("Recovering and re-trying access\n");
+ 		dp->error(dp, true);
+ 		response = dp->low_access(dp, rnw, addr, value);
+-		/* If the access results in no-response again, throw to propergate that up */
++		/* If the access results in no-response again, fault is set on dp */
+ 		if (dp->fault == SWD_ACK_NO_RESPONSE)
+-			raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
++			return 0;
+ 		return response;
+ 	}
+ 	return result;
+--- a/src/target/adiv5_swd.c
++++ b/src/target/adiv5_swd.c
+@@ -479,14 +479,15 @@
+ 
+ 	if (ack != SWD_ACK_OK) {
+ 		DEBUG_ERROR("SWD access has invalid ack %x\n", ack);
+-		raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
++		dp->fault = ack ? ack : SWD_ACK_FAULT;
++		return 0;
+ 	}
+ 
+ 	if (rnw) {
+ 		if (!swd_proc.seq_in_parity(&response, 32U)) { /* Give up on parity error */
+ 			dp->fault = 1U;
+ 			DEBUG_ERROR("SWD access resulted in parity error\n");
+-			raise_exception(EXCEPTION_ERROR, "SWD parity error");
++			return 0;
+ 		}
+ 	} else
+ 		swd_proc.seq_out_parity(value, 32U);
+--- a/src/target/adiv5.c
++++ b/src/target/adiv5.c
+@@ -703,6 +703,8 @@
+ 	adi_ap_mem_access_setup(ap, dest, align);
+ 	/* Now loop through the data and move it 1 stride at a time to the target */
+ 	for (; begin < end; begin += stride) {
++		if (ap->dp->fault)
++			break;
+ 		/*
+ 		 * Check if the address doesn't overflow the 10-bit auto increment bound for TAR,
+ 		 * if it's not the first transfer (offset == 0)

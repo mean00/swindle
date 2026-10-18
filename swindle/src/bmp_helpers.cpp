@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstdio>
-#include <csetjmp>
 #include <cstring>
 #include <cstdarg>
 
@@ -43,17 +42,8 @@ exception_s *innermost_exception = nullptr;
 
 void raise_exception(const uint32_t type, const char *const msg)
 {
-    for (exception_s *exception = innermost_exception; exception; exception = exception->outer)
-    {
-        if (exception->mask & type)
-        {
-            exception->type = type;
-            exception->msg = msg;
-            innermost_exception = exception->outer;
-            longjmp(exception->jmpbuf, (int)type);
-        }
-    }
-    abort();
+    (void)type;
+    (void)msg;
 }
 
 /* --------------------------------------------------------------------------

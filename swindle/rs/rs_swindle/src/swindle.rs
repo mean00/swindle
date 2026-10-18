@@ -25,7 +25,6 @@ use crate::commands;
 use crate::commands::run;
 use crate::decoder::RESULT_AUTOMATON;
 use crate::decoder::gdb_stream;
-use crate::encoder;
 #[cfg(not(feature = "hosted"))]
 use crate::native;
 use crate::packet_symbols::{CHAR_ACK, CHAR_NACK, INPUT_BUFFER_SIZE};
@@ -148,12 +147,8 @@ fn run_parser(data_as_slice: &[u8]) {
                     rngdb_send_data_u8(&[CHAR_ACK]);
                     rngdb_output_flush();
                     bmplog!("Exec raw packet\n");
-                    if let Err(_e) = bmp::bmp_try(|| commands::exec(s)) {
-                        gdb_print!("Stray exception\n");
-                        encoder::encoder::reply_e01();
-                    } else {
-                        bmplog!("Exec done\n");
-                    }
+                    commands::exec(s);
+                    bmplog!("Exec done\n");
                 }
             }
             RESULT_AUTOMATON::Error => {

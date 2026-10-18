@@ -67,7 +67,11 @@ extern "C"
      * @return 0 (unreachable). */
     uint32_t fw_adiv5_jtagdp_low_access(adiv5_debug_port_s *dp, uint8_t RnW, uint16_t addr, uint32_t value)
     {
-        raise_exception(EXCEPTION_ERROR, "JTAG-DP disabled");
+        (void)RnW;
+        (void)addr;
+        (void)value;
+        if (dp)
+            dp->fault = 1U;
         return 0;
     }
 

@@ -743,7 +743,6 @@ extern "C" uint32_t min_free_heap_c()
  */
 extern "C" void bmp_raise_exception_c()
 {
-    raise_exception(1, "oops");
 }
 /*
  *
@@ -751,35 +750,10 @@ extern "C" void bmp_raise_exception_c()
  */
 typedef void (*exec_callback_t)(void *ctx);
 
-static int exception_nesting_level = 0;
-
 extern "C" int bmp_execute_with_catch_c(exec_callback_t callback, void *ctx)
 {
-    exception_nesting_level++;
-    if (exception_nesting_level > 1)
-    {
-        char msg[64];
-        snprintf(msg, sizeof(msg), "WARNING: Exception recursion level %d\n", exception_nesting_level);
-        Logger(msg);
-    }
-
-    exception_s local_exception_frame;
-    local_exception_frame.type = 0U;
-    local_exception_frame.mask = EXCEPTION_ALL;
-    local_exception_frame.outer = innermost_exception;
-    innermost_exception = &local_exception_frame;
-
-    int result = setjmp(local_exception_frame.jmpbuf);
-    if (result == 0)
-    {
-        callback(ctx);
-    }
-
-    int ret = local_exception_frame.type;
-    innermost_exception = local_exception_frame.outer;
-
-    exception_nesting_level--;
-    return ret;
+    callback(ctx);
+    return 0;
 }
 /*
  *

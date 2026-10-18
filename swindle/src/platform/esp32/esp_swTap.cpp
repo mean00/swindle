@@ -192,7 +192,8 @@ extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_
             break;
         default:
             DEBUG_ERROR("SWD access has invalid ack %x\n", ack);
-            raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
+            dp->fault = ack ? ack : 1U;
+            return 0;
             break;
         }
     }
@@ -215,7 +216,7 @@ done:
         { /* Give up on parity error */
             dp->fault = 1U;
             DEBUG_ERROR("SWD access resulted in parity error\n");
-            raise_exception(EXCEPTION_ERROR, "SWD parity error");
+            return 0;
         }
         return response;
     }

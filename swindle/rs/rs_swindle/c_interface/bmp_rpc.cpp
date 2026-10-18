@@ -88,23 +88,14 @@ extern "C" void ln_raw_swd_write(uint32_t tick, uint32_t value);
 extern "C" uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t addr, const uint32_t value,
                                                uint32_t *fault)
 {
-    TRY(EXCEPTION_ALL)
-    {
 #ifdef CONFIG_IDF_TARGET
-        xAssert(0);
-#else
-        uint32_t ret = ln_adiv5_swd_raw_access(&remote_dp, rnw, addr, value);
-        *fault = remote_dp.fault;
-        return ret;
-#endif
-    }
-    CATCH()
-    {
-    default:
-        *fault = 0xff; // special marker for raise
-        return 0;
-    }
+    xAssert(0);
     return 0;
+#else
+    uint32_t ret = ln_adiv5_swd_raw_access(&remote_dp, rnw, addr, value);
+    *fault = remote_dp.fault;
+    return ret;
+#endif
 }
 //--
 extern "C" bool bmp_adiv5_swd_write_no_check_c(const uint16_t addr, const uint32_t data)

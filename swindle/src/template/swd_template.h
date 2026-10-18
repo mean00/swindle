@@ -125,7 +125,8 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
     if (ack != SWD_ACK_OK)
     {
         DEBUG_ERROR("SWD access has invalid ack %x\n", ack);
-        raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
+        dp->fault = ack ? ack : 1U;
+        return false;
     }
     return true;
 }
@@ -157,7 +158,7 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
             /* Give up on parity error */
             dp->fault = 1U;
             DEBUG_ERROR("SWD access resulted in parity error\n");
-            raise_exception(EXCEPTION_ERROR, "SWD parity error");
+            return 0;
         }
         return response;
     }
