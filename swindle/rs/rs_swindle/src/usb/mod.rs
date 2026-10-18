@@ -8,6 +8,7 @@ mod usb_serial_bridge;
 pub(crate) fn rngdb_output_flush() {
     usb_gdb::rngdb_output_flush_c()
 }
+#[allow(dead_code)]
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
 pub(crate) fn rngdb_send_data(data: &str) {
     usb_gdb::rngdb_send_data_c(data.len() as u32, data.as_ptr())

@@ -9,12 +9,12 @@ graph TD
     end
 
     %% -------------------------------------------------------------
-    %% LAYER 2: BLACKMAGIC CORE TARGET FRAMEWORK
+    %% LAYER 2: REPLACED TARGET & FLASH SUBSYSTEMS (NOW RUST)
     %% -------------------------------------------------------------
-    subgraph Layer2 ["2. Blackmagic Target Core (blackmagic/src/target/)"]
-        TargetOps["Polymorphic Target Object (target.c / target_s)"]
+    subgraph Layer2 ["2. Target & Flash Core (Replaced by rs_swindle Rust Core)"]
+        TargetOps["Rust Target Subsystem (target::* & target_s C-ABI Shim; replaces target.c)"]
         TargetList["Active Target & Target List (target_list, cur_target)"]
-        TargetFlash["Flash Memory Manager (target_flash.c / target_flash_s)"]
+        TargetFlash["Rust Flash Subsystem (flash::* & C-ABI Shim; replaces target_flash.c)"]
     end
 
     %% -------------------------------------------------------------

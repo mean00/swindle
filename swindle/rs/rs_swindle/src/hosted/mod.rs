@@ -3,6 +3,7 @@
 
 pub mod rpc_host;
 pub mod rpc_host_generated;
+pub mod transport;
 
 #[macro_use]
 pub mod logger_hosted;

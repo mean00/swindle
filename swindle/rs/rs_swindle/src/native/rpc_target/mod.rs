@@ -160,14 +160,14 @@ fn rpc_lnadiv_packet(parser: &mut rpc_parameter_parser) -> bool {
     match parser.next_cmd() {
         RPC_LNADIV_WRITE => {
             bmplog!("lnadiv_write\n");
-            let address: u32 = parser.next_u32();
+            let address: u32 = parser.next_u16();
             let data: u32 = parser.next_u32();
             bmplog!("lnadiv_write at 0x{:x} data=0x{:x}\n", address, data);
             rpc_reply_bool_32le(bmp::bmp_adiv5_swd_write_no_check(address as u16, data), 0);
             return true;
         }
         RPC_LNADIV_READ => {
-            let address: u32 = parser.next_u32();
+            let address: u32 = parser.next_u16();
             bmplog!("lnadiv_read at 0x{:x}\n", address);
             rpc_reply_bool_32le(true, bmp::bmp_adiv5_swd_read_no_check(address as u16));
             return true;
@@ -183,8 +183,8 @@ fn rpc_lnadiv_packet(parser: &mut rpc_parameter_parser) -> bool {
         }
         RPC_LNADIV_LOWLEVEL => {
             bmplog!("lnadiv_lowlevel\n");
-            let rnw: u32 = parser.next_u32();
-            let addr: u32 = parser.next_u32();
+            let rnw: u32 = parser.next_u8();
+            let addr: u32 = parser.next_u16();
             let value: u32 = parser.next_u32();
             let mut fault: u32 = 0;
             bmplog!(

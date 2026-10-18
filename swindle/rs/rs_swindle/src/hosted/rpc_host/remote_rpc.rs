@@ -12,11 +12,7 @@ setup_log!(false);
 crate::gdb_print_init!();
 //use crate::{bmplog, gdb_print};
 
-use crate::rn_bmp_cmd_c::platform_buffer_read;
-
-const RPC_BUFFER_SIZE: usize = 512;
-
-static mut rpc_buffer: [u8; RPC_BUFFER_SIZE] = [0; RPC_BUFFER_SIZE];
+use crate::hosted::transport::{check_reply, remote_get_reply};
 
 //_______________________________________
 #[unsafe(no_mangle)]
@@ -54,29 +50,7 @@ pub fn bmp_get_frequency_c() -> u32 {
     fq
 }
 
-//-------------------------------
-fn remote_get_reply() -> &'static [u8] {
-    unsafe {
-        let buf: *mut u8 = rpc_buffer.as_mut_ptr();
-        let se = platform_buffer_read(buf, RPC_BUFFER_SIZE as i32);
-        &rpc_buffer[0..(se as usize)]
-    }
-}
-/**
- *
- */
-fn check_reply(reply: &[u8], expected: usize) -> bool {
-    if reply.len() == 0 {
-        return false;
-    }
-    if reply[0] != RPC_RESP_OK {
-        return false;
-    }
-    if reply.len() != (expected + 1) {
-        return false;
-    }
-    true
-}
+
 
 #[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_reset_rs() -> bool {

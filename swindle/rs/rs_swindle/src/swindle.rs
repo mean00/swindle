@@ -41,6 +41,7 @@ use crate::usb;
 pub(crate) fn rngdb_output_flush() {
     usb::rngdb_output_flush()
 }
+#[allow(dead_code)]
 #[cfg(all(not(feature = "hosted"), not(feature = "network")))]
 pub(crate) fn rngdb_send_data(data: &str) {
     usb::rngdb_send_data(data)

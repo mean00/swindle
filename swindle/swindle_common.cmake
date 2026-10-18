@@ -234,7 +234,7 @@ set(BM_TARGET
     ${T}/cortexm.c
     # ${T}/target_flash.c (replaced by rs_swindle/flash_manager.rs)
     # ${T}/gdb_reg.c (replaced by bmp_helpers.cpp)
-    ${T}/target.c
+    # ${T}/target.c (replaced by rs_swindle/target)
     # ${T}/stm32_common.c (replaced by bmp_helpers.cpp)
     # ${T}/riscv64.c ${S}/gdb_hostio.c ${T}/jtag_scan.c) ${T}/jtag_devs.c    ${T}/adiv5_jtagdp.c ${T}/cortexa.c
     # ${T}/lmi.c ${T}/target_probe.c

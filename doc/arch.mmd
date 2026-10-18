@@ -17,7 +17,7 @@ graph TD
     end
 
     %% -------------------------------------------------------------
-    %% LAYER 3: PROTOCOL & COMMAND DISPATCH (RUST SWINDLE CORE)
+    %% LAYER 3: PROTOCOL, COMMAND DISPATCH & CORE ENGINES (RUST)
     %% -------------------------------------------------------------
     subgraph Layer3 ["3. Swindle Protocol & Command Engine (Rust)"]
         StreamDecoder["Packet Decoder (gdb_stream automaton)"]
@@ -32,6 +32,11 @@ graph TD
             CmdFlash["Flash Programming (vFlash)"]
             CmdMon["Monitor & Config (mon)"]
             CmdQuery["Queries & XML Target Description (q)"]
+        end
+
+        subgraph CoreEngines ["Idiomatic Rust Core Subsystems"]
+            FlashSubsystem["Flash Subsystem (rs_swindle::flash)<br/>- FlashManager & Sector Buffer<br/>- Geometry & Multi-block Erase<br/>- FlashDriver Trait<br/>(Replaces target_flash.c)"]
+            TargetSubsystem["Target Subsystem (rs_swindle::target)<br/>- TargetRegistry & TargetDriver Trait<br/>- 32-bit RamRegion & Typed Mem Access<br/>- Run Control & Breakwatch<br/>(Replaces target.c)"]
         end
 
         subgraph XMLGenerators ["XML Streaming Generators (Rust, Zero-Alloc)"]
@@ -63,35 +68,39 @@ graph TD
     end
 
     %% -------------------------------------------------------------
-    %% LAYER 5: BLACKMAGIC GLUE & C FFI SEAM
+    %% LAYER 5: TRANSLATION SEAM & C-ABI ADAPTERS
     %% -------------------------------------------------------------
-    subgraph Layer5 ["5. Blackmagic Bridge & FFI (C / C++)"]
+    subgraph Layer5 ["5. C-ABI Translation Seam & Shims"]
         RustFFI["Rust C-FFI Bindings (bmp.rs / rn_bmp_cmd_c)"]
+        CABIShim["Rust C-ABI Shims<br/>- target::c_adapter (target_* C symbols)<br/>- flash::c_adapter (target_flash_* C symbols)"]
+        BMPHelpers["Swindle C/C++ Helpers (bmp_helpers.cpp)<br/>- Stubs, Allocation, Breakwatch, Commands"]
         BMPBridge["Swindle BMP Interface Bridge (bmp_interface_c.cpp)"]
     end
 
     %% -------------------------------------------------------------
-    %% LAYER 6: BLACKMAGIC PROBE CORE (C)
+    %% LAYER 6: UNCHANGED C TARGET DRIVERS & BUS TRANSPORTS
     %% -------------------------------------------------------------
-    subgraph Layer6 ["6. Black Magic Probe (BMP) Core Subsystems (C)"]
-        TargetEngine["Target Manager (target.c & target_s, C XML Disabled)"]
-        TargetProber["Target Auto-Probe & Detection (target_probe.c)"]
-        FlashDrivers["Flash Memory Drivers (target_flash.c & algorithms)"]
-
-        subgraph ArchDrivers ["Architecture & Core Drivers"]
-            CortexM["ARM Cortex-M Driver (cortexm.c)"]
-            CortexA["ARM Cortex-A/R Driver (cortexar.c)"]
-            RISCVCore["RISC-V 32/64 Debug Module (riscv32.c & riscv_debug.c)"]
-            VendorTargets["Vendor Specifics (CH32Vx, STM32, RP2040, etc.)"]
+    subgraph Layer6 ["6. Unchanged Black Magic Probe Drivers (C)"]
+        subgraph VendorTargets ["Unchanged Silicon Flash & Probe Drivers (C)"]
+            STM32["STM32 F1/F4/G0/H5/H7/L4 (stm32*.c)"]
+            RPFamily["RP2040 / RP2350 (rp2040.c, rp2350.c)"]
+            WCHTargets["CH32V0xx / CH32V3xx / CH32F1 (ch32*.c)"]
+            NordicTargets["nRF51 / nRF91 (nrf51.c, nrf91.c)"]
+            LPCTargets["LPC11xx / LPC15xx / LPC17xx (lpc*.c)"]
         end
 
-        subgraph DebugTransports ["Debug Access Ports & Wire Transports"]
-            ADIv5["ARM CoreSight ADIv5 / ADIv6 (adiv5.c & DP/AP)"]
-            RISCV_DTM["RISC-V DTM (Debug Transport Module)"]
-            SWD_Transport["SWD Bus Protocol (swdptap)"]
-            RVSWD_Transport["RVSWD 2-Wire Protocol (rvswdp)"]
+        subgraph ArchDrivers ["Architecture Drivers (C)"]
+            CortexM["ARM Cortex-M Core (cortexm.c, cortex.c)"]
+            RISCVCore["RISC-V 32 Debug (riscv32.c, riscv_debug.c)"]
+        end
+
+        subgraph DebugTransports ["Debug Access Ports & Wire Transports (C)"]
+            ADIv5["ARM CoreSight ADIv5 / ADIv6 (adiv5.c, adiv6.c, adi.c)"]
+            RISCV_DTM["RISC-V DTM (riscv_adi_dtm.c)"]
+            SWD_Transport["SWD Bus Protocol (adiv5_swd.c)"]
+            RVSWD_Transport["RVSWD 2-Wire Protocol (rvswd)"]
             SDI_Transport["WCH SDI 1-Wire Protocol (sdiTap)"]
-            JTAG_Transport["JTAG Bus Scanner & TAP (jtagtap)"]
+            JTAG_Transport["JTAG Bus Scanner & TAP (jtag_scan.c, spi.c)"]
         end
     end
 
@@ -126,6 +135,11 @@ graph TD
     CmdDispatcher --> CmdMon
     CmdDispatcher --> CmdQuery
 
+    CmdFlash --> FlashSubsystem
+    CmdRun --> TargetSubsystem
+    CmdMem --> TargetSubsystem
+    CmdReg --> TargetSubsystem
+
     CmdMem --> MemCache
     CmdBkpt --> SWBkptMgr
     CmdMon --> SettingsKV
@@ -152,20 +166,18 @@ graph TD
     CmdMon --> RustFFI
     CmdRun --> RustFFI
     CmdReg --> RustFFI
-    CmdFlash --> RustFFI
 
+    FlashSubsystem --> CABIShim
+    TargetSubsystem --> CABIShim
+    RustFFI --> TargetSubsystem
+    RustFFI --> FlashSubsystem
     RustFFI --> BMPBridge
-    BMPBridge --> TargetEngine
-    BMPBridge --> TargetProber
-    BMPBridge --> FlashDrivers
+    BMPHelpers --> CABIShim
 
-    TargetEngine --> CortexM
-    TargetEngine --> CortexA
-    TargetEngine --> RISCVCore
-    TargetEngine --> VendorTargets
+    CABIShim --> VendorTargets
+    CABIShim --> ArchDrivers
 
     CortexM --> ADIv5
-    CortexA --> ADIv5
     RISCVCore --> RISCV_DTM
 
     ADIv5 --> SWD_Transport

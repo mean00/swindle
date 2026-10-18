@@ -14,7 +14,6 @@
 
 use crate::bmp;
 use crate::encoder::encoder;
-use crate::rn_bmp_cmd_c;
 use crate::target_xml::XmlSink;
 
 const MAP_OPEN: &str = "<memory-map>";
@@ -52,52 +51,30 @@ fn for_each_memory_map_chunk(sink: &mut XmlSink) {
 
     let mut hex_buf = [0u8; 8];
 
-    // 1. RAM entries (kind = 1)
-    let ram_count = unsafe { rn_bmp_cmd_c::bmp_map_count_c(1) };
+    // 1. RAM entries
+    let ram_count = bmp::bmp_map_count(bmp::mapping::Ram);
     for i in 0..ram_count {
-        let mut start: u32 = 0;
-        let mut size: u32 = 0;
-        let mut block_size: u32 = 0;
-        if unsafe {
-            rn_bmp_cmd_c::bmp_map_get_c(
-                1,
-                i as u32,
-                &mut start as *mut u32,
-                &mut size as *mut u32,
-                &mut block_size as *mut u32,
-            )
-        } {
+        if let Some(block) = bmp::bmp_map_get(bmp::mapping::Ram, i) {
             // <memory type="ram" start="0x{start}" length="0x{size}"/>
             sink.write(RAM_START);
-            sink.write(fmt_hex8(start, &mut hex_buf));
+            sink.write(fmt_hex8(block.start_address, &mut hex_buf));
             sink.write(MID_LENGTH);
-            sink.write(fmt_hex8(size, &mut hex_buf));
+            sink.write(fmt_hex8(block.length, &mut hex_buf));
             sink.write(RAM_END);
         }
     }
 
-    // 2. Flash entries (kind = 0)
-    let flash_count = unsafe { rn_bmp_cmd_c::bmp_map_count_c(0) };
+    // 2. Flash entries
+    let flash_count = bmp::bmp_map_count(bmp::mapping::Flash);
     for i in 0..flash_count {
-        let mut start: u32 = 0;
-        let mut size: u32 = 0;
-        let mut block_size: u32 = 0;
-        if unsafe {
-            rn_bmp_cmd_c::bmp_map_get_c(
-                0,
-                i as u32,
-                &mut start as *mut u32,
-                &mut size as *mut u32,
-                &mut block_size as *mut u32,
-            )
-        } {
+        if let Some(block) = bmp::bmp_map_get(bmp::mapping::Flash, i) {
             // <memory type="flash" start="0x{start}" length="0x{size}"><property name="blocksize">0x{block_size}</property></memory>
             sink.write(FLASH_START);
-            sink.write(fmt_hex8(start, &mut hex_buf));
+            sink.write(fmt_hex8(block.start_address, &mut hex_buf));
             sink.write(MID_LENGTH);
-            sink.write(fmt_hex8(size, &mut hex_buf));
+            sink.write(fmt_hex8(block.length, &mut hex_buf));
             sink.write(FLASH_MID_BLOCKSIZE);
-            sink.write(fmt_hex8(block_size, &mut hex_buf));
+            sink.write(fmt_hex8(block.block_size, &mut hex_buf));
             sink.write(FLASH_END);
         }
     }

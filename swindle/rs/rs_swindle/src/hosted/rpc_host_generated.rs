@@ -9,28 +9,10 @@
 use crate::rpc_common_generated::*;
 use crate::hosted::rpc_host::remote_encoder::rpc_encoder;
 use crate::parsing_util::{u8s_string_to_u32_le, u8s_string_to_u8};
-use crate::rn_bmp_cmd_c::platform_buffer_read;
+use crate::hosted::transport::{check_reply, remote_get_reply};
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
-
-const RPC_BUFFER_SIZE: usize = 512;
-static mut rpc_buffer: [u8; RPC_BUFFER_SIZE] = [0; RPC_BUFFER_SIZE];
-
-fn remote_get_reply() -> &'static [u8] {
-    unsafe {
-        let buf: *mut u8 = rpc_buffer.as_mut_ptr();
-        let se = platform_buffer_read(buf, RPC_BUFFER_SIZE as i32);
-        &rpc_buffer[0..(se as usize)]
-    }
-}
-
-fn check_reply(reply: &[u8], expected: usize) -> bool {
-    if reply.is_empty() { return false; }
-    if reply[0] != RPC_RESP_OK { return false; }
-    if reply.len() != (expected + 1) { return false; }
-    true
-}
 
 // ── GEN commands ──
 pub fn remote_gen_start() -> u32 {

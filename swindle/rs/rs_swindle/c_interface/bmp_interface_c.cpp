@@ -765,7 +765,7 @@ extern "C" int bmp_execute_with_catch_c(exec_callback_t callback, void *ctx)
 
     exception_s local_exception_frame;
     local_exception_frame.type = 0U;
-    local_exception_frame.mask = 1;
+    local_exception_frame.mask = EXCEPTION_ALL;
     local_exception_frame.outer = innermost_exception;
     innermost_exception = &local_exception_frame;
 
