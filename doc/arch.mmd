@@ -1,37 +1,48 @@
 graph TD
     %% -------------------------------------------------------------
+    %% CLASS DEFINITIONS & LEGEND STYLES
+    %% -------------------------------------------------------------
+    classDef rustLang fill:#ffe0b2,stroke:#e65100,stroke-width:2px;
+    classDef swindleCLang fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef blackmagicCLang fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef transportLang fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;
+    classDef hwLang fill:#eceff1,stroke:#455a64,stroke-width:1.5px;
+
+    %% -------------------------------------------------------------
     %% LAYER 1: CLIENTS & EXTERNAL INTERFACES
     %% -------------------------------------------------------------
     subgraph Layer1 ["1. Client Layer"]
         GDBClient["GDB / LLDB Debugger"]
         Console["Target Serial / RTT Terminal"]
     end
+    class GDBClient,Console transportLang;
 
     %% -------------------------------------------------------------
     %% LAYER 2: TRANSPORT & I/O
     %% -------------------------------------------------------------
     subgraph Layer2 ["2. Transport Layer"]
-        USB_GDB["USB CDC GDB Port TinyUSB"]
+        USB_GDB["USB CDC GDB Port (TinyUSB)"]
         USB_UART["USB CDC Serial Bridge"]
         TCP_Socket["TCP/IP Socket Server (Hosted)"]
     end
+    class USB_GDB,USB_UART,TCP_Socket transportLang;
 
     %% -------------------------------------------------------------
-    %% LAYER 3: PROTOCOL, COMMAND DISPATCH & CORE ENGINES (RUST)
+    %% LAYER 3: SWINDLE CORE ENGINES & GDB SERVER (RUST)
     %% -------------------------------------------------------------
     subgraph Layer3 ["3. Swindle Protocol & Command Engine (Rust)"]
         StreamDecoder["Packet Decoder (gdb_stream automaton)"]
         PacketEncoder["Packet Encoder & Checksum (encoder)"]
         CmdDispatcher["Command Dispatcher (commands::exec)"]
 
-        subgraph CmdModules ["Command Handlers"]
+        subgraph CmdModules ["Command Handlers (Rust)"]
             CmdRun["Execution Control (vCont, c, s, k)"]
             CmdMem["Memory Access (m, X)"]
             CmdReg["Register Access (g, p, P)"]
             CmdBkpt["Breakpoint & Watchpoint (Z, z)"]
             CmdFlash["Flash Programming (vFlash)"]
             CmdMon["Monitor & Config (mon)"]
-            CmdQuery["Queries & XML Target Description (q)"]
+            CmdQuery["Queries & Target Description (q)"]
         end
 
         subgraph CoreEngines ["Idiomatic Rust Core Subsystems"]
@@ -40,18 +51,19 @@ graph TD
         end
 
         subgraph XMLGenerators ["XML Streaming Generators (Rust, Zero-Alloc)"]
-            TargetXML["Register XML Generator (target_xml.rs)"]
-            MemMapXML["Memory Map XML Generator (memory_map_xml.rs)"]
+            TargetXML["Register XML Generator (target_xml.rs)<br/>(Replaces gdb_main.c XML)"]
+            MemMapXML["Memory Map XML Generator (memory_map_xml.rs)<br/>(Replaces gdb_main.c mem-map)"]
             XmlSink["Unified XML Sink (XmlSink: Count / Stream)"]
         end
 
-        subgraph CoreHelpers ["Core Helpers & State"]
+        subgraph CoreHelpers ["Core Helpers & State (Rust)"]
             MemCache["Line Read Cache (16-byte prefetch)"]
             SWBkptMgr["Software & Flash Breakpoint Manager"]
             SettingsKV["Settings Storage (NVRAM / Flash KV)"]
             SyncCellState["Thread-Safe Shared State (SyncCell)"]
         end
     end
+    class StreamDecoder,PacketEncoder,CmdDispatcher,CmdRun,CmdMem,CmdReg,CmdBkpt,CmdFlash,CmdMon,CmdQuery,FlashSubsystem,TargetSubsystem,TargetXML,MemMapXML,XmlSink,MemCache,SWBkptMgr,SettingsKV,SyncCellState rustLang;
 
     %% -------------------------------------------------------------
     %% LAYER 4: TARGET OS & SUB-SYSTEM INTROSPECTION (RUST)
@@ -66,54 +78,79 @@ graph TD
         RTTEngine["SEGGER RTT Engine (Buffer Discovery & Polling)"]
         RPCEngine["RPC Layer (Target Server & Host Client)"]
     end
+    class FreeRTOSEngine,TCBList,ThreadIDMap,CoreContext,RTTEngine,RPCEngine rustLang;
 
     %% -------------------------------------------------------------
-    %% LAYER 5: TRANSLATION SEAM & C-ABI ADAPTERS
+    %% LAYER 5: SWINDLE C/C++ INFRASTRUCTURE & C-ABI SEAM
     %% -------------------------------------------------------------
-    subgraph Layer5 ["5. C-ABI Translation Seam & Shims"]
-        RustFFI["Rust C-FFI Bindings (bmp.rs / rn_bmp_cmd_c)"]
-        CABIShim["Rust C-ABI Shims<br/>- target::c_adapter (target_* C symbols)<br/>- flash::c_adapter (target_flash_* C symbols)"]
-        BMPHelpers["Swindle C/C++ Helpers (bmp_helpers.cpp)<br/>- Stubs, Allocation, Breakwatch, Commands"]
-        BMPBridge["Swindle BMP Interface Bridge (bmp_interface_c.cpp)"]
+    subgraph Layer5 ["5. Swindle C/C++ Infrastructure & C-ABI Seam"]
+        subgraph RustCABIShims ["Rust C-ABI Export Shims (Rust)"]
+            CABITarget["target::c_adapter.rs<br/>(Exports target_new, target_mem_read/write, etc.)"]
+            CABIFlash["flash::c_adapter.rs<br/>(Exports target_flash_erase, target_flash_write, etc.)"]
+            RustFFI["Rust C-FFI Ingress (bmp.rs / rn_bmp_cmd_c)"]
+        end
+
+        subgraph SwindleCHelpers ["Swindle C/C++ Helpers & Stubs (Swindle C/C++)"]
+            BMPHelpers["Swindle Helpers (bmp_helpers.cpp)<br/>- Replaces exception.c, hex_utils.c, maths_utils.c<br/>- Replaces gdb_reg.c, stm32_common.c<br/>- Diagnostics (tc_printf), Options (bmp_tweak_options)<br/>- Breakpoint helpers (target_breakpoint_watchpoint_count)"]
+            BMPBridge["Swindle BMP Bridge (bmp_interface_c.cpp, bmp_rpc.cpp)"]
+            ResetPin["Pin & Reset Control (bmp_reset_pin.cpp, bmp_reset_inv.cpp)"]
+            BoardStubs["Board Configuration (bmp_disabledBoard.cpp, ln_board_stubs.h)"]
+        end
+
+        subgraph SwindleTAP ["High-Performance Platform TAP Drivers (Swindle C/C++)"]
+            SWD_Tap["ARM SWD Bit-Bang TAP (bmp_swdTap_ln.cpp)"]
+            RVSWD_Tap["RISC-V 2-Wire RVSWD TAP (bmp_rvTap_ln.cpp)"]
+            SDI_Tap["WCH 1-Wire SDI TAP (bmp_sdiTap_ln.cpp)"]
+            Generic_Tap["Generic JTAG & Timing TAP (bmp_tap_ln.cpp)"]
+            ADC_Sense["Target VDD Sense ADC (bmp_adc_ln.cpp)"]
+        end
     end
+    class CABITarget,CABIFlash,RustFFI rustLang;
+    class BMPHelpers,BMPBridge,ResetPin,BoardStubs,SWD_Tap,RVSWD_Tap,SDI_Tap,Generic_Tap,ADC_Sense swindleCLang;
 
     %% -------------------------------------------------------------
-    %% LAYER 6: UNCHANGED C TARGET DRIVERS & BUS TRANSPORTS
+    %% LAYER 6: BLACKMAGIC PROBE C TARGET DRIVERS & TRANSPORTS (PATCHED)
     %% -------------------------------------------------------------
-    subgraph Layer6 ["6. Unchanged Black Magic Probe Drivers (C)"]
-        subgraph VendorTargets ["Unchanged Silicon Flash & Probe Drivers (C)"]
+    subgraph Layer6 ["6. Blackmagic Upstream Drivers (Retained C, Patched)"]
+        subgraph VendorTargets ["Silicon Flash & Target Probes (blackmagic/src/target/)"]
             STM32["STM32 F1/F4/G0/H5/H7/L4 (stm32*.c)"]
             RPFamily["RP2040 / RP2350 (rp2040.c, rp2350.c)"]
-            WCHTargets["CH32V0xx / CH32V3xx / CH32F1 (ch32*.c)"]
+            WCHTargets["CH32F1 / CH32V0xx / CH32V3xx (ch32*.c)"]
             NordicTargets["nRF51 / nRF91 (nrf51.c, nrf91.c)"]
-            LPCTargets["LPC11xx / LPC15xx / LPC17xx (lpc*.c)"]
+            LPCTargets["LPC11xx / LPC15xx / LPC17xx (lpc*.c, lpc_common.c)"]
         end
 
-        subgraph ArchDrivers ["Architecture Drivers (C)"]
-            CortexM["ARM Cortex-M Core (cortexm.c, cortex.c)"]
-            RISCVCore["RISC-V 32 Debug (riscv32.c, riscv_debug.c)"]
+        subgraph ArchDrivers ["CPU Architecture Debug Drivers (blackmagic/src/target/)"]
+            CortexM["ARM Cortex-M Debug (cortexm.c, cortex.c)<br/>* Pure In-Band Faults (No setjmp/longjmp)"]
+            RISCVCore["RISC-V Debug Module 0.13 (riscv32.c, riscv_debug.c)<br/>* Sysbus, Abstract Commands, Progbuf, RV32E"]
         end
 
-        subgraph DebugTransports ["Debug Access Ports & Wire Transports (C)"]
-            ADIv5["ARM CoreSight ADIv5 / ADIv6 (adiv5.c, adiv6.c, adi.c)"]
-            RISCV_DTM["RISC-V DTM (riscv_adi_dtm.c)"]
-            SWD_Transport["SWD Bus Protocol (adiv5_swd.c)"]
-            RVSWD_Transport["RVSWD 2-Wire Protocol (rvswd)"]
-            SDI_Transport["WCH SDI 1-Wire Protocol (sdiTap)"]
-            JTAG_Transport["JTAG Bus Scanner & TAP (jtag_scan.c, spi.c)"]
+        subgraph DebugTransports ["CoreSight & Wire Transports (blackmagic/src/target/)"]
+            ADIv5["ARM CoreSight ADIv5 / ADIv6 (adiv5.c, adiv6.c, adi.c)<br/>* DP-SELECT / AP-CSW Write Caching<br/>* Pure In-Band Faults (No setjmp/longjmp)"]
+            RISCV_DTM["RISC-V DTM (riscv_adi_dtm.c)<br/>* Lean DMI Accessor & TAR/DRW Pipeline"]
+            SWD_Transport["SWD Protocol Driver (adiv5_swd.c)"]
+            SPI_SFDP["SPI Flash & SFDP Parser (spi.c, sfdp.c)"]
+            JTAG_Transport["JTAG Scanner & TAP (jtag_scan.c, jtag_devs.c, adiv5_jtag.c)"]
+        end
+
+        subgraph HostedRemote ["Hosted Mode Remoting (blackmagic/src/platforms/hosted/)"]
+            BMDRemote["Remote Protocol Client (bmp_remote.c, protocol_v0..v4.c)"]
+            PlatformHosted["Hosted Platform Core (platform.c, debug.c, utils.c, cli.c)"]
         end
     end
+    class STM32,RPFamily,WCHTargets,NordicTargets,LPCTargets,CortexM,RISCVCore,ADIv5,RISCV_DTM,SWD_Transport,SPI_SFDP,JTAG_Transport,BMDRemote,PlatformHosted blackmagicCLang;
 
     %% -------------------------------------------------------------
     %% LAYER 7: HARDWARE & PHY LAYER
     %% -------------------------------------------------------------
-    subgraph Layer7 ["7. Physical Hardware & Pin Drivers"]
-        GPIO_PIO["Hardware Pins & PIO (RP2040 PIO / GD32 Fast GPIO)"]
-        TargetMCU["Target Device (ARM Cortex-M / RISC-V SoC)"]
+    subgraph Layer7 ["7. Physical Target & Hardware Pins"]
+        GPIO_PIO["Hardware Pins & PIO (RP2040 PIO / GD32 Fast GPIO / ESP32)"]
+        TargetMCU["Target Silicon (ARM Cortex-M / RISC-V SoC)"]
     end
+    class GPIO_PIO,TargetMCU hwLang;
 
     %% -------------------------------------------------------------
-    %% CONNECTIONS (STATIC LAYERED RELATIONSHIPS)
+    %% CONNECTIONS & CONTROL FLOW
     %% -------------------------------------------------------------
     GDBClient --- USB_GDB
     GDBClient --- TCP_Socket
@@ -167,28 +204,47 @@ graph TD
     CmdRun --> RustFFI
     CmdReg --> RustFFI
 
-    FlashSubsystem --> CABIShim
-    TargetSubsystem --> CABIShim
+    %% Rust Core Subsystems -> C-ABI Layer
+    FlashSubsystem --> CABIFlash
+    TargetSubsystem --> CABITarget
     RustFFI --> TargetSubsystem
     RustFFI --> FlashSubsystem
     RustFFI --> BMPBridge
-    BMPHelpers --> CABIShim
 
-    CABIShim --> VendorTargets
-    CABIShim --> ArchDrivers
+    %% C-ABI & Helpers interop
+    BMPHelpers --> CABITarget
+    BMPHelpers --> CABIFlash
+    BMPBridge --> VendorTargets
+    BMPBridge --> ArchDrivers
 
+    %% Dispatch to Blackmagic C Targets & Architecture Drivers
+    CABITarget --> VendorTargets
+    CABITarget --> ArchDrivers
+    CABIFlash --> VendorTargets
+
+    %% Architecture Drivers -> CoreSight / DTM
     CortexM --> ADIv5
     RISCVCore --> RISCV_DTM
 
+    %% CoreSight / DTM -> Wire Protocols
     ADIv5 --> SWD_Transport
     ADIv5 --> JTAG_Transport
-    RISCV_DTM --> RVSWD_Transport
-    RISCV_DTM --> SDI_Transport
+    RISCV_DTM --> SWD_Tap
+    RISCV_DTM --> RVSWD_Tap
+    RISCV_DTM --> SDI_Tap
     RISCV_DTM --> JTAG_Transport
 
-    SWD_Transport --> GPIO_PIO
-    RVSWD_Transport --> GPIO_PIO
-    SDI_Transport --> GPIO_PIO
-    JTAG_Transport --> GPIO_PIO
+    %% Wire Protocol Drivers -> Swindle Platform TAP Drivers
+    SWD_Transport --> SWD_Tap
+    SPI_SFDP --> Generic_Tap
+    JTAG_Transport --> Generic_Tap
+
+    %% Swindle Platform TAP Drivers -> Physical Pins
+    SWD_Tap --> GPIO_PIO
+    RVSWD_Tap --> GPIO_PIO
+    SDI_Tap --> GPIO_PIO
+    Generic_Tap --> GPIO_PIO
+    ResetPin --> GPIO_PIO
+    ADC_Sense --> GPIO_PIO
 
     GPIO_PIO --> TargetMCU
