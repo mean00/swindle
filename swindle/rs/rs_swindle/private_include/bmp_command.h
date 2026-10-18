@@ -51,7 +51,6 @@ bool bmp_reset_target_c();
 void rv_dm_start_c();
 bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
 bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
-uint32_t riscv_list_csr(uint32_t start, uint32_t max_size, uint32_t *csr);
 bool bmp_target_halt_resume_c(bool step);
 bool bmp_target_halt_c();
 
@@ -154,8 +153,5 @@ uint32_t target_mw_page_size(void);
 #define BMP_ARCH_RISCV 2
 uint32_t bmp_get_arch_c();
 uint32_t bmp_get_target_options_c();
-bool bmp_get_riscv_info_c(uint8_t *address_width, uint32_t *extensions);
-bool bmp_riscv_read_csr_c(uint32_t csr, uint32_t *val);
-bool bmp_riscv_write_csr_c(uint32_t csr, uint32_t val);
 // EOF
 void bmp_gpio_reset();

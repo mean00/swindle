@@ -552,7 +552,8 @@ static bool ch32v3x_flash_erase_flashstub(target_flash_s *flash, target_addr_t a
         {
             if (chunk > ATOMIC_FLASHSTUB_WRITE)
                 chunk = ATOMIC_FLASHSTUB_WRITE;
-            if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_ERASE, addr, chunk, 0, STUB_STACKEND_LOCATION))
+            if (!riscv32_run_stub_with_stack(
+                    flash->t, STUB_CODE_LOCATION_ERASE, STUB_STACKEND_LOCATION, addr, chunk, 0, 0))
             {
                 DEBUGME("CH32 Erase Error at 0x%x\n", addr);
                 return false;
@@ -641,8 +642,8 @@ static bool ch32v3x_flash_write_flashstub(target_flash_s *flash, target_addr_t d
         // markA();
         target_mem32_write(flash->t, STUB_DATA_LOCATION, srcx, chunk);
         // markB();
-        if (!riscv32_run_stub(flash->t, STUB_CODE_LOCATION_WRITE, addr, STUB_DATA_LOCATION, chunk,
-                              STUB_STACKEND_LOCATION))
+        if (!riscv32_run_stub_with_stack(
+                flash->t, STUB_CODE_LOCATION_WRITE, STUB_STACKEND_LOCATION, addr, STUB_DATA_LOCATION, chunk, 0))
         {
             DEBUGME("CH32 Write Error at 0x%x\n", addr);
             return false;

@@ -61,9 +61,14 @@ impl FlashSectorBuffer {
                 if self.data.len() < buf_size {
                     let additional = buf_size - self.data.len();
                     self.data
-                        .try_reserve(additional)
+                        .try_reserve_exact(additional)
                         .map_err(|_| FlashError::BufferAllocationFailed)?;
-                    self.data.resize(buf_size, geometry.erased_byte);
+                    unsafe {
+                        for b in &mut self.data.spare_capacity_mut()[..additional] {
+                            b.write(geometry.erased_byte);
+                        }
+                        self.data.set_len(buf_size);
+                    }
                 } else {
                     self.data[..buf_size].fill(geometry.erased_byte);
                 }

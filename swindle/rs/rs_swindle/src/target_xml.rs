@@ -86,7 +86,7 @@ pub(crate) enum XmlSink<'a> {
 }
 
 impl<'a> XmlSink<'a> {
-    #[inline]
+    #[inline(never)]
     pub fn write(&mut self, chunk: &str) {
         match self {
             XmlSink::Count(total) => {
@@ -111,7 +111,7 @@ impl<'a> XmlSink<'a> {
         }
     }
 
-    #[inline]
+    #[inline(never)]
     pub fn write_u32(&mut self, mut n: u32) {
         if n == 0 {
             self.write("0");
@@ -132,6 +132,7 @@ impl<'a> XmlSink<'a> {
 
 /// Helper to emit a register tag:
 /// Output: `<reg name="{name}{suffix}" {tail}`
+#[inline(never)]
 fn emit_reg(sink: &mut XmlSink, name: &str, suffix: &str, tail: &str) {
     sink.write(REG_HEAD);
     sink.write(name);

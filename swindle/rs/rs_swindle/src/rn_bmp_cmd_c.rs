@@ -206,13 +206,6 @@ unsafe extern "C" {
     ) -> bool;
 }
 unsafe extern "C" {
-    pub fn riscv_list_csr(
-        start: cty::c_uint,
-        max_size: cty::c_uint,
-        csr: *mut cty::c_uint,
-    ) -> cty::c_uint;
-}
-unsafe extern "C" {
     pub fn bmp_target_halt_resume_c(step: bool) -> bool;
 }
 unsafe extern "C" {
@@ -471,15 +464,6 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn bmp_get_target_options_c() -> cty::c_uint;
-}
-unsafe extern "C" {
-    pub fn bmp_get_riscv_info_c(address_width: *mut u8, extensions: *mut u32) -> bool;
-}
-unsafe extern "C" {
-    pub fn bmp_riscv_read_csr_c(csr: cty::c_uint, val: *mut cty::c_uint) -> bool;
-}
-unsafe extern "C" {
-    pub fn bmp_riscv_write_csr_c(csr: cty::c_uint, val: cty::c_uint) -> bool;
 }
 unsafe extern "C" {
     pub fn bmp_gpio_reset();

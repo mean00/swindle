@@ -271,10 +271,8 @@ static bool ch32v0x_flash_write_flashstub(target_flash_s *const flash, target_ad
 
         ch32v0x_flash_ctl_set(target, CH32V0X_FMC_CTL_FTPG);
 
-        // Set up a valid stack pointer at the top of the 2KB SRAM before running the stub
-        uint32_t sp = STUB_STAK_LOCATION;
-        target->reg_write(target, RISCV_REG_SP, &sp, 4);
-        bool stub_success = riscv32_run_stub(flash->t, STUB_CODE_LOCATION, addr, STUB_DATA_LOCATION, chunk, page_size);
+        bool stub_success = riscv32_run_stub_with_stack(
+            flash->t, STUB_CODE_LOCATION, STUB_STAK_LOCATION, addr, STUB_DATA_LOCATION, chunk, page_size);
         if (!stub_success)
         {
             DEBUG_ERROR("CH32 Write Error at 0x%x\n", addr);

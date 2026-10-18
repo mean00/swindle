@@ -21,66 +21,75 @@ fn delay_ms(_a: u32) {
     std::thread::sleep(core::time::Duration::from_millis(_a as u64));
 }
 
-/// Run a flash/utility stub on target.
+
+/// Internal flash stub execution engine.
 ///
-/// Parameters:
-/// - `loadaddr`: Entry point address of stub in target SRAM.
-/// - `param1`..`param4`: Parameters loaded into `a0`, `a1`, `a2`, `a3`.
-///   `param4` is also used as stack pointer `sp` if non-zero.
-///
-/// Returns `true` if the stub ran to completion (halted on ebreak) and returned `a0 == 0`.
-pub fn run_stub(
+/// If `sp` is `Some(val)` and non-zero:
+/// - Current SP is saved
+/// - SP is set to `val`
+/// - At exit, SP is restored to its original saved value.
+/// If `sp` is `None`: SP is untouched.
+fn run_stub_internal(
     hart: &RiscvHart,
     dmi: &mut dyn DmiTransport,
     loadaddr: u32,
+    sp: Option<u32>,
     param1: u32,
     param2: u32,
     param3: u32,
     param4: u32,
 ) -> bool {
-    // 1. Save PC, SP and MIE
+    // 1. Save PC, MIE, and optionally SP
     let saved_pc = hart.pc_read(dmi).unwrap_or(0);
-    let saved_sp = hart.gpr_read(dmi, RV_REG_SP).unwrap_or(0);
     let saved_mie = hart.csr_read(dmi, RV_CSR_MIE).unwrap_or(0);
+    let saved_sp = if sp.is_some() {
+        hart.gpr_read(dmi, RV_REG_SP).unwrap_or(0)
+    } else {
+        0
+    };
 
     // 2. Disable interrupts during stub execution
     let _ = hart.csr_write(dmi, RV_CSR_MIE, 0);
 
-    // 3. Load parameters into a0..a3, and set SP if param4 provided
+    // 3. Set SP if specified and non-zero
+    if let Some(sp_val) = sp {
+        if sp_val != 0 {
+            let _ = hart.gpr_write(dmi, RV_REG_SP, sp_val);
+        }
+    }
+
+    // 4. Load parameters into a0..a3
     let _ = hart.gpr_write(dmi, RV_REG_A0, param1);
     let _ = hart.gpr_write(dmi, RV_REG_A1, param2);
     let _ = hart.gpr_write(dmi, RV_REG_A2, param3);
     let _ = hart.gpr_write(dmi, RV_REG_A3, param4);
-    if param4 != 0 {
-        let _ = hart.gpr_write(dmi, RV_REG_SP, param4);
-    }
 
-    // 4. Set PC to stub entry point
+    // 5. Set PC to stub entry point
     if hart.pc_write(dmi, loadaddr).is_err() {
         let _ = hart.csr_write(dmi, RV_CSR_MIE, saved_mie);
         let _ = hart.pc_write(dmi, saved_pc);
-        if param4 != 0 && saved_sp != 0 {
+        if sp.is_some() {
             let _ = hart.gpr_write(dmi, RV_REG_SP, saved_sp);
         }
         return false;
     }
 
-    // 5. Resume execution
+    // 6. Resume execution
     if hart.halt_resume(dmi, false).is_err() {
         let _ = hart.csr_write(dmi, RV_CSR_MIE, saved_mie);
         let _ = hart.pc_write(dmi, saved_pc);
-        if param4 != 0 && saved_sp != 0 {
+        if sp.is_some() {
             let _ = hart.gpr_write(dmi, RV_REG_SP, saved_sp);
         }
         return false;
     }
 
-    // 6. Wait for breakpoint or request halt (timeout ~10s)
+    // 7. Wait for breakpoint (timeout ~10s)
     let mut success = false;
     for _ in 0..10_000 {
         let (reason, _) = hart.halt_poll(dmi);
         match reason {
-            HaltReason::Breakpoint | HaltReason::Request => {
+            HaltReason::Breakpoint => {
                 success = true;
                 break;
             }
@@ -97,18 +106,46 @@ pub fn run_stub(
     // Ensure target is halted
     let _ = hart.halt_request(dmi);
 
-    // 7. Verify return code in a0 (0 = success)
+    // 8. Verify return code in a0 (0 = success)
     if success {
         let a0 = hart.gpr_read(dmi, RV_REG_A0).unwrap_or(0xffff_ffff);
         success = a0 == 0;
     }
 
-    // 8. Restore MIE, PC, and SP
+    // 9. Restore MIE, PC, and SP
     let _ = hart.csr_write(dmi, RV_CSR_MIE, saved_mie);
     let _ = hart.pc_write(dmi, saved_pc);
-    if param4 != 0 && saved_sp != 0 {
+    if sp.is_some() {
         let _ = hart.gpr_write(dmi, RV_REG_SP, saved_sp);
     }
 
     success
+}
+
+/// Run a flash/utility stub on target without touching the stack pointer.
+pub fn run_stub(
+    hart: &RiscvHart,
+    dmi: &mut dyn DmiTransport,
+    loadaddr: u32,
+    param1: u32,
+    param2: u32,
+    param3: u32,
+    param4: u32,
+) -> bool {
+    run_stub_internal(hart, dmi, loadaddr, None, param1, param2, param3, param4)
+}
+
+/// Run a flash/utility stub on target with an explicit stack pointer.
+/// If `stack` is non-zero, SP is saved before execution and restored afterwards.
+pub fn run_stub_with_stack(
+    hart: &RiscvHart,
+    dmi: &mut dyn DmiTransport,
+    loadaddr: u32,
+    stack: u32,
+    param1: u32,
+    param2: u32,
+    param3: u32,
+    param4: u32,
+) -> bool {
+    run_stub_internal(hart, dmi, loadaddr, Some(stack), param1, param2, param3, param4)
 }

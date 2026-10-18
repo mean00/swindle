@@ -29,7 +29,7 @@ unsafe extern "C" {
 
     fn target_get_next_c(t: *mut TargetC) -> *mut TargetC;
     fn target_set_next_c(t: *mut TargetC, next: *mut TargetC);
-    fn target_set_attached_c(t: *mut TargetC, att: bool);
+    pub(crate) fn target_set_attached_c(t: *mut TargetC, att: bool);
     fn target_set_tc_c(t: *mut TargetC, tc: *mut c_void);
     fn target_call_attach_c(t: *mut TargetC) -> bool;
     fn target_call_detach_c(t: *mut TargetC);
@@ -75,14 +75,7 @@ pub fn get_cur_target() -> *mut TargetC {
     unsafe { cur_target }
 }
 
-pub fn current_driver() -> Option<CTargetDriver> {
-    let t = unsafe { cur_target };
-    if t.is_null() {
-        None
-    } else {
-        Some(unsafe { CTargetDriver::new(t) })
-    }
-}
+pub use super::current_driver;
 
 pub fn target_ram_count(target: *mut TargetC) -> usize {
     let mut count = 0;

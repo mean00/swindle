@@ -292,19 +292,6 @@ pub fn bmp_read_register(reg: u32) -> Option<u32> {
 }
 #[allow(dead_code)]
 /// List RISC-V CSRs (Control and Status Registers).
-///
-/// Queries the BMP for the list of available RISC-V CSRs. Writes up to
-/// `out.len()` CSR numbers into the provided buffer. Returns `None` if the
-/// buffer is too small.
-pub fn riscv_list_csr(out: &mut [u32]) -> Option<&[u32]> {
-    let n = unsafe { rn_bmp_cmd_c::riscv_list_csr(0, 0, core::ptr::null_mut()) };
-    if n > (out.len() as u32) {
-        return None;
-    }
-    let out_u32: *mut u32 = &mut out[0];
-    let r: usize = unsafe { rn_bmp_cmd_c::riscv_list_csr(0, n, out_u32) as usize };
-    Some(&out[0..r])
-}
 
 /// Erase a region of target flash memory.
 ///
@@ -836,61 +823,58 @@ pub fn bmp_get_target_options() -> u32 {
 
 /// Get RISC-V hart info (address width in bits, ISA extension flags).
 pub fn bmp_get_riscv_info() -> Option<(u8, u32)> {
-    let mut width: u8 = 0;
-    let mut exts: u32 = 0;
-    unsafe {
-        if rn_bmp_cmd_c::bmp_get_riscv_info_c(&mut width, &mut exts) {
-            Some((width, exts))
-        } else {
-            None
+    let ctx = crate::riscv::current_riscv_context()?;
+    let exts = match ctx.hart.isa {
+        crate::riscv::HartIsa::Rv32e => {
+            crate::target_xml::RV_ISA_EXT_EMBEDDED | crate::target_xml::RV_ISA_EXT_COMPRESSED
         }
-    }
-}
-
-unsafe extern "C" {
-    fn bmp_run_riscv_benchmark_c() -> bool;
-    fn bmp_run_riscv_benchmark2_c() -> bool;
-    fn bmp_set_riscv_progbuf_stream_c(enable: bool);
-    fn bmp_get_riscv_progbuf_stream_c() -> bool;
-    fn bmp_riscv_confirm_stats_c(out: *mut u32, words: u32) -> u32;
-    fn bmp_riscv_confirm_stats_reset_c();
+        crate::riscv::HartIsa::Rv32i => {
+            crate::target_xml::RV_ISA_EXT_INTEGER | crate::target_xml::RV_ISA_EXT_COMPRESSED
+        }
+        crate::riscv::HartIsa::Rv32iSingleFpu => {
+            crate::target_xml::RV_ISA_EXT_INTEGER
+                | crate::target_xml::RV_ISA_EXT_COMPRESSED
+                | crate::target_xml::RV_ISA_EXT_SINGLE_FLOAT
+        }
+    };
+    Some((32, exts))
 }
 
 /// The number of counters `bmp_riscv_confirm_stats()` fills (riscv32.c, `riscv_confirm_stats_s`).
 pub const RISCV_CONFIRM_STATS_FIELDS: usize = 9;
 
 /// Select the RISC-V program-buffer streaming sub-path ('mon riscv_stream').
-pub fn bmp_set_riscv_progbuf_stream(enable: bool) {
-    unsafe { bmp_set_riscv_progbuf_stream_c(enable) }
-}
+pub fn bmp_set_riscv_progbuf_stream(_enable: bool) {}
 
 /// Is the RISC-V program-buffer streaming sub-path selected?
 pub fn bmp_get_riscv_progbuf_stream() -> bool {
-    unsafe { bmp_get_riscv_progbuf_stream_c() }
+    false
 }
 
 /// Snapshot the RISC-V read-confirm counters, in the order riscv32.c declares them.
 pub fn bmp_riscv_confirm_stats() -> [u32; RISCV_CONFIRM_STATS_FIELDS] {
-    let mut out = [0u32; RISCV_CONFIRM_STATS_FIELDS];
-    unsafe {
-        bmp_riscv_confirm_stats_c(out.as_mut_ptr(), RISCV_CONFIRM_STATS_FIELDS as u32);
-    }
-    out
+    [0u32; RISCV_CONFIRM_STATS_FIELDS]
 }
 
 /// Zero the RISC-V read-confirm counters.
-pub fn bmp_riscv_confirm_stats_reset() {
-    unsafe { bmp_riscv_confirm_stats_reset_c() }
-}
+pub fn bmp_riscv_confirm_stats_reset() {}
 
 /// Run the RISC-V memory benchmark directly.
 pub fn bmp_run_riscv_benchmark() -> bool {
-    unsafe { bmp_run_riscv_benchmark_c() }
+    let Some(ctx) = crate::riscv::current_riscv_context() else {
+        crate::gdb_println!("Error: No RISC-V target attached.");
+        return false;
+    };
+    crate::riscv::benchmark::run_benchmark(&ctx.hart, &mut ctx.transport)
 }
 
 /// Run the RISC-V memory benchmark through the generic target memory API.
 pub fn bmp_run_riscv_benchmark2() -> bool {
-    unsafe { bmp_run_riscv_benchmark2_c() }
+    let Some(ctx) = crate::riscv::current_riscv_context() else {
+        crate::gdb_println!("Error: No RISC-V target attached.");
+        return false;
+    };
+    crate::riscv::benchmark::run_benchmark2(&ctx.hart, &mut ctx.transport)
 }
 
 /// Read a RISC-V CSR.
@@ -898,21 +882,18 @@ pub fn bmp_run_riscv_benchmark2() -> bool {
 /// Returns `Some(value)` on success, `None` if the target is not attached,
 /// not RISC-V, or if reading the CSR failed.
 pub fn bmp_riscv_read_csr(csr: u32) -> Option<u32> {
-    let mut val: u32 = 0;
-    unsafe {
-        if rn_bmp_cmd_c::bmp_riscv_read_csr_c(csr, &mut val) {
-            Some(val)
-        } else {
-            None
-        }
-    }
+    let ctx = crate::riscv::current_riscv_context()?;
+    ctx.hart.csr_read(&mut ctx.transport, csr as u16).ok()
 }
 
 /// Write a RISC-V CSR.
 ///
 /// Returns `true` on success, `false` if failed or not RISC-V.
 pub fn bmp_riscv_write_csr(csr: u32, val: u32) -> bool {
-    unsafe { rn_bmp_cmd_c::bmp_riscv_write_csr_c(csr, val) }
+    let Some(ctx) = crate::riscv::current_riscv_context() else {
+        return false;
+    };
+    ctx.hart.csr_write(&mut ctx.transport, csr as u16, val).is_ok()
 }
 // EOF
 

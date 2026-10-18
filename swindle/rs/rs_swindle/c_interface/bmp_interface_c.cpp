@@ -76,33 +76,7 @@ extern "C" void bmp_mem_counts_reset_c()
     ln_swd_tx_count = 0;
     ln_rv_tx_count = 0;
 }
-/*
- * BMP 103: the RISC-V read-confirm instrumentation (blackmagic/src/target/riscv32.c).
- * 'mon riscv_stream' selects the program-buffer streaming sub-path, and 'mon riscv_confirm'
- * reads the counters the confirmed read keeps - the *silent* losses, the ones no status bit
- * reports (riscv_fault.md §12.6). Both are the A/B knobs §12.9 is measured with.
- */
-extern "C" void bmp_riscv32_set_progbuf_stream(bool enable);
-extern "C" bool bmp_riscv32_get_progbuf_stream(void);
-extern "C" void bmp_riscv32_reset_confirm_stats(void);
-extern "C" uint32_t bmp_riscv32_confirm_stats(uint32_t *out, uint32_t words);
 
-extern "C" void bmp_set_riscv_progbuf_stream_c(bool enable)
-{
-    bmp_riscv32_set_progbuf_stream(enable);
-}
-extern "C" bool bmp_get_riscv_progbuf_stream_c(void)
-{
-    return bmp_riscv32_get_progbuf_stream();
-}
-extern "C" uint32_t bmp_riscv_confirm_stats_c(uint32_t *out, uint32_t words)
-{
-    return bmp_riscv32_confirm_stats(out, words);
-}
-extern "C" void bmp_riscv_confirm_stats_reset_c(void)
-{
-    bmp_riscv32_reset_confirm_stats();
-}
 extern "C" void *bmp_get_temporary_buffer(uint32_t asked)
 {
     if (asked > STUB_BUFFER_SIZE)
@@ -874,77 +848,7 @@ extern "C" uint32_t bmp_get_target_options_c()
         return 0;
     return cur_target->target_options;
 }
-
-extern "C" bool riscv_target_get_info_c(target_s *target, uint8_t *address_width, uint32_t *extensions);
-
-extern "C" bool bmp_get_riscv_info_c(uint8_t *address_width, uint32_t *extensions)
-{
-    if (!cur_target || TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
-        return false;
-    return riscv_target_get_info_c(cur_target, address_width, extensions);
-}
-
-extern "C" bool riscv32_run_benchmark(target_s *target);
-
-extern "C" bool bmp_run_riscv_benchmark_c(void)
-{
-    if (!cur_target)
-    {
-        gdb_outf("Error: No target attached.\n");
-        return false;
-    }
-
-    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
-    {
-        gdb_outf("Error: Target architecture is not RISC-V. Target arch: %u, RISC-V arch: %u\n",
-                 (unsigned)TOPT_GET_ARCH(cur_target->target_options), (unsigned)TOPT_ARCH_RISCV);
-        return false;
-    }
-
-    return riscv32_run_benchmark(cur_target);
-}
-
-extern "C" bool riscv32_run_benchmark2(target_s *target);
-
-extern "C" bool bmp_run_riscv_benchmark2_c(void)
-{
-    if (!cur_target)
-    {
-        gdb_outf("Error: No target attached.\n");
-        return false;
-    }
-
-    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
-    {
-        gdb_outf("Error: Target architecture is not RISC-V. Target arch: %u, RISC-V arch: %u\n",
-                 (unsigned)TOPT_GET_ARCH(cur_target->target_options), (unsigned)TOPT_ARCH_RISCV);
-        return false;
-    }
-
-    return riscv32_run_benchmark2(cur_target);
-}
-
-extern "C" bool bmp_riscv_read_csr_c(uint32_t csr, uint32_t *val)
-{
-    if (!cur_target)
-        return false;
-
-    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
-        return false;
-
-    return target_reg_read(cur_target, 128 + csr, val, sizeof(*val)) == sizeof(*val);
-}
-
-extern "C" bool bmp_riscv_write_csr_c(uint32_t csr, uint32_t val)
-{
-    if (!cur_target)
-        return false;
-
-    if (TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
-        return false;
-
-    return target_reg_write(cur_target, 128 + csr, &val, sizeof(val)) == sizeof(val);
-}
 // EOF
+
 
 

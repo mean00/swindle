@@ -60,15 +60,21 @@ static bool riscv32_target_csr_read(target_s *target, const uint16_t reg, uint32
     It returns true on success, false on error
     There is a built-in timeout of 10 seconds
 */
-bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2, uint32_t param3,
-                      uint32_t param4)
+static bool riscv32_run_stub_internal(target_s *t, uint32_t codeexec, bool set_sp, uint32_t stack,
+                                       uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4)
 {
     bool ret = false;
-    uint32_t pc, mie, zero = 0;
+    uint32_t pc, mie, saved_sp = 0, zero = 0;
     // save PC & MIE
     t->reg_read(t, RISCV_REG_PC, &pc, 4);
     riscv32_target_csr_read(t, RV_CSR_MIE, &mie);
     riscv32_target_csr_write(t, RV_CSR_MIE, zero); // disable interrupt
+    if (set_sp)
+    {
+        t->reg_read(t, RISCV_REG_SP, &saved_sp, 4);
+        if (stack != 0)
+            t->reg_write(t, RISCV_REG_SP, &stack, 4);
+    }
     t->reg_write(t, RISCV_REG_A0, &param1, 4);
     t->reg_write(t, RISCV_REG_A1, &param2, 4);
     t->reg_write(t, RISCV_REG_A2, &param3, 4);
@@ -106,9 +112,23 @@ the_end:
         t->reg_read(t, RISCV_REG_A0, &a0, 4);
         ret = (a0 == 0);
     }
-    // restore PC & MIE
+    // restore PC, MIE & SP
     riscv32_target_csr_write(t, RV_CSR_MIE, mie); // put back MIE
     t->reg_write(t, RISCV_REG_PC, &pc, 4);
+    if (set_sp)
+        t->reg_write(t, RISCV_REG_SP, &saved_sp, 4);
     return ret;
+}
+
+bool riscv32_run_stub(target_s *t, uint32_t codeexec, uint32_t param1, uint32_t param2, uint32_t param3,
+                      uint32_t param4)
+{
+    return riscv32_run_stub_internal(t, codeexec, false, 0, param1, param2, param3, param4);
+}
+
+bool riscv32_run_stub_with_stack(target_s *t, uint32_t codeexec, uint32_t stack, uint32_t param1, uint32_t param2,
+                                 uint32_t param3, uint32_t param4)
+{
+    return riscv32_run_stub_internal(t, codeexec, true, stack, param1, param2, param3, param4);
 }
 //----

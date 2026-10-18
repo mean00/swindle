@@ -73,6 +73,15 @@ impl HartIsa {
     }
 }
 
+/// Memory access methods available for RISC-V debug target.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemoryAccessMethod {
+    Abstract,
+    AbstAuto,
+    Progbuf,
+    Sysbus,
+}
+
 /// RISC-V Hart state and controller.
 pub struct RiscvHart {
     pub isa: HartIsa,
@@ -85,6 +94,7 @@ pub struct RiscvHart {
     pub progbuf_size: u8,
     pub has_sysbus: bool,
     pub has_abstauto: bool,
+    pub active_method: MemoryAccessMethod,
 }
 
 impl RiscvHart {
@@ -130,6 +140,7 @@ impl RiscvHart {
             progbuf_size,
             has_sysbus,
             has_abstauto,
+            active_method: MemoryAccessMethod::Abstract,
         };
 
         // Halt hart briefly to read IDs and MISA safely
@@ -288,9 +299,12 @@ impl RiscvHart {
         for _ in 0..1000 {
             let status = dmi.read(RV_DM_STATUS)?;
             if (status & RV_DM_STAT_ALL_HALTED) != 0 {
+                // Clear haltreq once halted, matching C Blackmagic line 1337 and sdi.txt Table 3-16
+                dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
                 return Ok(());
             }
         }
+        let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
         Err(DmiError::Timeout)
     }
 
@@ -307,18 +321,28 @@ impl RiscvHart {
         dcsr |= RV_DCSR_EBREAKM;
         let _ = self.csr_write(dmi, RV_CSR_DCSR, dcsr);
 
-        // Send resume request
+        // Step 1: Clear haltreq before resume (sdi.txt Table 3-16)
+        dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
+
+        // Step 2: Send resume request (0x40000001)
         dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HART_RESUME_REQ)?;
-        for _ in 0..500 {
+        for _ in 0..1000 {
             let status = dmi.read(RV_DM_STATUS)?;
-            if (status & RV_DM_STAT_ALL_RESUMEACK) != 0 {
-                // Clear resume request
-                dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
+            if (status & RV_DM_STAT_ALL_RUNNING) != 0 || (status & RV_DM_STAT_ALL_HALTED) == 0 {
+                // Target is running
+                let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+                return Ok(());
+            }
+            // Check if core already ran and halted on ebreak/step
+            let dcsr = self.csr_read(dmi, RV_CSR_DCSR).unwrap_or(0);
+            let cause = (dcsr & RV_DCSR_CAUSE_MASK) >> RV_DCSR_CAUSE_SHIFT;
+            if cause == 1 /* ebreak */ || (step && cause == 4 /* step */) {
+                let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
                 return Ok(());
             }
         }
         let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
-        Ok(())
+        Err(DmiError::Timeout)
     }
 
     /// Poll core execution state.

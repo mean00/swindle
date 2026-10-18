@@ -138,6 +138,24 @@ pub unsafe extern "C" fn riscv32_run_stub(
     stub::run_stub(&ctx.hart, &mut ctx.transport, loadaddr, p1, p2, p3, p4)
 }
 
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riscv32_run_stub_with_stack(
+    target: *mut TargetC,
+    loadaddr: u32,
+    stack: u32,
+    p1: u32,
+    p2: u32,
+    p3: u32,
+    p4: u32,
+) -> bool {
+    let priv_ptr = target_get_priv_c(target);
+    if priv_ptr.is_null() {
+        return false;
+    }
+    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
+    stub::run_stub_with_stack(&ctx.hart, &mut ctx.transport, loadaddr, stack, p1, p2, p3, p4)
+}
+
 // ---------------------------------------------------------------------------
 // Target lifecycle and probe entry point
 // ---------------------------------------------------------------------------
@@ -220,8 +238,11 @@ pub unsafe extern "C" fn riscv_dmi_init(dmi: *mut RiscvDmiC) {
 
     let _ = riscv32_probe(target);
 
-    // Resume target after probing completes
+    // Automatically benchmark candidate memory access methods and pick the fastest
     let ctx_ref = &mut *(priv_ptr as *mut RiscvTargetContext);
+    super::benchmark::auto_select_fastest_method(&mut ctx_ref.hart, &mut ctx_ref.transport);
+
+    // Resume target after probing completes
     let _ = ctx_ref.hart.halt_resume(&mut ctx_ref.transport, false);
 }
 
@@ -244,48 +265,27 @@ pub unsafe extern "C" fn riscv_detach(target: *mut TargetC) {
     riscv_target_detach(target);
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bmp_riscv32_set_progbuf_stream(_enable: bool) {}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bmp_riscv32_get_progbuf_stream() -> bool {
-    false
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bmp_riscv32_confirm_stats(_out: *mut u32, _words: u32) -> u32 {
-    0
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bmp_riscv32_reset_confirm_stats() {}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv_target_get_info_c(
-    target: *mut TargetC,
-    address_width: *mut u8,
-    extensions: *mut u32,
-) -> bool {
-    let priv_ptr = target_get_priv_c(target);
+/// Helper to extract `RiscvTargetContext` from a `TargetC` pointer if it is an attached RISC-V target.
+pub fn get_riscv_context<'a>(target: *mut TargetC) -> Option<&'a mut RiscvTargetContext> {
+    if target.is_null() {
+        return None;
+    }
+    let opts = unsafe { crate::target::c_adapter::target_get_options_c(target) };
+    if ((opts >> 28) & 0x03) != 2 {
+        return None;
+    }
+    let priv_ptr = unsafe { target_get_priv_c(target) };
     if priv_ptr.is_null() {
-        return false;
+        None
+    } else {
+        Some(unsafe { &mut *(priv_ptr as *mut RiscvTargetContext) })
     }
-    let ctx = &*(priv_ptr as *mut RiscvTargetContext);
-    if !address_width.is_null() {
-        *address_width = 32;
-    }
-    if !extensions.is_null() {
-        *extensions = match ctx.hart.isa {
-            HartIsa::Rv32e => crate::target_xml::RV_ISA_EXT_EMBEDDED | crate::target_xml::RV_ISA_EXT_COMPRESSED,
-            HartIsa::Rv32i => crate::target_xml::RV_ISA_EXT_INTEGER | crate::target_xml::RV_ISA_EXT_COMPRESSED,
-            HartIsa::Rv32iSingleFpu => {
-                crate::target_xml::RV_ISA_EXT_INTEGER
-                    | crate::target_xml::RV_ISA_EXT_COMPRESSED
-                    | crate::target_xml::RV_ISA_EXT_SINGLE_FLOAT
-            }
-        };
-    }
-    true
+}
+
+/// Helper to get the `RiscvTargetContext` for the currently selected target.
+pub fn current_riscv_context<'a>() -> Option<&'a mut RiscvTargetContext> {
+    let cur = crate::target::c_adapter::get_cur_target();
+    get_riscv_context(cur)
 }
 
 // ---------------------------------------------------------------------------
@@ -328,7 +328,11 @@ unsafe extern "C" fn riscv_target_mem_read(target: *mut TargetC, dest: *mut c_vo
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(dest as *mut u8, len);
-    let _ = RiscvMem::read(&ctx.hart, &mut ctx.transport, src as u32, slice);
+    if let Err(e) = RiscvMem::read(&ctx.hart, &mut ctx.transport, src as u32, slice) {
+        crate::glue::gdb_out_rs("RiscvMem::read failed at addr=");
+        crate::bmplogger::G::print_hex(src as u32);
+        crate::glue::gdb_out_rs("\n");
+    }
 }
 
 unsafe extern "C" fn riscv_target_mem_write(target: *mut TargetC, dest: u64, src: *const c_void, len: usize) {
@@ -338,7 +342,11 @@ unsafe extern "C" fn riscv_target_mem_write(target: *mut TargetC, dest: u64, src
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(src as *const u8, len);
-    let _ = RiscvMem::write(&ctx.hart, &mut ctx.transport, dest as u32, slice);
+    if let Err(e) = RiscvMem::write(&ctx.hart, &mut ctx.transport, dest as u32, slice) {
+        crate::glue::gdb_out_rs("RiscvMem::write failed at addr=");
+        crate::bmplogger::G::print_hex(dest as u32);
+        crate::glue::gdb_out_rs("\n");
+    }
 }
 
 unsafe extern "C" fn riscv_target_mem_read_nostop(
@@ -472,12 +480,3 @@ unsafe extern "C" fn riscv_target_breakwatch_clear(_target: *mut TargetC, _bw: *
     -1
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv32_run_benchmark(_target: *mut TargetC) -> bool {
-    true
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv32_run_benchmark2(_target: *mut TargetC) -> bool {
-    true
-}

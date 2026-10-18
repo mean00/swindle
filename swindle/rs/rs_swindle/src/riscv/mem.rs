@@ -2,7 +2,7 @@
 
 use super::dm::*;
 use super::dmi::{DmiError, DmiTransport};
-use super::hart::RiscvHart;
+use super::hart::{MemoryAccessMethod, RiscvHart};
 use crate::target::driver::TargetError;
 
 // Sysbus Control Bits
@@ -47,10 +47,36 @@ impl RiscvMem {
         addr: u32,
         dest: &mut [u8],
     ) -> Result<(), TargetError> {
-        if hart.has_sysbus {
-            Self::sysbus_read(dmi, addr, dest)
-        } else {
-            Self::abstract_read(hart, dmi, addr, dest)
+        match hart.active_method {
+            MemoryAccessMethod::Sysbus => Self::sysbus_read(dmi, addr, dest),
+            MemoryAccessMethod::AbstAuto => {
+                if dest.len() <= 16 {
+                    Self::abstract_read(hart, dmi, addr, dest)
+                } else {
+                    let mut cur_addr = addr;
+                    let mut remaining = dest;
+                    let unaligned = (cur_addr & 3) as usize;
+                    if unaligned != 0 {
+                        let leading = core::cmp::min(4 - unaligned, remaining.len());
+                        Self::abstract_read(hart, dmi, cur_addr, &mut remaining[..leading])?;
+                        cur_addr += leading as u32;
+                        remaining = &mut remaining[leading..];
+                    }
+                    let aligned_len = remaining.len() & !3;
+                    if aligned_len >= 16 {
+                        Self::abstract_auto_read(dmi, cur_addr, &mut remaining[..aligned_len])?;
+                        cur_addr += aligned_len as u32;
+                        remaining = &mut remaining[aligned_len..];
+                    }
+                    if !remaining.is_empty() {
+                        Self::abstract_read(hart, dmi, cur_addr, remaining)?;
+                    }
+                    Ok(())
+                }
+            }
+            MemoryAccessMethod::Abstract | MemoryAccessMethod::Progbuf => {
+                Self::abstract_read(hart, dmi, addr, dest)
+            }
         }
     }
 
@@ -64,10 +90,36 @@ impl RiscvMem {
         if src.is_empty() {
             return Ok(());
         }
-        if hart.has_sysbus {
-            Self::sysbus_write(dmi, addr, src)
-        } else {
-            Self::abstract_write(hart, dmi, addr, src)
+        match hart.active_method {
+            MemoryAccessMethod::Sysbus => Self::sysbus_write(dmi, addr, src),
+            MemoryAccessMethod::AbstAuto => {
+                if src.len() <= 16 {
+                    Self::abstract_write(hart, dmi, addr, src)
+                } else {
+                    let mut cur_addr = addr;
+                    let mut remaining = src;
+                    let unaligned = (cur_addr & 3) as usize;
+                    if unaligned != 0 {
+                        let leading = core::cmp::min(4 - unaligned, remaining.len());
+                        Self::abstract_write(hart, dmi, cur_addr, &remaining[..leading])?;
+                        cur_addr += leading as u32;
+                        remaining = &remaining[leading..];
+                    }
+                    let aligned_len = remaining.len() & !3;
+                    if aligned_len >= 16 {
+                        Self::abstract_auto_write(dmi, cur_addr, &remaining[..aligned_len])?;
+                        cur_addr += aligned_len as u32;
+                        remaining = &remaining[aligned_len..];
+                    }
+                    if !remaining.is_empty() {
+                        Self::abstract_write(hart, dmi, cur_addr, remaining)?;
+                    }
+                    Ok(())
+                }
+            }
+            MemoryAccessMethod::Abstract | MemoryAccessMethod::Progbuf => {
+                Self::abstract_write(hart, dmi, addr, src)
+            }
         }
     }
 
@@ -117,7 +169,7 @@ impl RiscvMem {
         Err(DmiError::Timeout)
     }
 
-    fn sysbus_read(dmi: &mut dyn DmiTransport, mut addr: u32, mut dest: &mut [u8]) -> Result<(), TargetError> {
+    pub(crate) fn sysbus_read(dmi: &mut dyn DmiTransport, mut addr: u32, mut dest: &mut [u8]) -> Result<(), TargetError> {
         // Word-aligned chunk loop
         while dest.len() >= 4 && (addr & 3) == 0 {
             let sbcs = RV_SBCS_SBACCESS_32 | RV_SBCS_SBAUTOINCREMENT | RV_SBCS_SBREADONADDR;
@@ -160,7 +212,7 @@ impl RiscvMem {
         Ok(())
     }
 
-    fn sysbus_write(dmi: &mut dyn DmiTransport, mut addr: u32, mut src: &[u8]) -> Result<(), TargetError> {
+    pub(crate) fn sysbus_write(dmi: &mut dyn DmiTransport, mut addr: u32, mut src: &[u8]) -> Result<(), TargetError> {
         // Word-aligned chunk loop
         while src.len() >= 4 && (addr & 3) == 0 {
             let val = u32::from_le_bytes(src[..4].try_into().unwrap());
@@ -205,7 +257,7 @@ impl RiscvMem {
 
     // --- Abstract Memory Operations ---
 
-    fn abstract_read(
+    pub(crate) fn abstract_read(
         _hart: &RiscvHart,
         dmi: &mut dyn DmiTransport,
         mut addr: u32,
@@ -247,7 +299,7 @@ impl RiscvMem {
         Ok(())
     }
 
-    fn abstract_write(
+    pub(crate) fn abstract_write(
         _hart: &RiscvHart,
         dmi: &mut dyn DmiTransport,
         mut addr: u32,
@@ -283,6 +335,83 @@ impl RiscvMem {
             src = &src[1..];
         }
 
+        dmi.quiesce();
+        Ok(())
+    }
+
+    // --- Abstract Autoexec (Streaming) Operations ---
+
+    pub(crate) fn abstract_auto_read(
+        dmi: &mut dyn DmiTransport,
+        addr: u32,
+        dest: &mut [u8],
+    ) -> Result<(), TargetError> {
+        let word_count = dest.len() / 4;
+        if word_count == 0 {
+            return Err(TargetError::AccessFault);
+        }
+
+        dmi.write(RV_DM_DATA1, addr).map_err(|_| TargetError::AccessFault)?;
+        let cmd = (2 << 24) | (0 << 16) | (2 << 20) | (1 << 19); // read, 32-bit, postincrement
+        exec_command(dmi, cmd).map_err(|_| TargetError::AccessFault)?;
+
+        if word_count == 1 {
+            let val = dmi.read(RV_DM_DATA0).map_err(|_| TargetError::AccessFault)?;
+            dest[..4].copy_from_slice(&val.to_le_bytes());
+            dmi.quiesce();
+            return Ok(());
+        }
+
+        dmi.write(RV_DM_ABSTRACTAUTO, 1).map_err(|_| TargetError::AccessFault)?;
+        for i in 0..(word_count - 1) {
+            let val = match dmi.read(RV_DM_DATA0) {
+                Ok(v) => v,
+                Err(_) => {
+                    let _ = dmi.write(RV_DM_ABSTRACTAUTO, 0);
+                    return Err(TargetError::AccessFault);
+                }
+            };
+            dest[i * 4..(i + 1) * 4].copy_from_slice(&val.to_le_bytes());
+        }
+
+        dmi.write(RV_DM_ABSTRACTAUTO, 0).map_err(|_| TargetError::AccessFault)?;
+        let last_val = dmi.read(RV_DM_DATA0).map_err(|_| TargetError::AccessFault)?;
+        let last_idx = word_count - 1;
+        dest[last_idx * 4..(last_idx + 1) * 4].copy_from_slice(&last_val.to_le_bytes());
+
+        dmi.quiesce();
+        Ok(())
+    }
+
+    pub(crate) fn abstract_auto_write(
+        dmi: &mut dyn DmiTransport,
+        addr: u32,
+        src: &[u8],
+    ) -> Result<(), TargetError> {
+        let word_count = src.len() / 4;
+        if word_count == 0 {
+            return Err(TargetError::AccessFault);
+        }
+
+        dmi.write(RV_DM_DATA1, addr).map_err(|_| TargetError::AccessFault)?;
+        let first_val = u32::from_le_bytes(src[..4].try_into().unwrap());
+        dmi.write(RV_DM_DATA0, first_val).map_err(|_| TargetError::AccessFault)?;
+
+        let cmd = (2 << 24) | (1 << 16) | (2 << 20) | (1 << 19); // write, 32-bit, postincrement
+        exec_command(dmi, cmd).map_err(|_| TargetError::AccessFault)?;
+
+        dmi.write(RV_DM_ABSTRACTAUTO, 1).map_err(|_| TargetError::AccessFault)?;
+        for i in 1..word_count {
+            let val = u32::from_le_bytes(src[i * 4..(i + 1) * 4].try_into().unwrap());
+            if dmi.write(RV_DM_DATA0, val).is_err() {
+                let _ = dmi.write(RV_DM_ABSTRACTAUTO, 0);
+                return Err(TargetError::AccessFault);
+            }
+        }
+
+        wait_command_complete(dmi).map_err(|_| TargetError::AccessFault)?;
+        dmi.write(RV_DM_ABSTRACTAUTO, 0).map_err(|_| TargetError::AccessFault)?;
+        wait_command_complete(dmi).map_err(|_| TargetError::AccessFault)?;
         dmi.quiesce();
         Ok(())
     }
