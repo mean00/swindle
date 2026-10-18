@@ -59,6 +59,10 @@ impl FlashSectorBuffer {
 
                 // Initialize buffer for new sector
                 if self.data.len() < buf_size {
+                    let additional = buf_size - self.data.len();
+                    self.data
+                        .try_reserve(additional)
+                        .map_err(|_| FlashError::BufferAllocationFailed)?;
                     self.data.resize(buf_size, geometry.erased_byte);
                 } else {
                     self.data[..buf_size].fill(geometry.erased_byte);

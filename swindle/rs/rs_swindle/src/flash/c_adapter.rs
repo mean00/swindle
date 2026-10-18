@@ -2,7 +2,6 @@
 
 #![allow(unsafe_op_in_unsafe_fn)]
 
-use alloc::vec::Vec;
 use cty::c_void;
 use super::driver::{FlashDriver, FlashError, FlashOperation};
 use super::geometry::FlashGeometry;
@@ -164,7 +163,7 @@ unsafe fn get_or_create_manager(target: *mut target_s) -> Option<&'static mut Fl
             f.erased,
         );
 
-        let mut extra_sizes = Vec::new();
+        let mut extra_sizes = heapless::Vec::new();
         if !f.erasesizes.is_null() {
             let mut i = 0;
             loop {
@@ -172,7 +171,7 @@ unsafe fn get_or_create_manager(target: *mut target_s) -> Option<&'static mut Fl
                 if sz == 0 {
                     break;
                 }
-                extra_sizes.push(sz);
+                let _ = extra_sizes.push(sz);
                 i += 1;
             }
         }

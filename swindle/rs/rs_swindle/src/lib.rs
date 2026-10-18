@@ -58,6 +58,7 @@ mod encoder;
 pub mod flash;
 pub use flash as flash_manager;
 pub mod target;
+pub mod riscv;
 mod freertos;
 mod glue;
 mod mem_cache;

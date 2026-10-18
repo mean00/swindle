@@ -110,6 +110,24 @@ impl<'a> XmlSink<'a> {
             }
         }
     }
+
+    #[inline]
+    pub fn write_u32(&mut self, mut n: u32) {
+        if n == 0 {
+            self.write("0");
+            return;
+        }
+        let mut buf = [0u8; 10];
+        let mut i = 10;
+        while n > 0 {
+            i -= 1;
+            buf[i] = b'0' + (n % 10) as u8;
+            n /= 10;
+        }
+        if let Ok(s) = core::str::from_utf8(&buf[i..]) {
+            self.write(s);
+        }
+    }
 }
 
 /// Helper to emit a register tag:
@@ -289,28 +307,28 @@ fn for_each_riscv_features(extensions: u32, sink: &mut XmlSink) {
         for &(pfx, count, start_regnum) in &RISCV_FPU_GROUPS {
             let start_idx = if pfx == "fs" && count == 10 { 2 } else { 0 };
             for i in 0..count {
-                let reg_num = start_idx + i;
+                let reg_num = start_idx + i as u32;
                 let regnum = start_regnum + i as u32;
                 sink.write(REG_HEAD);
                 sink.write(pfx);
-                sink.write(DEC_STR[reg_num as usize]);
-                sink.write("\" bitsize=\"32\"  regnum=\"");
-                sink.write(DEC_STR[regnum as usize]);
-                sink.write("\"/>");
+                sink.write_u32(reg_num);
+                sink.write("\" bitsize=\"32\" type=\"ieee_single\" regnum=\"");
+                sink.write_u32(regnum);
+                sink.write("\" group=\"float\"/>");
             }
         }
         // ft8..ft11 -> regnum 61..64
-        for i in 0..4 {
+        for i in 0..4u32 {
             sink.write(REG_HEAD);
             sink.write("ft");
-            sink.write(DEC_STR[8 + i]);
-            sink.write("\" bitsize=\"32\"  regnum=\"");
-            sink.write(DEC_STR[61 + i]);
-            sink.write("\"/>");
+            sink.write_u32(8 + i);
+            sink.write("\" bitsize=\"32\" type=\"ieee_single\" regnum=\"");
+            sink.write_u32(61 + i);
+            sink.write("\" group=\"float\"/>");
         }
-        emit_reg(sink, "fflags", "", "\" bitsize=\"32\" regnum=\"66\" save-restore=\"no\"/>");
-        emit_reg(sink, "frm", "", "\" bitsize=\"32\" regnum=\"67\" save-restore=\"no\"/>");
-        emit_reg(sink, "fcsr", "", "\" bitsize=\"32\" regnum=\"68\" save-restore=\"no\"/>");
+        emit_reg(sink, "fflags", "", "\" bitsize=\"32\" type=\"int\" regnum=\"66\" group=\"float\" save-restore=\"no\"/>");
+        emit_reg(sink, "frm", "", "\" bitsize=\"32\" type=\"int\" regnum=\"67\" group=\"float\" save-restore=\"no\"/>");
+        emit_reg(sink, "fcsr", "", "\" bitsize=\"32\" type=\"int\" regnum=\"68\" group=\"float\" save-restore=\"no\"/>");
     }
 
     // Feature 3: org.gnu.gdb.riscv.csr

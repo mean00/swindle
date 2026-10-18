@@ -875,18 +875,13 @@ extern "C" uint32_t bmp_get_target_options_c()
     return cur_target->target_options;
 }
 
+extern "C" bool riscv_target_get_info_c(target_s *target, uint8_t *address_width, uint32_t *extensions);
+
 extern "C" bool bmp_get_riscv_info_c(uint8_t *address_width, uint32_t *extensions)
 {
     if (!cur_target || TOPT_GET_ARCH(cur_target->target_options) != TOPT_ARCH_RISCV)
         return false;
-    const riscv_hart_s *hart = riscv_hart_struct(cur_target);
-    if (!hart)
-        return false;
-    if (address_width)
-        *address_width = hart->address_width;
-    if (extensions)
-        *extensions = hart->extensions;
-    return true;
+    return riscv_target_get_info_c(cur_target, address_width, extensions);
 }
 
 extern "C" bool riscv32_run_benchmark(target_s *target);

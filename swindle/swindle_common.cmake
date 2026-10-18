@@ -246,10 +246,10 @@ if(SMALL_SWINDLE)
   )
 else()
   set(BM_TARGET ${BM_TARGET}
-    ${BMP_EXTRA}/extra/riscv_memaccess.c
+    # ${BMP_EXTRA}/extra/riscv_memaccess.c (replaced by rs_swindle::riscv)
     ${T}/riscv_adi_dtm.c
-    ${T}/riscv_debug.c
-    ${T}/riscv32.c
+    # ${T}/riscv_debug.c (replaced by rs_swindle::riscv)
+    # ${T}/riscv32.c (replaced by rs_swindle::riscv)
     ${T}/sfdp.c
     ${T}/spi.c
   )

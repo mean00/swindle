@@ -106,15 +106,15 @@ fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> 
     let priority = data[0];
     let stack = data[1];
 
-    // Read task name from dynamic offset
-    let name_len = off.max_task_name_len as usize;
-    let mut name: Vec<u8> = vec![b' '; name_len];
-    if !bmp_read_mem(tcb + off.offset_task_name, &mut name) {
+    // Read task name from dynamic offset using stack buffer (no heap allocation)
+    let name_len = core::cmp::min(core::cmp::max(off.max_task_name_len as usize, 1), 32);
+    let mut name: [u8; 32] = [b' '; 32];
+    if !bmp_read_mem(tcb + off.offset_task_name, &mut name[..name_len]) {
         bmpwarning!("cannot read name\n");
         return None;
     }
     // Trim trailing whitespace/null for the fixed-size array
-    let trimmed_len = name.iter().rposition(|&c| c != b' ' && c != 0).map(|i| i + 1).unwrap_or(0);
+    let trimmed_len = name[..name_len].iter().rposition(|&c| c != b' ' && c != 0).map(|i| i + 1).unwrap_or(0);
     let mut name_arr: [u8; 8] = [b' '; 8];
     let copy_len = core::cmp::min(trimmed_len, 8);
     name_arr[..copy_len].copy_from_slice(&name[..copy_len]);
@@ -138,6 +138,8 @@ pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
         bmplog!("freertos_collect_information: returning cached data\n");
         return &cache.data;
     }
+
+    cache.data.clear();
 
     let symbol = get_symbols();
     if !symbol.running {

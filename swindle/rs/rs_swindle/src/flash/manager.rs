@@ -1,26 +1,33 @@
 //! High-level FlashManager orchestrating erase, buffered writes, and completion.
 
-use alloc::vec::Vec;
 use super::buffer::FlashSectorBuffer;
 use super::driver::{FlashDriver, FlashError, FlashOperation};
 use super::geometry::FlashGeometry;
 
-/// A registered flash region pairing geometry with its driver backend and sector buffer.
+/// Maximum number of flash memory regions a single target can register.
+pub const MAX_FLASH_REGIONS: usize = 4;
+
+/// Maximum number of extra erase block sizes per flash region.
+pub const MAX_EXTRA_ERASE_SIZES: usize = 8;
+
+/// A registered flash region pairing geometry with its driver backend.
 pub struct FlashRegion<D: FlashDriver> {
     pub geometry: FlashGeometry,
-    pub extra_erase_sizes: Vec<usize>,
+    pub extra_erase_sizes: heapless::Vec<usize, MAX_EXTRA_ERASE_SIZES>,
     pub driver: D,
-    pub buffer: FlashSectorBuffer,
     pub current_operation: FlashOperation,
 }
 
 impl<D: FlashDriver> FlashRegion<D> {
-    pub fn new(geometry: FlashGeometry, extra_erase_sizes: Vec<usize>, driver: D) -> Self {
+    pub fn new(
+        geometry: FlashGeometry,
+        extra_erase_sizes: heapless::Vec<usize, MAX_EXTRA_ERASE_SIZES>,
+        driver: D,
+    ) -> Self {
         Self {
             geometry,
             extra_erase_sizes,
             driver,
-            buffer: FlashSectorBuffer::new(),
             current_operation: FlashOperation::None,
         }
     }
@@ -31,90 +38,77 @@ impl<D: FlashDriver> FlashRegion<D> {
             return Ok(());
         }
 
-        let FlashRegion {
-            ref geometry,
-            ref mut driver,
-            ref mut buffer,
-            ref mut current_operation,
-            ..
-        } = *self;
-
-        if *current_operation != FlashOperation::None {
-            buffer.flush(geometry, driver)?;
-            driver.done()?;
-            *current_operation = FlashOperation::None;
+        if self.current_operation != FlashOperation::None {
+            self.driver.done()?;
+            self.current_operation = FlashOperation::None;
         }
 
         if op != FlashOperation::None {
-            driver.prepare(op)?;
-            *current_operation = op;
+            self.driver.prepare(op)?;
+            self.current_operation = op;
         }
         Ok(())
-    }
-
-    /// Buffers and flushes a sub-slice of data.
-    pub fn write_chunk(&mut self, dest: u32, data: &[u8]) -> Result<(), FlashError> {
-        self.set_operation(FlashOperation::Write)?;
-        let FlashRegion {
-            ref geometry,
-            ref mut driver,
-            ref mut buffer,
-            ..
-        } = *self;
-        buffer.write(geometry, driver, dest, data)
-    }
-
-    /// Flushes buffer and transitions the driver back to idle (`FlashOperation::None`).
-    pub fn finish(&mut self) -> Result<(), FlashError> {
-        let mut res = Ok(());
-        let FlashRegion {
-            ref geometry,
-            ref mut driver,
-            ref mut buffer,
-            ref mut current_operation,
-            ..
-        } = *self;
-
-        if buffer.is_dirty() {
-            if let Err(e) = buffer.flush(geometry, driver) {
-                res = Err(e);
-            }
-        }
-
-        if *current_operation != FlashOperation::None {
-            if let Err(e) = driver.done() {
-                if res.is_ok() {
-                    res = Err(e);
-                }
-            }
-            *current_operation = FlashOperation::None;
-        }
-
-        buffer.clear();
-        res
     }
 }
 
 /// Orchestrates flash operations across one or more flash memory regions.
+/// Uses zero heap allocations for bookkeeping (`heapless::Vec` for regions and erase sizes).
 pub struct FlashManager<D: FlashDriver> {
-    pub regions: Vec<FlashRegion<D>>,
+    pub regions: heapless::Vec<FlashRegion<D>, MAX_FLASH_REGIONS>,
     pub active_idx: Option<usize>,
+    pub buffer: FlashSectorBuffer,
 }
 
 impl<D: FlashDriver> FlashManager<D> {
     pub fn new() -> Self {
         Self {
-            regions: Vec::new(),
+            regions: heapless::Vec::new(),
             active_idx: None,
+            buffer: FlashSectorBuffer::new(),
         }
     }
 
     pub fn add_region(&mut self, region: FlashRegion<D>) {
-        self.regions.push(region);
+        let _ = self.regions.push(region);
     }
 
     pub fn find_region_idx(&self, addr: u32) -> Option<usize> {
         self.regions.iter().position(|r| r.geometry.contains(addr))
+    }
+
+    /// Flushes any dirty data in the sector buffer to the currently active region.
+    pub fn flush_active(&mut self) -> Result<(), FlashError> {
+        if let Some(idx) = self.active_idx {
+            let region = &mut self.regions[idx];
+            if self.buffer.is_dirty() {
+                self.buffer.flush(&region.geometry, &mut region.driver)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Flushes any dirty data in the buffer and transitions the active region driver back to idle.
+    pub fn finish_active(&mut self) -> Result<(), FlashError> {
+        let mut res = Ok(());
+        if let Some(idx) = self.active_idx {
+            let region = &mut self.regions[idx];
+            if self.buffer.is_dirty() {
+                if let Err(e) = self.buffer.flush(&region.geometry, &mut region.driver) {
+                    res = Err(e);
+                }
+            }
+            if region.current_operation != FlashOperation::None {
+                if let Err(e) = region.driver.done() {
+                    if res.is_ok() {
+                        res = Err(e);
+                    }
+                }
+                region.current_operation = FlashOperation::None;
+            }
+            self.buffer.clear();
+            self.active_idx = None;
+        }
+        res
     }
 
     /// Erases a range across flash regions.
@@ -124,16 +118,20 @@ impl<D: FlashDriver> FlashManager<D> {
         }
 
         let initial_idx = self.find_region_idx(addr).ok_or(FlashError::AddressOutOfBounds)?;
-        let mut active_idx = initial_idx;
+        if self.active_idx != Some(initial_idx) {
+            self.finish_active()?;
+            self.active_idx = Some(initial_idx);
+        }
 
         while len > 0 {
             let region_idx = self.find_region_idx(addr).ok_or(FlashError::AddressOutOfBounds)?;
 
-            if region_idx != active_idx {
-                self.regions[active_idx].finish()?;
-                active_idx = region_idx;
+            if Some(region_idx) != self.active_idx {
+                self.finish_active()?;
+                self.active_idx = Some(region_idx);
             }
 
+            let active_idx = region_idx;
             let (local_start, best_size, local_end) = {
                 let region = &self.regions[active_idx];
                 let geom = &region.geometry;
@@ -152,7 +150,7 @@ impl<D: FlashDriver> FlashManager<D> {
             addr = local_end;
         }
 
-        self.regions[active_idx].finish()
+        self.finish_active()
     }
 
     /// Writes data buffer into flash, chunking across regions if needed.
@@ -163,32 +161,35 @@ impl<D: FlashDriver> FlashManager<D> {
 
         let target_idx = self.find_region_idx(dest).ok_or(FlashError::AddressOutOfBounds)?;
 
-        // Flush any other active region
-        if let Some(active) = self.active_idx {
-            if active != target_idx {
-                self.regions[active].finish()?;
-            }
+        // If crossing region boundary, flush previous region
+        if self.active_idx != Some(target_idx) {
+            self.finish_active()?;
+            self.active_idx = Some(target_idx);
         }
-        self.active_idx = Some(target_idx);
 
         while !data.is_empty() {
             let region_idx = self.find_region_idx(dest).ok_or(FlashError::AddressOutOfBounds)?;
 
             if Some(region_idx) != self.active_idx {
-                if let Some(active) = self.active_idx {
-                    self.regions[active].finish()?;
-                }
+                self.finish_active()?;
                 self.active_idx = Some(region_idx);
             }
 
+            let active_idx = region_idx;
             let chunk_end = {
-                let region = &self.regions[region_idx];
+                let region = &self.regions[active_idx];
                 core::cmp::min(dest + data.len() as u32, region.geometry.end())
             };
             let chunk_len = (chunk_end - dest) as usize;
 
-            let region = &mut self.regions[region_idx];
-            region.write_chunk(dest, &data[..chunk_len])?;
+            let region = &mut self.regions[active_idx];
+            region.set_operation(FlashOperation::Write)?;
+            self.buffer.write(
+                &region.geometry,
+                &mut region.driver,
+                dest,
+                &data[..chunk_len],
+            )?;
 
             dest = chunk_end;
             data = &data[chunk_len..];
@@ -199,20 +200,23 @@ impl<D: FlashDriver> FlashManager<D> {
 
     /// Finalizes all regions: flushes dirty sector buffers and sets drivers to idle.
     pub fn complete(&mut self) -> Result<(), FlashError> {
-        let mut first_err = Ok(());
+        let mut first_err = self.finish_active();
         for region in &mut self.regions {
-            if let Err(e) = region.finish() {
-                if first_err.is_ok() {
-                    first_err = Err(e);
+            if region.current_operation != FlashOperation::None {
+                if let Err(e) = region.driver.done() {
+                    if first_err.is_ok() {
+                        first_err = Err(e);
+                    }
                 }
+                region.current_operation = FlashOperation::None;
             }
         }
-        self.active_idx = None;
         first_err
     }
 
     /// Performs mass erase on all registered regions.
     pub fn mass_erase_all<P: FnMut()>(&mut self, mut progress_cb: P) -> Result<(), FlashError> {
+        self.finish_active()?;
         for region in &mut self.regions {
             let has_mass = region.driver.has_mass_erase();
             let op = if has_mass { FlashOperation::MassErase } else { FlashOperation::Erase };
@@ -231,7 +235,7 @@ impl<D: FlashDriver> FlashManager<D> {
                     addr = addr.wrapping_add(block);
                 }
             }
-            region.finish()?;
+            region.set_operation(FlashOperation::None)?;
         }
         Ok(())
     }

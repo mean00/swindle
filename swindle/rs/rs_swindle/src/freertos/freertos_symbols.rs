@@ -176,6 +176,11 @@ fn freertos_read_debug_offsets() {
         );
         return;
     }
+    // Sanity check offsets to avoid memory corruption from uninitialized/garbage memory
+    if raw[8] == 0 || raw[8] > 64 || raw[9] > 512 || raw[6] > 64 {
+        bmplog!("freeRTOSDebug offsets invalid: name_len={}, offset_name={}\n", raw[8], raw[9]);
+        return;
+    }
     all_symbols.debug_offsets = Some(FreeRTOSDebugOffsets {
         magic: raw[0],
         list_size: raw[1],

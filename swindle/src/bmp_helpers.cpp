@@ -32,6 +32,7 @@ extern "C"
 #include "stm32_common.h"
 #include "command.h"
 #include "gdb_packet.h"
+#include "jep106.h"
 
 bool parse_enable_or_disable(const char *value, bool *out);
 
@@ -741,6 +742,90 @@ bool target_overwrite_flash_c(target_s *t, uint32_t address, const uint8_t *data
     if (!helpers->page_erase(t, address))
         return false;
     return helpers->page_write(t, address, data, len);
+}
+
+void *target_get_priv_c(target_s *t)
+{
+    return t ? t->priv : nullptr;
+}
+
+uint16_t target_get_designer_code_c(target_s *t)
+{
+    return t ? t->designer_code : 0;
+}
+
+struct target_riscv_ops_s {
+    void *priv;
+    priv_free_func priv_free;
+    const char *driver;
+    const char *core;
+    uint16_t designer_code;
+    size_t regs_size;
+    bool (*attach)(target_s *);
+    void (*detach)(target_s *);
+    bool (*check_error)(target_s *);
+    void (*mem_read)(target_s *, void *, target_addr64_t, size_t);
+    void (*mem_write)(target_s *, target_addr64_t, const void *, size_t);
+    bool (*mem_read_nostop)(target_s *, void *, target_addr64_t, size_t);
+    bool (*mem_write_nostop)(target_s *, target_addr64_t, const void *, size_t);
+    size_t (*reg_read)(target_s *, uint32_t, void *, size_t);
+    size_t (*reg_write)(target_s *, uint32_t, const void *, size_t);
+    void (*regs_read)(target_s *, void *);
+    void (*regs_write)(target_s *, const void *);
+    void (*reset)(target_s *);
+    void (*halt_request)(target_s *);
+    void (*halt_resume)(target_s *, bool);
+    target_halt_reason_e (*halt_poll)(target_s *, target_addr64_t *);
+    int (*breakwatch_set)(target_s *, breakwatch_s *);
+    int (*breakwatch_clear)(target_s *, breakwatch_s *);
+};
+
+void target_set_riscv_ops_c(target_s *t, const target_riscv_ops_s *ops)
+{
+    if (!t || !ops) return;
+    t->priv = ops->priv;
+    t->priv_free = ops->priv_free;
+    t->driver = ops->driver;
+    t->core = ops->core;
+    t->designer_code = ops->designer_code;
+    t->regs_size = ops->regs_size;
+    t->attach = ops->attach;
+    t->detach = ops->detach;
+    t->check_error = ops->check_error;
+    t->mem_read = ops->mem_read;
+    t->mem_write = ops->mem_write;
+    t->mem_read_nostop = ops->mem_read_nostop;
+    t->mem_write_nostop = ops->mem_write_nostop;
+    t->reg_read = ops->reg_read;
+    t->reg_write = ops->reg_write;
+    t->regs_read = ops->regs_read;
+    t->regs_write = ops->regs_write;
+    t->reset = ops->reset;
+    t->halt_request = ops->halt_request;
+    t->halt_resume = ops->halt_resume;
+    t->halt_poll = ops->halt_poll;
+    t->breakwatch_set = ops->breakwatch_set;
+    t->breakwatch_clear = ops->breakwatch_clear;
+    TOPT_SET_ARCH(t->target_options, TOPT_ARCH_RISCV);
+}
+
+extern "C" bool ch32v003x_probe(target_s *target);
+extern "C" bool ch32v3xx_probe(target_s *target);
+extern "C" bool rp2350_probe(target_s *target);
+
+bool riscv32_silicon_probe_c(target_s *target)
+{
+    if (!target) return false;
+    if (target->designer_code == JEP106_MANUFACTURER_WCH) {
+        if (ch32v003x_probe(target)) return true;
+        if (ch32v3xx_probe(target)) return true;
+    } else if (target->designer_code == JEP106_MANUFACTURER_RASPBERRY) {
+        if (rp2350_probe(target)) return true;
+    }
+    if (ch32v003x_probe(target)) return true;
+    if (ch32v3xx_probe(target)) return true;
+    if (rp2350_probe(target)) return true;
+    return false;
 }
 
 } // extern "C"
