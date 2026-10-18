@@ -76,11 +76,4 @@ impl FlashGeometry {
         }
         best
     }
-
-    /// Checks if an erase request qualifies for mass erase of this entire flash region.
-    pub fn can_use_mass_erase(&self, local_start: u32, addr: u32, len: usize, has_mass_erase: bool) -> bool {
-        has_mass_erase
-            && local_start == self.start
-            && (addr as u64 + len as u64 >= self.end() as u64)
-    }
 }

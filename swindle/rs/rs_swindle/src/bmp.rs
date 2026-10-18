@@ -197,12 +197,42 @@ pub fn rvswdp_scan() -> bool {
 // further down) moved to the optional SDI module — crate::riscv_extra, i.e.
 // riscv_extra_sdi.rs behind the `sdi` cargo feature, or
 // riscv_extra_sdi_stubs.rs without it. The C half of the same seam is
-// swindle/include/bmp_riscv_extra.h.
+/// Comprehensive cleanup executed on target disconnect/detach:
+/// - Invalidate GDB read-ahead memory line cache
+/// - Teardown FreeRTOS OS thread awareness, symbols, and cached TCBs
+/// - Clear all RAM and Flash software breakpoints
+/// - Clear any target-specific custom monitor commands
+/// - Disable RTT polling
+/// - Clean up any active flash programming session and exit flash mode
+/// - Free any allocated breakwatch nodes on the target
+pub fn disconnect_cleanup(target: *mut target_adapter::TargetC) {
+    let t = if target.is_null() {
+        target_adapter::get_cur_target()
+    } else {
+        target
+    };
+
+    crate::mem_cache::invalidate();
+    crate::freertos::os_detach();
+    crate::sw_breakpoints::clear_all_breakpoints();
+    crate::commands::mon::clear_custom_target_command();
+    crate::rtt::swindle_enable_rtt(false);
+
+    if !t.is_null() {
+        crate::flash::flash_cleanup(t as _);
+        unsafe { target_adapter::free_breakwatch(t) };
+    } else {
+        crate::flash::flash_cleanup(core::ptr::null_mut());
+    }
+}
+
 /// Detach from the currently attached target.
 ///
 /// Releases the target, disables RTT, and resets the GPIO state. Returns
 /// `true` on success.
 pub fn bmp_detach() -> bool {
+    let cur = target_adapter::get_cur_target();
+    disconnect_cleanup(cur);
     unsafe { rn_bmp_cmd_c::bmp_detach_c(0) }
 }
 

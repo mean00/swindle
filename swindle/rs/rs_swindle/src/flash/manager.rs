@@ -134,25 +134,18 @@ impl<D: FlashDriver> FlashManager<D> {
                 active_idx = region_idx;
             }
 
-            let (local_start, best_size, can_mass, local_end) = {
+            let (local_start, best_size, local_end) = {
                 let region = &self.regions[active_idx];
                 let geom = &region.geometry;
                 let start = geom.align_block_down(addr);
                 let size = geom.best_erase_block(addr, len, &region.extra_erase_sizes);
-                let mass = geom.can_use_mass_erase(start, addr, len, region.driver.has_mass_erase());
-                let end = if mass { geom.end() } else { start + size as u32 };
-                (start, size, mass, end)
+                let end = start + size as u32;
+                (start, size, end)
             };
 
-            let op = if can_mass { FlashOperation::MassErase } else { FlashOperation::Erase };
             let region = &mut self.regions[active_idx];
-            region.set_operation(op)?;
-
-            if can_mass {
-                region.driver.mass_erase()?;
-            } else {
-                region.driver.erase_block(local_start, best_size)?;
-            }
+            region.set_operation(FlashOperation::Erase)?;
+            region.driver.erase_block(local_start, best_size)?;
 
             let advance = core::cmp::min((local_end - addr) as usize, len);
             len -= advance;

@@ -341,11 +341,21 @@ impl TargetDriver for CTargetDriver {
     }
 
     fn detach(&mut self) {
+        crate::bmp::disconnect_cleanup(self.target);
         if !self.target.is_null() {
             unsafe {
                 target_call_detach_c(self.target);
                 target_set_attached_c(self.target, false);
             }
+        }
+    }
+}
+
+/// Free heap-allocated breakwatch nodes on the target.
+pub unsafe fn free_breakwatch(t: *mut TargetC) {
+    if !t.is_null() {
+        unsafe {
+            target_bw_list_free_c(t);
         }
     }
 }
@@ -452,6 +462,7 @@ pub unsafe extern "C" fn target_detach(target: *mut TargetC) {
     if target.is_null() {
         return;
     }
+    crate::bmp::disconnect_cleanup(target);
     unsafe {
         target_call_detach_c(target);
         platform_target_clk_output_enable(false);

@@ -279,6 +279,17 @@ pub unsafe extern "C" fn target_flash_complete(target: *mut target_s) -> bool {
     result
 }
 
+/// Cleanup any active flash programming session and exit flash mode if needed.
+pub fn flash_cleanup(target: *mut target_s) {
+    unsafe {
+        if !target.is_null() && target_get_flash_mode(target) {
+            target_exit_flash_mode_helper(target);
+        }
+        ACTIVE_MANAGER = None;
+        ACTIVE_TARGET = core::ptr::null_mut();
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn target_flash_mass_erase(target: *mut target_s) -> bool {
     if !target_enter_flash_mode_helper(target) {

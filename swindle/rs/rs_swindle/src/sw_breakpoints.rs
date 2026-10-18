@@ -86,9 +86,13 @@ pub fn clear_sw_breakpoint() {
     get_list_sw_ref().breakpoint.clear();
 }
 /// Remove all mass-write breakpoints (flash).
-#[allow(dead_code)]
 pub fn clear_mw_breakpoint() {
     get_list_mw_ref().breakpoint.clear();
+}
+/// Remove all software (RAM) and mass-write (flash) breakpoints.
+pub fn clear_all_breakpoints() {
+    clear_sw_breakpoint();
+    clear_mw_breakpoint();
 }
 /// Patch a breakpoint opcode into a code buffer at the given offset.
 ///
