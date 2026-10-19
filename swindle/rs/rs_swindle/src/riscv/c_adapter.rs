@@ -328,7 +328,7 @@ unsafe extern "C" fn riscv_target_mem_read(target: *mut TargetC, dest: *mut c_vo
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(dest as *mut u8, len);
-    if let Err(e) = RiscvMem::read(&ctx.hart, &mut ctx.transport, src as u32, slice) {
+    if let Err(_e) = RiscvMem::read(&ctx.hart, &mut ctx.transport, src as u32, slice) {
         crate::glue::gdb_out_rs("RiscvMem::read failed at addr=");
         crate::bmplogger::G::print_hex(src as u32);
         crate::glue::gdb_out_rs("\n");
@@ -342,7 +342,7 @@ unsafe extern "C" fn riscv_target_mem_write(target: *mut TargetC, dest: u64, src
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(src as *const u8, len);
-    if let Err(e) = RiscvMem::write(&ctx.hart, &mut ctx.transport, dest as u32, slice) {
+    if let Err(_e) = RiscvMem::write(&ctx.hart, &mut ctx.transport, dest as u32, slice) {
         crate::glue::gdb_out_rs("RiscvMem::write failed at addr=");
         crate::bmplogger::G::print_hex(dest as u32);
         crate::glue::gdb_out_rs("\n");
