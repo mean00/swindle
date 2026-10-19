@@ -47,7 +47,8 @@ graph TD
 
         subgraph CoreEngines ["Idiomatic Rust Core Subsystems"]
             FlashSubsystem["Flash Subsystem (rs_swindle::flash)<br/>- FlashManager & Sector Buffer<br/>- Geometry & Multi-block Erase<br/>- FlashDriver Trait<br/>(Replaces target_flash.c)"]
-            TargetSubsystem["Target Subsystem (rs_swindle::target)<br/>- TargetRegistry & TargetDriver Trait<br/>- 32-bit RamRegion & Typed Mem Access<br/>- Run Control & Breakwatch<br/>(Replaces target.c)"]
+            TargetSubsystem["Target Subsystem (rs_swindle::target)<br/>- TargetRegistry & TargetDriver Trait<br/>- TargetDriverRef (RiscvTargetDriver / CTargetDriver)<br/>- 32-bit RamRegion & Typed Mem Access<br/>- Run Control & Breakwatch<br/>(Replaces target.c)"]
+            RiscvSubsystem["RISC-V Subsystem (rs_swindle::riscv)<br/>- RiscvHart (RV32E/I/IF run-control, GPRs, FPU, CSRs)<br/>- RiscvMem (Abstract, AbstAuto streaming, Sysbus)<br/>- Memory Speed Benchmark & Auto-Selector<br/>- Native RiscvTargetDriver (TargetDriver trait)<br/>(Replaces riscv32.c, riscv_debug.c, riscv_memaccess.c)"]
         end
 
         subgraph XMLGenerators ["XML Streaming Generators (Rust, Zero-Alloc)"]
@@ -63,7 +64,7 @@ graph TD
             SyncCellState["Thread-Safe Shared State (SyncCell)"]
         end
     end
-    class StreamDecoder,PacketEncoder,CmdDispatcher,CmdRun,CmdMem,CmdReg,CmdBkpt,CmdFlash,CmdMon,CmdQuery,FlashSubsystem,TargetSubsystem,TargetXML,MemMapXML,XmlSink,MemCache,SWBkptMgr,SettingsKV,SyncCellState rustLang;
+    class StreamDecoder,PacketEncoder,CmdDispatcher,CmdRun,CmdMem,CmdReg,CmdBkpt,CmdFlash,CmdMon,CmdQuery,FlashSubsystem,TargetSubsystem,RiscvSubsystem,TargetXML,MemMapXML,XmlSink,MemCache,SWBkptMgr,SettingsKV,SyncCellState rustLang;
 
     %% -------------------------------------------------------------
     %% LAYER 4: TARGET OS & SUB-SYSTEM INTROSPECTION (RUST)
@@ -87,7 +88,8 @@ graph TD
         subgraph RustCABIShims ["Rust C-ABI Export Shims (Rust)"]
             CABITarget["target::c_adapter.rs<br/>(Exports target_new, target_mem_read/write, etc.)"]
             CABIFlash["flash::c_adapter.rs<br/>(Exports target_flash_erase, target_flash_write, etc.)"]
-            RustFFI["Rust C-FFI Ingress (bmp.rs / rn_bmp_cmd_c)"]
+            CABIRiscv["riscv::c_adapter.rs<br/>(Exports TargetRiscvOpsC shims for C target_s)"]
+            RustFFI["Rust C-FFI Ingress (bmp.rs)"]
         end
 
         subgraph SwindleCHelpers ["Swindle C/C++ Helpers & Stubs (Swindle C/C++)"]
@@ -105,7 +107,7 @@ graph TD
             ADC_Sense["Target VDD Sense ADC (bmp_adc_ln.cpp)"]
         end
     end
-    class CABITarget,CABIFlash,RustFFI rustLang;
+    class CABITarget,CABIFlash,CABIRiscv,RustFFI rustLang;
     class BMPHelpers,BMPBridge,ResetPin,BoardStubs,SWD_Tap,RVSWD_Tap,SDI_Tap,Generic_Tap,ADC_Sense swindleCLang;
 
     %% -------------------------------------------------------------
@@ -122,12 +124,11 @@ graph TD
 
         subgraph ArchDrivers ["CPU Architecture Debug Drivers (blackmagic/src/target/)"]
             CortexM["ARM Cortex-M Debug (cortexm.c, cortex.c)<br/>* Pure In-Band Faults (No setjmp/longjmp)"]
-            RISCVCore["RISC-V Debug Module 0.13 (riscv32.c, riscv_debug.c)<br/>* Sysbus, Abstract Commands, Progbuf, RV32E"]
         end
 
         subgraph DebugTransports ["CoreSight & Wire Transports (blackmagic/src/target/)"]
             ADIv5["ARM CoreSight ADIv5 / ADIv6 (adiv5.c, adiv6.c, adi.c)<br/>* DP-SELECT / AP-CSW Write Caching<br/>* Pure In-Band Faults (No setjmp/longjmp)"]
-            RISCV_DTM["RISC-V DTM (riscv_adi_dtm.c)<br/>* Lean DMI Accessor & TAR/DRW Pipeline"]
+            RISCV_DTM["RISC-V DTM (riscv_adi_dtm.c / CH32 DMI)<br/>* Lean DMI Accessor & TAR/DRW Pipeline"]
             SWD_Transport["SWD Protocol Driver (adiv5_swd.c)"]
             SPI_SFDP["SPI Flash & SFDP Parser (spi.c, sfdp.c)"]
             JTAG_Transport["JTAG Scanner & TAP (jtag_scan.c, jtag_devs.c, adiv5_jtag.c)"]
@@ -138,7 +139,7 @@ graph TD
             PlatformHosted["Hosted Platform Core (platform.c, debug.c, utils.c, cli.c)"]
         end
     end
-    class STM32,RPFamily,WCHTargets,NordicTargets,LPCTargets,CortexM,RISCVCore,ADIv5,RISCV_DTM,SWD_Transport,SPI_SFDP,JTAG_Transport,BMDRemote,PlatformHosted blackmagicCLang;
+    class STM32,RPFamily,WCHTargets,NordicTargets,LPCTargets,CortexM,ADIv5,RISCV_DTM,SWD_Transport,SPI_SFDP,JTAG_Transport,BMDRemote,PlatformHosted blackmagicCLang;
 
     %% -------------------------------------------------------------
     %% LAYER 7: HARDWARE & PHY LAYER
@@ -207,6 +208,10 @@ graph TD
     %% Rust Core Subsystems -> C-ABI Layer
     FlashSubsystem --> CABIFlash
     TargetSubsystem --> CABITarget
+    TargetSubsystem --> RiscvSubsystem
+    RiscvSubsystem --> CABIRiscv
+    RiscvSubsystem --> RISCV_DTM
+    CmdMon --> RiscvSubsystem
     RustFFI --> TargetSubsystem
     RustFFI --> FlashSubsystem
     RustFFI --> BMPBridge
@@ -220,11 +225,11 @@ graph TD
     %% Dispatch to Blackmagic C Targets & Architecture Drivers
     CABITarget --> VendorTargets
     CABITarget --> ArchDrivers
+    CABIRiscv --> WCHTargets
     CABIFlash --> VendorTargets
 
     %% Architecture Drivers -> CoreSight / DTM
     CortexM --> ADIv5
-    RISCVCore --> RISCV_DTM
 
     %% CoreSight / DTM -> Wire Protocols
     ADIv5 --> SWD_Transport
