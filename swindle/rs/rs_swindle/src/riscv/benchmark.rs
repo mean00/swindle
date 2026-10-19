@@ -52,14 +52,14 @@ pub struct BenchResult {
 
 /// Run full benchmark over all supported access methods and report to GDB.
 #[inline(never)]
-pub fn run_benchmark(hart: &RiscvHart, dmi: &mut dyn DmiTransport) -> bool {
+pub fn run_benchmark(hart: &mut RiscvHart) -> bool {
     crate::glue::gdb_out_rs("Running RISC-V memory benchmark at 0x20000000\n");
     let scratch = init_scratch();
 
     // 1. Sysbus
     if hart.has_sysbus {
         let res = bench_method(
-            dmi,
+            &mut hart.dmi,
             &scratch,
             |d, a, s| RiscvMem::sysbus_write(d, a, s).is_ok(),
             |d, a, dst| RiscvMem::sysbus_read(d, a, dst).is_ok(),
@@ -72,10 +72,10 @@ pub fn run_benchmark(hart: &RiscvHart, dmi: &mut dyn DmiTransport) -> bool {
     // 2. Abstract
     {
         let res = bench_method(
-            dmi,
+            &mut hart.dmi,
             &scratch,
-            |d, a, s| RiscvMem::abstract_write(hart, d, a, s).is_ok(),
-            |d, a, dst| RiscvMem::abstract_read(hart, d, a, dst).is_ok(),
+            |d, a, s| RiscvMem::abstract_write(d, a, s).is_ok(),
+            |d, a, dst| RiscvMem::abstract_read(d, a, dst).is_ok(),
         );
         print_result("Abstract", res);
     }
@@ -83,7 +83,7 @@ pub fn run_benchmark(hart: &RiscvHart, dmi: &mut dyn DmiTransport) -> bool {
     // 3. AbstAuto
     if hart.has_abstauto {
         let res = bench_method(
-            dmi,
+            &mut hart.dmi,
             &scratch,
             |d, a, s| RiscvMem::abstract_auto_write(d, a, s).is_ok(),
             |d, a, dst| RiscvMem::abstract_auto_read(d, a, dst).is_ok(),
@@ -103,7 +103,7 @@ pub fn run_benchmark(hart: &RiscvHart, dmi: &mut dyn DmiTransport) -> bool {
 ///
 /// Runs quietly without printing to GDB output, and updates `hart.active_method`.
 #[inline(never)]
-pub fn auto_select_fastest_method(hart: &mut RiscvHart, dmi: &mut dyn DmiTransport) {
+pub fn auto_select_fastest_method(hart: &mut RiscvHart) {
     let scratch = init_scratch();
     let mut best_method = MemoryAccessMethod::Abstract;
     let mut best_tx = u32::MAX;
@@ -111,10 +111,10 @@ pub fn auto_select_fastest_method(hart: &mut RiscvHart, dmi: &mut dyn DmiTranspo
     // 1. Abstract (baseline: always supported)
     {
         let res = bench_method(
-            dmi,
+            &mut hart.dmi,
             &scratch,
-            |d, a, s| RiscvMem::abstract_write(hart, d, a, s).is_ok(),
-            |d, a, dst| RiscvMem::abstract_read(hart, d, a, dst).is_ok(),
+            |d, a, s| RiscvMem::abstract_write(d, a, s).is_ok(),
+            |d, a, dst| RiscvMem::abstract_read(d, a, dst).is_ok(),
         );
         if res.ok_bulk {
             best_tx = res.tx_bulk;
@@ -125,7 +125,7 @@ pub fn auto_select_fastest_method(hart: &mut RiscvHart, dmi: &mut dyn DmiTranspo
     // 2. AbstAuto (if hardware reported capability)
     if hart.has_abstauto {
         let res = bench_method(
-            dmi,
+            &mut hart.dmi,
             &scratch,
             |d, a, s| RiscvMem::abstract_auto_write(d, a, s).is_ok(),
             |d, a, dst| RiscvMem::abstract_auto_read(d, a, dst).is_ok(),
@@ -139,7 +139,7 @@ pub fn auto_select_fastest_method(hart: &mut RiscvHart, dmi: &mut dyn DmiTranspo
     // 3. Sysbus (if hardware reported capability)
     if hart.has_sysbus {
         let res = bench_method(
-            dmi,
+            &mut hart.dmi,
             &scratch,
             |d, a, s| RiscvMem::sysbus_write(d, a, s).is_ok(),
             |d, a, dst| RiscvMem::sysbus_read(d, a, dst).is_ok(),
@@ -165,7 +165,7 @@ pub fn auto_select_fastest_method(hart: &mut RiscvHart, dmi: &mut dyn DmiTranspo
 
 /// Run benchmark against the generic active memory dispatch path.
 #[inline(never)]
-pub fn run_benchmark2(hart: &RiscvHart, dmi: &mut dyn DmiTransport) -> bool {
+pub fn run_benchmark2(hart: &mut RiscvHart) -> bool {
     let scratch = init_scratch();
 
     let active_name = match hart.active_method {
@@ -175,12 +175,26 @@ pub fn run_benchmark2(hart: &RiscvHart, dmi: &mut dyn DmiTransport) -> bool {
         MemoryAccessMethod::Progbuf => "Progbuf",
     };
 
-    let res = bench_method(
-        dmi,
-        &scratch,
-        |d, a, s| RiscvMem::write(hart, d, a, s).is_ok(),
-        |d, a, dst| RiscvMem::read(hart, d, a, dst).is_ok(),
-    );
+    dmi_tx_reset();
+    let ok_w1 = RiscvMem::write(hart, RISCV_BENCH_SCRATCH_ADDR, &scratch[..4]).is_ok();
+    let mut r1 = [0u8; 4];
+    let ok_r1 = RiscvMem::read(hart, RISCV_BENCH_SCRATCH_ADDR, &mut r1).is_ok();
+    let tx_single = dmi_tx_count();
+    let ok_single = ok_w1 && ok_r1 && r1 == scratch[..4];
+
+    dmi_tx_reset();
+    let ok_w64 = RiscvMem::write(hart, RISCV_BENCH_SCRATCH_ADDR, &scratch).is_ok();
+    let mut r64 = [0u8; RISCV_BENCH_WORDS * 4];
+    let ok_r64 = RiscvMem::read(hart, RISCV_BENCH_SCRATCH_ADDR, &mut r64).is_ok();
+    let tx_bulk = dmi_tx_count();
+    let ok_bulk = ok_w64 && ok_r64 && r64 == scratch;
+
+    let res = BenchResult {
+        tx_single,
+        tx_bulk,
+        ok_single,
+        ok_bulk,
+    };
 
     let status = if res.ok_single && res.ok_bulk { "OK" } else { "FAILED" };
     crate::gdb_println!("riscv_benchmark2: ", active_name, " 1-word: ", res.tx_single, " DMI, 64-word: ", res.tx_bulk, " DMI ", status);

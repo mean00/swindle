@@ -865,7 +865,7 @@ pub fn bmp_run_riscv_benchmark() -> bool {
         crate::gdb_println!("Error: No RISC-V target attached.");
         return false;
     };
-    crate::riscv::benchmark::run_benchmark(&ctx.hart, &mut ctx.transport)
+    crate::riscv::benchmark::run_benchmark(&mut ctx.hart)
 }
 
 /// Run the RISC-V memory benchmark through the generic target memory API.
@@ -874,7 +874,7 @@ pub fn bmp_run_riscv_benchmark2() -> bool {
         crate::gdb_println!("Error: No RISC-V target attached.");
         return false;
     };
-    crate::riscv::benchmark::run_benchmark2(&ctx.hart, &mut ctx.transport)
+    crate::riscv::benchmark::run_benchmark2(&mut ctx.hart)
 }
 
 /// Read a RISC-V CSR.
@@ -883,7 +883,7 @@ pub fn bmp_run_riscv_benchmark2() -> bool {
 /// not RISC-V, or if reading the CSR failed.
 pub fn bmp_riscv_read_csr(csr: u32) -> Option<u32> {
     let ctx = crate::riscv::current_riscv_context()?;
-    ctx.hart.csr_read(&mut ctx.transport, csr as u16).ok()
+    ctx.hart.csr_read(csr as u16).ok()
 }
 
 /// Write a RISC-V CSR.
@@ -893,7 +893,7 @@ pub fn bmp_riscv_write_csr(csr: u32, val: u32) -> bool {
     let Some(ctx) = crate::riscv::current_riscv_context() else {
         return false;
     };
-    ctx.hart.csr_write(&mut ctx.transport, csr as u16, val).is_ok()
+    ctx.hart.csr_write(csr as u16, val).is_ok()
 }
 // EOF
 

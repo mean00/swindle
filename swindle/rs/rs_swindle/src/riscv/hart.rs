@@ -1,7 +1,7 @@
 //! RISC-V Hart representation, register file, and run control (RV32E, RV32I, RV32IF).
 
 use super::dm::*;
-use super::dmi::{DmiError, DmiTransport};
+use super::dmi::{CDmiTransport, DmiError, DmiTransport};
 use crate::target::driver::{HaltReason, TargetError};
 
 // --- CSR Constants ---
@@ -84,6 +84,7 @@ pub enum MemoryAccessMethod {
 
 /// RISC-V Hart state and controller.
 pub struct RiscvHart {
+    pub dmi: CDmiTransport,
     pub isa: HartIsa,
     pub hart_idx: u32,
     pub hartsel: u32,
@@ -99,7 +100,7 @@ pub struct RiscvHart {
 
 impl RiscvHart {
     /// Create a new Hart descriptor and discover core capabilities.
-    pub fn probe(dmi: &mut dyn DmiTransport, hart_idx: u32) -> Result<Self, DmiError> {
+    pub fn probe(mut dmi: CDmiTransport, hart_idx: u32) -> Result<Self, DmiError> {
         let hartsel = hartsel_mask(hart_idx);
 
         // Select the hart and ensure active
@@ -130,6 +131,7 @@ impl RiscvHart {
         };
 
         let mut hart = Self {
+            dmi,
             isa: HartIsa::Rv32i, // Temporary default
             hart_idx,
             hartsel,
@@ -144,10 +146,10 @@ impl RiscvHart {
         };
 
         // Halt hart briefly to read IDs and MISA safely
-        hart.halt_request(dmi)?;
+        hart.halt_request()?;
 
         // Discover ISA from MISA
-        let misa = hart.csr_read(dmi, RV_CSR_MISA).unwrap_or(0);
+        let misa = hart.csr_read(RV_CSR_MISA).unwrap_or(0);
         if (misa & RV_MISA_EXT_E) != 0 {
             hart.isa = HartIsa::Rv32e;
         } else if (misa & RV_MISA_EXT_F) != 0 {
@@ -157,70 +159,80 @@ impl RiscvHart {
         }
 
         // Read identifiers
-        hart.vendor_id = hart.csr_read(dmi, RV_CSR_MVENDORID).unwrap_or(0);
-        hart.arch_id = hart.csr_read(dmi, RV_CSR_MARCHID).unwrap_or(0);
-        hart.impl_id = hart.csr_read(dmi, RV_CSR_MIMPID).unwrap_or(0);
-        hart.hart_id = hart.csr_read(dmi, RV_CSR_MHARTID).unwrap_or(0);
+        hart.vendor_id = hart.csr_read(RV_CSR_MVENDORID).unwrap_or(0);
+        hart.arch_id = hart.csr_read(RV_CSR_MARCHID).unwrap_or(0);
+        hart.impl_id = hart.csr_read(RV_CSR_MIMPID).unwrap_or(0);
+        hart.hart_id = hart.csr_read(RV_CSR_MHARTID).unwrap_or(0);
 
         Ok(hart)
     }
 
+    /// Access the underlying DMI transport.
+    pub fn dmi(&self) -> &CDmiTransport {
+        &self.dmi
+    }
+
+    /// Access the underlying DMI transport mutably.
+    pub fn dmi_mut(&mut self) -> &mut CDmiTransport {
+        &mut self.dmi
+    }
+
     /// Read a 32-bit CSR using abstract register access command.
-    pub fn csr_read(&self, dmi: &mut dyn DmiTransport, csr: u16) -> Result<u32, DmiError> {
+    pub fn csr_read(&mut self, csr: u16) -> Result<u32, DmiError> {
         let cmd = make_reg_access_cmd(csr, false, true, false);
-        exec_command(dmi, cmd)?;
-        dmi.read(RV_DM_DATA0)
+        exec_command(&mut self.dmi, cmd)?;
+        self.dmi.read(RV_DM_DATA0)
     }
 
     /// Write a 32-bit CSR using abstract register access command.
-    pub fn csr_write(&self, dmi: &mut dyn DmiTransport, csr: u16, val: u32) -> Result<(), DmiError> {
-        dmi.write(RV_DM_DATA0, val)?;
+    pub fn csr_write(&mut self, csr: u16, val: u32) -> Result<(), DmiError> {
+        self.dmi.write(RV_DM_DATA0, val)?;
         let cmd = make_reg_access_cmd(csr, true, true, false);
-        exec_command(dmi, cmd)
+        exec_command(&mut self.dmi, cmd)
     }
 
     /// Read a single GPR (0..31).
-    pub fn gpr_read(&self, dmi: &mut dyn DmiTransport, gpr: u8) -> Result<u32, DmiError> {
-        self.csr_read(dmi, RV_REG_GPR_BASE + gpr as u16)
+    pub fn gpr_read(&mut self, gpr: u8) -> Result<u32, DmiError> {
+        self.csr_read(RV_REG_GPR_BASE + gpr as u16)
     }
 
     /// Write a single GPR (0..31).
-    pub fn gpr_write(&self, dmi: &mut dyn DmiTransport, gpr: u8, val: u32) -> Result<(), DmiError> {
-        self.csr_write(dmi, RV_REG_GPR_BASE + gpr as u16, val)
+    pub fn gpr_write(&mut self, gpr: u8, val: u32) -> Result<(), DmiError> {
+        self.csr_write(RV_REG_GPR_BASE + gpr as u16, val)
     }
 
     /// Read program counter (DPC).
-    pub fn pc_read(&self, dmi: &mut dyn DmiTransport) -> Result<u32, DmiError> {
-        self.csr_read(dmi, RV_CSR_DPC)
+    pub fn pc_read(&mut self) -> Result<u32, DmiError> {
+        self.csr_read(RV_CSR_DPC)
     }
 
     /// Write program counter (DPC).
-    pub fn pc_write(&self, dmi: &mut dyn DmiTransport, val: u32) -> Result<(), DmiError> {
-        self.csr_write(dmi, RV_CSR_DPC, val)
+    pub fn pc_write(&mut self, val: u32) -> Result<(), DmiError> {
+        self.csr_write(RV_CSR_DPC, val)
     }
 
     /// Read a single register by GDB register number into `buf`.
-    pub fn reg_read(&self, dmi: &mut dyn DmiTransport, reg: u32, buf: &mut [u8]) -> Result<usize, TargetError> {
+    pub fn reg_read(&mut self, reg: u32, buf: &mut [u8]) -> Result<usize, TargetError> {
         if buf.len() < 4 {
             return Err(TargetError::InternalError);
         }
         let gprs_count = self.isa.gpr_count() as u32;
 
         let val = if reg < gprs_count {
-            self.gpr_read(dmi, reg as u8).map_err(|_| TargetError::AccessFault)?
+            self.gpr_read(reg as u8).map_err(|_| TargetError::AccessFault)?
         } else if reg == gprs_count {
-            self.pc_read(dmi).map_err(|_| TargetError::AccessFault)?
+            self.pc_read().map_err(|_| TargetError::AccessFault)?
         } else if self.isa.has_single_fpu() && (RV_FPU_GDB_OFFSET..=64).contains(&reg) {
             // f0..f31 single-precision FPRs (0x1020..0x103f)
             let fpr = (reg - RV_FPU_GDB_OFFSET) as u16;
-            self.csr_read(dmi, RV_REG_FPR_BASE + fpr).map_err(|_| TargetError::AccessFault)?
+            self.csr_read(RV_REG_FPR_BASE + fpr).map_err(|_| TargetError::AccessFault)?
         } else if self.isa.has_single_fpu() && (RV_FPU_GDB_CSR_OFFSET..=68).contains(&reg) {
             // fflags (0x001), frm (0x002), fcsr (0x003)
             let csr = (reg - RV_FPU_GDB_CSR_OFFSET + 1) as u16;
-            self.csr_read(dmi, csr).map_err(|_| TargetError::AccessFault)?
+            self.csr_read(csr).map_err(|_| TargetError::AccessFault)?
         } else if reg >= RV_CSR_GDB_OFFSET {
             let csr = (reg - RV_CSR_GDB_OFFSET) as u16;
-            self.csr_read(dmi, csr).map_err(|_| TargetError::AccessFault)?
+            self.csr_read(csr).map_err(|_| TargetError::AccessFault)?
         } else {
             return Err(TargetError::Unsupported);
         };
@@ -230,7 +242,7 @@ impl RiscvHart {
     }
 
     /// Write a single register by GDB register number from `data`.
-    pub fn reg_write(&self, dmi: &mut dyn DmiTransport, reg: u32, data: &[u8]) -> Result<usize, TargetError> {
+    pub fn reg_write(&mut self, reg: u32, data: &[u8]) -> Result<usize, TargetError> {
         if data.len() < 4 {
             return Err(TargetError::InternalError);
         }
@@ -238,18 +250,18 @@ impl RiscvHart {
         let gprs_count = self.isa.gpr_count() as u32;
 
         if reg < gprs_count {
-            self.gpr_write(dmi, reg as u8, val).map_err(|_| TargetError::AccessFault)?;
+            self.gpr_write(reg as u8, val).map_err(|_| TargetError::AccessFault)?;
         } else if reg == gprs_count {
-            self.pc_write(dmi, val).map_err(|_| TargetError::AccessFault)?;
+            self.pc_write(val).map_err(|_| TargetError::AccessFault)?;
         } else if self.isa.has_single_fpu() && (RV_FPU_GDB_OFFSET..=64).contains(&reg) {
             let fpr = (reg - RV_FPU_GDB_OFFSET) as u16;
-            self.csr_write(dmi, RV_REG_FPR_BASE + fpr, val).map_err(|_| TargetError::AccessFault)?;
+            self.csr_write(RV_REG_FPR_BASE + fpr, val).map_err(|_| TargetError::AccessFault)?;
         } else if self.isa.has_single_fpu() && (RV_FPU_GDB_CSR_OFFSET..=68).contains(&reg) {
             let csr = (reg - RV_FPU_GDB_CSR_OFFSET + 1) as u16;
-            self.csr_write(dmi, csr, val).map_err(|_| TargetError::AccessFault)?;
+            self.csr_write(csr, val).map_err(|_| TargetError::AccessFault)?;
         } else if reg >= RV_CSR_GDB_OFFSET {
             let csr = (reg - RV_CSR_GDB_OFFSET) as u16;
-            self.csr_write(dmi, csr, val).map_err(|_| TargetError::AccessFault)?;
+            self.csr_write(csr, val).map_err(|_| TargetError::AccessFault)?;
         } else {
             return Err(TargetError::Unsupported);
         }
@@ -258,7 +270,7 @@ impl RiscvHart {
     }
 
     /// Read all general registers (GPRs + PC) into `buf`.
-    pub fn regs_read(&self, dmi: &mut dyn DmiTransport, buf: &mut [u8]) -> Result<(), TargetError> {
+    pub fn regs_read(&mut self, buf: &mut [u8]) -> Result<(), TargetError> {
         let count = self.isa.gpr_count();
         let total_size = (count + 1) * 4;
         if buf.len() < total_size {
@@ -266,17 +278,17 @@ impl RiscvHart {
         }
 
         for i in 0..count {
-            let val = self.gpr_read(dmi, i as u8).map_err(|_| TargetError::AccessFault)?;
+            let val = self.gpr_read(i as u8).map_err(|_| TargetError::AccessFault)?;
             buf[i * 4..(i + 1) * 4].copy_from_slice(&val.to_le_bytes());
         }
-        let pc = self.pc_read(dmi).map_err(|_| TargetError::AccessFault)?;
+        let pc = self.pc_read().map_err(|_| TargetError::AccessFault)?;
         buf[count * 4..(count + 1) * 4].copy_from_slice(&pc.to_le_bytes());
 
         Ok(())
     }
 
     /// Write all general registers (GPRs + PC) from `data`.
-    pub fn regs_write(&self, dmi: &mut dyn DmiTransport, data: &[u8]) -> Result<(), TargetError> {
+    pub fn regs_write(&mut self, data: &[u8]) -> Result<(), TargetError> {
         let count = self.isa.gpr_count();
         let total_size = (count + 1) * 4;
         if data.len() < total_size {
@@ -285,33 +297,33 @@ impl RiscvHart {
 
         for i in 0..count {
             let val = u32::from_le_bytes(data[i * 4..(i + 1) * 4].try_into().unwrap());
-            self.gpr_write(dmi, i as u8, val).map_err(|_| TargetError::AccessFault)?;
+            self.gpr_write(i as u8, val).map_err(|_| TargetError::AccessFault)?;
         }
         let pc = u32::from_le_bytes(data[count * 4..(count + 1) * 4].try_into().unwrap());
-        self.pc_write(dmi, pc).map_err(|_| TargetError::AccessFault)?;
+        self.pc_write(pc).map_err(|_| TargetError::AccessFault)?;
 
         Ok(())
     }
 
     /// Request halt of target core.
-    pub fn halt_request(&self, dmi: &mut dyn DmiTransport) -> Result<(), DmiError> {
-        dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ)?;
+    pub fn halt_request(&mut self) -> Result<(), DmiError> {
+        self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ)?;
         for _ in 0..1000 {
-            let status = dmi.read(RV_DM_STATUS)?;
+            let status = self.dmi.read(RV_DM_STATUS)?;
             if (status & RV_DM_STAT_ALL_HALTED) != 0 {
                 // Clear haltreq once halted, matching C Blackmagic line 1337 and sdi.txt Table 3-16
-                dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
+                self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
                 return Ok(());
             }
         }
-        let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+        let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
         Err(DmiError::Timeout)
     }
 
     /// Resume core execution, optionally single-stepping.
-    pub fn halt_resume(&self, dmi: &mut dyn DmiTransport, step: bool) -> Result<(), DmiError> {
+    pub fn halt_resume(&mut self, step: bool) -> Result<(), DmiError> {
         // Read dcsr and adjust step bit
-        let mut dcsr = self.csr_read(dmi, RV_CSR_DCSR).unwrap_or(0);
+        let mut dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
         if step {
             dcsr |= RV_DCSR_STEP;
         } else {
@@ -319,41 +331,41 @@ impl RiscvHart {
         }
         // Always ensure ebreakm is set (patch 104)
         dcsr |= RV_DCSR_EBREAKM;
-        let _ = self.csr_write(dmi, RV_CSR_DCSR, dcsr);
+        let _ = self.csr_write(RV_CSR_DCSR, dcsr);
 
         // Step 1: Clear haltreq before resume (sdi.txt Table 3-16)
-        dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
+        self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
 
         // Step 2: Send resume request (0x40000001)
-        dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HART_RESUME_REQ)?;
+        self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HART_RESUME_REQ)?;
         for _ in 0..1000 {
-            let status = dmi.read(RV_DM_STATUS)?;
+            let status = self.dmi.read(RV_DM_STATUS)?;
             if (status & RV_DM_STAT_ALL_RUNNING) != 0 || (status & RV_DM_STAT_ALL_HALTED) == 0 {
                 // Target is running
-                let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+                let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
                 return Ok(());
             }
             // Check if core already ran and halted on ebreak/step
-            let dcsr = self.csr_read(dmi, RV_CSR_DCSR).unwrap_or(0);
+            let dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
             let cause = (dcsr & RV_DCSR_CAUSE_MASK) >> RV_DCSR_CAUSE_SHIFT;
             if cause == 1 /* ebreak */ || (step && cause == 4 /* step */) {
-                let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+                let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
                 return Ok(());
             }
         }
-        let _ = dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+        let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
         Err(DmiError::Timeout)
     }
 
     /// Poll core execution state.
-    pub fn halt_poll(&self, dmi: &mut dyn DmiTransport) -> (HaltReason, u32) {
-        let status = match dmi.read(RV_DM_STATUS) {
+    pub fn halt_poll(&mut self) -> (HaltReason, u32) {
+        let status = match self.dmi.read(RV_DM_STATUS) {
             Ok(s) => s,
             Err(_) => return (HaltReason::Error, 0),
         };
 
         if (status & RV_DM_STAT_ALL_HALTED) != 0 {
-            let dcsr = self.csr_read(dmi, RV_CSR_DCSR).unwrap_or(0);
+            let dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
             let cause = (dcsr & RV_DCSR_CAUSE_MASK) >> RV_DCSR_CAUSE_SHIFT;
             let reason = match cause {
                 1 => HaltReason::Breakpoint, // ebreak
@@ -371,32 +383,32 @@ impl RiscvHart {
     }
 
     /// Reset target core with halt request asserted (patch 101).
-    pub fn reset(&self, dmi: &mut dyn DmiTransport) -> Result<(), DmiError> {
+    pub fn reset(&mut self) -> Result<(), DmiError> {
         // Assert haltreq and ndmreset together
-        dmi.write(
+        self.dmi.write(
             RV_DM_CONTROL,
             self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ | RV_DM_CTRL_NDM_RESET,
         )?;
 
         // Release ndmreset while maintaining haltreq
-        dmi.write(
+        self.dmi.write(
             RV_DM_CONTROL,
             self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ,
         )?;
 
         // Acknowledge the reset while holding haltreq
-        dmi.write(
+        self.dmi.write(
             RV_DM_CONTROL,
             self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ | RV_DM_CTRL_HART_ACK_RESET,
         )?;
 
         // Ensure halted
-        self.halt_request(dmi)?;
+        self.halt_request()?;
 
         // Set ebreakm in dcsr so software breakpoints trigger debug halt
-        let mut dcsr = self.csr_read(dmi, RV_CSR_DCSR).unwrap_or(0);
+        let mut dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
         dcsr |= RV_DCSR_EBREAKM;
-        let _ = self.csr_write(dmi, RV_CSR_DCSR, dcsr);
+        let _ = self.csr_write(RV_CSR_DCSR, dcsr);
 
         Ok(())
     }

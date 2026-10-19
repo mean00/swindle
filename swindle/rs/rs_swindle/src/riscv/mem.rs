@@ -22,8 +22,7 @@ pub struct RiscvMem;
 impl RiscvMem {
     /// Read arbitrary memory bytes from `addr` into `dest`.
     pub fn read(
-        hart: &RiscvHart,
-        dmi: &mut dyn DmiTransport,
+        hart: &mut RiscvHart,
         addr: u32,
         dest: &mut [u8],
     ) -> Result<(), TargetError> {
@@ -32,9 +31,9 @@ impl RiscvMem {
         }
 
         // Bounded retry loop for SDI read confirmation (patch 102 & 103)
-        let retry_count = if dmi.needs_read_confirm() { 4 } else { 1 };
+        let retry_count = if hart.dmi.needs_read_confirm() { 4 } else { 1 };
         for _ in 0..retry_count {
-            if Self::read_attempt(hart, dmi, addr, dest).is_ok() {
+            if Self::read_attempt(hart, addr, dest).is_ok() {
                 return Ok(());
             }
         }
@@ -42,48 +41,46 @@ impl RiscvMem {
     }
 
     fn read_attempt(
-        hart: &RiscvHart,
-        dmi: &mut dyn DmiTransport,
+        hart: &mut RiscvHart,
         addr: u32,
         dest: &mut [u8],
     ) -> Result<(), TargetError> {
         match hart.active_method {
-            MemoryAccessMethod::Sysbus => Self::sysbus_read(dmi, addr, dest),
+            MemoryAccessMethod::Sysbus => Self::sysbus_read(&mut hart.dmi, addr, dest),
             MemoryAccessMethod::AbstAuto => {
                 if dest.len() <= 16 {
-                    Self::abstract_read(hart, dmi, addr, dest)
+                    Self::abstract_read(&mut hart.dmi, addr, dest)
                 } else {
                     let mut cur_addr = addr;
                     let mut remaining = dest;
                     let unaligned = (cur_addr & 3) as usize;
                     if unaligned != 0 {
                         let leading = core::cmp::min(4 - unaligned, remaining.len());
-                        Self::abstract_read(hart, dmi, cur_addr, &mut remaining[..leading])?;
+                        Self::abstract_read(&mut hart.dmi, cur_addr, &mut remaining[..leading])?;
                         cur_addr += leading as u32;
                         remaining = &mut remaining[leading..];
                     }
                     let aligned_len = remaining.len() & !3;
                     if aligned_len >= 16 {
-                        Self::abstract_auto_read(dmi, cur_addr, &mut remaining[..aligned_len])?;
+                        Self::abstract_auto_read(&mut hart.dmi, cur_addr, &mut remaining[..aligned_len])?;
                         cur_addr += aligned_len as u32;
                         remaining = &mut remaining[aligned_len..];
                     }
                     if !remaining.is_empty() {
-                        Self::abstract_read(hart, dmi, cur_addr, remaining)?;
+                        Self::abstract_read(&mut hart.dmi, cur_addr, remaining)?;
                     }
                     Ok(())
                 }
             }
             MemoryAccessMethod::Abstract | MemoryAccessMethod::Progbuf => {
-                Self::abstract_read(hart, dmi, addr, dest)
+                Self::abstract_read(&mut hart.dmi, addr, dest)
             }
         }
     }
 
     /// Write arbitrary memory bytes from `src` to `addr`.
     pub fn write(
-        hart: &RiscvHart,
-        dmi: &mut dyn DmiTransport,
+        hart: &mut RiscvHart,
         addr: u32,
         src: &[u8],
     ) -> Result<(), TargetError> {
@@ -91,47 +88,46 @@ impl RiscvMem {
             return Ok(());
         }
         match hart.active_method {
-            MemoryAccessMethod::Sysbus => Self::sysbus_write(dmi, addr, src),
+            MemoryAccessMethod::Sysbus => Self::sysbus_write(&mut hart.dmi, addr, src),
             MemoryAccessMethod::AbstAuto => {
                 if src.len() <= 16 {
-                    Self::abstract_write(hart, dmi, addr, src)
+                    Self::abstract_write(&mut hart.dmi, addr, src)
                 } else {
                     let mut cur_addr = addr;
                     let mut remaining = src;
                     let unaligned = (cur_addr & 3) as usize;
                     if unaligned != 0 {
                         let leading = core::cmp::min(4 - unaligned, remaining.len());
-                        Self::abstract_write(hart, dmi, cur_addr, &remaining[..leading])?;
+                        Self::abstract_write(&mut hart.dmi, cur_addr, &remaining[..leading])?;
                         cur_addr += leading as u32;
                         remaining = &remaining[leading..];
                     }
                     let aligned_len = remaining.len() & !3;
                     if aligned_len >= 16 {
-                        Self::abstract_auto_write(dmi, cur_addr, &remaining[..aligned_len])?;
+                        Self::abstract_auto_write(&mut hart.dmi, cur_addr, &remaining[..aligned_len])?;
                         cur_addr += aligned_len as u32;
                         remaining = &remaining[aligned_len..];
                     }
                     if !remaining.is_empty() {
-                        Self::abstract_write(hart, dmi, cur_addr, remaining)?;
+                        Self::abstract_write(&mut hart.dmi, cur_addr, remaining)?;
                     }
                     Ok(())
                 }
             }
             MemoryAccessMethod::Abstract | MemoryAccessMethod::Progbuf => {
-                Self::abstract_write(hart, dmi, addr, src)
+                Self::abstract_write(&mut hart.dmi, addr, src)
             }
         }
     }
 
     /// Non-halting read via Sysbus (returns true if performed).
     pub fn read_nostop(
-        hart: &RiscvHart,
-        dmi: &mut dyn DmiTransport,
+        hart: &mut RiscvHart,
         addr: u32,
         dest: &mut [u8],
     ) -> Result<bool, TargetError> {
         if hart.has_sysbus {
-            Self::read(hart, dmi, addr, dest).map(|_| true)
+            Self::read(hart, addr, dest).map(|_| true)
         } else {
             Ok(false)
         }
@@ -139,13 +135,12 @@ impl RiscvMem {
 
     /// Non-halting write via Sysbus (returns true if performed).
     pub fn write_nostop(
-        hart: &RiscvHart,
-        dmi: &mut dyn DmiTransport,
+        hart: &mut RiscvHart,
         addr: u32,
         src: &[u8],
     ) -> Result<bool, TargetError> {
         if hart.has_sysbus {
-            Self::write(hart, dmi, addr, src).map(|_| true)
+            Self::write(hart, addr, src).map(|_| true)
         } else {
             Ok(false)
         }
@@ -258,7 +253,6 @@ impl RiscvMem {
     // --- Abstract Memory Operations ---
 
     pub(crate) fn abstract_read(
-        _hart: &RiscvHart,
         dmi: &mut dyn DmiTransport,
         mut addr: u32,
         mut dest: &mut [u8],
@@ -300,7 +294,6 @@ impl RiscvMem {
     }
 
     pub(crate) fn abstract_write(
-        _hart: &RiscvHart,
         dmi: &mut dyn DmiTransport,
         mut addr: u32,
         mut src: &[u8],

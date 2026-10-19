@@ -23,7 +23,6 @@ pub struct RiscvHartC {
 pub struct RiscvTargetContext {
     pub c_header: RiscvHartC,
     pub hart: RiscvHart,
-    pub transport: CDmiTransport,
 }
 
 #[repr(C)]
@@ -79,7 +78,7 @@ pub unsafe extern "C" fn riscv_dm_write(dm: *mut c_void, addr: u32, val: u32) ->
         return false;
     }
     let ctx = &mut *(dm as *mut RiscvTargetContext);
-    ctx.transport.write(addr as u8, val).is_ok()
+    ctx.hart.dmi.write(addr as u8, val).is_ok()
 }
 
 #[unsafe(no_mangle)]
@@ -88,7 +87,7 @@ pub unsafe extern "C" fn riscv_dm_read(dm: *mut c_void, addr: u32, val_out: *mut
         return false;
     }
     let ctx = &mut *(dm as *mut RiscvTargetContext);
-    match ctx.transport.read(addr as u8) {
+    match ctx.hart.dmi.read(addr as u8) {
         Ok(v) => {
             *val_out = v;
             true
@@ -103,7 +102,7 @@ pub unsafe extern "C" fn riscv_csr_read(hart: *mut c_void, csr: u32, val_out: *m
         return false;
     }
     let ctx = &mut *(hart as *mut RiscvTargetContext);
-    match ctx.hart.csr_read(&mut ctx.transport, csr as u16) {
+    match ctx.hart.csr_read(csr as u16) {
         Ok(v) => {
             *val_out = v;
             true
@@ -118,7 +117,7 @@ pub unsafe extern "C" fn riscv_csr_write(hart: *mut c_void, csr: u32, val_in: *c
         return false;
     }
     let ctx = &mut *(hart as *mut RiscvTargetContext);
-    ctx.hart.csr_write(&mut ctx.transport, csr as u16, *val_in).is_ok()
+    ctx.hart.csr_write(csr as u16, *val_in).is_ok()
 }
 
 #[unsafe(no_mangle)]
@@ -135,7 +134,7 @@ pub unsafe extern "C" fn riscv32_run_stub(
         return false;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    stub::run_stub(&ctx.hart, &mut ctx.transport, loadaddr, p1, p2, p3, p4)
+    stub::run_stub(&mut ctx.hart, loadaddr, p1, p2, p3, p4)
 }
 
 #[unsafe(no_mangle)]
@@ -153,7 +152,7 @@ pub unsafe extern "C" fn riscv32_run_stub_with_stack(
         return false;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    stub::run_stub_with_stack(&ctx.hart, &mut ctx.transport, loadaddr, stack, p1, p2, p3, p4)
+    stub::run_stub_with_stack(&mut ctx.hart, loadaddr, stack, p1, p2, p3, p4)
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +175,7 @@ pub unsafe extern "C" fn riscv_dmi_init(dmi: *mut RiscvDmiC) {
         return;
     }
 
-    let hart = match RiscvHart::probe(&mut transport, 0) {
+    let hart = match RiscvHart::probe(transport, 0) {
         Ok(h) => h,
         Err(_) => return,
     };
@@ -193,7 +192,6 @@ pub unsafe extern "C" fn riscv_dmi_init(dmi: *mut RiscvDmiC) {
             hartsel: hart.hartsel,
         },
         hart,
-        transport,
     });
     ctx.c_header.dbg_module = &mut *ctx as *mut _ as *mut c_void;
 
@@ -240,10 +238,10 @@ pub unsafe extern "C" fn riscv_dmi_init(dmi: *mut RiscvDmiC) {
 
     // Automatically benchmark candidate memory access methods and pick the fastest
     let ctx_ref = &mut *(priv_ptr as *mut RiscvTargetContext);
-    super::benchmark::auto_select_fastest_method(&mut ctx_ref.hart, &mut ctx_ref.transport);
+    super::benchmark::auto_select_fastest_method(&mut ctx_ref.hart);
 
     // Resume target after probing completes
-    let _ = ctx_ref.hart.halt_resume(&mut ctx_ref.transport, false);
+    let _ = ctx_ref.hart.halt_resume(false);
 }
 
 #[unsafe(no_mangle)]
@@ -304,7 +302,7 @@ unsafe extern "C" fn riscv_target_attach(target: *mut TargetC) -> bool {
         return false;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    ctx.hart.halt_request(&mut ctx.transport).is_ok()
+    ctx.hart.halt_request().is_ok()
 }
 
 unsafe extern "C" fn riscv_target_detach(target: *mut TargetC) {
@@ -317,7 +315,7 @@ unsafe extern "C" fn riscv_target_check_error(target: *mut TargetC) -> bool {
         return true;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    let cs = ctx.transport.read(RV_DM_ABSTRACTCS).unwrap_or(0);
+    let cs = ctx.hart.dmi.read(RV_DM_ABSTRACTCS).unwrap_or(0);
     (cs & RV_DM_ABSTCS_CMDERR_MASK) != 0
 }
 
@@ -328,7 +326,7 @@ unsafe extern "C" fn riscv_target_mem_read(target: *mut TargetC, dest: *mut c_vo
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(dest as *mut u8, len);
-    if let Err(_e) = RiscvMem::read(&ctx.hart, &mut ctx.transport, src as u32, slice) {
+    if let Err(_e) = RiscvMem::read(&mut ctx.hart, src as u32, slice) {
         crate::glue::gdb_out_rs("RiscvMem::read failed at addr=");
         crate::bmplogger::G::print_hex(src as u32);
         crate::glue::gdb_out_rs("\n");
@@ -342,7 +340,7 @@ unsafe extern "C" fn riscv_target_mem_write(target: *mut TargetC, dest: u64, src
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(src as *const u8, len);
-    if let Err(_e) = RiscvMem::write(&ctx.hart, &mut ctx.transport, dest as u32, slice) {
+    if let Err(_e) = RiscvMem::write(&mut ctx.hart, dest as u32, slice) {
         crate::glue::gdb_out_rs("RiscvMem::write failed at addr=");
         crate::bmplogger::G::print_hex(dest as u32);
         crate::glue::gdb_out_rs("\n");
@@ -361,7 +359,7 @@ unsafe extern "C" fn riscv_target_mem_read_nostop(
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(dest as *mut u8, len);
-    RiscvMem::read_nostop(&ctx.hart, &mut ctx.transport, src as u32, slice).unwrap_or(false)
+    RiscvMem::read_nostop(&mut ctx.hart, src as u32, slice).unwrap_or(false)
 }
 
 unsafe extern "C" fn riscv_target_mem_write_nostop(
@@ -376,7 +374,7 @@ unsafe extern "C" fn riscv_target_mem_write_nostop(
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(src as *const u8, len);
-    RiscvMem::write_nostop(&ctx.hart, &mut ctx.transport, dest as u32, slice).unwrap_or(false)
+    RiscvMem::write_nostop(&mut ctx.hart, dest as u32, slice).unwrap_or(false)
 }
 
 unsafe extern "C" fn riscv_target_reg_read(
@@ -391,7 +389,7 @@ unsafe extern "C" fn riscv_target_reg_read(
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(data as *mut u8, max);
-    ctx.hart.reg_read(&mut ctx.transport, reg, slice).unwrap_or(0)
+    ctx.hart.reg_read(reg, slice).unwrap_or(0)
 }
 
 unsafe extern "C" fn riscv_target_reg_write(
@@ -406,7 +404,7 @@ unsafe extern "C" fn riscv_target_reg_write(
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(data as *const u8, size);
-    ctx.hart.reg_write(&mut ctx.transport, reg, slice).unwrap_or(0)
+    ctx.hart.reg_write(reg, slice).unwrap_or(0)
 }
 
 unsafe extern "C" fn riscv_target_regs_read(target: *mut TargetC, data: *mut c_void) {
@@ -417,7 +415,7 @@ unsafe extern "C" fn riscv_target_regs_read(target: *mut TargetC, data: *mut c_v
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let total_size = ctx.hart.isa.regs_size();
     let slice = core::slice::from_raw_parts_mut(data as *mut u8, total_size);
-    let _ = ctx.hart.regs_read(&mut ctx.transport, slice);
+    let _ = ctx.hart.regs_read(slice);
 }
 
 unsafe extern "C" fn riscv_target_regs_write(target: *mut TargetC, data: *const c_void) {
@@ -428,7 +426,7 @@ unsafe extern "C" fn riscv_target_regs_write(target: *mut TargetC, data: *const 
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let total_size = ctx.hart.isa.regs_size();
     let slice = core::slice::from_raw_parts(data as *const u8, total_size);
-    let _ = ctx.hart.regs_write(&mut ctx.transport, slice);
+    let _ = ctx.hart.regs_write(slice);
 }
 
 unsafe extern "C" fn riscv_target_reset(target: *mut TargetC) {
@@ -437,7 +435,7 @@ unsafe extern "C" fn riscv_target_reset(target: *mut TargetC) {
         return;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    let _ = ctx.hart.reset(&mut ctx.transport);
+    let _ = ctx.hart.reset();
 }
 
 unsafe extern "C" fn riscv_target_halt_request(target: *mut TargetC) {
@@ -446,7 +444,7 @@ unsafe extern "C" fn riscv_target_halt_request(target: *mut TargetC) {
         return;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    let _ = ctx.hart.halt_request(&mut ctx.transport);
+    let _ = ctx.hart.halt_request();
 }
 
 unsafe extern "C" fn riscv_target_halt_resume(target: *mut TargetC, step: bool) {
@@ -455,7 +453,7 @@ unsafe extern "C" fn riscv_target_halt_resume(target: *mut TargetC, step: bool) 
         return;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    let _ = ctx.hart.halt_resume(&mut ctx.transport, step);
+    let _ = ctx.hart.halt_resume(step);
 }
 
 unsafe extern "C" fn riscv_target_halt_poll(target: *mut TargetC, watch: *mut u64) -> u32 {
@@ -464,7 +462,7 @@ unsafe extern "C" fn riscv_target_halt_poll(target: *mut TargetC, watch: *mut u6
         return HaltReason::Error as u32;
     }
     let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    let (reason, addr) = ctx.hart.halt_poll(&mut ctx.transport);
+    let (reason, addr) = ctx.hart.halt_poll();
     if !watch.is_null() {
         *watch = addr as u64;
     }
