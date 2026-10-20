@@ -280,10 +280,20 @@ pub fn get_riscv_context<'a>(target: *mut TargetC) -> Option<&'a mut RiscvTarget
     }
 }
 
+/// Helper to extract `&mut RiscvHart` from a `TargetC` pointer if it is an attached RISC-V target.
+pub fn get_riscv_hart<'a>(target: *mut TargetC) -> Option<&'a mut super::hart::RiscvHart> {
+    get_riscv_context(target).map(|ctx| &mut ctx.hart)
+}
+
 /// Helper to get the `RiscvTargetContext` for the currently selected target.
 pub fn current_riscv_context<'a>() -> Option<&'a mut RiscvTargetContext> {
     let cur = crate::target::c_adapter::get_cur_target();
     get_riscv_context(cur)
+}
+
+/// Helper to get the `&mut RiscvHart` for the currently selected target.
+pub fn current_riscv_hart<'a>() -> Option<&'a mut super::hart::RiscvHart> {
+    current_riscv_context().map(|ctx| &mut ctx.hart)
 }
 
 // ---------------------------------------------------------------------------

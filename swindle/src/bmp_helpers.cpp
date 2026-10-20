@@ -809,6 +809,37 @@ void target_set_riscv_ops_c(target_s *t, const target_riscv_ops_s *ops)
     TOPT_SET_ARCH(t->target_options, TOPT_ARCH_RISCV);
 }
 
+target_flash_s *target_flash_alloc_c(void)
+{
+    return (target_flash_s *)calloc(1, sizeof(target_flash_s));
+}
+
+void target_set_driver_c(target_s *t, const char *driver)
+{
+    if (t) t->driver = driver;
+}
+
+void target_set_part_id_c(target_s *t, uint32_t part_id)
+{
+    if (t) t->part_id = part_id;
+}
+
+void target_set_options_c(target_s *t, uint32_t options)
+{
+    if (t) t->target_options |= options;
+}
+
+void target_set_no_hw_breakpoint_c(target_s *t, bool no_hw)
+{
+    if (t) t->no_hw_breakpoint = no_hw;
+}
+
+void target_set_sw_breakpoint_helpers_c(target_s *t, const sw_breakpoint_helpers *helpers)
+{
+    if (t) t->sw_breakpoint_helpers = helpers;
+}
+
+extern "C" bool rs_ch32v00x_probe(target_s *target);
 extern "C" bool ch32v003x_probe(target_s *target);
 extern "C" bool ch32v3xx_probe(target_s *target);
 extern "C" bool rp2350_probe(target_s *target);
@@ -817,11 +848,13 @@ bool riscv32_silicon_probe_c(target_s *target)
 {
     if (!target) return false;
     if (target->designer_code == JEP106_MANUFACTURER_WCH) {
+        if (rs_ch32v00x_probe(target)) return true;
         if (ch32v003x_probe(target)) return true;
         if (ch32v3xx_probe(target)) return true;
     } else if (target->designer_code == JEP106_MANUFACTURER_RASPBERRY) {
         if (rp2350_probe(target)) return true;
     }
+    if (rs_ch32v00x_probe(target)) return true;
     if (ch32v003x_probe(target)) return true;
     if (ch32v3xx_probe(target)) return true;
     if (rp2350_probe(target)) return true;

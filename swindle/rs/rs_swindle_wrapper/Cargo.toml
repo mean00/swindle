@@ -24,6 +24,7 @@ default =  ["native"]
 [dependencies]
 rsbmp = { path="../rs_swindle"}
 rs_swindle_leds = { path="../rs_swindle_leds"}
+rs_ch32v00x = { path="../../../blackmagic_addon/target/rs_ch32v00x" }
 rust_esprit = { workspace = true, optional = true }
 
 [lib]

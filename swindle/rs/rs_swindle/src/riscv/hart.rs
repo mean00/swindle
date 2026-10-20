@@ -412,4 +412,61 @@ impl RiscvHart {
 
         Ok(())
     }
+
+    // --- Direct DM / DMI access ---
+    #[inline]
+    pub fn dm_read(&mut self, addr: u8) -> Result<u32, DmiError> {
+        self.dmi.read(addr)
+    }
+
+    #[inline]
+    pub fn dm_write(&mut self, addr: u8, val: u32) -> Result<(), DmiError> {
+        self.dmi.write(addr, val)
+    }
+
+    // --- Direct Memory Access (Native Rust API) ---
+    pub fn mem_read(&mut self, addr: u32, dest: &mut [u8]) -> Result<(), TargetError> {
+        super::mem::RiscvMem::read(self, addr, dest).map_err(|_| TargetError::AccessFault)
+    }
+
+    pub fn mem_write(&mut self, addr: u32, src: &[u8]) -> Result<(), TargetError> {
+        super::mem::RiscvMem::write(self, addr, src).map_err(|_| TargetError::AccessFault)
+    }
+
+    pub fn mem_read_nostop(&mut self, addr: u32, dest: &mut [u8]) -> Result<bool, TargetError> {
+        super::mem::RiscvMem::read_nostop(self, addr, dest).map_err(|_| TargetError::AccessFault)
+    }
+
+    pub fn mem_write_nostop(&mut self, addr: u32, src: &[u8]) -> Result<bool, TargetError> {
+        super::mem::RiscvMem::write_nostop(self, addr, src).map_err(|_| TargetError::AccessFault)
+    }
+
+    pub fn mem_read32(&mut self, addr: u32) -> Result<u32, TargetError> {
+        let mut buf = [0u8; 4];
+        self.mem_read(addr, &mut buf)?;
+        Ok(u32::from_le_bytes(buf))
+    }
+
+    pub fn mem_read16(&mut self, addr: u32) -> Result<u16, TargetError> {
+        let mut buf = [0u8; 2];
+        self.mem_read(addr, &mut buf)?;
+        Ok(u16::from_le_bytes(buf))
+    }
+
+    pub fn mem_write32(&mut self, addr: u32, val: u32) -> Result<(), TargetError> {
+        self.mem_write(addr, &val.to_le_bytes())
+    }
+
+    pub fn mem_write16(&mut self, addr: u32, val: u16) -> Result<(), TargetError> {
+        self.mem_write(addr, &val.to_le_bytes())
+    }
+
+    // --- Stub Execution (Native Rust API) ---
+    pub fn run_stub(&mut self, loadaddr: u32, p1: u32, p2: u32, p3: u32, p4: u32) -> bool {
+        super::stub::run_stub(self, loadaddr, p1, p2, p3, p4)
+    }
+
+    pub fn run_stub_with_stack(&mut self, loadaddr: u32, stack: u32, p1: u32, p2: u32, p3: u32, p4: u32) -> bool {
+        super::stub::run_stub_with_stack(self, loadaddr, stack, p1, p2, p3, p4)
+    }
 }

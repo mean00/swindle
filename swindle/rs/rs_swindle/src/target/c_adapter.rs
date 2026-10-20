@@ -68,7 +68,20 @@ unsafe extern "C" {
     pub fn target_has_mw_helpers_c(t: *mut TargetC) -> bool;
     pub fn target_mw_page_size_c(t: *mut TargetC) -> u32;
     pub fn target_overwrite_flash_c(t: *mut TargetC, address: u32, data: *const u8, len: u32) -> bool;
+    pub fn target_flash_alloc_c() -> *mut c_void;
+    pub fn target_set_driver_c(t: *mut TargetC, driver: *const core::ffi::c_char);
+    pub fn target_set_part_id_c(t: *mut TargetC, part_id: u32);
+    pub fn target_set_options_c(t: *mut TargetC, options: u32);
+    pub fn target_set_no_hw_breakpoint_c(t: *mut TargetC, no_hw: bool);
+    pub fn target_set_sw_breakpoint_helpers_c(t: *mut TargetC, helpers: *const SwBreakpointHelpersC);
     pub static mut cur_target: *mut TargetC;
+}
+
+#[repr(C)]
+pub struct SwBreakpointHelpersC {
+    pub page_size: unsafe extern "C" fn(t: *mut TargetC) -> u32,
+    pub page_erase: unsafe extern "C" fn(t: *mut TargetC, addr: u32) -> bool,
+    pub page_write: unsafe extern "C" fn(t: *mut TargetC, addr: u32, src: *const u8, page_size: u32) -> bool,
 }
 
 pub fn get_cur_target() -> *mut TargetC {
@@ -513,6 +526,37 @@ pub unsafe extern "C" fn target_add_flash(target: *mut TargetC, flash: *mut c_vo
         return;
     }
     unsafe { target_flash_setup_c(target, flash) }
+}
+
+pub unsafe fn target_add_flash_region(
+    target: *mut TargetC,
+    start: u32,
+    length: usize,
+    blocksize: usize,
+    writesize: usize,
+    erasesizes: *const usize,
+    prepare: Option<unsafe extern "C" fn(flash: *mut crate::flash::c_adapter::TargetFlash) -> bool>,
+    erase: Option<unsafe extern "C" fn(flash: *mut crate::flash::c_adapter::TargetFlash, addr: u32, len: usize) -> bool>,
+    write: Option<unsafe extern "C" fn(flash: *mut crate::flash::c_adapter::TargetFlash, dest: u32, src: *const u8, len: usize) -> bool>,
+) -> *mut crate::flash::c_adapter::TargetFlash {
+    unsafe {
+        let flash_raw = target_flash_alloc_c();
+        if flash_raw.is_null() {
+            return core::ptr::null_mut();
+        }
+        let flash = flash_raw as *mut crate::flash::c_adapter::TargetFlash;
+        (*flash).start = start;
+        (*flash).length = length;
+        (*flash).blocksize = blocksize;
+        (*flash).erasesizes = erasesizes;
+        (*flash).writesize = writesize;
+        (*flash).erased = 0xff;
+        (*flash).prepare = prepare;
+        (*flash).erase = erase;
+        (*flash).write = write;
+        target_flash_setup_c(target, flash_raw);
+        flash
+    }
 }
 
 #[unsafe(no_mangle)]
