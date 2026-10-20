@@ -8,15 +8,17 @@ pub mod driver;
 pub mod memory;
 pub mod registry;
 pub mod c_adapter;
+pub mod rust_driver;
 
 pub use driver::{BreakwatchType, HaltReason, TargetDriver, TargetError};
 pub use memory::{read_u16, read_u32, read_u8, write_u16, write_u32, write_u8, RamRegion};
 pub use registry::TargetRegistry;
+pub use rust_driver::{FlashDesc, RamDesc, RustTargetDriver};
 pub use c_adapter::{
-    CTargetDriver, SwBreakpointHelpersC, TargetC, target_add_flash_region,
-    target_add_ram32, target_flash_alloc_c, target_list, target_mem_map_free,
-    target_set_driver_c, target_set_no_hw_breakpoint_c, target_set_options_c,
-    target_set_part_id_c, target_set_sw_breakpoint_helpers_c,
+    CTargetDriver, SwBreakpointHelpersC, TargetC, target_add_default_commands_c,
+    target_add_flash_region, target_add_ram32, target_flash_alloc_c, target_list,
+    target_mem_map_free, target_set_driver_c, target_set_no_hw_breakpoint_c,
+    target_set_options_c, target_set_part_id_c, target_set_sw_breakpoint_helpers_c,
 };
 
 /// Unified target driver dispatcher: prioritizes first-class native Rust drivers

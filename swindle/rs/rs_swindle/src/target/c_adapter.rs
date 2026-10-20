@@ -54,7 +54,7 @@ unsafe extern "C" {
     fn target_set_flash_c(t: *mut TargetC, flash: *mut c_void);
     fn target_flash_get_next_c(flash: *mut c_void) -> *mut c_void;
     fn target_flash_setup_c(t: *mut TargetC, flash: *mut c_void);
-    fn target_add_default_commands_c(t: *mut TargetC);
+    pub fn target_add_default_commands_c(t: *mut TargetC);
     fn platform_target_clk_output_enable(enable: bool);
     pub fn target_get_attached_c(t: *mut TargetC) -> bool;
     pub fn target_get_driver_name_c(t: *mut TargetC) -> *const core::ffi::c_char;
@@ -535,9 +535,11 @@ pub unsafe fn target_add_flash_region(
     blocksize: usize,
     writesize: usize,
     erasesizes: *const usize,
+    erased: u8,
     prepare: Option<unsafe extern "C" fn(flash: *mut crate::flash::c_adapter::TargetFlash) -> bool>,
     erase: Option<unsafe extern "C" fn(flash: *mut crate::flash::c_adapter::TargetFlash, addr: u32, len: usize) -> bool>,
     write: Option<unsafe extern "C" fn(flash: *mut crate::flash::c_adapter::TargetFlash, dest: u32, src: *const u8, len: usize) -> bool>,
+    done: Option<unsafe extern "C" fn(flash: *mut crate::flash::c_adapter::TargetFlash) -> bool>,
 ) -> *mut crate::flash::c_adapter::TargetFlash {
     unsafe {
         let flash_raw = target_flash_alloc_c();
@@ -550,10 +552,11 @@ pub unsafe fn target_add_flash_region(
         (*flash).blocksize = blocksize;
         (*flash).erasesizes = erasesizes;
         (*flash).writesize = writesize;
-        (*flash).erased = 0xff;
+        (*flash).erased = erased;
         (*flash).prepare = prepare;
         (*flash).erase = erase;
         (*flash).write = write;
+        (*flash).done = done;
         target_flash_setup_c(target, flash_raw);
         flash
     }

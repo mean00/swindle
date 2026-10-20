@@ -2,6 +2,7 @@
 
 use super::registers::*;
 use rsbmp::riscv::RiscvHart;
+use rsbmp::target::{FlashDesc, RamDesc, RustTargetDriver};
 
 /// Target device metadata discovered during probe.
 #[derive(Debug, Clone, Copy)]
@@ -14,10 +15,12 @@ pub struct Ch32v00xInfo {
     pub driver_name: &'static str,
 }
 
-/// Idiomatic Rust driver for WCH CH32V00x / CH32V006 RISC-V microcontrollers.
+/// Idiomatic pure Rust driver for WCH CH32V00x / CH32V006 microcontrollers.
 #[derive(Debug, Clone, Copy)]
 pub struct Ch32v00xDriver {
     pub info: Ch32v00xInfo,
+    pub ram_desc: [RamDesc; 1],
+    pub flash_desc: [FlashDesc; 2],
 }
 
 impl Ch32v00xDriver {
@@ -48,6 +51,33 @@ impl Ch32v00xDriver {
             }
         };
 
+        let ram_bytes = (ram_size_kb as usize) * 1024;
+        let flash_bytes = (flash_size_kb as usize) * 1024;
+
+        let ram_desc = [RamDesc {
+            start: RAM_ADDRESS,
+            length: ram_bytes,
+        }];
+
+        let flash_desc = [
+            FlashDesc {
+                start: FLASH_ALIAS_ADDRESS,
+                length: flash_bytes,
+                blocksize: FLASH_BLOCK_SIZE,
+                writesize: FLASH_BLOCK_SIZE,
+                erasesizes: &ERASE_SIZES,
+                erased: 0xff,
+            },
+            FlashDesc {
+                start: FLASH_PHYSICAL_ADDRESS,
+                length: flash_bytes,
+                blocksize: FLASH_BLOCK_SIZE,
+                writesize: FLASH_BLOCK_SIZE,
+                erasesizes: &ERASE_SIZES,
+                erased: 0xff,
+            },
+        ];
+
         Some(Self {
             info: Ch32v00xInfo {
                 idcode,
@@ -57,6 +87,8 @@ impl Ch32v00xDriver {
                 page_size,
                 driver_name,
             },
+            ram_desc,
+            flash_desc,
         })
     }
 
@@ -278,10 +310,61 @@ impl Ch32v00xDriver {
     }
 
     /// Software breakpoint page write helper.
-    pub fn page_write(&self, hart: &mut RiscvHart, addr: u32, src: &[u8], page_size: u32) -> bool {
-        if page_size != self.info.page_size || (addr & (page_size - 1)) != 0 {
+    pub fn page_write(&self, hart: &mut RiscvHart, addr: u32, src: &[u8]) -> bool {
+        let page_size = self.info.page_size;
+        if src.len() != page_size as usize || (addr & (page_size - 1)) != 0 {
             return false;
         }
         self.write_direct(hart, addr, src)
+    }
+}
+
+impl RustTargetDriver for Ch32v00xDriver {
+    fn name(&self) -> &'static str {
+        self.info.driver_name
+    }
+
+    fn part_id(&self) -> u32 {
+        self.info.idcode
+    }
+
+    fn target_options(&self) -> u32 {
+        TOPT_INHIBIT_NRST
+    }
+
+    fn has_hw_breakpoints(&self) -> bool {
+        false
+    }
+
+    fn ram_regions(&self) -> &[RamDesc] {
+        &self.ram_desc
+    }
+
+    fn flash_regions(&self) -> &[FlashDesc] {
+        &self.flash_desc
+    }
+
+    fn flash_prepare(&mut self, hart: &mut RiscvHart) -> bool {
+        self.prepare_stub(hart)
+    }
+
+    fn flash_erase(&mut self, hart: &mut RiscvHart, addr: u32, len: usize) -> bool {
+        self.erase(hart, addr, len)
+    }
+
+    fn flash_write(&mut self, hart: &mut RiscvHart, dest: u32, data: &[u8]) -> bool {
+        self.write_stub(hart, dest, data)
+    }
+
+    fn sw_page_size(&self) -> u32 {
+        self.info.page_size
+    }
+
+    fn sw_page_erase(&mut self, hart: &mut RiscvHart, addr: u32) -> bool {
+        self.page_erase(hart, addr)
+    }
+
+    fn sw_page_write(&mut self, hart: &mut RiscvHart, addr: u32, data: &[u8]) -> bool {
+        self.page_write(hart, addr, data)
     }
 }

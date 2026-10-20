@@ -839,7 +839,7 @@ void target_set_sw_breakpoint_helpers_c(target_s *t, const sw_breakpoint_helpers
     if (t) t->sw_breakpoint_helpers = helpers;
 }
 
-extern "C" bool rs_ch32v00x_probe(target_s *target);
+extern "C" bool riscv_rust_target_probe(target_s *target);
 extern "C" bool ch32v003x_probe(target_s *target);
 extern "C" bool ch32v3xx_probe(target_s *target);
 extern "C" bool rp2350_probe(target_s *target);
@@ -848,13 +848,13 @@ bool riscv32_silicon_probe_c(target_s *target)
 {
     if (!target) return false;
     if (target->designer_code == JEP106_MANUFACTURER_WCH) {
-        if (rs_ch32v00x_probe(target)) return true;
+        if (riscv_rust_target_probe(target)) return true;
         if (ch32v003x_probe(target)) return true;
         if (ch32v3xx_probe(target)) return true;
     } else if (target->designer_code == JEP106_MANUFACTURER_RASPBERRY) {
         if (rp2350_probe(target)) return true;
     }
-    if (rs_ch32v00x_probe(target)) return true;
+    if (riscv_rust_target_probe(target)) return true;
     if (ch32v003x_probe(target)) return true;
     if (ch32v3xx_probe(target)) return true;
     if (rp2350_probe(target)) return true;

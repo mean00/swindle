@@ -81,6 +81,7 @@ pub const FLASH_PHYSICAL_ADDRESS: u32 = 0x0800_0000;
 pub const FLASH_BLOCK_SIZE: usize = 512;
 pub const FLASH_WORD_BYTES: usize = 4;
 pub const FLASH_TIMEOUT_ITERS: usize = 2000;
+pub static ERASE_SIZES: [usize; 2] = [FLASH_BLOCK_SIZE, 0];
 
 // Target options
 pub const TOPT_INHIBIT_NRST: u32 = 0x4000;

@@ -1,0 +1,7 @@
+[package]
+name = "rs_ch32v123xx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rsbmp = { path = "../../../swindle/rs/rs_swindle" }

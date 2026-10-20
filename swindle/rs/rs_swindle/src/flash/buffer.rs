@@ -1,13 +1,15 @@
 //! Sector write buffer with dirty window tracking and automatic flush.
 
-use alloc::vec::Vec;
 use super::driver::{FlashDriver, FlashError, FlashOperation};
 use super::geometry::FlashGeometry;
 
+pub const MAX_FLASH_BUFFER_SIZE: usize = 2048;
+
 /// Manages a sector-sized in-memory buffer to batch sub-sector writes
 /// and flush them aligned to `write_size`.
+/// Uses a fixed 2048-byte array to ensure 0 dynamic heap allocations during flashing.
 pub struct FlashSectorBuffer {
-    data: Vec<u8>,
+    data: [u8; MAX_FLASH_BUFFER_SIZE],
     base_addr: Option<u32>,
     dirty_low: u32,
     dirty_high: u32,
@@ -15,18 +17,17 @@ pub struct FlashSectorBuffer {
 
 impl FlashSectorBuffer {
     /// Creates a new uninitialized sector buffer.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            data: Vec::new(),
+            data: [0xff; MAX_FLASH_BUFFER_SIZE],
             base_addr: None,
             dirty_low: u32::MAX,
             dirty_high: 0,
         }
     }
 
-    /// Clears the buffer and resets base and dirty tracking, freeing memory.
+    /// Clears the buffer and resets base and dirty tracking without freeing memory.
     pub fn clear(&mut self) {
-        self.data = Vec::new();
         self.base_addr = None;
         self.dirty_low = u32::MAX;
         self.dirty_high = 0;
@@ -46,7 +47,7 @@ impl FlashSectorBuffer {
         mut dest: u32,
         mut src: &[u8],
     ) -> Result<(), FlashError> {
-        let buf_size = geometry.write_buf_size;
+        let buf_size = geometry.write_buf_size.min(MAX_FLASH_BUFFER_SIZE);
         if buf_size == 0 {
             return Err(FlashError::BufferAllocationFailed);
         }
@@ -57,21 +58,8 @@ impl FlashSectorBuffer {
             if self.base_addr != Some(base) {
                 self.flush(geometry, driver)?;
 
-                // Initialize buffer for new sector
-                if self.data.len() < buf_size {
-                    let additional = buf_size - self.data.len();
-                    self.data
-                        .try_reserve_exact(additional)
-                        .map_err(|_| FlashError::BufferAllocationFailed)?;
-                    unsafe {
-                        for b in &mut self.data.spare_capacity_mut()[..additional] {
-                            b.write(geometry.erased_byte);
-                        }
-                        self.data.set_len(buf_size);
-                    }
-                } else {
-                    self.data[..buf_size].fill(geometry.erased_byte);
-                }
+                // Initialize buffer for new sector with erased byte
+                self.data[..buf_size].fill(geometry.erased_byte);
                 self.base_addr = Some(base);
                 self.dirty_low = u32::MAX;
                 self.dirty_high = 0;

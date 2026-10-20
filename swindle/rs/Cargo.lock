@@ -186,6 +186,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs_ch32v123xx"
+version = "0.1.0"
+dependencies = [
+ "rsbmp",
+]
+
+[[package]]
 name = "rs_dma_bluepill"
 version = "0.1.0"
 dependencies = [
@@ -399,6 +406,7 @@ name = "rsbmp_wrapper"
 version = "0.1.0"
 dependencies = [
  "rs_ch32v00x",
+ "rs_ch32v123xx",
  "rs_swindle_leds",
  "rsbmp",
  "rust_esprit",
