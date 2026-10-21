@@ -348,7 +348,7 @@ static bool ch32_sdi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, c
  * rvswd_template.h::rvswd_scan(): after the unlock it clears the blackmagic
  * target list and hands riscv_dmi_init() an SDI-backed riscv_dmi_s (designer =
  * WCH), so the C RISC-V framework discovers the hart and runs the per-family
- * probe (riscv32_probe -> ch32v003x_probe) exactly as it does over RVSWD.
+ * probe (riscv32_probe -> riscv_rust_target_probe) exactly as it does over RVSWD.
  * A missing / unresponsive target leaves the SDI bus idle-high, which reads
  * back as all-ones.
  * @return true when a target responded to the unlock (attach attempted).

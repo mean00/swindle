@@ -785,37 +785,6 @@ extern "C" bool bmp_has_hw_breakpoint_c()
 /*
  *
  */
-extern "C" bool bmp_overwrite_flash_c(uint32_t address, const uint8_t *data, uint32_t len)
-{
-    if (!cur_target)
-    {
-        Logger("No target \n");
-        return false;
-    }
-    const sw_breakpoint_helpers *helpers = target_get_mw_helpers(cur_target);
-    if (!helpers)
-    {
-        Logger("No helper \n");
-        return false;
-    }
-    //
-    uint32_t page_size = helpers->page_size(cur_target);
-    xAssert(page_size == len);
-    if (!helpers->page_erase(cur_target, address))
-    {
-        Logger("Page Erase failed \n");
-        return false;
-    }
-    if (!helpers->page_write(cur_target, address, data, len))
-    {
-        Logger("Page Write failed \n");
-        return false;
-    }
-    return true;
-}
-/*
- *
- */
 extern "C" bool target_has_mw_helpers(void)
 {
     if (!cur_target)

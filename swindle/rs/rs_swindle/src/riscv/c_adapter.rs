@@ -5,13 +5,12 @@ use super::dm::*;
 use super::dmi::{CDmiTransport, DmiTransport, RiscvDmiC};
 use super::hart::{HartIsa, RiscvHart};
 use super::mem::RiscvMem;
-use super::stub;
 use crate::target::c_adapter::{target_new, TargetC};
 use crate::target::driver::HaltReason;
 use alloc::boxed::Box;
 use core::ffi::c_void;
 
-/// C-compatible representation of `riscv_hart_s` required by `ch32v0x.c`.
+/// C-compatible mirror of the `riscv_hart_s` header layout.
 #[repr(C)]
 pub struct RiscvHartC {
     pub dbg_module: *mut c_void,
@@ -56,103 +55,6 @@ unsafe extern "C" {
     fn target_get_priv_c(t: *mut TargetC) -> *mut c_void;
     fn target_set_riscv_ops_c(t: *mut TargetC, ops: *const TargetRiscvOpsC);
     fn riscv32_silicon_probe_c(target: *mut TargetC) -> bool;
-}
-
-// ---------------------------------------------------------------------------
-// Exported C symbols called by ch32v0x.c / ch32v3xx.c
-// ---------------------------------------------------------------------------
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv_hart_struct(target: *mut TargetC) -> *mut c_void {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
-        core::ptr::null_mut()
-    } else {
-        priv_ptr
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv_dm_write(dm: *mut c_void, addr: u32, val: u32) -> bool {
-    if dm.is_null() {
-        return false;
-    }
-    let ctx = &mut *(dm as *mut RiscvTargetContext);
-    ctx.hart.dmi.write(addr as u8, val).is_ok()
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv_dm_read(dm: *mut c_void, addr: u32, val_out: *mut u32) -> bool {
-    if dm.is_null() || val_out.is_null() {
-        return false;
-    }
-    let ctx = &mut *(dm as *mut RiscvTargetContext);
-    match ctx.hart.dmi.read(addr as u8) {
-        Ok(v) => {
-            *val_out = v;
-            true
-        }
-        Err(_) => false,
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv_csr_read(hart: *mut c_void, csr: u32, val_out: *mut u32) -> bool {
-    if hart.is_null() || val_out.is_null() {
-        return false;
-    }
-    let ctx = &mut *(hart as *mut RiscvTargetContext);
-    match ctx.hart.csr_read(csr as u16) {
-        Ok(v) => {
-            *val_out = v;
-            true
-        }
-        Err(_) => false,
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv_csr_write(hart: *mut c_void, csr: u32, val_in: *const u32) -> bool {
-    if hart.is_null() || val_in.is_null() {
-        return false;
-    }
-    let ctx = &mut *(hart as *mut RiscvTargetContext);
-    ctx.hart.csr_write(csr as u16, *val_in).is_ok()
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv32_run_stub(
-    target: *mut TargetC,
-    loadaddr: u32,
-    p1: u32,
-    p2: u32,
-    p3: u32,
-    p4: u32,
-) -> bool {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
-        return false;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    stub::run_stub(&mut ctx.hart, loadaddr, p1, p2, p3, p4)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn riscv32_run_stub_with_stack(
-    target: *mut TargetC,
-    loadaddr: u32,
-    stack: u32,
-    p1: u32,
-    p2: u32,
-    p3: u32,
-    p4: u32,
-) -> bool {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
-        return false;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
-    stub::run_stub_with_stack(&mut ctx.hart, loadaddr, stack, p1, p2, p3, p4)
 }
 
 // ---------------------------------------------------------------------------

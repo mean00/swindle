@@ -217,7 +217,7 @@ endfunction()
 # Supported boards
 # ----------------------------
 set(BOARDS
-    ${enabled_sources} # ${BMP_EXTRA}/target/CH32V0xx/ch32v0x.c ${BMP_EXTRA}/target/CH32V3xx/ch32v3xx.c
+    ${enabled_sources}
     ${B}/bmp_disabledBoard.cpp ${T}/lpc_common.c
     CACHE INTERNAL "")
 
@@ -247,7 +247,6 @@ if(SMALL_SWINDLE)
   )
 else()
   set(BM_TARGET ${BM_TARGET}
-    # ${BMP_EXTRA}/extra/riscv_memaccess.c (replaced by rs_swindle::riscv)
     ${T}/riscv_adi_dtm.c
     # ${T}/riscv_debug.c (replaced by rs_swindle::riscv)
     # ${T}/riscv32.c (replaced by rs_swindle::riscv)
