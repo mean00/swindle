@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use super::flashstub::*;
 use super::registers::*;
 use rsbmp::riscv::RiscvHart;
 use rsbmp::target::{FlashDesc, RamDesc, RustTargetDriver};
