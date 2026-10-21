@@ -51,3 +51,7 @@ devpodup.sh
 GD32F30x_User_Manual_Rev3.2.txt
 ch32v307_datasheet_v1.7.txt
 __pycache__/
+*.txt
+*.py
+scratch
+*.pdf
