@@ -343,14 +343,16 @@ extern "C" bool bmp_ch32v3xx_write_user_option_byte_c(uint8_t memory_conf)
 {
     if (!bmp_attached_c())
         return 0;
-    return ch32v3xx_write_user_byte(cur_target, memory_conf);
+    // return ch32v3xx_write_user_byte(cur_target, memory_conf);
+    return 0;
 }
 //
 extern "C" uint8_t bmp_ch32v3xx_read_user_option_byte_c()
 {
     if (!bmp_attached_c())
         return 0;
-    return ch32v3xx_read_user_byte(cur_target);
+    //   return ch32v3xx_read_user_byte(cur_target);
+    return 0;
 }
 //
 extern "C" bool bmp_write_reg_c(const unsigned int reg, const unsigned int val)
@@ -556,7 +558,8 @@ extern "C" bool parse_enable_or_disable(const char *value, bool *out)
         *out = true;
     else if (value_len && !strncmp(value, "disable", value_len))
         *out = false;
-    else {
+    else
+    {
         gdb_out("'enable' or 'disable' argument must be provided\n");
         return false;
     }
@@ -598,13 +601,16 @@ extern "C" bool cmd_swd_scan(const target_s *target, int argc, const char **argv
         platform_nrst_set_val(true);
 
     bool scan_result = false;
-    TRY(EXCEPTION_ALL) {
+    TRY(EXCEPTION_ALL)
+    {
 #if CONFIG_BMDA == 1
         scan_result = bmda_swd_scan_targetid(targetid);
 #else
         scan_result = adiv5_swd_scan_targetid(targetid);
 #endif
-    } CATCH() {
+    }
+    CATCH()
+    {
     case EXCEPTION_TIMEOUT:
         gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
         break;
@@ -615,7 +621,8 @@ extern "C" bool cmd_swd_scan(const target_s *target, int argc, const char **argv
         break;
     }
 
-    if (!scan_result) {
+    if (!scan_result)
+    {
         platform_target_clk_output_enable(false);
         platform_nrst_set_val(false);
         gdb_out("SWD scan failed!\n");
@@ -641,13 +648,16 @@ extern "C" bool cmd_rvswd_scan(const target_s *target, int argc, const char **ar
         platform_nrst_set_val(true);
 
     bool scan_result = false;
-    TRY(EXCEPTION_ALL) {
+    TRY(EXCEPTION_ALL)
+    {
 #if CONFIG_BMDA == 1
         scan_result = bmda_rvswd_scan();
 #else
         scan_result = rvswd_scan();
 #endif
-    } CATCH() {
+    }
+    CATCH()
+    {
     case EXCEPTION_TIMEOUT:
         gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
         break;
@@ -658,7 +668,8 @@ extern "C" bool cmd_rvswd_scan(const target_s *target, int argc, const char **ar
         break;
     }
 
-    if (!scan_result) {
+    if (!scan_result)
+    {
         platform_target_clk_output_enable(false);
         platform_nrst_set_val(false);
         gdb_out("RVSWD scan failed!\n");
@@ -849,6 +860,3 @@ extern "C" uint32_t bmp_get_target_options_c()
     return cur_target->target_options;
 }
 // EOF
-
-
-
