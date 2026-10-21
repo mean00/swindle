@@ -93,37 +93,37 @@ impl Ch32v00xDriver {
     }
 
     #[inline(always)]
-    fn read_reg(&self, hart: &mut RiscvHart, offset: u32) -> u32 {
-        hart.mem_read32(FlashRegisters::reg_addr(offset)).unwrap_or(0)
+    fn read_reg(&self, hart: &mut RiscvHart, addr: u32) -> u32 {
+        hart.mem_read32(addr).unwrap_or(0)
     }
 
     #[inline(always)]
-    fn write_reg(&self, hart: &mut RiscvHart, offset: u32, val: u32) {
-        let _ = hart.mem_write32(FlashRegisters::reg_addr(offset), val);
+    fn write_reg(&self, hart: &mut RiscvHart, addr: u32, val: u32) {
+        let _ = hart.mem_write32(addr, val);
     }
 
     /// Unlock FPEC controller and extended fast programming mode.
     pub fn unlock(&self, hart: &mut RiscvHart) -> bool {
-        let ctlr = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+        let ctlr = self.read_reg(hart, flash_reg!(ctlr));
         if (ctlr & FMC_CTL_LOCK) != 0 {
-            self.write_reg(hart, FlashRegisters::KEYR_OFFSET, FLASH_KEY1);
-            self.write_reg(hart, FlashRegisters::KEYR_OFFSET, FLASH_KEY2);
+            self.write_reg(hart, flash_reg!(keyr), FLASH_KEY1);
+            self.write_reg(hart, flash_reg!(keyr), FLASH_KEY2);
         }
 
-        let ctlr2 = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+        let ctlr2 = self.read_reg(hart, flash_reg!(ctlr));
         if (ctlr2 & FMC_CTL_FLOCK) != 0 {
-            self.write_reg(hart, FlashRegisters::MODEKEYR_OFFSET, FLASH_KEY1);
-            self.write_reg(hart, FlashRegisters::MODEKEYR_OFFSET, FLASH_KEY2);
+            self.write_reg(hart, flash_reg!(modekeyr), FLASH_KEY1);
+            self.write_reg(hart, flash_reg!(modekeyr), FLASH_KEY2);
         }
 
-        let final_ctlr = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+        let final_ctlr = self.read_reg(hart, flash_reg!(ctlr));
         (final_ctlr & (FMC_CTL_LOCK | FMC_CTL_FLOCK)) == 0
     }
 
     /// Wait until FPEC busy flag is cleared.
     pub fn wait_not_busy(&self, hart: &mut RiscvHart) -> bool {
         for _ in 0..FLASH_TIMEOUT_ITERS {
-            let stat = self.read_reg(hart, FlashRegisters::STATR_OFFSET);
+            let stat = self.read_reg(hart, flash_reg!(statr));
             if (stat & FMC_STAT_BUSY) == 0 {
                 return true;
             }
@@ -133,8 +133,8 @@ impl Ch32v00xDriver {
 
     /// Consume EOP flag and check for write protection errors.
     pub fn check_complete(&self, hart: &mut RiscvHart, _addr: u32) -> bool {
-        let stat = self.read_reg(hart, FlashRegisters::STATR_OFFSET);
-        self.write_reg(hart, FlashRegisters::STATR_OFFSET, FMC_STAT_EOP | FMC_STAT_WRPRTERR);
+        let stat = self.read_reg(hart, flash_reg!(statr));
+        self.write_reg(hart, flash_reg!(statr), FMC_STAT_EOP | FMC_STAT_WRPRTERR);
         (stat & FMC_STAT_WRPRTERR) == 0
     }
 
@@ -145,16 +145,16 @@ impl Ch32v00xDriver {
             return false;
         }
 
-        let ctlr_saved = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
-        self.write_reg(hart, FlashRegisters::CTLR_OFFSET, FMC_CTL_FTER);
+        let ctlr_saved = self.read_reg(hart, flash_reg!(ctlr));
+        self.write_reg(hart, flash_reg!(ctlr), FMC_CTL_FTER);
 
         let mut success = true;
         let mut offset = 0;
         while offset < len {
             let page_addr = ((addr + offset as u32) | FLASH_PHYSICAL_ADDRESS) as u32;
 
-            self.write_reg(hart, FlashRegisters::ADDR_OFFSET, page_addr);
-            self.write_reg(hart, FlashRegisters::CTLR_OFFSET, FMC_CTL_FTER | FMC_CTL_STRT);
+            self.write_reg(hart, flash_reg!(addr), page_addr);
+            self.write_reg(hart, flash_reg!(ctlr), FMC_CTL_FTER | FMC_CTL_STRT);
 
             if !self.wait_not_busy(hart) || !self.check_complete(hart, page_addr) {
                 success = false;
@@ -163,7 +163,7 @@ impl Ch32v00xDriver {
             offset += page_size;
         }
 
-        self.write_reg(hart, FlashRegisters::CTLR_OFFSET, ctlr_saved);
+        self.write_reg(hart, flash_reg!(ctlr), ctlr_saved);
         success
     }
 
@@ -180,16 +180,16 @@ impl Ch32v00xDriver {
             return false;
         }
 
-        let ctlr_saved = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+        let ctlr_saved = self.read_reg(hart, flash_reg!(ctlr));
         let mut success = true;
         let mut offset = 0;
 
         while offset < len {
             let page_base = ((dest + offset as u32) | FLASH_PHYSICAL_ADDRESS) as u32;
 
-            self.write_reg(hart, FlashRegisters::CTLR_OFFSET, FMC_CTL_FTPG);
-            self.write_reg(hart, FlashRegisters::CTLR_OFFSET, FMC_CTL_FTPG | FMC_CTL_BUFRST);
-            let _ = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+            self.write_reg(hart, flash_reg!(ctlr), FMC_CTL_FTPG);
+            self.write_reg(hart, flash_reg!(ctlr), FMC_CTL_FTPG | FMC_CTL_BUFRST);
+            let _ = self.read_reg(hart, flash_reg!(ctlr));
 
             if !self.wait_not_busy(hart) || !self.check_complete(hart, page_base) {
                 success = false;
@@ -213,8 +213,8 @@ impl Ch32v00xDriver {
                     break;
                 }
 
-                self.write_reg(hart, FlashRegisters::CTLR_OFFSET, FMC_CTL_FTPG | FMC_CTL_BUFLOAD);
-                let _ = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+                self.write_reg(hart, flash_reg!(ctlr), FMC_CTL_FTPG | FMC_CTL_BUFLOAD);
+                let _ = self.read_reg(hart, flash_reg!(ctlr));
 
                 if !self.wait_not_busy(hart) {
                     success = false;
@@ -227,9 +227,9 @@ impl Ch32v00xDriver {
                 break;
             }
 
-            self.write_reg(hart, FlashRegisters::ADDR_OFFSET, page_base);
-            self.write_reg(hart, FlashRegisters::CTLR_OFFSET, FMC_CTL_FTPG | FMC_CTL_STRT);
-            let _ = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+            self.write_reg(hart, flash_reg!(addr), page_base);
+            self.write_reg(hart, flash_reg!(ctlr), FMC_CTL_FTPG | FMC_CTL_STRT);
+            let _ = self.read_reg(hart, flash_reg!(ctlr));
 
             if !self.wait_not_busy(hart) || !self.check_complete(hart, page_base) {
                 success = false;
@@ -239,7 +239,7 @@ impl Ch32v00xDriver {
             offset += page_size;
         }
 
-        self.write_reg(hart, FlashRegisters::CTLR_OFFSET, ctlr_saved);
+        self.write_reg(hart, flash_reg!(ctlr), ctlr_saved);
         success
     }
 
@@ -258,7 +258,7 @@ impl Ch32v00xDriver {
             return false;
         }
 
-        let ctlr_saved = self.read_reg(hart, FlashRegisters::CTLR_OFFSET);
+        let ctlr_saved = self.read_reg(hart, flash_reg!(ctlr));
         let mut remaining = data.len();
         let mut curr_addr = (dest | FLASH_PHYSICAL_ADDRESS) as u32;
         let mut src_offset = 0;
@@ -269,11 +269,11 @@ impl Ch32v00xDriver {
             let chunk_data = &data[src_offset..src_offset + chunk];
 
             if hart.mem_write(STUB_DATA_LOCATION, chunk_data).is_err() {
-                self.write_reg(hart, FlashRegisters::CTLR_OFFSET, ctlr_saved);
+                self.write_reg(hart, flash_reg!(ctlr), ctlr_saved);
                 return false;
             }
 
-            self.write_reg(hart, FlashRegisters::CTLR_OFFSET, FMC_CTL_FTPG);
+            self.write_reg(hart, flash_reg!(ctlr), FMC_CTL_FTPG);
 
             let stub_ok = hart.run_stub_with_stack(
                 STUB_CODE_LOCATION,
@@ -287,7 +287,7 @@ impl Ch32v00xDriver {
             let _ = hart.halt_request();
 
             if !stub_ok {
-                self.write_reg(hart, FlashRegisters::CTLR_OFFSET, ctlr_saved);
+                self.write_reg(hart, flash_reg!(ctlr), ctlr_saved);
                 return false;
             }
 
@@ -296,7 +296,7 @@ impl Ch32v00xDriver {
             remaining -= chunk;
         }
 
-        self.write_reg(hart, FlashRegisters::CTLR_OFFSET, ctlr_saved);
+        self.write_reg(hart, flash_reg!(ctlr), ctlr_saved);
         true
     }
 

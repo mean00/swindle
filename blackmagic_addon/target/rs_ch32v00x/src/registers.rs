@@ -19,23 +19,21 @@ pub struct FlashRegisters {
     pub boot_modekeyr: u32, // 0x28 BOOT area key
 }
 
-impl FlashRegisters {
-    pub const ACTLR_OFFSET: u32 = 0x00;
-    pub const KEYR_OFFSET: u32 = 0x04;
-    pub const OBKEYR_OFFSET: u32 = 0x08;
-    pub const STATR_OFFSET: u32 = 0x0C;
-    pub const CTLR_OFFSET: u32 = 0x10;
-    pub const ADDR_OFFSET: u32 = 0x14;
-    pub const OBR_OFFSET: u32 = 0x1C;
-    pub const WPR_OFFSET: u32 = 0x20;
-    pub const MODEKEYR_OFFSET: u32 = 0x24;
-    pub const BOOT_MODEKEYR_OFFSET: u32 = 0x28;
-
-    #[inline(always)]
-    pub const fn reg_addr(offset: u32) -> u32 {
-        FLASH_CONTROLLER_BASE + offset
-    }
+/// Address of a [`FlashRegisters`] member in the target: `FLASH_CONTROLLER_BASE + offsetof(member)`.
+///
+/// The struct above is the single source of truth, exactly like the C
+/// `offsetof(ch32v0x_flash_s, reg)` macro in `ch32v0x.c`. Evaluated at compile time;
+/// a misspelled member does not compile.
+macro_rules! flash_reg {
+    ($member:ident) => {
+        FLASH_CONTROLLER_BASE + ::core::mem::offset_of!(FlashRegisters, $member) as u32
+    };
 }
+pub(crate) use flash_reg;
+
+// Datasheet tripwire (CH32V003 RM V1.3, Table 16-2): fails the build if the struct is edited
+// so that the last register no longer sits at its documented offset.
+const _: () = assert!(::core::mem::offset_of!(FlashRegisters, boot_modekeyr) == 0x28);
 
 // --- FPEC Unlock Keys (16.3.2 / 16.4.2) ---
 pub const FLASH_KEY1: u32 = 0x4567_0123;

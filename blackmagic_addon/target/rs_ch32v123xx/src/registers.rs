@@ -18,22 +18,21 @@ pub struct FlashRegisters {
     pub modekeyr: u32,  // 0x24 Extended (fast mode) key
 }
 
-impl FlashRegisters {
-    pub const WS_OFFSET: u32 = 0x00;
-    pub const KEYR_OFFSET: u32 = 0x04;
-    pub const OBKEYR_OFFSET: u32 = 0x08;
-    pub const STATR_OFFSET: u32 = 0x0C;
-    pub const CTLR_OFFSET: u32 = 0x10;
-    pub const ADDR_OFFSET: u32 = 0x14;
-    pub const OBR_OFFSET: u32 = 0x1C;
-    pub const WPR_OFFSET: u32 = 0x20;
-    pub const MODEKEYR_OFFSET: u32 = 0x24;
-
-    #[inline(always)]
-    pub const fn reg_addr(offset: u32) -> u32 {
-        FLASH_CONTROLLER_BASE + offset
-    }
+/// Address of a [`FlashRegisters`] member in the target: `FLASH_CONTROLLER_BASE + offsetof(member)`.
+///
+/// The struct above is the single source of truth, exactly like the C
+/// `offsetof(ch32_flash_s, reg)` macro in `ch32v3xx.c`. Evaluated at compile time;
+/// a misspelled member does not compile.
+macro_rules! flash_reg {
+    ($member:ident) => {
+        FLASH_CONTROLLER_BASE + ::core::mem::offset_of!(FlashRegisters, $member) as u32
+    };
 }
+pub(crate) use flash_reg;
+
+// Datasheet tripwire (CH32FV2x_V3x RM, Chapter 32.4): fails the build if the struct is edited
+// so that the last register no longer sits at its documented offset.
+const _: () = assert!(::core::mem::offset_of!(FlashRegisters, modekeyr) == 0x24);
 
 // --- FPEC Unlock Keys ---
 pub const FLASH_KEY1: u32 = 0x4567_0123;
@@ -65,8 +64,25 @@ pub const FMC_CTL_SCKMOD: u32 = 1 << 25;          // Flash access clock: 1=SYSCL
 
 // --- RCC Register Block ---
 pub const RCC_BASE: u32 = 0x4002_1000;
-pub const RCC_CTLR_OFFSET: u32 = 0x00;
-pub const RCC_CFGR0_OFFSET: u32 = 0x04;
+
+/// RCC register file. Only the registers the driver touches are modelled (the layout
+/// stops after `cfgr0`); the rest of the block is deliberately left out.
+#[repr(C)]
+pub struct RccRegisters {
+    pub ctlr: u32,  // 0x00 Control
+    pub cfgr0: u32, // 0x04 Clock configuration
+}
+
+/// Address of a [`RccRegisters`] member: `RCC_BASE + offsetof(member)`.
+macro_rules! rcc_reg {
+    ($member:ident) => {
+        RCC_BASE + ::core::mem::offset_of!(RccRegisters, $member) as u32
+    };
+}
+pub(crate) use rcc_reg;
+
+// Datasheet tripwire (CH32FV2x_V3x RM, RCC): CFGR0 sits right after CTLR.
+const _: () = assert!(::core::mem::offset_of!(RccRegisters, cfgr0) == 0x04);
 
 pub const RCC_CTLR_HSION: u32 = 1 << 0;
 pub const RCC_CTLR_HSIRDY: u32 = 1 << 1;
@@ -89,11 +105,6 @@ pub const RCC_CFGR0_PPRE1_DIV1: u32 = 0 << 8;
 pub const RCC_CFGR0_PPRE2_DIV1: u32 = 0 << 11;
 pub const RCC_CFGR0_PLLSRC_HSI: u32 = 0 << 16;
 pub const RCC_CFGR0_PLLSRC_HSE: u32 = 1 << 16;
-
-#[inline(always)]
-pub const fn rcc_reg_addr(offset: u32) -> u32 {
-    RCC_BASE + offset
-}
 
 #[inline(always)]
 pub const fn rcc_cfg_pllmul(mult: u32) -> u32 {
