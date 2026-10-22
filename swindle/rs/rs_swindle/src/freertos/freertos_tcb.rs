@@ -4,10 +4,9 @@
 //! building the thread list for GDB, and caching the OS thread state.
 
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
-use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 
-use crate::freertos::freertos_hashtcb::get_hashtcb;
+use crate::freertos::freertos_hashtcb::{get_hashtcb, MAX_FREERTOS_TASKS};
 use crate::freertos::freertos_list::freertos_crawl_list;
 
 use crate::freertos::freertos_symbols::{
@@ -54,9 +53,12 @@ const map_state: [freertos_task_state; 5] = [
 // Cache for freertos_collect_information() results.
 // Avoids re-scanning target memory on every GDB thread query.
 // Invalidated when the target resumes execution.
+// The storage is a `heapless::Vec` in `.bss`: the cache used to be a heap
+// `Vec` that grew (alloc + copy + free, there is no `realloc`) on every thread
+// query, since the cache is invalidated on each resume.
 // SAFETY: single-threaded debugger context.
 struct TcbCache {
-    data: Vec<freertos_task_info>,
+    data: heapless::Vec<freertos_task_info, MAX_FREERTOS_TASKS>,
     dirty: bool,
 }
 
@@ -68,7 +70,7 @@ fn get_cache() -> &'static mut TcbCache {
     unsafe {
         if !CACHE_INIT {
             CACHE.write(TcbCache {
-                data: Vec::new(),
+                data: heapless::Vec::new(),
                 dirty: true,
             });
             CACHE_INIT = true;
@@ -130,9 +132,22 @@ fn read_tcb(tcb: u32, state: freertos_task_state) -> Option<freertos_task_info> 
     })
 }
 
+/// Push one task into the cache, dropping it when the target runs more tasks
+/// than `MAX_FREERTOS_TASKS` — the same ceiling the TCB-to-TID map already has,
+/// so nothing that used to work is lost.
+fn push_cached(
+    data: &mut heapless::Vec<freertos_task_info, MAX_FREERTOS_TASKS>,
+    task: freertos_task_info,
+) {
+    if data.push(task).is_err() {
+        bmpwarning!("more than {} tasks, dropping one\n", MAX_FREERTOS_TASKS);
+    }
+}
+
 /// Scans all OS lists in target memory to collect all tasks.
 /// Results are cached until the target resumes execution.
-pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
+pub fn freertos_collect_information(
+) -> &'static heapless::Vec<freertos_task_info, MAX_FREERTOS_TASKS> {
     let cache = get_cache();
     if !cache.dirty {
         bmplog!("freertos_collect_information: returning cached data\n");
@@ -161,7 +176,7 @@ pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
     if let Some(mut x) = read_tcb(current, map_state[0]) {
         let tid = get_hashtcb().get(x.tcb_addr);
         x.tcb_no = tid;
-        cache.data.push(x);
+        push_cached(&mut cache.data, x);
     }
     // read other lists
     bmplog!("---- scanning ----\n");
@@ -178,7 +193,7 @@ pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
                 if let Some(mut x) = read_tcb(i, map_state[index]) {
                     let tid = get_hashtcb().get(x.tcb_addr);
                     x.tcb_no = tid;
-                    cache.data.push(x);
+                    push_cached(&mut cache.data, x);
                 }
             } else {
                 bmplog!("\t\t ==current, skipping\n");
@@ -205,9 +220,12 @@ pub fn freertos_collect_information() -> &'static Vec<freertos_task_info> {
     &cache.data
 }
 /// Returns a list of all detected FreeRTOS thread IDs (not raw addresses).
-pub fn get_threads() -> Vec<u32> {
+///
+/// A `heapless::Vec` so that `qfThreadInfo` — which GDB sends on every stop and
+/// every `info threads` — does not allocate.
+pub fn get_threads() -> heapless::Vec<u32, MAX_FREERTOS_TASKS> {
     bmplog!("get_threads\n");
-    let mut output: Vec<u32> = Vec::new();
+    let mut output: heapless::Vec<u32, MAX_FREERTOS_TASKS> = heapless::Vec::new();
     let symbol = get_symbols();
     if !symbol.running {
         bmplog!("fos not running \n");
@@ -215,7 +233,10 @@ pub fn get_threads() -> Vec<u32> {
     }
     let t = freertos_collect_information();
     for i in t {
-        output.push(i.tcb_no);
+        if output.push(i.tcb_no).is_err() {
+            bmpwarning!("more than {} tasks\n", MAX_FREERTOS_TASKS);
+            break;
+        }
     }
     output
 }

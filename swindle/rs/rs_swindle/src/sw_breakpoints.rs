@@ -16,7 +16,6 @@
 
 //use core::ptr::addr_of_mut;
 
-use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 
 setup_log!(false);
@@ -26,14 +25,24 @@ use crate::bmp;
 const ARM_BREAKPOINT_OPCODE: [u8; 2] = [0x00u8, 0xbeu8];
 const RISCV_BREAKPOINT_OPCODE: [u8; 2] = [0x02u8, 0x90u8];
 
+/// Ceiling on simultaneously active breakpoints of one kind.
+///
+/// The lists live in `.bss` (they used to be heap `Vec`s, and GDB re-inserts
+/// every breakpoint on each resume, so they were touched constantly). 16
+/// entries of 8 bytes cover a session's worth of `break`/`hbreak` with room to
+/// spare; past that an insertion fails with an error and the patch is undone,
+/// instead of growing the heap in the middle of a `continue`.
+const MAX_BREAKPOINTS: usize = 16;
+
 /// A saved breakpoint entry: address and original opcode bytes.
+#[derive(Clone, Copy)]
 struct address_old_opcode {
     address: u32,
     old_opcode: [u8; 4],
 }
 /// A list of active software breakpoints.
 struct list_of_breakpoints {
-    breakpoint: Vec<address_old_opcode>, // address, old opcode
+    breakpoint: heapless::Vec<address_old_opcode, MAX_BREAKPOINTS>, // address, old opcode
 }
 //
 //
@@ -57,10 +66,10 @@ impl list_of_breakpoints {
 //
 //
 static mut lsw: list_of_breakpoints = list_of_breakpoints {
-    breakpoint: Vec::new(),
+    breakpoint: heapless::Vec::new(),
 };
 static mut lmw: list_of_breakpoints = list_of_breakpoints {
-    breakpoint: Vec::new(),
+    breakpoint: heapless::Vec::new(),
 };
 const MAX_SECTOR_SIZE: u32 = 256; // must be a power of 2!
 static mut temp_buffer: MaybeUninit<[u8; MAX_SECTOR_SIZE as usize]> = MaybeUninit::uninit();
@@ -137,7 +146,13 @@ pub fn add_sw_breakpoint(address: u32, _len: u32) -> bool {
         return false;
     }
     // add to list
-    get_list_sw_ref().breakpoint.push(breakpoint);
+    if get_list_sw_ref().breakpoint.push(breakpoint).is_err() {
+        // Table full: undo the patch, otherwise a breakpoint would be planted
+        // in the target that this list cannot remove again.
+        bmplog!("sw breakpoint table full ({})\n", MAX_BREAKPOINTS);
+        bmp::bmp_mem_write(aligned_address, &breakpoint.old_opcode);
+        return false;
+    }
     true
 }
 /// Remove a software breakpoint from RAM.
@@ -219,7 +234,14 @@ pub fn add_mw_breakpoint(address: u32) -> bool {
         return false;
     }
     // add to list
-    get_list_mw_ref().breakpoint.push(breakpoint);
+    if get_list_mw_ref().breakpoint.push(breakpoint).is_err() {
+        // Table full: restore the page we just patched before giving up.
+        bmplog!("flash breakpoint table full ({})\n", MAX_BREAKPOINTS);
+        bf[offset_u] = breakpoint.old_opcode[0];
+        bf[offset_u + 1] = breakpoint.old_opcode[1];
+        bmp::bmp_overwrite_flash(aligned_address, bf);
+        return false;
+    }
     true
 }
 /// Remove a software breakpoint from flash.

@@ -11,6 +11,9 @@ extern "C" void user_init();
 extern "C" void swindle_leds_run(); // rs_swindle_leds, never returns
 extern void bmp_gpio_init_once();
 extern void gdb_task(void *param);
+
+// gdbTask TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
+LN_BIG_TASK_STORAGE(gdbTask, TASK_BMP_GDB_STACK_SIZE);
 /**
  */
 void setup()
@@ -22,7 +25,7 @@ extern "C" void user_init()
 {
     Logger("Starting picoSwindle (W5500)\n");
     bmp_gpio_init_once(); // initialise SWD PIO, reset pin, ADC
-    lnCreateTask(&gdb_task, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
+    LN_CREATE_BIG_TASK(&gdb_task, gdbTask, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
 }
 
 void loop()

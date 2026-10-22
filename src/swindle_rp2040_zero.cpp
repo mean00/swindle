@@ -16,6 +16,8 @@ extern "C" void user_init();
 void gdb_task(void *parameters);
 
 #define PIN_TO_USE GPIO16 // GPIO16 for zero, GPIO23 for normal size RP2040
+// gdbTask TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
+LN_BIG_TASK_STORAGE(gdbTask, TASK_BMP_GDB_STACK_SIZE);
 /*
  */
 void setup()
@@ -26,7 +28,7 @@ void setup()
  */
 void user_init(void)
 {
-    lnCreateTask(&gdb_task, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
+    LN_CREATE_BIG_TASK(&gdb_task, gdbTask, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
 }
 #include "swindle_common_rp2040.cpp"
 //--

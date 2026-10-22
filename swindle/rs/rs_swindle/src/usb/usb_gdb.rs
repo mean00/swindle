@@ -112,13 +112,16 @@ impl GdbCdc {
         unsafe {
             GDB_CDC.write(GdbCdc {
                 cdc: core::mem::zeroed(),
-                event_group: EventGroup::new(),
+                event_group: EventGroup::uninit(),
                 in_session: AtomicBool::new(false),
                 buffer: [0u8; GDB_BUFFER_SIZE],
             });
         }
 
         let this = Self::instance();
+        // The event group is a `static` we own: create its kernel object now
+        // (C-side `.bss` pool, no Arc, no heap).
+        this.event_group.init_static();
         this.cdc = Cdc::new_static(instance, &GDB_HANDLER);
 
         GDB_CDC_INITIALIZED.store(true, Ordering::Relaxed);

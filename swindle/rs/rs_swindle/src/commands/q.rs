@@ -29,8 +29,6 @@
 //! - <https://sourceware.org/gdb/onlinedocs/gdb/General-Query-Packets.html>
 
 
-use alloc::vec::Vec;
-
 use super::{CommandTree, exec_one};
 use crate::encoder::encoder;
 use crate::packet_symbols::INPUT_BUFFER_SIZE;
@@ -238,14 +236,19 @@ fn _qXfer(_command: &str, args: &[&str]) -> bool {
 
 //
 //
+/// Parse the `<offset>,<size>` suffix of a `qXfer` read.
+///
+/// Runs on every `qXfer` chunk (dozens per `load`), so it must not allocate:
+/// `split_once` instead of collecting a `Vec<&str>` (it used to allocate once
+/// per chunk just to check for exactly one comma).
 fn validate_q_query(arg: &str) -> Option<(usize, usize)> {
-    let conf: Vec<&str> = arg.split(',').collect();
-    if conf.len() != 2 {
+    let (offset, size) = arg.split_once(',')?;
+    if size.contains(',') {
+        // more than two fields: same answer as the old `conf.len() != 2`
         return None;
     }
-    //
-    let start_address: usize = ascii_string_hex_to_u32(conf[0]) as usize;
-    let length: usize = ascii_string_hex_to_u32(conf[1]) as usize;
+    let start_address: usize = ascii_string_hex_to_u32(offset) as usize;
+    let length: usize = ascii_string_hex_to_u32(size) as usize;
     Some((start_address, length))
 }
 //

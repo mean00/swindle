@@ -3,7 +3,6 @@
 //! Replaces the C++ `BMPSerial` class in `bmp_serial.cpp`.
 //! Bridges data between a CDC‑ACM (virtual COM port) and a hardware UART.
 
-use alloc::boxed::Box;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
@@ -91,6 +90,11 @@ impl SerialEventHandler for BridgeSerialHandler {
     }
 }
 
+/// The bridge's serial handler. It used to be `Box::new`ed at init and leaked by
+/// `Serial::set_event_handler` (malloc_used.md C10); a zero-sized static lives
+/// in `.rodata` and costs no RAM at all.
+static BRIDGE_SERIAL_HANDLER: BridgeSerialHandler = BridgeSerialHandler;
+
 // ---------------------------------------------------------------------------
 //  Directional State Machine
 // ---------------------------------------------------------------------------
@@ -175,7 +179,7 @@ impl UsbSerialBridge {
             BRIDGE.write(UsbSerialBridge {
                 cdc: core::mem::zeroed(),
                 serial: Serial::new(serial_instance, BRIDGE_BUFFER_SIZE as u32, true),
-                event_group: EventGroup::new(),
+                event_group: EventGroup::uninit(),
                 connected: AtomicBool::new(false),
                 usb2serial: DirectionChannel::new(),
                 serial2usb: DirectionChannel::new(),
@@ -184,9 +188,12 @@ impl UsbSerialBridge {
 
         let bridge = Self::instance();
 
-        // Attach serial event handler
-        let serial_handler = Box::new(BridgeSerialHandler);
-        bridge.serial.set_event_handler(serial_handler);
+        // The event group is a `static` we own: create its kernel object now
+        // (C-side `.bss` pool, no Arc, no heap).
+        bridge.event_group.init_static();
+
+        // Attach serial event handler (a `static`: no box, nothing leaked)
+        bridge.serial.set_event_handler_static(&BRIDGE_SERIAL_HANDLER);
 
         // Init serial
         bridge.serial.init();

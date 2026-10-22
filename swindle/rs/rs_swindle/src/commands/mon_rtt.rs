@@ -108,7 +108,26 @@ const rtt_help_tree: [HelpTree; 4] = [
 /// Dispatch `mon rtt` sub-commands.
 #[unsafe(no_mangle)]
 pub fn _rtt(_command: &str, args: &[&str]) -> bool {
-    let as_string = args[0..].join(" ");
+    // Join the arguments with spaces into a fixed buffer. This used to be
+    // `args.join(" ")`, i.e. a heap `String` per command; 64 bytes is far more
+    // than the sub-command tree below can consume.
+    let mut as_string: heapless::String<64> = heapless::String::new();
+    let mut overflow = false;
+    for (i, a) in args.iter().enumerate() {
+        if i != 0 && as_string.push(' ').is_err() {
+            overflow = true;
+            break;
+        }
+        if as_string.push_str(a).is_err() {
+            overflow = true;
+            break;
+        }
+    }
+    if overflow {
+        bmplog!("mon rtt: arguments too long\n");
+        encoder::reply_e01();
+        return true;
+    }
     exec_one(&rtt_command_tree, as_string.as_bytes())
 }
 

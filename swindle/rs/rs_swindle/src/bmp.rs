@@ -9,7 +9,6 @@ use crate::flash::c_adapter as flash_adapter;
 use crate::rn_bmp_cmd_c;
 use crate::target::c_adapter as target_adapter;
 use crate::target::driver::TargetDriver;
-use alloc::vec::Vec;
 use core::ffi::{CStr, c_char};
 use core::ptr::null;
 use core::ptr::null_mut;
@@ -143,39 +142,80 @@ pub fn bmp_register_description() -> &'static str {
 #[allow(dead_code)]
 pub fn bmp_drop_register_description() {}
 
-/// Read all target registers into a vector.
+/// Largest GDB register file we hand back, in 32-bit words.
 ///
-/// Returns a `Vec<u32>` containing all registers in the order defined by the
-/// target's GDB register description. Returns an empty vector if no target
-/// is attached.
-pub fn bmp_read_registers() -> Vec<u32> {
-    if let Some(driver) = target_adapter::current_driver() {
-        let size = driver.regs_size();
-        let mut buf = vec![0u8; size];
-        if driver.regs_read(&mut buf).is_err() {
-            return Vec::new();
-        }
-        let count = size / 4;
-        let mut r = Vec::with_capacity(count);
-        for chunk in buf.chunks_exact(4) {
-            r.push(u32::from_le_bytes(chunk.try_into().unwrap()));
-        }
-        r
-    } else {
-        Vec::new()
+/// The real sizes: ARMv7-M is 20 words, +10 with TrustZone, +33 with an FPU
+/// (63 at worst, `blackmagic/src/target/cortex.h:91-93`), and RV32I is 33
+/// (32 GPR + pc, `riscv/hart.rs:103`). 80 leaves headroom and costs 320 B of
+/// `.bss`, against a heap block per register read.
+pub const MAX_REG_WORDS: usize = 80;
+const MAX_REGS_BYTES: usize = MAX_REG_WORDS * 4;
+
+/// Scratch the register file is read into.
+///
+/// `bmp_read_registers()` runs on **every** GDB stop (`g` packet, every
+/// `stepi`/`continue`, every FreeRTOS thread-switch check), so it must not
+/// allocate. SAFETY: single-threaded command loop — the buffer is written and
+/// read inside one call and never held across a second one.
+static mut REGS_SCRATCH: [u32; MAX_REG_WORDS] = [0; MAX_REG_WORDS];
+
+/// Read all target registers.
+///
+/// Returns the registers in the order defined by the target's GDB register
+/// description, borrowed from a static buffer (see [`MAX_REG_WORDS`]), or an
+/// empty slice if no target is attached or its register file does not fit.
+///
+/// The bytes are re-read as native-endian `u32`: every supported target (and
+/// the probe itself) is little-endian, which is the same assumption the old
+/// `u32::from_le_bytes(chunk)` loop made.
+pub fn bmp_read_registers() -> &'static [u32] {
+    let Some(driver) = target_adapter::current_driver() else {
+        return &[];
+    };
+    let size = driver.regs_size();
+    if size > MAX_REGS_BYTES || size % 4 != 0 {
+        crate::bmpwarning!("register file of {} bytes does not fit\n", size);
+        return &[];
     }
+    // Raw pointers on purpose: the byte view is only alive for `regs_read`,
+    // and the `u32` view only after it, so the two never alias in the source.
+    let buf = unsafe {
+        core::slice::from_raw_parts_mut(
+            core::ptr::addr_of_mut!(REGS_SCRATCH).cast::<u8>(),
+            size,
+        )
+    };
+    if driver.regs_read(buf).is_err() {
+        return &[];
+    }
+    let words = unsafe { &*core::ptr::addr_of!(REGS_SCRATCH) };
+    &words[..size / 4]
 }
+/// Largest number of memory-map regions we report per map.
+///
+/// The GD32/CH32/RP2040 descriptors have two flash and at most two RAM
+/// regions; 8 is the documented ceiling of `bmp_get_mapping()`.
+pub const MAX_MAP_BLOCKS: usize = 8;
+
 /// Get the target's memory map (flash or RAM regions).
 ///
-/// Queries the BMP target for its flash or RAM memory map and returns a
-/// vector of `MemoryBlock` descriptors. Each block describes a contiguous
-/// region with its start address, length, and (for flash) block size.
-pub fn bmp_get_mapping(map: mapping) -> Vec<MemoryBlock> {
+/// Queries the BMP target for its flash or RAM memory map and returns the
+/// block descriptors. The result is a `heapless::Vec` filled on the caller's
+/// stack: this runs on **every** memory-read packet (`x`, `m` during a load,
+/// `compare-sections`, and the cacheability test in `mem_cache`), so it must
+/// not allocate.
+///
+/// A target has at most [`MAX_MAP_BLOCKS`] regions; anything beyond that is
+/// dropped, which is not reachable with the parts swindle supports.
+pub fn bmp_get_mapping(map: mapping) -> heapless::Vec<MemoryBlock, MAX_MAP_BLOCKS> {
     let count = bmp_map_count(map);
-    let mut r: Vec<MemoryBlock> = Vec::with_capacity(count);
+    let mut r: heapless::Vec<MemoryBlock, MAX_MAP_BLOCKS> = heapless::Vec::new();
     for i in 0..count {
         if let Some(block) = bmp_map_get(map, i) {
-            r.push(block);
+            if r.push(block).is_err() {
+                crate::bmpwarning!("memory map has more than {} blocks\n", MAX_MAP_BLOCKS);
+                break;
+            }
         }
     }
     r

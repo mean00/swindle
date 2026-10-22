@@ -29,6 +29,9 @@ extern void bmp_gpio_init_once();
 // w5500Pins and PIN_TO_USE must be defined in the including file
 extern const lnW5500SPI w5500Pins;
 
+// socketTask TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
+LN_BIG_TASK_STORAGE(socketTask, TASK_BMP_GDB_STACK_SIZE);
+
 // Socket runner task — runs the GDB/RTT event loop
 static void socket_task(void *parameters)
 {
@@ -79,7 +82,7 @@ extern "C" void user_init()
 {
     Logger("Starting picoSwindle (W5500)\n");
     bmp_gpio_init_once(); // initialise SWD PIO, reset pin, ADC
-    lnCreateTask(&socket_task, "socketTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
+    LN_CREATE_BIG_TASK(&socket_task, socketTask, "socketTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
 }
 
 #include "swindle_common_rp2040.cpp"

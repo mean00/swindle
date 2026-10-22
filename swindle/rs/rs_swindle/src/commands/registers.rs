@@ -44,7 +44,7 @@ pub extern "C" fn _g2() -> bool {
         return true;
     }
     e.begin();
-    for i in regs {
+    for &i in regs {
         e.add_u32_le(i);
     }
     // now read CSRs

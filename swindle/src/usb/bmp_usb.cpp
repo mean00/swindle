@@ -13,6 +13,8 @@
 #include "lnBMP_usb_descriptor.h"
 #include "lnBmpTask.h"
 
+#include <new> // placement new for the .bss lnUsbStack instance
+
 extern "C"
 {
 #include "exception.h"
@@ -104,6 +106,9 @@ void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
 
 lnUsbCDC *uartCdc = NULL;
 
+// usbserial task TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
+LN_BIG_TASK_STORAGE(usbserial, TASK_BMP_SERIAL_STACK_SIZE);
+
 //
 extern void lnSoftSystemReset(void);
 #if defined(USE_RP2040) || defined(USE_RP2350)
@@ -134,7 +139,13 @@ void goDfu()
 extern "C" int gdb_if_init(void)
 {
     Logger("Starting CDC \n");
-    lnUsbStack *usb = new lnUsbStack;
+    /* There is exactly one USB stack per probe and it has to outlive this call
+     * (it owns the TinyUSB callbacks), so keep it in .bss instead of the heap.
+     * Placement new, not a plain function-local static: lnUsbStack has a virtual
+     * destructor, and a static instance would drag newlib's exit machinery in
+     * (__cxa_atexit + on_exits, 384 B of .bss) for a destructor nobody calls. */
+    alignas(lnUsbStack) static uint8_t usb_storage[sizeof(lnUsbStack)];
+    lnUsbStack *usb = new (usb_storage) lnUsbStack;
     usb->init(sizeof(descriptor) / sizeof(descriptor[0]), descriptor);
     usb->setConfiguration(desc_hs_configuration, desc_fs_configuration, &desc_device, &desc_device_qualifier);
     usb->setEventHandler(NULL, helloUsbEvent);
@@ -151,7 +162,8 @@ extern "C" int gdb_if_init(void)
 #endif
     // start USB↔UART bridge via Rust-owned instance
     rn_serial_bridge_init(LN_USB_INSTANCE, LN_SERIAL_INSTANCE, 115200);
-    lnCreateTask(reinterpret_cast<TaskFunction_t>(rn_serial_bridge_task), "usbserial", TASK_BMP_SERIAL_STACK_SIZE, NULL, TASK_BMP_SERIAL_PRIORITY);
+    LN_CREATE_BIG_TASK(reinterpret_cast<TaskFunction_t>(rn_serial_bridge_task), usbserial, "usbserial",
+                       TASK_BMP_SERIAL_STACK_SIZE, NULL, TASK_BMP_SERIAL_PRIORITY);
     // init DFU
     lnUsbDFURT::addDFURTCb(goDfu);
     usb->start();

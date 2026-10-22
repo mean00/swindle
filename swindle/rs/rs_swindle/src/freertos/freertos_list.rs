@@ -4,9 +4,8 @@
 //! (e.g., ready lists, delayed lists, suspended lists) directly from target memory.
 //! Reference: <https://aosabook.org/en/v2/freertos.html>
 
-use alloc::vec::Vec;
-
 use crate::bmp::bmp_read_mem32;
+use crate::freertos::freertos_hashtcb::MAX_FREERTOS_TASKS;
 use crate::freertos::freertos_symbols::{get_symbols, FreeRTOSDebugOffsets};
 setup_log!(false);
 crate::gdb_print_init!();
@@ -32,12 +31,16 @@ fn get_list_offsets() -> FreeRTOSDebugOffsets {
     get_symbols().debug_offsets.unwrap_or(FALLBACK_LIST_OFFSETS)
 }
 
-/// Crawls a FreeRTOS `List_t` starting at `address` and returns a `Vec` of TCB pointers.
-/// 
+/// Crawls a FreeRTOS `List_t` starting at `address` and returns the TCB pointers.
+///
 /// Skips the `xListEnd` marker node and collects exactly `NumberOfItems` TCBs.
-pub fn freertos_crawl_list(address: u32) -> Vec<u32> {
+/// The result is a `heapless::Vec` on the caller's stack: this runs on every
+/// thread query (the TCB cache is invalidated on each resume), so it must not
+/// allocate. `count > 20` is already rejected as garbage below, and the vector
+/// holds `MAX_FREERTOS_TASKS` entries, so the push cannot fail.
+pub fn freertos_crawl_list(address: u32) -> heapless::Vec<u32, MAX_FREERTOS_TASKS> {
     let off = get_list_offsets();
-    let mut v: Vec<u32> = Vec::new();
+    let mut v: heapless::Vec<u32, MAX_FREERTOS_TASKS> = heapless::Vec::new();
     let mut list_header: [u32; 5] = [0, 0, 0, 0, 0];
 
     // Read the list head
@@ -94,7 +97,11 @@ pub fn freertos_crawl_list(address: u32) -> Vec<u32> {
         }
         checked += 1;
         let tcb = items[off.offset_list_item_owner as usize / 4];
-        v.push(tcb);
+        if v.push(tcb).is_err() {
+            // unreachable: `count > 20` was rejected above
+            bmplog!("list longer than {} tasks\n", MAX_FREERTOS_TASKS);
+            break;
+        }
     }
     v
 }

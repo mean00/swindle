@@ -92,7 +92,9 @@ static void sdiInitTimer()
 {
     if (!sdi_watch)
     {
-        sdi_watch = new lnTimerWatch(TIMER_TO_USE); // Use TIMER4 which maps to TIM5
+        /* One timer watcher for the whole session: construct it once, in .bss. */
+        static lnTimerWatch watch(TIMER_TO_USE); // Use TIMER4 which maps to TIM5
+        sdi_watch = &watch;
 
         Peripherals per = (Peripherals)(pTIMER0 + TIMER_TO_USE);
         uint32_t clock = lnPeripherals::getClock(per);

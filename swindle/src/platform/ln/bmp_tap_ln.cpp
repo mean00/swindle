@@ -87,9 +87,14 @@ extern "C" uint32_t bmp_get_wait_state_c()
  */
 void bmp_gpio_init_once()
 {
-    rSWDIO = new SwdDirectionPin(TSWDIO_PIN, TDIRECTION_PIN);
-    rSWCLK = new SwdWaitPin(TSWDCK_PIN); // automatically add delay after toggle
-    pReset = new SwdReset(TRESET_PIN);   // automatically add delay after toggle
+    /* One instance of each, for the lifetime of the probe: construct them on the
+     * first call (same ordering as the old `new`) but keep them in .bss. */
+    static SwdDirectionPin swdio(TSWDIO_PIN, TDIRECTION_PIN);
+    static SwdWaitPin swdclk(TSWDCK_PIN); // automatically add delay after toggle
+    static SwdReset reset(TRESET_PIN);    // automatically add delay after toggle
+    rSWDIO = &swdio;
+    rSWCLK = &swdclk;
+    pReset = &reset;
     pReset->setup();
     rSWDIO->hiZ();
     rSWDIO->hiZ();

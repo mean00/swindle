@@ -39,7 +39,9 @@ pub struct rv32_gprs {
 
 impl rv32_gprs {
     /// Creates a new zeroed `rv32_gprs` instance.
-    pub fn new() -> Self {
+    ///
+    /// `const` so a handler can live in a `static` instead of on the heap.
+    pub const fn new() -> Self {
         rv32_gprs {
             sp: 0,
             pc: 0,
@@ -117,11 +119,20 @@ impl rv32_gprs {
     }
 }
 
-/// Factory function that inspects the binary's debug symbols to determine which RISC-V 
-/// FreeRTOS stack layout to use, and returns the appropriate heap-allocated switch handler.
-pub fn create_rv32_switch_handler() -> alloc::boxed::Box<dyn freertos_switch_handler> {
+/// The two RISC-V handler instances, in `.bss` — `mon fos` used to box one of
+/// these on **every** invocation. Only one is ever installed at a time.
+static mut HANDLER_RV32_STD: FreeRTOSSwitchHandlerRV32Std = FreeRTOSSwitchHandlerRV32Std::new();
+static mut HANDLER_RV32_CH32: FreeRTOSSwitchHandlerCH32 = FreeRTOSSwitchHandlerCH32::new();
+
+/// Factory function that inspects the binary's debug symbols to determine which RISC-V
+/// FreeRTOS stack layout to use, and returns the matching handler from the statics above.
+///
+/// SAFETY of the `unsafe { &mut HANDLER_RV32_* }` borrows: the command loop is
+/// single-threaded and `os_attach()` installs at most one handler, dropping the
+/// previous borrow when it is replaced.
+pub fn create_rv32_switch_handler() -> &'static mut dyn freertos_switch_handler {
     match get_current_layout() {
-        LAYOUT_RV_STD | LAYOUT_RV_STD_FPU => alloc::boxed::Box::new(FreeRTOSSwitchHandlerRV32Std::new()),
-        _ => alloc::boxed::Box::new(FreeRTOSSwitchHandlerCH32::new()),
+        LAYOUT_RV_STD | LAYOUT_RV_STD_FPU => unsafe { &mut HANDLER_RV32_STD },
+        _ => unsafe { &mut HANDLER_RV32_CH32 },
     }
 }

@@ -47,7 +47,7 @@ pub struct freertos_switch_handler_m33 {
 
 impl freertos_switch_handler_m33 {
     /// Instantiates a new M33 context switcher.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         freertos_switch_handler_m33 {
             gpr: freertos_cortexm_core::new(),
         }

@@ -45,6 +45,14 @@ else()
     set(SWINDLE_RUST_LED_FEATURE ws2812)
   endif()
   rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native ${SWINDLE_RUST_SDI_FEATURE} ${SWINDLE_RUST_PLATFORM_FEATURE} ${SWINDLE_RUST_PACKAGE_FEATURE} ${SWINDLE_RUST_LED_FEATURE})
+  # rs_rtos takes the kernel layout from esprit/rust/rs_rtos/src/kernel/esprit/generated.rs,
+  # which the freertos_struct_header target regenerates from the kernel this build
+  # links (esprit/cmake/lnFreeRTOS_structs.cmake).  Ordering, not a check: the file
+  # has to be final before cargo reads the crate, otherwise a parallel build could
+  # compile the previous layout and link a firmware whose static queues are too small.
+  if(TARGET freertos_struct_header AND TARGET cargo-build_rsbmp_wrapper)
+    add_dependencies(cargo-build_rsbmp_wrapper freertos_struct_header)
+  endif()
   corrosion_add_target_rustflags(rsbmp_wrapper --cfg feature="native")
   if(SWINDLE_USE_NETWORK)
     corrosion_add_target_rustflags(rsbmp_wrapper --cfg feature="network")

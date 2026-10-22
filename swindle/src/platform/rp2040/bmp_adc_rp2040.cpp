@@ -43,6 +43,8 @@ extern "C"
 #include "timing.h"
 }
 #include "lnADC.h"
+
+#include <new> // placement new for the .bss lnSimpleADC instance
 /**
  * @brief ADC handle for target voltage measurement.
  */
@@ -55,7 +57,12 @@ void gmp_gpio_init_adc()
 {
     if (!adc)
     {
-        adc = new lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO); // this pins is connected to NRST/2
+        /* One ADC handle for the lifetime of the probe: .bss, not the heap.
+         * lnSimpleADC has a virtual destructor, so placement new into a static
+         * buffer rather than a function-local static (which would register an
+         * exit-time destructor: __cxa_atexit + on_exits, 384 B). */
+        alignas(lnSimpleADC) static uint8_t adc_storage[sizeof(lnSimpleADC)];
+        adc = new (adc_storage) lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO); // this pins is connected to NRST/2
     }
 }
 

@@ -17,6 +17,7 @@
 //! | `version` | Show firmware version |
 //! | `map` | Show target memory map |
 //! | `ram` | Show debugger heap usage |
+//! | `stacks` | Per-task stack high-water marks of the probe's own FreeRTOS kernel |
 //! | `boards` | List supported target boards |
 //! | `set` / `unset` | Get/set/remove persistent settings |
 //! | `rtt` | RTT control (see `mon_rtt.rs`) |
@@ -53,7 +54,6 @@ use crate::parsing_util::{
 };
 use crate::setting_keys::*;
 use crate::settings;
-use alloc::vec::Vec;
 //#[cfg(feature = "hosted")]
 
 //#[cfg(not(feature = "hosted"))]
@@ -89,6 +89,93 @@ unsafe extern "C" {
     pub fn resetTest2();
 }
 
+/// The probe's own FreeRTOS task table, for `mon stacks`.
+///
+/// `uxTaskGetSystemState()` is compiled in because `configUSE_TRACE_FACILITY` is
+/// 1 (`esprit/freertos_config/FreeRTOSConfig.h`), and that is also what fills
+/// `TaskStatus_t.usStackHighWaterMark`: `prvTaskCheckFreeStackSpace()`
+/// (`FreeRTOS/tasks.c:6315`) scans the `tskSTACK_FILL_BYTE` pattern from the low
+/// end of the stack and reports the **free** part in `StackType_t` words, so the
+/// peak use is `stack size - STACK_WORD_BYTES * stack_high_water_mark`.
+/// `INCLUDE_uxTaskGetStackHighWaterMark` is 0, so this is the only way to read
+/// that number - the standalone `uxTaskGetStackHighWaterMark()` is not linked.
+///
+/// `TaskStatus` mirrors FreeRTOS `TaskStatus_t` (`tasks.h`): the same layout the
+/// target-side binding in `esprit/rust/rs_rtos/src/c_freertos.rs` uses.
+#[cfg(not(feature = "hosted"))]
+mod probe_kernel {
+    use core::ffi::{c_char, c_void};
+
+    /// Probe tasks (idle, timer, usbd, gdb, usbserial, ...) - 8 leaves headroom.
+    pub const MAX_TASKS: usize = 8;
+
+    /// `sizeof(StackType_t)`, i.e. `FREERTOS_SIZEOF_StackType_t` in the
+    /// generated `freertos_struct.h` (32-bit cores here).
+    pub const STACK_WORD_BYTES: u32 = 4;
+
+    /// FreeRTOS `eTaskState` (`tasks.h`).
+    pub const STATE_RUNNING: u32 = 0;
+    pub const STATE_READY: u32 = 1;
+    pub const STATE_BLOCKED: u32 = 2;
+    pub const STATE_SUSPENDED: u32 = 3;
+    pub const STATE_DELETED: u32 = 4;
+
+    /// FreeRTOS `TaskStatus_t` (`tasks.h`).
+    #[derive(Clone, Copy)]
+    #[repr(C)]
+    pub struct TaskStatus {
+        pub handle: *mut c_void,
+        pub name: *const c_char,
+        pub task_number: u32,
+        pub state: u32,
+        pub current_priority: u32,
+        pub base_priority: u32,
+        pub run_time_counter: u32,
+        pub stack_base: *mut c_void,
+        /// Free part of the stack, in `StackType_t` words.
+        pub stack_high_water_mark: u32,
+    }
+
+    impl TaskStatus {
+        pub const fn empty() -> Self {
+            Self {
+                handle: core::ptr::null_mut(),
+                name: core::ptr::null(),
+                task_number: 0,
+                state: STATE_DELETED,
+                current_priority: 0,
+                base_priority: 0,
+                run_time_counter: 0,
+                stack_base: core::ptr::null_mut(),
+                stack_high_water_mark: 0,
+            }
+        }
+    }
+
+    /// One-letter form of `eTaskState`.
+    pub fn state_letter(state: u32) -> &'static str {
+        match state {
+            STATE_RUNNING => "R",
+            STATE_READY => "r",
+            STATE_BLOCKED => "B",
+            STATE_SUSPENDED => "S",
+            STATE_DELETED => "D",
+            _ => "?",
+        }
+    }
+
+    unsafe extern "C" {
+        /// Snapshot up to `array_size` tasks; returns how many were written.
+        pub fn uxTaskGetSystemState(
+            status_array: *mut TaskStatus,
+            array_size: u32,
+            total_run_time: *mut u32,
+        ) -> u32;
+        /// Number of tasks (idle included) at this instant.
+        pub fn uxTaskGetNumberOfTasks() -> u32;
+    }
+}
+
 /*
  *
  */
@@ -100,7 +187,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 36] = [
+const mon_command_tree: [CommandTree; 37] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -262,6 +349,14 @@ const mon_command_tree: [CommandTree; 36] = [
         next_separator: 0,
     }, //
     CommandTree {
+        command: "stacks",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_stacks),
+        start_separator: 0,
+        next_separator: 0,
+    }, //
+    CommandTree {
         command: "reboot",
         min_args: 0,
         require_connected: false,
@@ -391,7 +486,7 @@ const mon_command_tree: [CommandTree; 36] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 33] = [
+const help_tree: [HelpTree; 34] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -451,6 +546,10 @@ const help_tree: [HelpTree; 33] = [
     HelpTree {
         command: "ram",
         help: "Display stats about Ram usage.",
+    },
+    HelpTree {
+        command: "stacks",
+        help: "Per-task stack high-water marks (free bytes left at the worst moment).",
     },
     HelpTree {
         command: "reboot",
@@ -596,6 +695,64 @@ fn _ram(_command: &str, _args: &[&str]) -> bool {
         heap >> 10
     );
     gdb_print!("kB\n");
+    encoder::reply_ok();
+    true
+}
+
+/// Handle `mon stacks` — per-task stack high-water marks of the probe's own
+/// FreeRTOS kernel, i.e. the numbers the task stack sizes are right-sized from.
+///
+/// `free` is what is left of the stack at its worst moment so far (words and
+/// bytes), so the peak use is `TASK_*_STACK_SIZE - free`.  The mark only ever
+/// moves down, so run the workload of interest first: attach a target, `load` a
+/// 200 KB image, `compare-sections`, `mon riscv_memory_benchmark`, then read it.
+#[cfg(not(feature = "hosted"))]
+fn _stacks(_command: &str, _args: &[&str]) -> bool {
+    use core::str;
+    use probe_kernel::*;
+
+    /// Room for the longest task name (`configMAX_TASK_NAME_LEN` - 1).
+    const NAME_WIDTH: usize = 16;
+
+    let mut status = [TaskStatus::empty(); MAX_TASKS];
+    let mut total_run_time: u32 = 0;
+    let got = unsafe { uxTaskGetSystemState(status.as_mut_ptr(), MAX_TASKS as u32, &mut total_run_time) };
+
+    gdb_println!("task           state prio  free stack (worst case so far)");
+    for t in &status[..got as usize] {
+        let name = if t.name.is_null() {
+            b"?".as_slice()
+        } else {
+            unsafe { core::ffi::CStr::from_ptr(t.name) }.to_bytes()
+        };
+        let pad = NAME_WIDTH.saturating_sub(name.len());
+        gdb_print!(
+            str::from_utf8(name).unwrap_or("?"),
+            str::from_utf8(&spacebar[..pad]).unwrap(),
+            state_letter(t.state),
+            "     ",
+            t.current_priority,
+            "    ",
+            t.stack_high_water_mark,
+            " w / ",
+            t.stack_high_water_mark * STACK_WORD_BYTES,
+            " B\n"
+        );
+    }
+    let nb = unsafe { uxTaskGetNumberOfTasks() };
+    if nb as usize > MAX_TASKS {
+        gdb_print!("only the first ", MAX_TASKS, " of ", nb, " tasks are shown\n");
+    }
+    gdb_print!("total run time : ", total_run_time);
+    gdb_print!(" ticks\n");
+    encoder::reply_ok();
+    true
+}
+
+/// Handle `mon stacks` on the host: the probe's kernel is not in this process.
+#[cfg(feature = "hosted")]
+fn _stacks(_command: &str, _args: &[&str]) -> bool {
+    gdb_println!("mon stacks : not available in hosted mode (no probe kernel here)");
     encoder::reply_ok();
     true
 }
@@ -1004,12 +1161,12 @@ pub fn set_custom_target_command(
     targetHelpTree.set(Some(helpTree));
 }
 fn _map(_command: &str, _args: &[&str]) -> bool {
-    let ram: Vec<bmp::MemoryBlock> = bmp::bmp_get_mapping(bmp::mapping::Ram);
+    let ram = bmp::bmp_get_mapping(bmp::mapping::Ram);
     for i in ram {
         gdb_print!(" RAM   : start=0x", Hex(i.start_address));
         gdb_print!(" size=", i.length / 1024, " kB\n");
     }
-    let flash: Vec<bmp::MemoryBlock> = bmp::bmp_get_mapping(bmp::mapping::Flash);
+    let flash = bmp::bmp_get_mapping(bmp::mapping::Flash);
     for i in flash {
         gdb_print!(" FLASH   : start=0x", Hex(i.start_address));
         gdb_print!(" size=", i.length / 1024, " kB\n");

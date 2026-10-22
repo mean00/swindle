@@ -49,6 +49,11 @@ class lnPump
  * @brief
  *
  */
+// Stack of the BMPSerial task: owned by the caller, not by the object (see
+// lnFreeRTOS_pp.h) - TASK_BMP_SERIAL_STACK_SIZE bytes of usable stack plus the
+// register save area.
+static StackType_t _bmpSerialStack[LN_TASK_STACK_WORDS(TASK_BMP_SERIAL_STACK_SIZE)];
+
 class BMPSerial : public lnTask
 {
 
@@ -60,7 +65,7 @@ class BMPSerial : public lnTask
      * @param serialInstance
      */
     BMPSerial(int usbInst, int serialInstance)
-        : lnTask("usbserial", TASK_BMP_SERIAL_PRIORITY, TASK_BMP_SERIAL_STACK_SIZE)
+        : lnTask("usbserial", TASK_BMP_SERIAL_PRIORITY, _bmpSerialStack, TASK_BMP_SERIAL_STACK_SIZE)
     {
         _usbInstance = usbInst;
         _serialInstance = serialInstance;

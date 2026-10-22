@@ -21,7 +21,9 @@ pub struct freertos_cortexm_core {
 
 impl freertos_cortexm_core {
     /// Creates a new zeroed out `freertos_cortexm_core`.
-    pub fn new() -> Self {
+    ///
+    /// `const` so a handler can live in a `static` instead of on the heap.
+    pub const fn new() -> Self {
         freertos_cortexm_core {
             registers: [0; CORTEXM_GPR_REG_COUNT], // R0..R15 + PSR
             pointer: 0,

@@ -20,7 +20,7 @@ pub struct FreeRTOSSwitchHandlerRV32Std {
 
 impl FreeRTOSSwitchHandlerRV32Std {
     /// Creates a new, zeroed `FreeRTOSSwitchHandlerRV32Std`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         FreeRTOSSwitchHandlerRV32Std {
             gprs: rv32_gprs::new(),
         }

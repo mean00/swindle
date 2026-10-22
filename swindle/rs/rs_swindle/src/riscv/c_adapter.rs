@@ -7,8 +7,8 @@ use super::hart::{HartIsa, RiscvHart};
 use super::mem::RiscvMem;
 use crate::target::c_adapter::{target_new, TargetC};
 use crate::target::driver::HaltReason;
-use alloc::boxed::Box;
 use core::ffi::c_void;
+use core::mem::MaybeUninit;
 
 /// C-compatible mirror of the `riscv_hart_s` header layout.
 #[repr(C)]
@@ -22,6 +22,71 @@ pub struct RiscvHartC {
 pub struct RiscvTargetContext {
     pub c_header: RiscvHartC,
     pub hart: RiscvHart,
+}
+
+// ---------------------------------------------------------------------------
+// Context storage: a `.bss` pool instead of `Box` (malloc_used.md §0.8, C9)
+// ---------------------------------------------------------------------------
+
+/// How many `RiscvTargetContext` slots to reserve.
+///
+/// Every scan frees the previous context first — `rvswd_scan()` / `sdi_scan()`
+/// call `target_list_free()`, which runs `priv_free` before `riscv_dmi_init()`
+/// allocates — so exactly one slot is live at a time.  The second slot is
+/// spare, so that a context that somehow never gets freed cannot make the next
+/// scan fail outright.
+const CTX_SLOT_COUNT: usize = 2;
+
+/// Storage for the live contexts; `CTX_SLOT_USED[i]` says which slots are taken.
+static mut CTX_SLOTS: [MaybeUninit<RiscvTargetContext>; CTX_SLOT_COUNT] =
+    [const { MaybeUninit::uninit() }; CTX_SLOT_COUNT];
+static mut CTX_SLOT_USED: [bool; CTX_SLOT_COUNT] = [false; CTX_SLOT_COUNT];
+
+/// Move `value` into a free slot and hand out a pointer to it.
+///
+/// Returns `None` when all slots are taken; the caller must then report that no
+/// target could be created rather than fall back to the heap.
+fn ctx_alloc(value: RiscvTargetContext) -> Option<*mut RiscvTargetContext> {
+    unsafe {
+        let slots = &mut *(&raw mut CTX_SLOTS);
+        let used = &mut *(&raw mut CTX_SLOT_USED);
+        for (slot, taken) in slots.iter_mut().zip(used.iter_mut()) {
+            if !*taken {
+                *taken = true;
+                return Some(slot.write(value));
+            }
+        }
+        None
+    }
+}
+
+/// Give a slot handed out by [`ctx_alloc`] back to the pool.
+///
+/// Returns `false` (and does nothing) if `ptr` is not one of the pool's slots,
+/// so a context that did not come from here can never be released twice.
+///
+/// # Safety
+/// `ptr` must be null or a pointer returned by [`ctx_alloc`] whose slot has not
+/// been released yet.
+unsafe fn ctx_free(ptr: *mut RiscvTargetContext) -> bool {
+    unsafe {
+        let slots = &mut *(&raw mut CTX_SLOTS);
+        let used = &mut *(&raw mut CTX_SLOT_USED);
+        for (slot, taken) in slots.iter_mut().zip(used.iter_mut()) {
+            if core::ptr::eq(slot.as_ptr(), ptr) {
+                if !*taken {
+                    return false;
+                }
+                // `RiscvTargetContext` holds no `Drop` state today, but dropping
+                // keeps the slot reusable if that ever changes.
+                slot.assume_init_drop();
+                *slot = MaybeUninit::uninit();
+                *taken = false;
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[repr(C)]
@@ -82,22 +147,29 @@ pub unsafe extern "C" fn riscv_dmi_init(dmi: *mut RiscvDmiC) {
         Err(_) => return,
     };
 
-    let target = target_new();
-    if target.is_null() {
-        return;
-    }
-
-    let mut ctx = Box::new(RiscvTargetContext {
+    let ctx_ptr = match ctx_alloc(RiscvTargetContext {
         c_header: RiscvHartC {
             dbg_module: core::ptr::null_mut(),
             hart_idx: hart.hart_idx,
             hartsel: hart.hartsel,
         },
         hart,
-    });
-    ctx.c_header.dbg_module = &mut *ctx as *mut _ as *mut c_void;
+    }) {
+        Some(ptr) => ptr,
+        // All slots taken: no target this time (never falls back to the heap).
+        None => return,
+    };
+    // The C-visible header points back at its own context, which never moves
+    // again: it lives in `CTX_SLOTS` for the rest of the scan.
+    (*ctx_ptr).c_header.dbg_module = ctx_ptr as *mut c_void;
 
-    let priv_ptr = Box::into_raw(ctx) as *mut c_void;
+    let target = target_new();
+    if target.is_null() {
+        ctx_free(ctx_ptr);
+        return;
+    }
+
+    let priv_ptr = ctx_ptr as *mut c_void;
 
     let core_name = match (*(priv_ptr as *mut RiscvTargetContext)).hart.isa {
         HartIsa::Rv32e => b"rv32e\0".as_ptr() as *const core::ffi::c_char,
@@ -204,7 +276,9 @@ pub fn current_riscv_hart<'a>() -> Option<&'a mut super::hart::RiscvHart> {
 
 unsafe extern "C" fn riscv_target_priv_free(ptr: *mut c_void) {
     if !ptr.is_null() {
-        let _ = Box::from_raw(ptr as *mut RiscvTargetContext);
+        // Returns the pool slot (malloc_used.md §0.8, C9) instead of freeing a
+        // heap block; a pointer that is not ours is left alone.
+        ctx_free(ptr as *mut RiscvTargetContext);
     }
 }
 

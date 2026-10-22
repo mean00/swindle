@@ -37,6 +37,13 @@ endif()
 if(USE_RTT)
   add_definitions("-DUSE_RTT=1")
 endif()
+# The two big BMP tasks (gdbTask, usbserial) keep their TCB + stack in .bss on the
+# boards that can afford the 7 KiB: RP2040/RP2350, the 39 KiB GD32F303 and the
+# 64 KiB CH32V307.  A 20 KiB bluepill part keeps them on the heap.  The sizes are
+# measured with `mon stacks`, see lnBmpTask.h and malloc_used.md §8.1 S5.
+if(USE_GD32F3 OR USE_CH32V3x OR USE_RP2040 OR USE_RP2350)
+  add_definitions("-DLN_BIG_TASKS_STATIC_STACK=1")
+endif()
 
 # -------------
 # Options

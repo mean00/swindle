@@ -55,6 +55,8 @@ extern "C"
 #include "bmp_pio_swd.h"
 #include "lnBMP_reset.h"
 #include "platform_support.h"
+
+#include <new> // placement new for the .bss rpPIO instance
 /* SDI pin hand-over (sdi_pinmode_enter/leave): the one thing this file needs from
  * the optional WCH SDI support, whose PIO upload (bmp_pio_sdi.h) lives in
  * bmp_tap_rp2040_riscv_extra.cpp. Nothing else in this file is SDI. */
@@ -92,9 +94,16 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
  */
 void bmp_gpio_init_once()
 {
-    pReset = new SwdReset(TRESET_PIN); // automatically add delay after toggle
+    /* One instance of each, for the lifetime of the probe: construct them on the
+     * first call (same ordering as the old `new`) but keep them in .bss.
+     * rpPIO has a virtual destructor, so a plain function-local static would drag
+     * newlib's exit machinery in (__cxa_atexit + on_exits, 384 B) for a destructor
+     * nobody calls -> placement new into .bss storage instead. */
+    static SwdReset reset(TRESET_PIN); // automatically add delay after toggle
+    alignas(rpPIO) static uint8_t pio_storage[sizeof(rpPIO)];
+    pReset = &reset;
     pReset->setup();
-    swdpio = new rpPIO(LN_SWD_PIO_ENGINE);
+    swdpio = new (pio_storage) rpPIO(LN_SWD_PIO_ENGINE);
     xsm = swdpio->getSm(0);
     currentPioMode = BMP_PINMODE_NONE;
     gmp_gpio_init_adc();

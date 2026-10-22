@@ -21,7 +21,6 @@ pub mod freertos_symbols;
 pub mod freertos_tcb;
 pub mod freertos_trait;
 use crate::bmp::bmp_cpuid;
-use alloc::boxed::Box;
 use core::mem::MaybeUninit;
 
 use freertos_arm::create_arm_switch_handler;
@@ -54,10 +53,15 @@ pub enum LN_MCU_CORE {
 }
 
 /// Global singleton state for OS awareness.
-/// Holds the dynamically allocated OS-specific context switch handler.
+/// Holds the OS-specific context switch handler.
+///
+/// The handler is borrowed from a `static` in the architecture module (see
+/// `create_arm_switch_handler()` / `create_rv32_switch_handler()`), so enabling
+/// OS awareness costs no heap. The `&'static mut` is sound because the command
+/// loop is single-threaded and only one handler is installed at a time.
 pub struct FreeRTOS_switcher {
     /// The architecture-specific switch handler if OS awareness is active.
-    pub switcher: Option<Box<dyn freertos_switch_handler>>,
+    pub switcher: Option<&'static mut dyn freertos_switch_handler>,
 }
 
 // SAFETY: FreeRTOS_switcher is only used in a single-threaded debugger context.
@@ -110,7 +114,7 @@ fn freertos_switch(cortex: &mut dyn freertos_switch_handler, new_stack: u32) -> 
 pub fn os_attach(cpuid: u32) {
     let all_symbols = get_symbols();
     let core = all_symbols.mcu_handler;
-    let switcher: Option<Box<dyn freertos_switch_handler>> = match core {
+    let switcher: Option<&'static mut dyn freertos_switch_handler> = match core {
         LN_MCU_CORE::LN_MCU_CM0 | LN_MCU_CORE::LN_MCU_CM3 | LN_MCU_CORE::LN_MCU_CM4 | LN_MCU_CORE::LN_MCU_CM33 | LN_MCU_CORE::LN_MCU_AUTO => {
              create_arm_switch_handler(core, cpuid)
         },
@@ -137,7 +141,7 @@ pub fn os_can_switch() -> bool {
 pub fn freertos_switch_task_action(new_stack: u32) -> u32 {
     let switcher = get_switcher();
     match &mut switcher.switcher {
-        Some(e) => freertos_switch(e.as_mut(), new_stack),
+        Some(e) => freertos_switch(&mut **e, new_stack),
         None => panic!("inconsistent"),
     }
 }

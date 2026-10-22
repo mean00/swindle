@@ -40,7 +40,7 @@ pub struct freertos_switch_handler_m4f {
 }
 
 impl freertos_switch_handler_m4f {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         freertos_switch_handler_m4f {
             gpr: freertos_cortexm_core::new(),
         }
