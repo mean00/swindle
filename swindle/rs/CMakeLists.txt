@@ -53,7 +53,18 @@ else()
   if(USE_WS2812 AND NOT (USE_RP2040 OR USE_RP2350))
     set(SWINDLE_RUST_LED_FEATURE ws2812)
   endif()
-  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native ${SWINDLE_RUST_SDI_FEATURE} ${SWINDLE_RUST_ARENA_FEATURE} ${SWINDLE_RUST_PLATFORM_FEATURE} ${SWINDLE_RUST_PACKAGE_FEATURE} ${SWINDLE_RUST_LED_FEATURE})
+  # Esprit logger in Rust (esprit/CMakeLists.txt: USE_RUST_LOGGER) and the UART it
+  # writes to (LN_DEBUG_UART, instance 0 when unset) — rust_esprit/src/logger_c.rs.
+  set(SWINDLE_RUST_LOGGER_FEATURE "")
+  set(SWINDLE_RUST_LOGGER_UART_FEATURE "")
+  if(USE_RUST_LOGGER)
+    set(SWINDLE_RUST_LOGGER_FEATURE rust_logger)
+    if(LN_DEBUG_UART)
+      set(SWINDLE_RUST_LOGGER_UART_FEATURE logger_uart${LN_DEBUG_UART})
+    endif()
+    message(STATUS "Rust logger: UART instance ${LN_DEBUG_UART}")
+  endif()
+  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native ${SWINDLE_RUST_SDI_FEATURE} ${SWINDLE_RUST_ARENA_FEATURE} ${SWINDLE_RUST_PLATFORM_FEATURE} ${SWINDLE_RUST_PACKAGE_FEATURE} ${SWINDLE_RUST_LED_FEATURE} ${SWINDLE_RUST_LOGGER_FEATURE} ${SWINDLE_RUST_LOGGER_UART_FEATURE})
   # rs_rtos takes the kernel layout from esprit/rust/rs_rtos/src/kernel/esprit/generated.rs,
   # which the freertos_struct_header target regenerates from the kernel this build
   # links (esprit/cmake/lnFreeRTOS_structs.cmake).  Ordering, not a check: the file

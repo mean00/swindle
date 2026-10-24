@@ -20,6 +20,11 @@ rp2040 = ["rsbmp/rp2040"]
 esp32 = ["rsbmp/esp32"]
 # Single WS2812B led (CMake: USE_WS2812), bluepill compatible targets only
 ws2812 = ["rs_swindle_leds/ws2812"]
+# Esprit logger in Rust (CMake: USE_RUST_LOGGER) — see esprit/CMakeLists.txt
+rust_logger = ["rsbmp/rust_logger"]
+# Debug UART of that logger (CMake: LN_DEBUG_UART), instance 0 by default
+logger_uart1 = ["rsbmp/logger_uart1"]
+logger_uart2 = ["rsbmp/logger_uart2"]
 
 default =  ["native"]
 

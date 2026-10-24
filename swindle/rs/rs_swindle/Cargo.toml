@@ -24,6 +24,15 @@ sdi = []
 # forwards the swindle_session_* symbols to the heap (old behaviour, no .bss).
 session_arena = []
 
+# The Esprit logger (lnDebug.cpp) in Rust — CMake option USE_RUST_LOGGER, wired
+# in swindle/rs/CMakeLists.txt. lnDebug.cpp is then not compiled (esprit/src),
+# and rust_esprit/src/logger_c.rs provides the same C ABI. Bluepill only.
+rust_logger = ["rust_esprit/rust_logger"]
+# Which UART the log lines go out of when nothing is redirected (CMake
+# LN_DEBUG_UART, C++ `LN_DEBUG_UART`); instance 0 unless one of these is set.
+logger_uart1 = ["rust_esprit/logger_uart1"]
+logger_uart2 = ["rust_esprit/logger_uart2"]
+
 fake_std = ["rust_esprit/fake_std"]
 
 # Platform backend selection for rust_esprit — see esprit/rust/rp2xxx/README.md.
