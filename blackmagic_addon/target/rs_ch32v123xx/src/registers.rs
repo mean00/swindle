@@ -56,6 +56,9 @@ pub const FMC_CTL_FASTUNLOCK: u32 = 1 << 15;      // Fast programming lock bit
 pub const FMC_CTL_FASTPROGRAM: u32 = 1 << 16;     // Fast 256-byte page programming mode
 pub const FMC_CTL_FASTERASE: u32 = 1 << 17;       // Fast 256-byte page erase mode
 pub const FMC_CTL_BER32: u32 = 1 << 18;           // Block erase 32 KB
+// RM V2.2 (32.4) documents bit 19 as BER64 "Perform a 64KB erase", with its own procedure
+// (32.5.7 "Fast Erase erases in blocks (64K bytes)"); the V2.5 text lists [20:19] as
+// reserved. Keep the mode: it is the only way to erase 64 KB in a single operation.
 pub const FMC_CTL_BER64: u32 = 1 << 19;           // Block erase 64 KB
 pub const FMC_CTL_FASTSTART: u32 = 1 << 21;       // Start fast programming
 pub const FMC_CTL_RSENACT: u32 = 1 << 22;         // RSEN_ACT bit
@@ -130,10 +133,33 @@ pub const FAMILY_CH32V307: u16 = 0x307;
 pub const RAM_ADDRESS: u32 = 0x2000_0000;
 pub const FLASH_ALIAS_ADDRESS: u32 = 0x0000_0000;
 pub const FLASH_PHYSICAL_ADDRESS: u32 = 0x0800_0000;
-pub const FLASH_BLOCK_SIZE: usize = 4096;
-pub const FLASH_WRITE_SIZE: usize = 2048;
+/// Programming page: one half-word PG burst writes at most this many bytes.
 pub const FLASH_PAGE_SIZE: usize = 256;
-pub static ERASE_SIZES: [usize; 4] = [4096, 32768, 65536, 0];
+/// Bytes the flash manager may send in one `vFlashWrite` packet.
+pub const FLASH_WRITE_SIZE: usize = 2048;
+
+// --- Erase block sizes advertised to the flash manager (`FlashDesc::erasesizes`) ---
+//
+// These are the only erase sizes GDB is allowed to ask for. They are NOT necessarily the
+// controller's physical erase page: the driver maps each advertised size onto an erase
+// mode, and when that mode erases less than the advertised size it iterates the physical
+// pages itself:
+//   ERASE_BLOCK_SIZE_4K  -> in-SRAM stub: 4 KB as 16 x 256 B fast page erase (FTER)
+//   ERASE_BLOCK_SIZE_32K -> one BER32 fast block erase
+//   ERASE_BLOCK_SIZE_64K -> one BER64 fast block erase
+pub const ERASE_BLOCK_SIZE_4K: usize = 4 * 1024;
+pub const ERASE_BLOCK_SIZE_32K: usize = 32 * 1024;
+pub const ERASE_BLOCK_SIZE_64K: usize = 64 * 1024;
+/// Erase sizes offered to the flash manager, ascending, 0 terminated.
+///
+/// Note: after a fast erase (FTER/BER32/BER64) an erased word reads `0xE339E339`, not
+/// `0xFF` (RM 32.5.7 note), so erase verification must expect that value.
+pub static ERASE_SIZES: [usize; 4] = [
+    ERASE_BLOCK_SIZE_4K,
+    ERASE_BLOCK_SIZE_32K,
+    ERASE_BLOCK_SIZE_64K,
+    0,
+];
 pub const FLASH_TIMEOUT_ITERS: usize = 50_000;
 
 // --- In-SRAM Flashstub Configuration ---

@@ -69,7 +69,7 @@ impl Ch32v123xxDriver {
             FlashDesc {
                 start: FLASH_ALIAS_ADDRESS,
                 length: flash_bytes,
-                blocksize: FLASH_BLOCK_SIZE,
+                blocksize: ERASE_BLOCK_SIZE_4K,
                 writesize: FLASH_WRITE_SIZE,
                 erasesizes: &ERASE_SIZES,
                 erased: 0xff,
@@ -77,7 +77,7 @@ impl Ch32v123xxDriver {
             FlashDesc {
                 start: FLASH_PHYSICAL_ADDRESS,
                 length: flash_bytes,
-                blocksize: FLASH_BLOCK_SIZE,
+                blocksize: ERASE_BLOCK_SIZE_4K,
                 writesize: FLASH_WRITE_SIZE,
                 erasesizes: &ERASE_SIZES,
                 erased: 0xff,
@@ -253,8 +253,13 @@ impl Ch32v123xxDriver {
 
     /// Prepare stubs and clock for upcoming flash programming.
     pub fn prepare_flash(&mut self, hart: &mut RiscvHart) -> bool {
-        let _ = hart.mem_write(STUB_CODE_LOCATION_ERASE, CH32V3X_ERASE_BIN);
-        let _ = hart.mem_write(STUB_CODE_LOCATION_WRITE, CH32V3X_WRITE_BIN);
+        // A stub that never reached SRAM would run as garbage later, so fail the session now.
+        if hart.mem_write(STUB_CODE_LOCATION_ERASE, CH32V3X_ERASE_BIN).is_err() {
+            return false;
+        }
+        if hart.mem_write(STUB_CODE_LOCATION_WRITE, CH32V3X_WRITE_BIN).is_err() {
+            return false;
+        }
         self.fast_unlock(hart);
 
         // self.switch_to_60_hsi(hart);
@@ -262,37 +267,26 @@ impl Ch32v123xxDriver {
         true
     }
 
-    /// Erase flash range using hardware BER64, BER32, or in-SRAM erase stub.
+    /// Erase `len` bytes at `dest` by mapping the advertised erase block size onto a
+    /// hardware erase mode: 32K/64K are one BER32/BER64 block erase each, anything
+    /// smaller goes to the in-SRAM stub, which iterates 256 B fast page (FTER) erases.
     pub fn erase_flash(&mut self, hart: &mut RiscvHart, dest: u32, mut len: usize) -> bool {
         let mut addr = dest | FLASH_PHYSICAL_ADDRESS;
 
         while len > 0 {
             let chunk: usize;
-            if len >= 65536 {
-                chunk = 65536;
-                self.fast_unlock(hart);
-                let ctl = self.read_flash_reg(hart, flash_reg!(ctlr));
-                self.write_flash_reg(hart, flash_reg!(ctlr), ctl | FMC_CTL_BER64);
-                self.write_flash_reg(hart, flash_reg!(addr), addr);
-                let ctl2 = self.read_flash_reg(hart, flash_reg!(ctlr));
-                self.write_flash_reg(hart, flash_reg!(ctlr), ctl2 | FMC_CTL_START);
-                if !self.wait_not_busy(hart) {
+            if len >= ERASE_BLOCK_SIZE_64K {
+                chunk = ERASE_BLOCK_SIZE_64K;
+                if !self.block_erase(hart, addr, FMC_CTL_BER64) {
                     return false;
                 }
-                self.write_flash_reg(hart, flash_reg!(ctlr), ctl);
-            } else if len >= 32768 {
-                chunk = 32768;
-                self.fast_unlock(hart);
-                let ctl = self.read_flash_reg(hart, flash_reg!(ctlr));
-                self.write_flash_reg(hart, flash_reg!(ctlr), ctl | FMC_CTL_BER32);
-                self.write_flash_reg(hart, flash_reg!(addr), addr);
-                let ctl2 = self.read_flash_reg(hart, flash_reg!(ctlr));
-                self.write_flash_reg(hart, flash_reg!(ctlr), ctl2 | FMC_CTL_START);
-                if !self.wait_not_busy(hart) {
+            } else if len >= ERASE_BLOCK_SIZE_32K {
+                chunk = ERASE_BLOCK_SIZE_32K;
+                if !self.block_erase(hart, addr, FMC_CTL_BER32) {
                     return false;
                 }
-                self.write_flash_reg(hart, flash_reg!(ctlr), ctl);
             } else {
+                // Below one BER32 block: let the stub erase page by page.
                 chunk = len.min(ATOMIC_FLASHSTUB_WRITE);
                 let stub_ok = hart.run_stub_with_stack(
                     STUB_CODE_LOCATION_ERASE,
@@ -309,6 +303,22 @@ impl Ch32v123xxDriver {
             addr += chunk as u32;
             len -= chunk;
         }
+        true
+    }
+
+    /// Erase one hardware block starting at `addr` with the block-erase mode `mode`
+    /// (FMC_CTL_BER32 or FMC_CTL_BER64), per RM 32.5.7 steps 4-9.
+    fn block_erase(&self, hart: &mut RiscvHart, addr: u32, mode: u32) -> bool {
+        self.fast_unlock(hart);
+        let ctl = self.read_flash_reg(hart, flash_reg!(ctlr));
+        self.write_flash_reg(hart, flash_reg!(ctlr), ctl | mode);
+        self.write_flash_reg(hart, flash_reg!(addr), addr);
+        let ctl2 = self.read_flash_reg(hart, flash_reg!(ctlr));
+        self.write_flash_reg(hart, flash_reg!(ctlr), ctl2 | FMC_CTL_START);
+        if !self.wait_not_busy(hart) {
+            return false;
+        }
+        self.write_flash_reg(hart, flash_reg!(ctlr), ctl);
         true
     }
 
