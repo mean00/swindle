@@ -92,6 +92,30 @@ extern "C" volatile uint32_t ln_rv_tx_count;
 
 #define BMP_MIN_WS 1
 
+/* Response window of a DMI write frame, in bit clocks. The protocol answer is four
+ * status bits, but the DM only starts driving the wire a few microseconds after the
+ * last request clock, so the window is sized by *time*, not by the four status bits:
+ * four clocks were too short on a 144 MHz probe (and marginal on a 96 MHz one) and
+ * came back as 0xf = "nothing driven". The status is the first four sampled bits,
+ * the rest of the window idles high.
+ *
+ * The budget is 8 us of clocks (doc/rvswd_protocol.md: the response window is a time
+ * budget, not a bit count). A fixed-rate tap just returns the reference count -- 16
+ * clocks, 8.6 us at 1.85 MHz; a tap whose clock is programmable overrides this
+ * before including the file so the budget stays 8 us when the clock is raised. */
+#ifndef RVSWD_WRITE_RESPONSE_CLOCKS
+#define RVSWD_WRITE_RESPONSE_CLOCKS() 16
+#endif
+
+// ---------------------------------------------------------------
+// Diagnostics: the raw status word and the on-the-wire duration of the most
+// recent failed frame. Reported by the retry layer when it gives up, so a
+// failure says *why* (status 0xf = nothing came back, status busy, ...) and how
+// fast the transport really runs, instead of only "after N attempts".
+// ---------------------------------------------------------------
+static volatile uint32_t rv_last_bad_status = 0;
+static volatile uint32_t rv_last_bad_us = 0;
+
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val);
 bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output);
 /**
@@ -140,14 +164,20 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
     tx = (tx << 2) | (parity2 ? 3 : 0);
 
     // TX total = 10 + 4 + 32 + 2 = 48 bits
-    // RX total = 4 bits (status)
-    uint64_t rx = rvswd_write_then_read(tx, 48, 4);
+    // RX: a whole response word is clocked (see RVSWD_WRITE_RESPONSE_CLOCKS()); the DMI
+    // status is the first four sampled bits.
+    const int rx_clocks = RVSWD_WRITE_RESPONSE_CLOCKS();
+    uint32_t t0 = lnGetUs();
+    uint64_t rx = rvswd_write_then_read(tx, 48, rx_clocks);
+    uint32_t status = (uint32_t)(rx >> (rx_clocks - 4)) & 0xF;
 
-    if (rx != 3 && rx != 7)
+    if (status != 3 && status != 7)
     {
         // Quiet here: a non-OK status is usually "busy" (a system-bus access is still in
         // flight), which the DMI layer retries with a bounded budget (BMP 85). Log only
-        // when the retries are exhausted.
+        // when the retries are exhausted; the reason is kept for that line.
+        rv_last_bad_status = status;
+        rv_last_bad_us = lnGetUs() - t0;
         return false;
     }
     return true;
@@ -173,6 +203,7 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 
     // TX total = 14 bits
     // RX total = 32 (data) + 2 (parity) + 4 (status) = 38 bits
+    uint32_t t0 = lnGetUs();
     uint64_t rx = rvswd_write_then_read(tx, 14, 38);
 
     uint32_t status = rx & 0xF;
@@ -182,7 +213,9 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
     {
         // Quiet here: a non-OK status is usually "busy" (a system-bus access is still in
         // flight), which the DMI layer retries with a bounded budget (BMP 85). Log only
-        // when the retries are exhausted.
+        // when the retries are exhausted; the reason is kept for that line.
+        rv_last_bad_status = status;
+        rv_last_bad_us = lnGetUs() - t0;
         return false;
     }
     return true;
@@ -234,8 +267,12 @@ static bool rv_dm_probe(uint32_t *chip_id)
  * usually means the DM is still busy with the previous system-bus access (or the DM
  * latched the access only recently, e.g. right after an ADDR0/DATA0 write). Retry a
  * bounded number of times, then report failure - the riscv32 sysbus code then falls
- * back to the proven CTRLSTATUS busy-poll. */
-#define RVSWD_DMI_MAX_ATTEMPTS 4U
+ * back to the proven CTRLSTATUS busy-poll.
+ * BMP 112: the retries are *spaced*. A DM that is still finishing a system-bus access
+ * answers "busy", and back-to-back frames are much closer together than that, so
+ * without the delay the attempts would all land inside the same busy window. */
+#define RVSWD_DMI_MAX_ATTEMPTS 6U
+#define RVSWD_DMI_RETRY_DELAY_US 100U
 
 static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
@@ -246,8 +283,11 @@ static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, 
             dmi->fault = RV_DMI_SUCCESS;
             return true;
         }
+        lnDelayUs(RVSWD_DMI_RETRY_DELAY_US);
     }
-    Logger("DMI read failed Adr=0x%x after %u attempts\n", address, (unsigned)RVSWD_DMI_MAX_ATTEMPTS);
+    Logger("DMI read failed Adr=0x%x after %u attempts (status=0x%x, %uus/frame, ws=%u)\n", address,
+           (unsigned)RVSWD_DMI_MAX_ATTEMPTS, (unsigned)rv_last_bad_status, (unsigned)rv_last_bad_us,
+           (unsigned)bmp_get_wait_state_c());
     dmi->fault = RV_DMI_FAILURE;
     return false;
 }
@@ -269,8 +309,11 @@ static bool ch32_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address,
             dmi->fault = RV_DMI_SUCCESS;
             return true;
         }
+        lnDelayUs(RVSWD_DMI_RETRY_DELAY_US);
     }
-    Logger("DMI write failed Adr=0x%x after %u attempts\n", address, (unsigned)RVSWD_DMI_MAX_ATTEMPTS);
+    Logger("DMI write failed Adr=0x%x after %u attempts (status=0x%x, %uus/frame, ws=%u)\n", address,
+           (unsigned)RVSWD_DMI_MAX_ATTEMPTS, (unsigned)rv_last_bad_status, (unsigned)rv_last_bad_us,
+           (unsigned)bmp_get_wait_state_c());
     dmi->fault = RV_DMI_FAILURE;
     return false;
 }

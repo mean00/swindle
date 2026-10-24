@@ -33,6 +33,7 @@ extern "C"
 extern void bmp_gpio_init();
 extern rpPIO *swdpio;
 extern rpPIO_SM *xsm;
+extern uint32_t swd_frequency;
 
 uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
 {
@@ -121,5 +122,32 @@ void rv_write_write(uint32_t value)
     rvswd_write_then_read(0xaa55, 16, 0);
     lnDelayMs(1);
 }
+/* ---------------------------------------------------------------
+ * Response window of a DMI write frame, sized in *time* rather than
+ * in clocks: the DM needs ~8 us after the last request clock before
+ * it drives the status (doc/rvswd_protocol.md). rvswd.pio spends
+ * five PIO instructions per bit and the state machine runs at
+ * 5 * swd_frequency (see setupPIO), so one bit clock is exactly
+ * 1 / swd_frequency and 8 us is swd_frequency / 125000 clocks.
+ * 16 clocks (the reference count of a fixed 1.85 MHz tap) is the
+ * floor, 63 the ceiling: rvswd_write_then_read() decodes at most two
+ * RX words, so the window must stay below 64 bits.
+ * --------------------------------------------------------------- */
+#define RVSWD_RESPONSE_MIN_CLOCKS 16
+#define RVSWD_RESPONSE_MAX_CLOCKS 63
+
+static int rp2040_rvswd_response_clocks()
+{
+    uint32_t clocks = swd_frequency / 125000; // 8 us at the current clock
+    if (clocks < RVSWD_RESPONSE_MIN_CLOCKS)
+        clocks = RVSWD_RESPONSE_MIN_CLOCKS;
+    if (clocks > RVSWD_RESPONSE_MAX_CLOCKS)
+        clocks = RVSWD_RESPONSE_MAX_CLOCKS;
+    return (int)clocks;
+}
+
+/* Picked up by rvswd_template.h instead of its fixed-16 default. */
+#define RVSWD_WRITE_RESPONSE_CLOCKS() rp2040_rvswd_response_clocks()
+
 #include "rvswd_template.h"
 // EOF

@@ -69,6 +69,35 @@ uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
 rpPIO *swdpio = NULL;
 rpPIO_SM *xsm = NULL;
 SwdReset *pReset;
+/* PIO instructions per bit clock, per wire program. The state machine is clocked at
+ * swd_frequency * <factor>, so a program spending N instructions per bit ends up at
+ * swd_frequency * factor / N:
+ *   rvswd.pio / rvswd_raw : 5 instructions per bit -> factor 5 -> the bit clock is
+ *                           exactly swd_frequency, i.e. `mon fq` *is* the wire clock.
+ *   swd.pio               : 6 instructions per bit, kept at the historical factor 4
+ *                           (its clock stays below the requested rate; changing it
+ *                           would alter a known-good SWD path).
+ */
+#define SWD_PIO_RATE_FACTOR 4
+#define RVSWD_PIO_RATE_FACTOR 5
+
+/**
+ * @brief State-machine rate factor (a multiple of swd_frequency) for a wire mode.
+ * @param mode The active pin mode.
+ * @return uint32_t The factor to multiply swd_frequency by.
+ */
+static uint32_t pioRateFactor(bmp_pin_mode mode)
+{
+    switch (mode)
+    {
+    case BMP_PINMODE_RVSWD:
+    case BMP_PINMODE_RVSWD_RAW:
+        return RVSWD_PIO_RATE_FACTOR;
+    default:
+        return SWD_PIO_RATE_FACTOR;
+    }
+}
+
 /**
  * @brief Set the RP2040 PIO state machine clock frequency for SWD.
  * @param fq Desired frequency in Hz.
@@ -87,7 +116,9 @@ static void rp2040_swd_pio_change_clock(uint32_t fq)
 extern "C" void bmp_set_frequency_c(uint32_t fq)
 {
     swd_frequency = fq;
-    rp2040_swd_pio_change_clock(fq * 4);
+    /* Keep the wire clock at fq for the mode we are in; the next pinmode switch
+     * re-applies it through setupPIO() anyway. */
+    rp2040_swd_pio_change_clock(fq * pioRateFactor(currentPioMode));
 }
 /**
  * @brief One-time init of GPIO, PIO engine, ADC, and reset pin.
@@ -116,9 +147,11 @@ void bmp_gpio_init_once()
  * @param outputRight       Bit shift direction for output (true=LSB).
  * @param wrapTarget        Wrap target address.
  * @param wrap              Wrap address.
+ * @param rateFactor        State-machine rate in multiples of swd_frequency, so the
+ *                          wire clock of the program is what the user asked for.
  */
 static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight, bool outputRight, int wrapTarget,
-                     int wrap)
+                     int wrap, uint32_t rateFactor)
 {
     lnPin pin_swd = _mapping[TSWDIO_PIN];
     lnPin pin_clk = _mapping[TSWDCK_PIN];
@@ -134,7 +167,7 @@ static void setupPIO(int prgSizeInHalfWord, const uint16_t *prg, bool inputRight
 #if 0
     xsm->setSpeed(10);
 #else
-    xsm->setSpeed(swd_frequency * 4);
+    xsm->setSpeed(swd_frequency * rateFactor);
 #endif
     xsm->setBitOrder(outputRight, inputRight); // SWD is LSB, shift right both
     xsm->setPinDir(pin_swd, true);
@@ -177,17 +210,18 @@ void bmp_gpio_pinmode(bmp_pin_mode pioMode)
     {
     case BMP_PINMODE_SWD:
         Logger(">>GPIO:Switching to PIO-SWD mode\n");
-        setupPIO(sizeof(swd_program_instructions) / 2, swd_program_instructions, true, true, swd_wrap_target, swd_wrap);
+        setupPIO(sizeof(swd_program_instructions) / 2, swd_program_instructions, true, true, swd_wrap_target, swd_wrap,
+                 SWD_PIO_RATE_FACTOR);
         break;
     case BMP_PINMODE_RVSWD:
         Logger(">>GPIO:Switching to PIO-RVSWD mode\n");
         setupPIO(sizeof(rvswd_program_instructions) / 2, rvswd_program_instructions, false, false, rvswd_wrap_target,
-                 rvswd_wrap);
+                 rvswd_wrap, RVSWD_PIO_RATE_FACTOR);
         break;
     case BMP_PINMODE_RVSWD_RAW:
         Logger(">>GPIO:Switching to PIO-RVSWD-RAW mode\n");
         setupPIO(sizeof(rvswd_raw_program_instructions) / 2, rvswd_raw_program_instructions, false, false,
-                 rvswd_raw_wrap_target, rvswd_raw_wrap);
+                 rvswd_raw_wrap_target, rvswd_raw_wrap, RVSWD_PIO_RATE_FACTOR);
         break;
     case BMP_PINMODE_SDI:
         Logger(">>GPIO:Switching to PIO-SDI mode\n");
