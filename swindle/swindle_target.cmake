@@ -58,6 +58,35 @@ endif()
 # ===========================================================================================
 
 add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE})
+# ---------------------------------------------------------------------------
+# Session arena (malloc_used.md): force-include the allocation shim into the
+# blackmagic C sources only, so that the `calloc`/`malloc`/`free` of the
+# ADIv5/Cortex/RISC-V layer hit rs_swindle's static arena instead of the heap.
+# Scoped to .c files on purpose: esprit/include/esprit.h declares malloc/free
+# again (with _NOTHROW / __attribute_malloc__) and lnRingBuffer.h has a member
+# function named free(), so the macros must never be active in a C++ TU that
+# sees those headers.  bmp_helpers.cpp (the other holder of session allocations)
+# is C++ too, so it includes only the declarations (swindle/include/session_arena.h)
+# and names the swindle_session_* functions explicitly.  With
+# SWINDLE_SESSION_ARENA=OFF this block is skipped and the firmware is exactly the
+# pre-arena one.
+# ---------------------------------------------------------------------------
+if(SWINDLE_SESSION_ARENA)
+  set(_arena_shim ${myB}include/session_arena_shim.h)
+  set(_arena_c_sources "")
+  foreach(_src IN LISTS BOARDS BM_TARGET)
+    if(_src MATCHES "\\.c$")
+      list(APPEND _arena_c_sources ${_src})
+    endif()
+  endforeach()
+  if(_arena_c_sources AND EXISTS ${_arena_shim})
+    set_property(SOURCE ${_arena_c_sources} APPEND PROPERTY
+                 COMPILE_OPTIONS "-include" "${_arena_shim}")
+    message(STATUS "Session arena: allocation shim force-included into ${_arena_c_sources}")
+  else()
+    message(WARNING "Session arena: no C sources / no shim at ${_arena_shim}")
+  endif()
+endif()
 # blackmagic_addon (${BMP_EXTRA}) is a libswindle-only include (the addon
 # sources compile inside libswindle); the rest of the blackmagic context
 # (${BMP}/src* dirs + defines) comes from bmp_core (linked below).

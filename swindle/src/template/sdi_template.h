@@ -288,6 +288,11 @@ bool LN_FAST_CODE sdi_dm_read(const uint8_t adr, uint32_t *const output)
 
 extern "C"
 {
+    /** @brief Session arena (malloc_used.md): transport object storage.
+     *
+     * Declared here because this template is a C++ TU, which never sees the
+     * calloc/malloc/free shim (swindle/include/session_arena_shim.h). */
+    void *swindle_session_transport_alloc(size_t size);
     /** @brief C entry point: enter SDI debug mode (mirror of bmp_rv_dm_reset_c). */
     bool bmp_sdi_dm_reset_c()
     {
@@ -387,9 +392,9 @@ extern "C" bool sdi_scan()
                (unsigned)status, (unsigned)(status & RV_STATUS_VERSION_MASK),
                (unsigned)SDI_DMSTATUS_VERSION_0_13);
 
-    riscv_dmi_s *dmi = new riscv_dmi_s;
+    riscv_dmi_s *dmi = (riscv_dmi_s *)swindle_session_transport_alloc(sizeof(*dmi));
     if (!dmi)
-    { /* allocation failed: heap exhaustion */
+    { /* allocation failed: heap and arena exhausted */
         Logger("SDI : dmi allocation failed in %s\n", __func__);
         return false;
     }

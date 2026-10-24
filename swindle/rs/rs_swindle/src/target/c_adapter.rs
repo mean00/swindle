@@ -495,6 +495,9 @@ pub unsafe extern "C" fn target_list_free() {
             cur = next;
         }
         target_list = core::ptr::null_mut();
+        // Start a fresh session arena: the objects of the session that just
+        // died were served from it (see crate::session_arena).
+        crate::session_arena::swindle_session_open();
     }
 }
 

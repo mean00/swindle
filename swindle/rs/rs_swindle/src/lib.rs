@@ -77,6 +77,23 @@ mod riscv_extra;
 #[cfg(any(feature = "sdi", feature = "hosted"))]
 #[path = "riscv_extra_sdi.rs"]
 mod riscv_extra;
+// Sizes of the two arena regions.  Shared by both halves of the seam: the
+// implementation allocates them, `mon arena` reports them, and the probe's RAM
+// budget (SWINDLE_SESSION_ARENA_RAM_KIB) has to allow for them.
+mod session_arena_size;
+// The session arena (see malloc_used.md) is optional in the same way: with
+// `session_arena` on (CMake: SWINDLE_SESSION_ARENA, wired in
+// swindle/rs/CMakeLists.txt) session_arena.rs serves the session allocations
+// from two `.bss` regions; with it off session_arena_stubs.rs forwards to the
+// heap, so the C side — which session_arena_shim.h redirects
+// calloc/malloc/free to the swindle_session_* names — links and behaves
+// exactly as before.
+#[cfg(not(feature = "session_arena"))]
+#[path = "session_arena_stubs.rs"]
+mod session_arena;
+#[cfg(feature = "session_arena")]
+#[path = "session_arena.rs"]
+mod session_arena;
 mod rtt_consts;
 mod setting_keys;
 mod settings;

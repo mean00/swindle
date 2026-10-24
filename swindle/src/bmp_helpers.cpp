@@ -34,6 +34,17 @@ extern "C"
 #include "gdb_packet.h"
 #include "jep106.h"
 
+    /* The session objects implemented below (priv_s, target_s, breakwatch,
+     * ram/flash/command descriptors) are served from rs_swindle's static
+     * session arena instead of the FreeRTOS heap; see malloc_used.md and
+     * swindle/include/session_arena.h.
+     *
+     * The calls are explicit on purpose: this is C++, the shim's
+     * calloc/malloc/free macros would be visible to the standard library
+     * headers included above (and `new` cannot be renamed at all), so the
+     * declarations only - no macros - are pulled in here. */
+#include "session_arena.h"
+
     bool parse_enable_or_disable(const char *value, bool *out);
 
     /* --------------------------------------------------------------------------
@@ -219,12 +230,12 @@ extern "C"
 
     target_s *target_alloc_c(void)
     {
-        return (target_s *)calloc(1, sizeof(target_s));
+        return (target_s *)swindle_session_calloc(1, sizeof(target_s));
     }
 
     void target_free_c(target_s *t)
     {
-        free(t);
+        swindle_session_free(t);
     }
 
     void target_detach_safe(target_s *t)
@@ -244,12 +255,12 @@ extern "C"
 
     target_ram_s *target_ram_alloc_c(void)
     {
-        return (target_ram_s *)calloc(1, sizeof(target_ram_s));
+        return (target_ram_s *)swindle_session_calloc(1, sizeof(target_ram_s));
     }
 
     void target_ram_free_c(target_ram_s *r)
     {
-        free(r);
+        swindle_session_free(r);
     }
 
     void target_flash_buf_free_c(void *flash)
@@ -258,8 +269,8 @@ extern "C"
         if (f)
         {
             if (f->buf)
-                free(f->buf);
-            free(f);
+                swindle_session_free(f->buf);
+            swindle_session_free(f);
         }
     }
 
@@ -272,7 +283,7 @@ extern "C"
     void target_storage_free_c(target_s *t)
     {
         if (t && t->target_storage)
-            free(t->target_storage);
+            swindle_session_free(t->target_storage);
     }
 
     void target_commands_free_c(target_s *t)
@@ -282,7 +293,7 @@ extern "C"
         while (t->commands)
         {
             target_command_s *const tc = t->commands->next;
-            free(t->commands);
+            swindle_session_free(t->commands);
             t->commands = tc;
         }
     }
@@ -294,7 +305,7 @@ extern "C"
         while (t->bw_list)
         {
             void *next = t->bw_list->next;
-            free(t->bw_list);
+            swindle_session_free(t->bw_list);
             t->bw_list = (breakwatch_s *)next;
         }
     }
@@ -586,7 +597,7 @@ extern "C"
 
     void target_add_commands(target_s *target, const command_s *cmds, const char *name)
     {
-        target_command_s *command = (target_command_s *)malloc(sizeof(*command));
+        target_command_s *command = (target_command_s *)swindle_session_malloc(sizeof(*command));
         if (!command)
             return;
         if (target->commands)
@@ -652,7 +663,7 @@ extern "C"
 
         if (ret == 0)
         {
-            breakwatch_s *bwm = (breakwatch_s *)malloc(sizeof(bw));
+            breakwatch_s *bwm = (breakwatch_s *)swindle_session_malloc(sizeof(bw));
             if (!bwm)
                 return 1;
             memcpy(bwm, &bw, sizeof(bw));
@@ -686,7 +697,7 @@ extern "C"
                 target->bw_list = bw->next;
             else
                 bwp->next = bw->next;
-            free(bw);
+            swindle_session_free(bw);
         }
         return ret;
     }
@@ -837,7 +848,7 @@ extern "C"
 
     target_flash_s *target_flash_alloc_c(void)
     {
-        return (target_flash_s *)calloc(1, sizeof(target_flash_s));
+        return (target_flash_s *)swindle_session_calloc(1, sizeof(target_flash_s));
     }
 
     void target_set_driver_c(target_s *t, const char *driver)

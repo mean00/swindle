@@ -15,6 +15,15 @@ else()
   if(SWINDLE_WITH_SDI)
     set(SWINDLE_RUST_SDI_FEATURE sdi)
   endif()
+  # The session arena (malloc_used.md) is optional the same way: with it off,
+  # rs_swindle/src/lib.rs compiles session_arena_stubs.rs instead of
+  # session_arena.rs, so the swindle_session_* symbols that
+  # swindle/include/session_arena_shim.h redirects calloc/malloc/free to simply
+  # forward to the heap.
+  set(SWINDLE_RUST_ARENA_FEATURE "")
+  if(SWINDLE_SESSION_ARENA)
+    set(SWINDLE_RUST_ARENA_FEATURE session_arena)
+  endif()
   # Platform backend for rust_esprit (esprit/rust/rp2xxx/README.md).  The C++
   # bridges for timer / multi-pulse / timing-ADC / I2C are not built on
   # RP2040/RP2350 (esprit/rust/CMakeLists.txt), so the Rust side must select
@@ -44,7 +53,7 @@ else()
   if(USE_WS2812 AND NOT (USE_RP2040 OR USE_RP2350))
     set(SWINDLE_RUST_LED_FEATURE ws2812)
   endif()
-  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native ${SWINDLE_RUST_SDI_FEATURE} ${SWINDLE_RUST_PLATFORM_FEATURE} ${SWINDLE_RUST_PACKAGE_FEATURE} ${SWINDLE_RUST_LED_FEATURE})
+  rust_add(rsbmp_wrapper ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml fake_std native ${SWINDLE_RUST_SDI_FEATURE} ${SWINDLE_RUST_ARENA_FEATURE} ${SWINDLE_RUST_PLATFORM_FEATURE} ${SWINDLE_RUST_PACKAGE_FEATURE} ${SWINDLE_RUST_LED_FEATURE})
   # rs_rtos takes the kernel layout from esprit/rust/rs_rtos/src/kernel/esprit/generated.rs,
   # which the freertos_struct_header target regenerates from the kernel this build
   # links (esprit/cmake/lnFreeRTOS_structs.cmake).  Ordering, not a check: the file

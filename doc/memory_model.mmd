@@ -1,0 +1,115 @@
+graph TD
+    %% =============================================================
+    %% MEMORY MODEL OF A SWINDLE PROBE - one-page diagram
+    %% Literate version, with numbers and pitfalls: malloc_used.md
+    %% Lifecycle only: doc/session_arena_lifecycle.mmd
+    %% Render: mmdc -i doc/memory_model.mmd -o /tmp/memory_model.png
+    %% =============================================================
+
+    %% -------------------------------------------------------------
+    %% LEGEND STYLES
+    %% -------------------------------------------------------------
+    classDef bssCls fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef heapCls fill:#ffe0b2,stroke:#e65100,stroke-width:2px;
+    classDef arenaCls fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef stateCls fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;
+    classDef objCls fill:#eceff1,stroke:#455a64,stroke-width:1.5px;
+    classDef failCls fill:#ffebee,stroke:#c62828,stroke-width:1.5px;
+
+    %% -------------------------------------------------------------
+    %% 1. THE THREE STORAGE CLASSES
+    %% -------------------------------------------------------------
+    subgraph S1 ["1. Three storage classes"]
+        Bss["static / .bss<br/>kernel objects, task stacks, singletons<br/>never released, boot to reset"]
+        Heap["heap = ucHeap via heap_4<br/>pvPortMalloc / vPortFree<br/>arbitrary lifetime, fragments"]
+        Arena["session arena, bump region in .bss<br/>POOL 1728 B + TRANSPORT 896 B<br/>wiped at the start of every scan"]
+    end
+    class Bss bssCls;
+    class Heap heapCls;
+    class Arena arenaCls;
+
+    %% -------------------------------------------------------------
+    %% 2. RAM PARTITION, HIGH ADDRESS ON TOP
+    %% -------------------------------------------------------------
+    subgraph S2 ["2. RAM partition"]
+        Msp["MSP stack, grows down<br/>1 KiB head-room"]
+        UcHeap[".bss2 = ucHeap, NOLOAD<br/>HEAP = RAM - STATIC - 1"]
+        Statics[".bss = all statics<br/>incl. POOL + TRANSPORT + counters"]
+        Msp --> UcHeap
+        UcHeap --> Statics
+    end
+    class Statics bssCls;
+    class UcHeap heapCls;
+
+    %% -------------------------------------------------------------
+    %% 3. ALLOCATOR STACK
+    %% -------------------------------------------------------------
+    subgraph S3 ["3. Allocator stack"]
+        Libc["calloc / malloc / free<br/>blackmagic C"]
+        CppNew["new / delete<br/>C++"]
+        Shim["session_arena_shim.h<br/>macros, blackmagic .c only"]
+        SysAlloc["esprit/src/systemAlloc.cpp<br/>sysAlloc to pvPortMalloc<br/>sysFree to vPortFree, realloc is a trap"]
+        Heap4["heap_4.c over ucHeap<br/>first fit plus coalescing"]
+        Libc --> Shim
+        Shim --> Arena
+        CppNew --> SysAlloc
+        SysAlloc --> Heap4
+    end
+    class SysAlloc,Heap4 heapCls;
+    class Shim arenaCls;
+
+    %% -------------------------------------------------------------
+    %% 4. SESSION LIFECYCLE - ONE TRANSITION, NO close()
+    %% -------------------------------------------------------------
+    subgraph S4 ["4. Session lifecycle"]
+        Unarmed["UNARMED<br/>allocations go to the heap"]
+        Armed["ARMED<br/>allocations bump from offset 0"]
+        Unarmed -->|first scan: target_list_free, then swindle_session_open| Armed
+        Armed -->|next scan: unwind the list, wipe, re-arm| Armed
+        Armed -->|D detach: list kept, nothing disarmed| Armed
+        Unarmed -->|probe reset| Unarmed
+    end
+    class Unarmed,Armed stateCls;
+
+    %% -------------------------------------------------------------
+    %% 5. WHAT ONE SESSION ALLOCATES, AND WHERE IT LANDS
+    %% -------------------------------------------------------------
+    subgraph S5 ["5. Session objects"]
+        Dp["probe DP, plus one DP + AP per device<br/>adiv5_dp_init / adiv5_new_ap - TRANSPORT"]
+        Dmi["riscv_dmi_s via transport_alloc - TRANSPORT"]
+        Priv["priv, driver specific - POOL"]
+        Tgt["target_s, RAM / flash / command descriptors - POOL"]
+        Bw["breakwatch nodes - POOL"]
+        Dp --> Priv
+        Dmi --> Priv
+        Priv --> Tgt
+        Tgt --> Bw
+    end
+    class Dp,Dmi objCls;
+    class Priv,Tgt,Bw objCls;
+
+    %% -------------------------------------------------------------
+    %% 6. RECLAMATION AND FAILURE POLICY
+    %% -------------------------------------------------------------
+    subgraph S6 ["6. Reclamation and failure"]
+        TopFree["free of the top block<br/>rewinds the bump pointer"]
+        OtherFree["free of any other arena block<br/>counted, reclaims nothing"]
+        Full["region full, or heap malloc returns null<br/>logged, then panic -> deadEnd(55)"]
+    end
+    class TopFree arenaCls;
+    class OtherFree objCls;
+    class Full failCls;
+
+    %% -------------------------------------------------------------
+    %% CROSS LINKS
+    %% -------------------------------------------------------------
+    Scan["scan / attach"] --> Armed
+    Dp -.->|TRANSPORT region| Arena
+    Tgt -.->|POOL region| Arena
+    Statics --> Arena
+    Statics --> Bss
+    Heap4 --> Heap
+    Bw -.->|set then clear, LIFO| TopFree
+    Tgt -.->|other orders| OtherFree
+    Arena -.->|never overflows silently| Full
+    Full -.->|"deadEnd(55): a power cycle comes back here"| Unarmed

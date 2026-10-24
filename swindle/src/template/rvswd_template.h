@@ -319,6 +319,11 @@ extern "C"
  *
  */
 extern "C" void target_list_free(void);
+/* Session arena (malloc_used.md): the riscv_dmi_s is the transport object of
+ * the session, so it comes from the arena's transport region instead of the
+ * heap.  Declared here because these templates are C++ TUs, which never see
+ * the calloc/malloc/free shim (session_arena_shim.h). */
+extern "C" void *swindle_session_transport_alloc(size_t size);
 extern "C" bool rvswd_scan()
 {
     uint32_t id = 0;
@@ -329,9 +334,13 @@ extern "C" bool rvswd_scan()
         return false;
     }
     Logger("WCH : found 0x%x device\n", id);
-    riscv_dmi_s *dmi = new riscv_dmi_s;
+    /* Transport object of this session: from the session arena's transport
+     * region, not the heap.  It is reclaimed when the target list is freed,
+     * which also fixes the old `new riscv_dmi_s` leak (nothing ever deleted it,
+     * 40 B per scan). */
+    riscv_dmi_s *dmi = (riscv_dmi_s *)swindle_session_transport_alloc(sizeof(*dmi));
     if (!dmi)
-    { /* calloc failed: heap exhaustion */
+    { /* allocation failed: heap and arena exhausted */
         Logger("calloc: failed in %s\n", __func__);
         return false;
     }

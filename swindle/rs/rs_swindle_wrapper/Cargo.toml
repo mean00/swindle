@@ -9,6 +9,8 @@ fake_std = ["rsbmp/fake_std"]
 native = ["rsbmp/native"]
 hosted = ["rsbmp/hosted"]
 sdi = ["rsbmp/sdi"]
+# Session-scoped static arena (CMake: SWINDLE_SESSION_ARENA), see malloc_used.md
+session_arena = ["rsbmp/session_arena"]
 # Platform backend for rust_esprit — exactly one of these (see
 # esprit/rust/rp2xxx/README.md); selected by swindle/rs/CMakeLists.txt.
 bluepill = ["rsbmp/bluepill", "rs_swindle_leds/bluepill"]

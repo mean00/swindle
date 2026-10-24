@@ -187,7 +187,7 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 37] = [
+const mon_command_tree: [CommandTree; 38] = [
     CommandTree {
         command: "breakpoint_info",
         min_args: 0,
@@ -349,6 +349,14 @@ const mon_command_tree: [CommandTree; 37] = [
         next_separator: 0,
     }, //
     CommandTree {
+        command: "arena",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_arena),
+        start_separator: 0,
+        next_separator: 0,
+    }, //
+    CommandTree {
         command: "stacks",
         min_args: 0,
         require_connected: false,
@@ -486,7 +494,7 @@ const mon_command_tree: [CommandTree; 37] = [
     }, //
 ];
 //
-const help_tree: [HelpTree; 34] = [
+const help_tree: [HelpTree; 35] = [
     HelpTree {
         command: "help",
         help: "Display help.",
@@ -546,6 +554,10 @@ const help_tree: [HelpTree; 34] = [
     HelpTree {
         command: "ram",
         help: "Display stats about Ram usage.",
+    },
+    HelpTree {
+        command: "arena",
+        help: "Session arena usage: transport/pool bump regions, frees, rewinds.",
     },
     HelpTree {
         command: "stacks",
@@ -698,6 +710,35 @@ fn _ram(_command: &str, _args: &[&str]) -> bool {
     encoder::reply_ok();
     true
 }
+
+/// Handle `mon arena` — the session-scoped static arenas (see
+/// `rs_swindle/src/session_arena.rs`, malloc_used.md).
+///
+/// `tr` is the transport region - today only the `riscv_dmi_s` the RVSWD/SDI
+/// templates allocate, which is why it reads 40 B - and `pool` the per-target
+/// objects (the DP/AP chain included).  Both are strict bump regions with a
+/// single lifetime: they are wiped when the target list is freed, i.e. at the
+/// start of every scan.  `freed` is the number of `free()` calls that landed on
+/// arena memory, `rewound` how many of those gave their bytes back (the block
+/// was the top one - a bump region can only reclaim in LIFO order).  An
+/// allocation that does not fit is fatal, so `used` never exceeds the size and
+/// the peaks are the numbers to check against it: read them after the workload
+/// of interest (`sdi_scan`/`rvswdp_scan`/`swdp_scan`, `attach 1`, `load`,
+/// `compare-sections`).
+fn _arena(_command: &str, _args: &[&str]) -> bool {
+    let a = crate::session_arena::stats();
+    if !crate::session_arena::BUILT_IN {
+        gdb_println!("Session arena : not built in (SWINDLE_SESSION_ARENA=OFF)");
+        encoder::reply_ok();
+        return true;
+    }
+    gdb_println!("Session arena : armed ", a.armed, " freed ", a.frees, " rewound ", a.rewinds);
+    gdb_println!("  tr   : ", a.transport_used, " / ", a.transport_size, " B (peak ", a.transport_peak, ")");
+    gdb_println!("  pool : ", a.pool_used, " / ", a.pool_size, " B (peak ", a.pool_peak, ")");
+    encoder::reply_ok();
+    true
+}
+
 
 /// Handle `mon stacks` — per-task stack high-water marks of the probe's own
 /// FreeRTOS kernel, i.e. the numbers the task stack sizes are right-sized from.

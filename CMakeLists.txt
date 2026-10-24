@@ -22,6 +22,16 @@ option(SWINDLE_USE_NETWORK "Use tcp/ip interface" OFF)
 option(LN_EXTERNAL_GENERATE "Build swindle as a subproject" OFF)
 option(LN_DISABLE_SWINDLE_LNIO "Disable optimized IO path and revert to BMP ones" OFF)
 option(SWINDLE_WITH_SDI "Build the WCH CH32V0xx single-wire (SDI) debug support" ON)
+# Session-scoped static arena (malloc_used.md): the objects blackmagic allocates
+# for a debug session come from two `.bss` regions instead of the FreeRTOS heap.
+# Off => session_arena_stubs.rs forwards to the heap (old behaviour, no .bss).
+option(SWINDLE_SESSION_ARENA "Serve session allocations from a static arena instead of the heap" ON)
+# What those regions cost the probe, in KiB.  They are `.bss`
+# (rs_swindle/src/session_arena_size.rs: POOL 1728 B + TRANSPORT 896 B = 2624 B,
+# rounded up here), and LN_FREERTOS_HEAP_SIZE = RAM - LN_MCU_STATIC_RAM - 1, so
+# the heap gives back exactly this much: see the block after
+# include(./mcuSelect.cmake).
+set(SWINDLE_SESSION_ARENA_RAM_KIB 3 CACHE STRING "KiB of static RAM taken by the session arena")
 #
 set(BMP_VERSION_BRANCH 1.10)
 set(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
@@ -122,6 +132,32 @@ endif()
 # ___________________________________________________
 set(ESPRIT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/esprit)
 include(./mcuSelect.cmake)
+# The session arena's two regions are `.bss` (rs_swindle/src/session_arena_size.rs).
+# lnFreeRTOS.cmake derives the heap from the board's static RAM
+# (LN_FREERTOS_HEAP_SIZE = RAM - STATIC_RAM - 1), so give the arena its own budget
+# there: the heap then gives up exactly the bytes the arena takes, and no board
+# needs a hand-edited cache entry.
+#
+# mcuSelect.cmake only runs on the first configure (`if(NOT DEFINED LN_ARCH)`), so
+# the board's own number is recorded once in LN_MCU_STATIC_RAM_BASE and the
+# effective value is re-derived from it every time.  Deriving instead of adding in
+# place is what keeps a repeated `cmake .` from growing the budget by one bump per
+# configure.
+#
+# A build dir configured by an earlier revision of this feature carries the bump
+# by hand in LN_MCU_STATIC_RAM; `cmake -U LN_MCU_STATIC_RAM .` does not undo that
+# (the entry disappears and mcuSelect does not run again), so set the pristine
+# board value once, e.g. `cmake -DLN_MCU_STATIC_RAM=31 .` for a GD32F303 that was
+# configured with 34.
+if(DEFINED LN_MCU_STATIC_RAM AND NOT DEFINED LN_MCU_STATIC_RAM_BASE)
+  set(LN_MCU_STATIC_RAM_BASE
+      ${LN_MCU_STATIC_RAM}
+      CACHE INTERNAL "static RAM budget of the board, without the session arena")
+endif()
+if(SWINDLE_SESSION_ARENA AND DEFINED LN_MCU_STATIC_RAM_BASE)
+  math(EXPR LN_MCU_STATIC_RAM "${LN_MCU_STATIC_RAM_BASE} + ${SWINDLE_SESSION_ARENA_RAM_KIB}")
+  message(STATUS "Session arena: static RAM budget ${LN_MCU_STATIC_RAM} KiB (${LN_MCU_STATIC_RAM_BASE} + ${SWINDLE_SESSION_ARENA_RAM_KIB} KiB for the arena)")
+endif()
 set(CMAKE_TOOLCHAIN_FILE ${ESPRIT_ROOT}/esprit.cmake)
 set(CMAKE_MODULE_PATH
     ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${ESPRIT_ROOT}/cmake

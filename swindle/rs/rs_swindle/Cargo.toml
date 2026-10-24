@@ -19,6 +19,11 @@ cdc = ["rust_esprit/cdc"]
 # (src/riscv_extra_sdi_stubs.rs) in lib.rs.
 sdi = []
 
+# Session-scoped static arena — CMake option SWINDLE_SESSION_ARENA, wired in
+# swindle/rs/CMakeLists.txt. Off selects src/session_arena_stubs.rs, which
+# forwards the swindle_session_* symbols to the heap (old behaviour, no .bss).
+session_arena = []
+
 fake_std = ["rust_esprit/fake_std"]
 
 # Platform backend selection for rust_esprit — see esprit/rust/rp2xxx/README.md.
