@@ -1,12 +1,38 @@
 graph TD
     %% -------------------------------------------------------------
     %% CLASS DEFINITIONS & LEGEND STYLES
+    %% Ownership is encoded by HUE:
+    %%   blue family (deep/pale) = Swindle code (Rust / Swindle C-C++)
+    %%   amber                   = patched upstream Blackmagic C
+    %%   lavender                = external clients & transports
+    %%   slate grey              = physical hardware & pins
     %% -------------------------------------------------------------
-    classDef rustLang fill:#ffe0b2,stroke:#e65100,stroke-width:2px;
-    classDef swindleCLang fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
-    classDef blackmagicCLang fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef transportLang fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;
-    classDef hwLang fill:#eceff1,stroke:#455a64,stroke-width:1.5px;
+    classDef swindleRust fill:#bbdefb,stroke:#0d47a1,stroke-width:2px;
+    classDef swindleC fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef blackmagicC fill:#ffe3c2,stroke:#bf360c,stroke-width:2px;
+    classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;
+    classDef hw fill:#eceff1,stroke:#455a64,stroke-width:1.5px;
+    %% Layer (subgraph) tints, same ownership hues
+    classDef swindleGroup fill:#f4faff,stroke:#5b9bd5,stroke-width:1.5px;
+    classDef blackmagicGroup fill:#fff7ef,stroke:#bf360c,stroke-width:1.5px;
+    classDef neutralGroup fill:#fafafa,stroke:#90a4ae,stroke-width:1px;
+
+    %% -------------------------------------------------------------
+    %% LEGEND
+    %% -------------------------------------------------------------
+    subgraph Legend ["Legend (color = code ownership)"]
+        LegendRust["Swindle Rust (rs_swindle)"]
+        LegendSwindleC["Swindle C/C++ (swindle/src)"]
+        LegendBlackmagic["Blackmagic C (patched upstream)"]
+        LegendExternal["External Client / Transport"]
+        LegendHW["Hardware & Pins"]
+    end
+    class LegendRust swindleRust;
+    class LegendSwindleC swindleC;
+    class LegendBlackmagic blackmagicC;
+    class LegendExternal external;
+    class LegendHW hw;
+    class Legend neutralGroup;
 
     %% -------------------------------------------------------------
     %% LAYER 1: CLIENTS & EXTERNAL INTERFACES
@@ -15,7 +41,8 @@ graph TD
         GDBClient["GDB / LLDB Debugger"]
         Console["Target Serial / RTT Terminal"]
     end
-    class GDBClient,Console transportLang;
+    class GDBClient,Console external;
+    class Layer1 neutralGroup;
 
     %% -------------------------------------------------------------
     %% LAYER 2: TRANSPORT & I/O
@@ -25,7 +52,8 @@ graph TD
         USB_UART["USB CDC Serial Bridge"]
         TCP_Socket["TCP/IP Socket Server (Hosted)"]
     end
-    class USB_GDB,USB_UART,TCP_Socket transportLang;
+    class USB_GDB,USB_UART,TCP_Socket external;
+    class Layer2 neutralGroup;
 
     %% -------------------------------------------------------------
     %% LAYER 3: SWINDLE CORE ENGINES & GDB SERVER (RUST)
@@ -64,7 +92,8 @@ graph TD
             SyncCellState["Thread-Safe Shared State (SyncCell)"]
         end
     end
-    class StreamDecoder,PacketEncoder,CmdDispatcher,CmdRun,CmdMem,CmdReg,CmdBkpt,CmdFlash,CmdMon,CmdQuery,FlashSubsystem,TargetSubsystem,RiscvSubsystem,TargetXML,MemMapXML,XmlSink,MemCache,SWBkptMgr,SettingsKV,SyncCellState rustLang;
+    class StreamDecoder,PacketEncoder,CmdDispatcher,CmdRun,CmdMem,CmdReg,CmdBkpt,CmdFlash,CmdMon,CmdQuery,FlashSubsystem,TargetSubsystem,RiscvSubsystem,TargetXML,MemMapXML,XmlSink,MemCache,SWBkptMgr,SettingsKV,SyncCellState swindleRust;
+    class Layer3 swindleGroup;
 
     %% -------------------------------------------------------------
     %% LAYER 4: TARGET OS & SUB-SYSTEM INTROSPECTION (RUST)
@@ -79,7 +108,8 @@ graph TD
         RTTEngine["SEGGER RTT Engine (Buffer Discovery & Polling)"]
         RPCEngine["RPC Layer (Target Server & Host Client)"]
     end
-    class FreeRTOSEngine,TCBList,ThreadIDMap,CoreContext,RTTEngine,RPCEngine rustLang;
+    class FreeRTOSEngine,TCBList,ThreadIDMap,CoreContext,RTTEngine,RPCEngine swindleRust;
+    class Layer4 swindleGroup;
 
     %% -------------------------------------------------------------
     %% LAYER 5: SWINDLE C/C++ INFRASTRUCTURE & C-ABI SEAM
@@ -107,8 +137,9 @@ graph TD
             ADC_Sense["Target VDD Sense ADC (bmp_adc_ln.cpp)"]
         end
     end
-    class CABITarget,CABIFlash,CABIRiscv,RustFFI rustLang;
-    class BMPHelpers,BMPBridge,ResetPin,BoardStubs,SWD_Tap,RVSWD_Tap,SDI_Tap,Generic_Tap,ADC_Sense swindleCLang;
+    class CABITarget,CABIFlash,CABIRiscv,RustFFI swindleRust;
+    class BMPHelpers,BMPBridge,ResetPin,BoardStubs,SWD_Tap,RVSWD_Tap,SDI_Tap,Generic_Tap,ADC_Sense swindleC;
+    class Layer5 swindleGroup;
 
     %% -------------------------------------------------------------
     %% LAYER 6: BLACKMAGIC PROBE C TARGET DRIVERS & TRANSPORTS (PATCHED)
@@ -139,7 +170,8 @@ graph TD
             PlatformHosted["Hosted Platform Core (platform.c, debug.c, utils.c, cli.c)"]
         end
     end
-    class STM32,RPFamily,WCHTargets,NordicTargets,LPCTargets,CortexM,ADIv5,RISCV_DTM,SWD_Transport,SPI_SFDP,JTAG_Transport,BMDRemote,PlatformHosted blackmagicCLang;
+    class STM32,RPFamily,WCHTargets,NordicTargets,LPCTargets,CortexM,ADIv5,RISCV_DTM,SWD_Transport,SPI_SFDP,JTAG_Transport,BMDRemote,PlatformHosted blackmagicC;
+    class Layer6 blackmagicGroup;
 
     %% -------------------------------------------------------------
     %% LAYER 7: HARDWARE & PHY LAYER
@@ -148,7 +180,8 @@ graph TD
         GPIO_PIO["Hardware Pins & PIO (RP2040 PIO / GD32 Fast GPIO / ESP32)"]
         TargetMCU["Target Silicon (ARM Cortex-M / RISC-V SoC)"]
     end
-    class GPIO_PIO,TargetMCU hwLang;
+    class GPIO_PIO,TargetMCU hw;
+    class Layer7 neutralGroup;
 
     %% -------------------------------------------------------------
     %% CONNECTIONS & CONTROL FLOW

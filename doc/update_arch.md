@@ -71,22 +71,32 @@ The diagram is organized into 7 distinct top-down layers:
 
 ## 3. Style & Color Conventions
 
-All nodes in `doc/arch.mmd` must use one of the standard color classes:
+All nodes in `doc/arch.mmd` must use one of the standard color classes. The palette encodes
+**code ownership** first: all Swindle-owned code uses the blue family (deep blue = Rust,
+pale blue = Swindle C/C++), patched upstream Blackmagic C uses amber.
 
 ```mermaid
-classDef rustLang fill:#ffe0b2,stroke:#e65100,stroke-width:2px;        %% Warm Orange: Rust code
-classDef swindleCLang fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;    %% Light Blue: Swindle C/C++
-classDef blackmagicCLang fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px; %% Soft Green: Patched Blackmagic C
-classDef transportLang fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px; %% Lavender: External / Transport
-classDef hwLang fill:#eceff1,stroke:#455a64,stroke-width:1.5px;        %% Slate Grey: Physical HW / Pins
+classDef swindleRust fill:#bbdefb,stroke:#0d47a1,stroke-width:2px;        %% Deep Blue: Swindle Rust
+classDef swindleC fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;           %% Pale Blue: Swindle C/C++
+classDef blackmagicC fill:#ffe3c2,stroke:#bf360c,stroke-width:2px;        %% Amber: Patched Blackmagic C
+classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;         %% Lavender: External / Transport
+classDef hw fill:#eceff1,stroke:#455a64,stroke-width:1.5px;               %% Slate Grey: Physical HW / Pins
+%% Layer (subgraph) tints, same ownership hues
+classDef swindleGroup fill:#f4faff,stroke:#5b9bd5,stroke-width:1.5px;     %% Swindle layers (3, 4, 5)
+classDef blackmagicGroup fill:#fff7ef,stroke:#bf360c,stroke-width:1.5px;  %% Blackmagic layer (6)
+classDef neutralGroup fill:#fafafa,stroke:#90a4ae,stroke-width:1px;       %% Client/Transport/HW layers (1, 2, 7)
 ```
 
 ### Class Assignment Rules
-- **Rust code** (`rs_swindle`, `target_xml.rs`, `c_adapter.rs`, etc.): assign `rustLang`.
-- **Swindle C/C++** (`bmp_helpers.cpp`, `bmp_interface_c.cpp`, `bmp_swdTap_ln.cpp`, etc.): assign `swindleCLang`.
-- **Blackmagic C** (`stm32*.c`, `cortexm.c`, `riscv32.c`, `adiv5.c`, `adiv5_swd.c`, etc.): assign `blackmagicCLang`.
-- **Transports & Clients** (GDB, USB CDC, TCP socket): assign `transportLang`.
-- **Physical Pins & Targets** (GPIO, PIO, Target MCU): assign `hwLang`.
+- **Swindle Rust** (`rs_swindle`, `target_xml.rs`, `c_adapter.rs`, etc.): assign `swindleRust`.
+- **Swindle C/C++** (`bmp_helpers.cpp`, `bmp_interface_c.cpp`, `bmp_swdTap_ln.cpp`, etc.): assign `swindleC`.
+- **Blackmagic C** (`stm32*.c`, `cortexm.c`, `riscv32.c`, `adiv5.c`, `adiv5_swd.c`, etc.): assign `blackmagicC`.
+- **Transports & Clients** (GDB, USB CDC, TCP socket): assign `external`.
+- **Physical Pins & Targets** (GPIO, PIO, Target MCU): assign `hw`.
+- **Subgraphs** get the matching group tint: `class Layer3 swindleGroup;` (also `Layer4`, `Layer5`),
+  `class Layer6 blackmagicGroup;`, `class Layer1/Layer2/Layer7 neutralGroup;`.
+- **Legend**: the `Legend` subgraph at the top of `doc/arch.mmd` lists one sample node per class and
+  must stay in sync with the `classDef` block above.
 
 ---
 
@@ -137,7 +147,8 @@ Follow these steps whenever code is migrated, refactored, or added:
 
 ### Step 5: Update Node Connections & Styling
 - Add or update arrows (`-->`) connecting caller and callee layers.
-- Update the `class ...` assignment lists at the bottom of each layer section to maintain color coding.
+- Update the `class ...` assignment lists at the bottom of each layer section to maintain color coding
+  (node class + the layer's own `swindleGroup` / `blackmagicGroup` / `neutralGroup` tint).
 
 ### Step 6: Verify and Render Test
 1. **Syntax Check**: Preview the diagram using an IDE Mermaid previewer or run:
