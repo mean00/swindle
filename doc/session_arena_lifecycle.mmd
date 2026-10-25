@@ -1,0 +1,14 @@
+%% Session-arena state machine - standalone copy of the diagram in
+%% doc/memory_model.md §3.5. Render with:
+%%   mmdc -i doc/session_arena_lifecycle.mmd -o /tmp/session_arena_lifecycle.png
+stateDiagram-v2
+    state "UNARMED - everything goes to the FreeRTOS heap" as Unarmed
+    state "ARMED - allocations bump POOL / TRANSPORT from offset 0" as Armed
+
+    [*] --> Unarmed : reset - ARMED is a .bss bool, false at every boot
+    Unarmed --> Armed : first scan - target_list_free then swindle_session_open
+    Armed --> Armed : next scan - unwind the list, wipe, re-arm
+    Armed --> Armed : D detach - target list kept, nothing disarmed
+    Armed --> [*] : region full or heap malloc null - logged, then panic deadEnd(55)
+    Unarmed --> Unarmed : boot allocations stay in the heap, never wiped
+    Armed --> [*] : probe reset / reboot
