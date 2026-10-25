@@ -292,6 +292,7 @@ name = "rs_spi_bluepill"
 version = "0.1.0"
 dependencies = [
  "rs_bluepill",
+ "rs_dma_bluepill",
  "rs_esprit",
  "rs_gpio_bluepill",
  "rs_rcu_bluepill",
@@ -354,12 +355,12 @@ dependencies = [
 name = "rs_uart_bluepill"
 version = "0.1.0"
 dependencies = [
- "cty",
  "rs_bluepill",
  "rs_dma_bluepill",
  "rs_esprit",
  "rs_gpio_bluepill",
  "rs_rcu_bluepill",
+ "rs_rtos",
 ]
 
 [[package]]
