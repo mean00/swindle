@@ -52,6 +52,11 @@ use crate::parsing_util::{
     ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, convert_param_to_integer,
     string_to_bool, u8_hex_string_to_u8s,
 };
+use crate::riscv::{
+    RV_CSR_DCSR, RV_CSR_DPC, RV_CSR_DSCRATCH0, RV_CSR_DSCRATCH1, RV_CSR_MCAUSE, RV_CSR_MEPC,
+    RV_CSR_MIE, RV_CSR_MIP, RV_CSR_MISA, RV_CSR_MSCRATCH, RV_CSR_MSTATUS, RV_CSR_MTVAL,
+    RV_CSR_MTVEC, RV_CSR_TDATA1, RV_CSR_TDATA2, RV_CSR_TDATA3, RV_CSR_TINFO, RV_CSR_TSELECT,
+};
 use crate::setting_keys::*;
 use crate::settings;
 //#[cfg(feature = "hosted")]
@@ -1347,24 +1352,24 @@ pub fn _breakpoint_count(_command: &str, _args: &[&str]) -> bool {
 
 fn parse_csr_name_or_num(arg: &str) -> Option<u32> {
     match arg {
-        "mstatus" => Some(0x300),
-        "misa" => Some(0x301),
-        "mie" => Some(0x304),
-        "mtvec" => Some(0x305),
-        "mscratch" => Some(0x340),
-        "mepc" => Some(0x341),
-        "mcause" => Some(0x342),
-        "mtval" => Some(0x343),
-        "mip" => Some(0x344),
-        "tselect" => Some(0x7a0),
-        "tdata1" => Some(0x7a1),
-        "tdata2" => Some(0x7a2),
-        "tdata3" => Some(0x7a3),
-        "tinfo" => Some(0x7a4),
-        "dcsr" => Some(0x7b0),
-        "dpc" => Some(0x7b1),
-        "dscratch0" => Some(0x7b2),
-        "dscratch1" => Some(0x7b3),
+        "mstatus" => Some(RV_CSR_MSTATUS as u32),
+        "misa" => Some(RV_CSR_MISA as u32),
+        "mie" => Some(RV_CSR_MIE as u32),
+        "mtvec" => Some(RV_CSR_MTVEC as u32),
+        "mscratch" => Some(RV_CSR_MSCRATCH as u32),
+        "mepc" => Some(RV_CSR_MEPC as u32),
+        "mcause" => Some(RV_CSR_MCAUSE as u32),
+        "mtval" => Some(RV_CSR_MTVAL as u32),
+        "mip" => Some(RV_CSR_MIP as u32),
+        "tselect" => Some(RV_CSR_TSELECT as u32),
+        "tdata1" => Some(RV_CSR_TDATA1 as u32),
+        "tdata2" => Some(RV_CSR_TDATA2 as u32),
+        "tdata3" => Some(RV_CSR_TDATA3 as u32),
+        "tinfo" => Some(RV_CSR_TINFO as u32),
+        "dcsr" => Some(RV_CSR_DCSR as u32),
+        "dpc" => Some(RV_CSR_DPC as u32),
+        "dscratch0" => Some(RV_CSR_DSCRATCH0 as u32),
+        "dscratch1" => Some(RV_CSR_DSCRATCH1 as u32),
         _ => {
             let s = arg.strip_prefix("0x").or_else(|| arg.strip_prefix("0X")).unwrap_or(arg);
             let mut val: u32 = 0;

@@ -43,14 +43,8 @@
 
 // use super::dmi::DmiTransport;
 use super::hart::RiscvHart;
+use super::rv_csr::*;
 use crate::target::driver::HaltReason;
-
-pub const RV_REG_SP: u8 = 2;
-pub const RV_REG_A0: u8 = 10;
-pub const RV_REG_A1: u8 = 11;
-pub const RV_REG_A2: u8 = 12;
-pub const RV_REG_A3: u8 = 13;
-pub const RV_CSR_MIE: u16 = 0x304;
 
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::delay_ms;

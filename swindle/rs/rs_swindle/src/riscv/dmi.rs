@@ -117,77 +117,83 @@ impl CDmiTransport {
         self.dmi
     }
 
+    /// Borrow the C `riscv_dmi_s` this transport wraps.
+    ///
+    /// `None` when the pointer is null, i.e. for a transport built before any
+    /// scan found a DM; every method then reports a bus error or a value that
+    /// makes callers back off. The individual entry points are copied out of
+    /// the borrow (`Option<fn>` is `Copy`), so no reference is held across the
+    /// `extern "C"` call that follows.
+    fn dmi_ref(&self) -> Option<&RiscvDmiC> {
+        // SAFETY: `new()` is only ever handed a live `riscv_dmi_s` (it lives in
+        // the hart/TAP context, which outlives this wrapper) and the pointer is
+        // only read here, never freed. A null pointer yields `None`.
+        unsafe { self.dmi.as_ref() }
+    }
+
     /// Read the DTM designer code (JEP-106).
     pub fn designer_code(&self) -> u16 {
-        if self.dmi.is_null() {
-            0
-        } else {
-            unsafe { (*self.dmi).designer_code }
-        }
+        self.dmi_ref().map_or(0, |dmi| dmi.designer_code)
     }
 }
 
 impl DmiTransport for CDmiTransport {
     fn read(&mut self, addr: u8) -> Result<u32, DmiError> {
-        if self.dmi.is_null() {
+        let Some(dmi) = self.dmi_ref() else {
             return Err(DmiError::BusError);
-        }
-        unsafe {
-            if let Some(read_fn) = (*self.dmi).read {
-                let mut val = 0u32;
-                if read_fn(self.dmi, addr as u32, &mut val) {
-                    Ok(val)
-                } else {
-                    Err(DmiError::Fault)
-                }
-            } else {
-                Err(DmiError::NotSupported)
-            }
+        };
+        let Some(read_fn) = dmi.read else {
+            return Err(DmiError::NotSupported);
+        };
+        let mut val = 0u32;
+        let ptr = core::ptr::from_ref(dmi).cast_mut();
+        // SAFETY: `ptr` is the live `riscv_dmi_s` the entry point was
+        // registered with (see `dmi_ref`), and `val` outlives the call.
+        if unsafe { read_fn(ptr, addr as u32, &mut val) } {
+            Ok(val)
+        } else {
+            Err(DmiError::Fault)
         }
     }
 
     fn write(&mut self, addr: u8, val: u32) -> Result<(), DmiError> {
-        if self.dmi.is_null() {
+        let Some(dmi) = self.dmi_ref() else {
             return Err(DmiError::BusError);
-        }
-        unsafe {
-            if let Some(write_fn) = (*self.dmi).write {
-                if write_fn(self.dmi, addr as u32, val) {
-                    Ok(())
-                } else {
-                    Err(DmiError::Fault)
-                }
-            } else {
-                Err(DmiError::NotSupported)
-            }
+        };
+        let Some(write_fn) = dmi.write else {
+            return Err(DmiError::NotSupported);
+        };
+        let ptr = core::ptr::from_ref(dmi).cast_mut();
+        // SAFETY: as in `read` - `ptr` is the live `riscv_dmi_s` for `write_fn`.
+        if unsafe { write_fn(ptr, addr as u32, val) } {
+            Ok(())
+        } else {
+            Err(DmiError::Fault)
         }
     }
 
     fn quiesce(&mut self) {
-        if !self.dmi.is_null() {
-            unsafe {
-                if let Some(q_fn) = (*self.dmi).quiesce {
-                    q_fn(core::ptr::null_mut());
-                }
-            }
-        }
+        let Some(quiesce_fn) = self.dmi_ref().and_then(|dmi| dmi.quiesce) else {
+            return;
+        };
+        // SAFETY: entry point of the live `riscv_dmi_s`; it takes no DMI
+        // pointer (the C side resolves the transport from its own state).
+        unsafe { quiesce_fn(core::ptr::null_mut()) };
     }
 
     fn invalidate_caches(&mut self) {
-        if !self.dmi.is_null() {
-            unsafe {
-                if let Some(inv_fn) = (*self.dmi).invalidate_caches {
-                    inv_fn(self.dmi);
-                }
-            }
-        }
+        let Some(dmi) = self.dmi_ref() else {
+            return;
+        };
+        let Some(invalidate_fn) = dmi.invalidate_caches else {
+            return;
+        };
+        let ptr = core::ptr::from_ref(dmi).cast_mut();
+        // SAFETY: as in `read` - `ptr` is the live `riscv_dmi_s` for `invalidate_fn`.
+        unsafe { invalidate_fn(ptr) };
     }
 
     fn needs_read_confirm(&self) -> bool {
-        if self.dmi.is_null() {
-            false
-        } else {
-            unsafe { (*self.dmi).read_confirm }
-        }
+        self.dmi_ref().is_some_and(|dmi| dmi.read_confirm)
     }
 }

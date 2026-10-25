@@ -39,41 +39,10 @@
 //! RISC-V Hart representation, register file, and run control (RV32E, RV32I, RV32IF).
 
 use super::dm::*;
+use super::dm_regs::*;
 use super::dmi::{CDmiTransport, DmiError, DmiTransport};
+use super::rv_csr::*;
 use crate::target::driver::{HaltReason, TargetError};
-
-// --- CSR Constants ---
-pub const RV_CSR_FFLAGS: u16 = 0x001;
-pub const RV_CSR_FRM: u16 = 0x002;
-pub const RV_CSR_FCSR: u16 = 0x003;
-pub const RV_CSR_MSTATUS: u16 = 0x300;
-pub const RV_CSR_MISA: u16 = 0x301;
-pub const RV_CSR_DCSR: u16 = 0x7b0;
-pub const RV_CSR_DPC: u16 = 0x7b1;
-pub const RV_CSR_MVENDORID: u16 = 0xf11;
-pub const RV_CSR_MARCHID: u16 = 0xf12;
-pub const RV_CSR_MIMPID: u16 = 0xf13;
-pub const RV_CSR_MHARTID: u16 = 0xf14;
-
-// Register bases in abstract register space
-pub const RV_REG_GPR_BASE: u16 = 0x1000;
-pub const RV_REG_FPR_BASE: u16 = 0x1020;
-
-// DCSR bits
-pub const RV_DCSR_STEP: u32 = 1 << 2;
-pub const RV_DCSR_CAUSE_SHIFT: u32 = 6;
-pub const RV_DCSR_CAUSE_MASK: u32 = 0x7 << 6;
-pub const RV_DCSR_EBREAKM: u32 = 1 << 15;
-
-// MISA bits
-pub const RV_MISA_EXT_E: u32 = 1 << 4;
-pub const RV_MISA_EXT_F: u32 = 1 << 5;
-pub const RV_MISA_EXT_I: u32 = 1 << 8;
-
-// GDB offsets
-pub const RV_FPU_GDB_OFFSET: u32 = 33;
-pub const RV_FPU_GDB_CSR_OFFSET: u32 = 66;
-pub const RV_CSR_GDB_OFFSET: u32 = 896;
 
 /// Supported RISC-V 32-bit core architectures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

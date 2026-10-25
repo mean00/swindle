@@ -20,6 +20,10 @@
 
 use crate::bmp::{self, bmp_arch};
 use crate::encoder::encoder;
+use crate::riscv::{
+    RV_CSR_GDB_OFFSET, RV_CSR_MCAUSE, RV_CSR_MEPC, RV_CSR_MIE, RV_CSR_MIP, RV_CSR_MISA,
+    RV_CSR_MSCRATCH, RV_CSR_MSTATUS, RV_CSR_MTVAL, RV_CSR_MTVEC,
+};
 
 // CORTEXM target option flags (from cortex_internal.h)
 pub const CORTEXM_TOPT_FLAVOUR_V6M: u32 = 1 << 1;
@@ -229,16 +233,18 @@ const RISCV_FPU_GROUPS: [(&str, u8, u32); 4] = [
     ("fs", 10, 51), // fs2..fs11 -> regnum 51..60
 ];
 
-const RISCV_CSRS: [(&str, &str); 9] = [
-    ("mstatus", "896"),
-    ("misa", "897"),
-    ("mie", "900"),
-    ("mtvec", "901"),
-    ("mscratch", "960"),
-    ("mepc", "961"),
-    ("mcause", "962"),
-    ("mtval", "963"),
-    ("mip", "964"),
+/// CSRs exposed to GDB in `org.gnu.gdb.riscv.csr`, with their CSR numbers.
+/// The emitted GDB register number is `RV_CSR_GDB_OFFSET + <csr number>`.
+const RISCV_CSRS: [(&str, u16); 9] = [
+    ("mstatus", RV_CSR_MSTATUS),
+    ("misa", RV_CSR_MISA),
+    ("mie", RV_CSR_MIE),
+    ("mtvec", RV_CSR_MTVEC),
+    ("mscratch", RV_CSR_MSCRATCH),
+    ("mepc", RV_CSR_MEPC),
+    ("mcause", RV_CSR_MCAUSE),
+    ("mtval", RV_CSR_MTVAL),
+    ("mip", RV_CSR_MIP),
 ];
 
 /// Emits the RISC-V ISA architecture string (e.g. "riscv:rv32imac" or "riscv:rv32ec")
@@ -335,11 +341,11 @@ fn for_each_riscv_features(extensions: u32, sink: &mut XmlSink) {
     // Feature 3: org.gnu.gdb.riscv.csr
     // Example: `<reg name="mstatus" bitsize="32" regnum="896"  save-restore="no"/>`
     emit_feature_open(sink, "riscv.csr", false);
-    for &(name, num_str) in &RISCV_CSRS {
+    for &(name, csr) in &RISCV_CSRS {
         sink.write(REG_HEAD);
         sink.write(name);
         sink.write("\" bitsize=\"32\" regnum=\"");
-        sink.write(num_str);
+        sink.write_u32(RV_CSR_GDB_OFFSET + csr as u32);
         sink.write("\"  save-restore=\"no\"/>");
     }
 }

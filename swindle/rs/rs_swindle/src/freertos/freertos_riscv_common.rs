@@ -11,6 +11,7 @@
 use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
 use crate::freertos::freertos_trait::freertos_switch_handler;
 use crate::freertos::freertos_symbols::{get_symbols, LAYOUT_CH32, LAYOUT_RV_STD, LAYOUT_RV_STD_FPU};
+use crate::riscv::{RV_CSR_GDB_OFFSET, RV_CSR_MSTATUS};
 
 use super::freertos_riscv_rv32_std::FreeRTOSSwitchHandlerRV32Std;
 use super::freertos_riscv_rv32_wch::FreeRTOSSwitchHandlerCH32;
@@ -87,8 +88,8 @@ impl rv32_gprs {
         for i in 1..32 {
             crate::bmp::bmp_write_register(i as u32, self.gprs[i]);
         }
-        // mstatus is CSR 0x300. BMP maps CSRs at GDB offset 128.
-        crate::bmp::bmp_write_register(0x300 + 128, self.mstatus);
+        // mstatus is CSR 0x300, which GDB numbers as RV_CSR_GDB_OFFSET + 0x300.
+        crate::bmp::bmp_write_register(RV_CSR_GDB_OFFSET + RV_CSR_MSTATUS as u32, self.mstatus);
         crate::bmp::bmp_write_register(32, self.pc);
         true
     }
@@ -104,8 +105,8 @@ impl rv32_gprs {
         self.sp = regs[2];
         self.pc = regs[32];
 
-        // mstatus is CSR 0x300. BMP maps CSRs at GDB offset 128.
-        if let Some(ms) = crate::bmp::bmp_read_register(0x300 + 128) {
+        // mstatus is CSR 0x300, which GDB numbers as RV_CSR_GDB_OFFSET + 0x300.
+        if let Some(ms) = crate::bmp::bmp_read_register(RV_CSR_GDB_OFFSET + RV_CSR_MSTATUS as u32) {
             self.mstatus = ms;
         } else {
             self.mstatus = 0;

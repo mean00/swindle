@@ -39,6 +39,7 @@
 //! Memory access dispatch (Sysbus, Abstractauto streaming, Progbuf, and SDI retry).
 
 use super::dm::*;
+use super::dm_regs::*;
 use super::dmi::{DmiError, DmiTransport};
 use super::hart::{MemoryAccessMethod, RiscvHart};
 use crate::target::driver::TargetError;

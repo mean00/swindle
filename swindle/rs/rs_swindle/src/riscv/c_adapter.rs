@@ -1,7 +1,7 @@
 //! C-ABI shims adapting RISC-V debug subsystem to C layers.
 #![allow(unsafe_op_in_unsafe_fn)]
 
-use super::dm::*;
+use super::dm_regs::*;
 use super::dmi::{CDmiTransport, DmiTransport, RiscvDmiC};
 use super::hart::{HartIsa, RiscvHart};
 use super::mem::RiscvMem;
@@ -171,14 +171,17 @@ pub unsafe extern "C" fn riscv_dmi_init(dmi: *mut RiscvDmiC) {
 
     let priv_ptr = ctx_ptr as *mut c_void;
 
-    let core_name = match (*(priv_ptr as *mut RiscvTargetContext)).hart.isa {
+    // `ctx_ptr` is typed, and `HartIsa` is `Copy`, so no cast is needed to read it.
+    let isa = (*ctx_ptr).hart.isa;
+
+    let core_name = match isa {
         HartIsa::Rv32e => b"rv32e\0".as_ptr() as *const core::ffi::c_char,
         HartIsa::Rv32i => b"rv32i\0".as_ptr() as *const core::ffi::c_char,
         HartIsa::Rv32iSingleFpu => b"rv32if\0".as_ptr() as *const core::ffi::c_char,
     };
 
     let designer = (*dmi).designer_code;
-    let regs_size = (*(priv_ptr as *mut RiscvTargetContext)).hart.isa.regs_size();
+    let regs_size = isa.regs_size();
 
     let ops = TargetRiscvOpsC {
         priv_ptr,
@@ -211,7 +214,7 @@ pub unsafe extern "C" fn riscv_dmi_init(dmi: *mut RiscvDmiC) {
     let _ = riscv32_probe(target);
 
     // Automatically benchmark candidate memory access methods and pick the fastest
-    let ctx_ref = &mut *(priv_ptr as *mut RiscvTargetContext);
+    let ctx_ref = &mut *ctx_ptr;
     super::benchmark::auto_select_fastest_method(&mut ctx_ref.hart);
 
     // Resume target after probing completes
@@ -237,6 +240,28 @@ pub unsafe extern "C" fn riscv_detach(target: *mut TargetC) {
     riscv_target_detach(target);
 }
 
+/// Borrow the `RiscvTargetContext` that `target`'s `priv` points at.
+///
+/// Returns `None` when there is no target or it carries no context: exactly the
+/// `priv_ptr.is_null()` test every shim in this file has to make anyway.
+///
+/// The lifetime is unbound for the same reason as in [`get_riscv_context`]: the
+/// context lives in `CTX_SLOTS` and never moves while the target is listed.
+fn ctx_of<'a>(target: *mut TargetC) -> Option<&'a mut RiscvTargetContext> {
+    if target.is_null() {
+        return None;
+    }
+    // `target_get_priv_c()` is null-safe, so the extra guard only avoids the call.
+    let priv_ptr = unsafe { target_get_priv_c(target) };
+    if priv_ptr.is_null() {
+        None
+    } else {
+        // SAFETY: `priv` is only ever set to a slot of `CTX_SLOTS`, either by
+        // `riscv_dmi_init()` or by a C caller that attached through it.
+        unsafe { Some(&mut *(priv_ptr as *mut RiscvTargetContext)) }
+    }
+}
+
 /// Helper to extract `RiscvTargetContext` from a `TargetC` pointer if it is an attached RISC-V target.
 pub fn get_riscv_context<'a>(target: *mut TargetC) -> Option<&'a mut RiscvTargetContext> {
     if target.is_null() {
@@ -246,12 +271,7 @@ pub fn get_riscv_context<'a>(target: *mut TargetC) -> Option<&'a mut RiscvTarget
     if ((opts >> 28) & 0x03) != 2 {
         return None;
     }
-    let priv_ptr = unsafe { target_get_priv_c(target) };
-    if priv_ptr.is_null() {
-        None
-    } else {
-        Some(unsafe { &mut *(priv_ptr as *mut RiscvTargetContext) })
-    }
+    ctx_of(target)
 }
 
 /// Helper to extract `&mut RiscvHart` from a `TargetC` pointer if it is an attached RISC-V target.
@@ -283,11 +303,9 @@ unsafe extern "C" fn riscv_target_priv_free(ptr: *mut c_void) {
 }
 
 unsafe extern "C" fn riscv_target_attach(target: *mut TargetC) -> bool {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
+    let Some(ctx) = ctx_of(target) else {
         return false;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
+    };
     ctx.hart.halt_request().is_ok()
 }
 
@@ -296,21 +314,20 @@ unsafe extern "C" fn riscv_target_detach(target: *mut TargetC) {
 }
 
 unsafe extern "C" fn riscv_target_check_error(target: *mut TargetC) -> bool {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
+    let Some(ctx) = ctx_of(target) else {
         return true;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
+    };
     let cs = ctx.hart.dmi.read(RV_DM_ABSTRACTCS).unwrap_or(0);
     (cs & RV_DM_ABSTCS_CMDERR_MASK) != 0
 }
 
 unsafe extern "C" fn riscv_target_mem_read(target: *mut TargetC, dest: *mut c_void, src: u64, len: usize) {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || dest.is_null() || len == 0 {
+    let Some(ctx) = ctx_of(target) else {
+        return;
+    };
+    if dest.is_null() || len == 0 {
         return;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(dest as *mut u8, len);
     if let Err(_e) = RiscvMem::read(&mut ctx.hart, src as u32, slice) {
         crate::glue::gdb_out_rs("RiscvMem::read failed at addr=");
@@ -320,11 +337,12 @@ unsafe extern "C" fn riscv_target_mem_read(target: *mut TargetC, dest: *mut c_vo
 }
 
 unsafe extern "C" fn riscv_target_mem_write(target: *mut TargetC, dest: u64, src: *const c_void, len: usize) {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || src.is_null() || len == 0 {
+    let Some(ctx) = ctx_of(target) else {
+        return;
+    };
+    if src.is_null() || len == 0 {
         return;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(src as *const u8, len);
     if let Err(_e) = RiscvMem::write(&mut ctx.hart, dest as u32, slice) {
         crate::glue::gdb_out_rs("RiscvMem::write failed at addr=");
@@ -339,11 +357,12 @@ unsafe extern "C" fn riscv_target_mem_read_nostop(
     src: u64,
     len: usize,
 ) -> bool {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || dest.is_null() || len == 0 {
+    let Some(ctx) = ctx_of(target) else {
+        return false;
+    };
+    if dest.is_null() || len == 0 {
         return false;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(dest as *mut u8, len);
     RiscvMem::read_nostop(&mut ctx.hart, src as u32, slice).unwrap_or(false)
 }
@@ -354,11 +373,12 @@ unsafe extern "C" fn riscv_target_mem_write_nostop(
     src: *const c_void,
     len: usize,
 ) -> bool {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || src.is_null() || len == 0 {
+    let Some(ctx) = ctx_of(target) else {
+        return false;
+    };
+    if src.is_null() || len == 0 {
         return false;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(src as *const u8, len);
     RiscvMem::write_nostop(&mut ctx.hart, dest as u32, slice).unwrap_or(false)
 }
@@ -369,11 +389,12 @@ unsafe extern "C" fn riscv_target_reg_read(
     data: *mut c_void,
     max: usize,
 ) -> usize {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || data.is_null() || max < 4 {
+    let Some(ctx) = ctx_of(target) else {
+        return 0;
+    };
+    if data.is_null() || max < 4 {
         return 0;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts_mut(data as *mut u8, max);
     ctx.hart.reg_read(reg, slice).unwrap_or(0)
 }
@@ -384,70 +405,65 @@ unsafe extern "C" fn riscv_target_reg_write(
     data: *const c_void,
     size: usize,
 ) -> usize {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || data.is_null() || size < 4 {
+    let Some(ctx) = ctx_of(target) else {
+        return 0;
+    };
+    if data.is_null() || size < 4 {
         return 0;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let slice = core::slice::from_raw_parts(data as *const u8, size);
     ctx.hart.reg_write(reg, slice).unwrap_or(0)
 }
 
 unsafe extern "C" fn riscv_target_regs_read(target: *mut TargetC, data: *mut c_void) {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || data.is_null() {
+    let Some(ctx) = ctx_of(target) else {
+        return;
+    };
+    if data.is_null() {
         return;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let total_size = ctx.hart.isa.regs_size();
     let slice = core::slice::from_raw_parts_mut(data as *mut u8, total_size);
     let _ = ctx.hart.regs_read(slice);
 }
 
 unsafe extern "C" fn riscv_target_regs_write(target: *mut TargetC, data: *const c_void) {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() || data.is_null() {
+    let Some(ctx) = ctx_of(target) else {
+        return;
+    };
+    if data.is_null() {
         return;
     }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
     let total_size = ctx.hart.isa.regs_size();
     let slice = core::slice::from_raw_parts(data as *const u8, total_size);
     let _ = ctx.hart.regs_write(slice);
 }
 
 unsafe extern "C" fn riscv_target_reset(target: *mut TargetC) {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
+    let Some(ctx) = ctx_of(target) else {
         return;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
+    };
     let _ = ctx.hart.reset();
 }
 
 unsafe extern "C" fn riscv_target_halt_request(target: *mut TargetC) {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
+    let Some(ctx) = ctx_of(target) else {
         return;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
+    };
     let _ = ctx.hart.halt_request();
 }
 
 unsafe extern "C" fn riscv_target_halt_resume(target: *mut TargetC, step: bool) {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
+    let Some(ctx) = ctx_of(target) else {
         return;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
+    };
     let _ = ctx.hart.halt_resume(step);
 }
 
 unsafe extern "C" fn riscv_target_halt_poll(target: *mut TargetC, watch: *mut u64) -> u32 {
-    let priv_ptr = target_get_priv_c(target);
-    if priv_ptr.is_null() {
+    let Some(ctx) = ctx_of(target) else {
         return HaltReason::Error as u32;
-    }
-    let ctx = &mut *(priv_ptr as *mut RiscvTargetContext);
+    };
     let (reason, addr) = ctx.hart.halt_poll();
     if !watch.is_null() {
         *watch = addr as u64;
