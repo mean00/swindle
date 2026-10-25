@@ -123,7 +123,8 @@ gen(ch32v3x_crc32)
 set(STUB_RS ${CMAKE_CURRENT_SOURCE_DIR}/../src/flashstub.rs)
 set(STUB_RS_BINS
     ${CMAKE_CURRENT_BINARY_DIR}/ch32v3x_erase.bin
-    ${CMAKE_CURRENT_BINARY_DIR}/ch32v3x_write.bin)
+    ${CMAKE_CURRENT_BINARY_DIR}/ch32v3x_write.bin
+    ${CMAKE_CURRENT_BINARY_DIR}/ch32v3x_crc32.bin)
 # Commas, not ";": -DBINS=... must stay a single command line argument.
 string(REPLACE ";" "," STUB_RS_BINS_ARG "${STUB_RS_BINS}")
 
@@ -134,4 +135,4 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} "-DOUT=${STUB_RS}" "-DBINS=${STUB_RS_BINS_ARG}" -P
           ${CMAKE_CURRENT_SOURCE_DIR}/gen_flashstub_rs.cmake
   COMMENT "Generating ${STUB_RS}")
-add_dependencies(flashstub_rs ch32v3x_erase ch32v3x_write)
+add_dependencies(flashstub_rs ch32v3x_erase ch32v3x_write ch32v3x_crc32)

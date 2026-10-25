@@ -240,6 +240,44 @@ pub unsafe extern "C" fn riscv_detach(target: *mut TargetC) {
     riscv_target_detach(target);
 }
 
+/// Run a stub on a RISC-V target that is driven by the C target layer (the RP2350
+/// Hazard3, attached through `riscv_attach()`), and return the value the stub left in
+/// `a2`.
+///
+/// This is the counterpart of blackmagic's `riscv32_run_stub()`, which this tree does not
+/// compile (`riscv32.c` is replaced by `rs_swindle::riscv`); it keeps the same
+/// `(target, loadaddr, a0..a3)` argument order and adds the `a2` output that stubs such as
+/// `rp_crc32_riscv.c` publish their result in. Returns `false` when the stub did not
+/// report success in `a0`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riscv_run_stub_ret_c(
+    target: *mut TargetC,
+    loadaddr: u32,
+    a0: u32,
+    a1: u32,
+    a2: u32,
+    a3: u32,
+    ret: *mut u32,
+) -> bool {
+    if ret.is_null() {
+        return false;
+    }
+    let hart = match get_riscv_hart(target) {
+        Some(hart) => hart,
+        None => return false,
+    };
+    if !hart.run_stub(loadaddr, a0, a1, a2, a3) {
+        return false;
+    }
+    match hart.gpr_read(super::rv_csr::RV_REG_A2) {
+        Ok(value) => {
+            *ret = value;
+            true
+        }
+        Err(_) => false,
+    }
+}
+
 /// Borrow the `RiscvTargetContext` that `target`'s `priv` points at.
 ///
 /// Returns `None` when there is no target or it carries no context: exactly the

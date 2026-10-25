@@ -5,6 +5,13 @@ use super::registers::*;
 use rsbmp::riscv::RiscvHart;
 use rsbmp::target::{FlashDesc, RamDesc, RustTargetDriver};
 
+/// Ranges shorter than this are cheaper to CRC in software than to hand to a stub (one
+/// stub round-trip costs more than reading a couple of hundred bytes over the wire).
+const CRC_STUB_MIN_LEN: u32 = 256;
+
+// The CRC stub is parked between the write stub and the stub data area.
+const _: () = assert!(STUB_CODE_LOCATION_CRC + CH32V3X_CRC32_BIN_LEN as u32 <= STUB_DATA_LOCATION);
+
 /// Target chip metadata discovered during probe.
 #[derive(Debug, Clone, Copy)]
 pub struct Ch32v123xxInfo {
@@ -251,6 +258,45 @@ impl Ch32v123xxDriver {
         false
     }
 
+    /// CRC32 of `[addr, addr + len)` computed by the CH32 CRC unit, driven from the
+    /// in-SRAM `ch32v3x_crc32` stub.
+    ///
+    /// The stub takes a word-aligned start and a word count and leaves the result in `a2`,
+    /// so any other range falls back to the caller's software CRC (`None`). The stub is
+    /// uploaded on demand -- `qCRC` can arrive without a preceding flash session -- and the
+    /// bytes it overwrites are put back afterwards, since 0x2000_1400 belongs to the target.
+    pub fn crc32_stub(&mut self, hart: &mut RiscvHart, addr: u32, len: u32) -> Option<u32> {
+        if len < CRC_STUB_MIN_LEN || (len & 3) != 0 || (addr & 3) != 0 {
+            return None;
+        }
+        let end = addr.checked_add(len)?;
+        if addr < STUB_WORKSPACE_END && end > STUB_WORKSPACE_START {
+            return None;
+        }
+
+        let mut saved = [0u8; CH32V3X_CRC32_BIN_LEN];
+        hart.mem_read(STUB_CODE_LOCATION_CRC, &mut saved).ok()?;
+        if hart
+            .mem_write(STUB_CODE_LOCATION_CRC, CH32V3X_CRC32_BIN)
+            .is_err()
+        {
+            let _ = hart.mem_write(STUB_CODE_LOCATION_CRC, &saved);
+            return None;
+        }
+
+        // ch32_crc(addr, len_in_words, unused): the result comes back in a2.
+        let crc = hart.run_stub_with_stack_ret(
+            STUB_CODE_LOCATION_CRC,
+            STUB_STACKEND_LOCATION,
+            addr,
+            len / 4,
+            0,
+            0,
+        );
+        let _ = hart.mem_write(STUB_CODE_LOCATION_CRC, &saved);
+        crc
+    }
+
     /// Prepare stubs and clock for upcoming flash programming.
     pub fn prepare_flash(&mut self, hart: &mut RiscvHart) -> bool {
         // A stub that never reached SRAM would run as garbage later, so fail the session now.
@@ -473,6 +519,10 @@ impl RustTargetDriver for Ch32v123xxDriver {
 
     fn flash_write(&mut self, hart: &mut RiscvHart, dest: u32, data: &[u8]) -> bool {
         self.write_flash(hart, dest, data)
+    }
+
+    fn crc32(&mut self, hart: &mut RiscvHart, addr: u32, len: u32) -> Option<u32> {
+        self.crc32_stub(hart, addr, len)
     }
 
     fn sw_page_size(&self) -> u32 {

@@ -476,4 +476,18 @@ impl RiscvHart {
     pub fn run_stub_with_stack(&mut self, loadaddr: u32, stack: u32, p1: u32, p2: u32, p3: u32, p4: u32) -> bool {
         super::stub::run_stub_with_stack(self, loadaddr, stack, p1, p2, p3, p4)
     }
+
+    /// Like [`Self::run_stub_with_stack`] but returns the result the stub left in `a2`
+    /// (`None` when the stub failed).
+    pub fn run_stub_with_stack_ret(
+        &mut self,
+        loadaddr: u32,
+        stack: u32,
+        p1: u32,
+        p2: u32,
+        p3: u32,
+        p4: u32,
+    ) -> Option<u32> {
+        super::stub::run_stub_with_stack_ret(self, loadaddr, stack, p1, p2, p3, p4)
+    }
 }

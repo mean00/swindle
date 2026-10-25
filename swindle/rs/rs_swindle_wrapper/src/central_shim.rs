@@ -13,9 +13,9 @@ use rsbmp::flash::c_adapter::TargetFlash;
 use rsbmp::riscv::get_riscv_hart;
 use rsbmp::target::{
     target_add_default_commands_c, target_add_flash_region, target_add_ram32, target_mem_map_free,
-    target_set_driver_c, target_set_no_hw_breakpoint_c, target_set_options_c,
-    target_set_part_id_c, target_set_sw_breakpoint_helpers_c, FlashDesc, RamDesc,
-    RustTargetDriver, SwBreakpointHelpersC, TargetC,
+    target_set_crc32_c, target_set_driver_c, target_set_no_hw_breakpoint_c, target_set_options_c,
+    target_set_part_id_c, target_set_sw_breakpoint_helpers_c, FlashDesc, RamDesc, RustTargetDriver,
+    SwBreakpointHelpersC, TargetC,
 };
 
 /// Enumeration of all registered pure Rust target drivers.
@@ -113,6 +113,13 @@ impl RustTargetDriver for ActiveRustDriver {
         match self {
             Self::Ch32v00x(d) => d.sw_page_write(hart, addr, data),
             Self::Ch32v123xx(d) => d.sw_page_write(hart, addr, data),
+        }
+    }
+
+    fn crc32(&mut self, hart: &mut rsbmp::riscv::RiscvHart, addr: u32, len: u32) -> Option<u32> {
+        match self {
+            Self::Ch32v00x(d) => d.crc32(hart, addr, len),
+            Self::Ch32v123xx(d) => d.crc32(hart, addr, len),
         }
     }
 }
@@ -240,6 +247,27 @@ static CENTRAL_SW_HELPERS: SwBreakpointHelpersC = SwBreakpointHelpersC {
     page_write: central_sw_page_write,
 };
 
+// --- Central CRC32 C Callback ---
+
+/// C `target_s::crc32` hook for Rust-driven targets, reached through
+/// `bmp_custom_crc32_c()` exactly like the C drivers' hooks (`gd32_crc32`, `rp_crc32`).
+unsafe extern "C" fn central_crc32(t: *mut TargetC, addr: u32, size: usize, crc: *mut u32) -> bool {
+    if t.is_null() || crc.is_null() {
+        return false;
+    }
+    let hart = match get_riscv_hart(t) {
+        Some(h) => h,
+        None => return false,
+    };
+    if let Some(ref mut driver) = ACTIVE_DRIVER {
+        if let Some(value) = driver.crc32(hart, addr, size as u32) {
+            *crc = value;
+            return true;
+        }
+    }
+    false
+}
+
 /// Attach and configure target from a pure Rust driver.
 pub unsafe fn central_attach_rust_driver(target: *mut TargetC, driver: ActiveRustDriver) -> bool {
     target_set_driver_c(target, driver.name().as_ptr() as *const c_char);
@@ -273,6 +301,10 @@ pub unsafe fn central_attach_rust_driver(target: *mut TargetC, driver: ActiveRus
         target_set_sw_breakpoint_helpers_c(target, &CENTRAL_SW_HELPERS);
         target_set_no_hw_breakpoint_c(target, true);
     }
+
+    // Hardware CRC: drivers override `crc32()`; the default returns None and the hook
+    // then declines every range, so `qCRC` falls back to the software CRC as before.
+    target_set_crc32_c(target, central_crc32);
 
     ACTIVE_DRIVER = Some(driver);
     true

@@ -63,12 +63,14 @@ pub fn do_local_crc32(address: u32, length: u32) -> (bool, u32) {
 }
 /// Compute CRC32 over target memory, preferring hardware acceleration.
 ///
-/// Tries the target's hardware CRC unit first. Falls back to software CRC
+/// Tries the target's own CRC engine first. Falls back to software CRC
 /// if the hardware method fails or is unavailable. Returns `true` on success
 /// with the CRC written to `crc`.
 ///
-/// Note: the hardware CRC path does not work when attached via a remote BMP
-/// (hosted mode), as the probe cannot access the target's CRC peripheral.
+/// Note: the hardware path drives a stub *on the target* (`target_s::crc32`), so it also
+/// works when the probe is reached remotely (hosted mode). A driver that cannot handle the
+/// range -- too short, unaligned, or overlapping the RAM it borrows -- declines it and the
+/// software path above runs instead.
 pub fn abstract_crc32(address: u32, len: u32, crc: &mut u32) -> bool {
     let mut status: bool;
     // can we use an optimized version ?

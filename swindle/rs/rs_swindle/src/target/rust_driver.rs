@@ -65,6 +65,16 @@ pub trait RustTargetDriver {
     /// Write an aligned block of data to flash.
     fn flash_write(&mut self, hart: &mut RiscvHart, dest: u32, data: &[u8]) -> bool;
 
+    /// CRC32 (the GDB `qCRC` variant) of `[addr, addr + len)`, computed on the target.
+    ///
+    /// This is the Rust side of the C `target_s::crc32` hook: returning `Some` lets the
+    /// debugger skip reading the whole range over the wire. `None` means "cannot do this
+    /// range" (unsupported, misaligned, too short, ...) and the caller falls back to the
+    /// software CRC.
+    fn crc32(&mut self, _hart: &mut RiscvHart, _addr: u32, _len: u32) -> Option<u32> {
+        None
+    }
+
     /// Page size used for software breakpoint patching.
     fn sw_page_size(&self) -> u32 {
         0

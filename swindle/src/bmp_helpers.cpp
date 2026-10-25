@@ -881,6 +881,14 @@ extern "C"
             t->sw_breakpoint_helpers = helpers;
     }
 
+    // Install the C `crc32` hook of a Rust-driven target; its signature is the one
+    // bmp_custom_crc32_c() calls, so Rust and C drivers stay interchangeable.
+    void target_set_crc32_c(target_s *t, decltype(target_s::crc32) crc32)
+    {
+        if (t)
+            t->crc32 = crc32;
+    }
+
     extern "C" bool riscv_rust_target_probe(target_s *target);
     extern "C" bool rp2350_probe(target_s *target);
 

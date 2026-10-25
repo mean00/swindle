@@ -178,3 +178,23 @@ pub fn run_stub_with_stack(
 ) -> bool {
     run_stub_internal(hart, loadaddr, Some(stack), param1, param2, param3, param4)
 }
+
+/// Run a stub with an explicit stack pointer and return the value it left in `a2`.
+///
+/// Stubs that compute a result publish it in `a2` by convention (see
+/// `ch32v3x_crc32.c`); the runner only restores MIE/PC/SP, so `a2` survives the call.
+/// `None` means the stub reported failure in `a0`.
+pub fn run_stub_with_stack_ret(
+    hart: &mut RiscvHart,
+    loadaddr: u32,
+    stack: u32,
+    param1: u32,
+    param2: u32,
+    param3: u32,
+    param4: u32,
+) -> Option<u32> {
+    if !run_stub_internal(hart, loadaddr, Some(stack), param1, param2, param3, param4) {
+        return None;
+    }
+    hart.gpr_read(RV_REG_A2).ok()
+}

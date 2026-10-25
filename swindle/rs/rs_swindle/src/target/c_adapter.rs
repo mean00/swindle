@@ -14,6 +14,10 @@ pub struct TargetRamC {
     pub next: *mut TargetRamC,
 }
 
+/// C `target_s::crc32` hook: compute the GDB CRC32 of a target memory range.
+pub type TargetCrc32C =
+    unsafe extern "C" fn(t: *mut TargetC, addr: u32, size: usize, crc: *mut u32) -> bool;
+
 unsafe extern "C" {
     fn target_alloc_c() -> *mut TargetC;
     fn target_free_c(t: *mut TargetC);
@@ -74,6 +78,8 @@ unsafe extern "C" {
     pub fn target_set_options_c(t: *mut TargetC, options: u32);
     pub fn target_set_no_hw_breakpoint_c(t: *mut TargetC, no_hw: bool);
     pub fn target_set_sw_breakpoint_helpers_c(t: *mut TargetC, helpers: *const SwBreakpointHelpersC);
+    /// Install (or replace) the `target_s::crc32` hook used by `bmp_custom_crc32_c`.
+    pub fn target_set_crc32_c(t: *mut TargetC, crc32: TargetCrc32C);
     pub static mut cur_target: *mut TargetC;
 }
 

@@ -1,0 +1,117 @@
+# 114blackmagic_rp2350_crc32.patch
+#
+# Give RP2350 targets a hardware CRC32: the DMA sniffer already used for the RP2040
+# (patch 60) serves both harts of this part.
+#
+# - rp2350_probe() installs target->crc32 = rp2350_crc32(), so "qCRC" (GDB
+#   compare-sections) stops reading the whole range over the wire.
+# - The Cortex-M33 runs the ARM image from rp2040_crc32.stub unchanged (same DMA and
+#   sniffer registers); the Hazard3 runs rp_crc32_riscv.stub (same transfer, result in
+#   a2, exits with ebreak).
+# - The RISC-V stub is launched through Swindle's riscv_run_stub_ret_c(), because this
+#   tree replaces blackmagic's riscv32.c (and its riscv32_run_stub()) by rs_swindle.
+# - Both images are only used for 4-byte aligned ranges of at least 300 bytes that do not
+#   cover the scratch window itself. The scratch bytes are saved and restored, so the
+#   target's SRAM is left untouched, and anything else falls back to the software CRC.
+#
+--- a/src/target/rp2350.c
++++ b/src/target/rp2350.c
+@@ -69,6 +69,8 @@
+ #define RP2350_RESETS_RESET      (RP2350_RESETS_BASE + 0x000U)
+ #define RP2350_RESETS_RESET_DONE (RP2350_RESETS_BASE + 0x008U)
+ 
++#define RP2350_RESETS_RESET_DMA_BITS (1U << 2U)
++
+ #define RP2350_RESETS_RESET_IO_QSPI   (1U << 7U)
+ #define RP2350_RESETS_RESET_PADS_QSPI (1U << 10U)
+ 
+@@ -155,6 +157,81 @@
+ 		rp2350_spi_resume(target);
+ }
+ 
++#include "../../../blackmagic_addon/flashstub/rp2040_crc32.stub"
++#include "../../../blackmagic_addon/flashstub/rp_crc32_riscv.stub"
++
++/* SRAM the CRC stub is parked in; the DMA writes its single byte at the first word. */
++#define RP2350_CRC_STUB_ADDR RP2350_SRAM_BASE
++/* Largest of the two images (ARM hart / RISC-V hart). */
++#define RP2350_CRC_STUB_MAX_LEN MAX(RP2040_CRC32_BIN_LEN, RP_CRC32_RISCV_BIN_LEN)
++/* Below this the software CRC is cheaper than a stub round trip. */
++#define RP2350_CRC_MIN_SIZE 300U
++
++void *bmp_get_temporary_buffer(uint32_t asked);
++
++/* Rust-side stub runner for C-driven RISC-V targets (see rs_swindle's riscv_run_stub_ret_c):
++   blackmagic's riscv32_run_stub() is not compiled in Swindle. */
++extern bool riscv_run_stub_ret_c(target_s *target, uint32_t loadaddr, uint32_t a0, uint32_t a1, uint32_t a2,
++	uint32_t a3, uint32_t *ret);
++
++/*
++ * CRC32 through the DMA sniffer, the RP2350 counterpart of rp2040.c's rp_crc32().
++ *
++ * Both cores use the same trick: a tiny SRAM stub programs DMA channel 0 to stream the
++ * range through the CRC32 sniffer and publishes the result (ARM: r1, RISC-V: a2), so the
++ * debugger never has to read the bytes itself.
++ *
++ * Returns false to let the caller fall back to the software CRC.
++ */
++static bool rp2350_crc32(target_s *target, target_addr32_t start_address, size_t size, uint32_t *crc32)
++{
++	/* Which hart are we driving? Same test rp2350_attach() uses. */
++	const bool riscv = target->priv_free != cortex_priv_free;
++	const uint8_t *const stub = riscv ? rp_crc32_riscv_bin : rp2040_crc32_bin;
++	const size_t stub_len = riscv ? RP_CRC32_RISCV_BIN_LEN : RP2040_CRC32_BIN_LEN;
++	/* The scratch window is saved and put back, so its size must fit the shared buffer. */
++	uint8_t *const saved = bmp_get_temporary_buffer(RP2350_CRC_STUB_MAX_LEN + 4U);
++
++	if (!saved || size < RP2350_CRC_MIN_SIZE || (size & 3U) || (start_address & 3U))
++		return false;
++	/* A range covering the scratch window would CRC the stub's own code. */
++	if (start_address < RP2350_CRC_STUB_ADDR + RP2350_CRC_STUB_MAX_LEN + 4U &&
++		start_address + size > RP2350_CRC_STUB_ADDR)
++		return false;
++
++	/* Pulse the DMA out of reset for the transfer, restore the state afterwards. */
++	const uint32_t resets = target_mem32_read32(target, RP2350_RESETS_RESET);
++	target_mem32_write32(target, RP2350_RESETS_RESET, resets | RP2350_RESETS_RESET_DMA_BITS);
++
++	/* Step 1: SRAM belongs to the target, so keep what the stub overwrites. */
++	target_mem32_read(target, saved, RP2350_CRC_STUB_ADDR, stub_len + 4U);
++	/* Step 2: upload the stub just past the word the DMA writes into. */
++	target_mem32_write(target, RP2350_CRC_STUB_ADDR + 4U, stub, stub_len);
++
++	/* Step 3: run it -- both stubs take (len, address, scratch) and return the CRC. */
++	bool ok;
++	if (riscv)
++	{
++		/* The Hazard3 stub publishes its result in a2. */
++		ok = riscv_run_stub_ret_c(target, RP2350_CRC_STUB_ADDR + 4U, size, start_address, RP2350_CRC_STUB_ADDR,
++			RP2350_CRC_STUB_ADDR, crc32);
++	}
++	else
++	{
++		ok = cortexm_run_stub(target, RP2350_CRC_STUB_ADDR + 4U, size, start_address, RP2350_CRC_STUB_ADDR,
++				 RP2350_CRC_STUB_ADDR) &&
++			target->reg_read(target, 1U, crc32, 4U) == 4U;
++	}
++	if (ok) /* the sniffer's output is inverted by the stub, undo that */
++		*crc32 ^= 0xffffffffU;
++
++	/* Step 4: stop the DMA, give the target its SRAM back and release the reset. */
++	target_mem32_write32(target, RP2350_RESETS_RESET, resets | RP2350_RESETS_RESET_DMA_BITS);
++	target_mem32_write(target, RP2350_CRC_STUB_ADDR, saved, stub_len + 4U);
++	target_mem32_write32(target, RP2350_RESETS_RESET, resets);
++	return ok;
++}
++
+ bool rp2350_probe(target_s *const target)
+ {
+ 	/* Check that the target has the right part number */
+@@ -173,6 +250,7 @@
+ 	target->attach = rp2350_attach;
+ 	target->enter_flash_mode = rp2350_flash_prepare;
+ 	target->exit_flash_mode = rp2350_flash_resume;
++	target->crc32 = rp2350_crc32;
+ 	return true;
+ }
+ 

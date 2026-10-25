@@ -37,6 +37,8 @@ apply_patch_if_needed5(patched44 44blackmagic_gd32_crc32.patch "stub CRC32 compu
 apply_patch_if_needed5(patched48 48blackmagic_enable_native_rvswd.patch "enable rvswd for native mode")
 apply_patch_if_needed5(patched49 49blackmagic_hook_rvswd_to_host_mode.patch "enable rvswd for hosted mode")
 apply_patch_if_needed5(patched56 56blackmagic_fix_rp2320_flash_cache.patch "Fix aligned check for cache flush (RP2350) ")
+apply_patch_if_needed5(patched114 114blackmagic_rp2350_crc32.patch
+                       "CRC32 on RP2350 (M33 + Hazard3) through the DMA sniffer stub, so qCRC stops reading the range")
 
 # ---------------------------------------------------------------------------
 # Merged patches (replaces previously overlapping individual patches)

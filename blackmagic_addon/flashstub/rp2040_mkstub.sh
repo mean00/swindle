@@ -1,11 +1,11 @@
 #!/bin/sh
 #set -x
-#export TOOLCHAIN=/arm/llvm_21/bin/
-#CC=${TOOLCHAIN}/clang-21
-#OBJCOPY=${TOOLCHAIN}/llvm-objcopy
-#OBJDUMP=${TOOLCHAIN}/llvm-objdump
-#OPT="--target=armv6m-none-eabi -mcpu=cortex-m0"
-export TOOLCHAIN=/arm/113/bin
+#
+# Note: the checked-in rp2040_crc32.stub was produced with an older arm-none-eabi-gcc
+# (/arm/113); rebuilding it with the toolchain below yields a slightly different (but
+# equivalent) image. Only replace the checked-in file after validating on hardware.
+#
+export TOOLCHAIN=/arm/15.2.1/bin
 CC=${TOOLCHAIN}/arm-none-eabi-gcc
 OBJCOPY=${TOOLCHAIN}/arm-none-eabi-objcopy
 OBJDUMP=${TOOLCHAIN}/arm-none-eabi-objdump
@@ -19,7 +19,7 @@ build_stub() {
   $OBJCOPY -Obinary $1.o $1.bin
   $OBJDUMP -S $1.o >$1.asm
   xxd -i $1.bin >$1.tmp
-  cat $1.tmp | sed 's/unsigned char/const unsigned char/g' | sed 's/^.*_len =/#define RP2040_CRC32_BIN_LEN/g' | head -c -2 >$1.stub
+  cat $1.tmp | sed 's/unsigned char/static const unsigned char/g' | sed 's/^.*_len =/#define RP2040_CRC32_BIN_LEN/g' | head -c -2 >$1.stub
 }
 
 build_stub rp2040_crc32
