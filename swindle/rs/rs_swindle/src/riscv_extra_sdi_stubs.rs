@@ -64,7 +64,7 @@ pub fn bmp_sdi_write(_adr: u8, _data: u32) -> bool {
 /// Handle `mon sdi_scan` — same output as the real handler hitting a dead
 /// transport, which is what a build without SDI has.
 pub fn _sdi_scan(_command: &str, _args: &[&str]) -> bool {
-    crate::commands::mon::common_scan("sdi_scan", sdi_scan)
+    crate::commands::mon::common_scan("sdi_scan", || sdi_scan())
 }
 
 /// Handle `mon sdi_wire` — say why nothing happened instead of echoing numbers

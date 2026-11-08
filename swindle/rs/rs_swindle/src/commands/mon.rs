@@ -1162,7 +1162,7 @@ pub fn _targets(_command: &str, _args: &[&str]) -> bool {
 */
 /// Handle `mon swdp_scan` — probe SWD bus for ARM devices.
 pub fn _swdp_scan(_command: &str, _args: &[&str]) -> bool {
-    common_scan("swdp_scan", bmp::swdp_scan)
+    common_scan("swdp_scan", || bmp::swdp_scan())
 }
 /*
    Detect stuff connected to the SWD interface

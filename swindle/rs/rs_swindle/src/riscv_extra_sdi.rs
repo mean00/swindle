@@ -234,7 +234,7 @@ pub fn bmp_sdi_write(adr: u8, data: u32) -> bool {
 
 /// Handle `mon sdi_scan` — probe for WCH CH32V0xx SDI devices.
 pub fn _sdi_scan(_command: &str, _args: &[&str]) -> bool {
-    crate::commands::mon::common_scan("sdi_scan", sdi_scan)
+    crate::commands::mon::common_scan("sdi_scan", || sdi_scan())
 }
 /**
  * SDI bit-bang wire timing: `mon sdi_wire <tbit> <low1> <low0> <sample> [notrim]`,
