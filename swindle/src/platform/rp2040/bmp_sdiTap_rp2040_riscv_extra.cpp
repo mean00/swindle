@@ -101,7 +101,7 @@ static uint32_t sdi_read(rpPIO_SM *xsm, const uint8_t adr)
         sdi_pio_timeout = true;
         return 0xFFFFFFFFUL;
     }
-    lnDelayUs(INTER_WORD_DELAY);
+    lnDelayUs(END_OF_WRITE_DELAY);
     return w;
 }
 
@@ -126,7 +126,8 @@ static void sdi_write(rpPIO_SM *xsm, const uint8_t adr, const uint32_t data)
         return;
     }
     xsm->write(1, &data);
-    lnDelayUs(END_OF_WRITE_DELAY);
+    xsm->waitTxEmpty();
+    lnDelayUs(35 + END_OF_WRITE_DELAY);
 }
 
 // EOF

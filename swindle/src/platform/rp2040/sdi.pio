@@ -127,9 +127,9 @@ do_read:
     set pins, 0         ; Prepare internal pin state for open-drain toggling
 rx_loop:
     set pindirs, 1 [3]  ; Host drives LOW for 4 cycles (224 ns, >= T)
-    set pindirs, 0 [7]  ; Release the wire; the target drives it, sampled 8 cycles on
-    in pins, 1          ; Sample on cycle 12 of the bit (672 ns @17.86 MHz)
-    jmp y--, rx_loop [4]; Pad the bit cell to 18 cycles (1008 ns)
+    set pindirs, 0 [6]  ; Release the wire; target drives it, sampled 7 cycles on
+    in pins, 1          ; Sample on cycle 11 of the bit (616 ns @17.86 MHz, matching LN 600 ns)
+    jmp y--, rx_loop [5]; Pad the bit cell to 18 cycles (1008 ns)
     
     push block
     ; Implicit wrap to start
