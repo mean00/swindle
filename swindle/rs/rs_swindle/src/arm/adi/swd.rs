@@ -28,6 +28,7 @@
 
 //! Low-level SWD transport trait and primitives.
 
+use crate::platform::wire_error::{WireError, WireResult};
 use super::regs::*;
 
 /// Physical SWD line interface trait.
@@ -44,6 +45,36 @@ pub trait SwdTransport {
 
     /// Fast read from an address without fault checking.
     fn read_no_check(&mut self, addr: u16) -> u32;
+
+    /// Perform a raw read or write returning an explicit [`WireResult<u32>`].
+    fn try_raw_access(&mut self, rnw: u8, addr: u16, value: u32) -> WireResult<u32> {
+        let val = self.raw_access(rnw, addr, value);
+        let fault = crate::platform::swd::fault() as u8;
+        if fault == 0 {
+            Ok(val)
+        } else {
+            WireError::into_read_result(fault, val)
+        }
+    }
+
+    /// Fast write to an address returning an explicit [`WireResult<()>`].
+    fn try_write_no_check(&mut self, addr: u16, data: u32) -> WireResult<()> {
+        if self.write_no_check(addr, data) {
+            Err(WireError::Fault)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Fast read from an address returning an explicit [`WireResult<u32>`].
+    fn try_read_no_check(&mut self, addr: u16) -> WireResult<u32> {
+        let val = self.read_no_check(addr);
+        if val == 0 {
+            Err(WireError::NoResponse)
+        } else {
+            Ok(val)
+        }
+    }
 
     /// Read a DP or AP register.
     /// If `addr & ADIV5_APnDP != 0` (AP register), does posted read followed by RDBUFF read.
@@ -85,6 +116,18 @@ impl SwdTransport for HardwareSwd {
 
     fn read_no_check(&mut self, addr: u16) -> u32 {
         crate::platform::swd::read_no_check(addr)
+    }
+
+    fn try_raw_access(&mut self, rnw: u8, addr: u16, value: u32) -> WireResult<u32> {
+        crate::platform::swd::try_raw_access(rnw, addr, value)
+    }
+
+    fn try_write_no_check(&mut self, addr: u16, data: u32) -> WireResult<()> {
+        crate::platform::swd::try_write_no_check(addr, data)
+    }
+
+    fn try_read_no_check(&mut self, addr: u16) -> WireResult<u32> {
+        crate::platform::swd::try_read_no_check(addr)
     }
 
     fn raw_swd_write(&mut self, tick: u32, value: u32) {

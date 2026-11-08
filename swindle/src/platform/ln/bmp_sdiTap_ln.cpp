@@ -28,7 +28,9 @@ extern "C"
 
     static void sdiWriteFrame(const uint8_t adr, const uint32_t data);
     static uint32_t sdiReadFrame(const uint8_t adr);
+    static bool sdi_pad_fault = false;
 
+#define SDI_CONSUME_HW_TIMEOUT() sdi_pad_fault
 #define sdiFrameWrite(adr, val) sdiWriteFrame((adr), (val))
 #define sdiFrameRead(adr) sdiReadFrame(adr)
 #define sdiWireHoldLow(ms)                                                                                             \
@@ -260,6 +262,8 @@ static void sdiLogEntry()
     lnDelayUs(1);
     const bool sunk = sdiReadPad();
     sdiPadRelease();
+
+    sdi_pad_fault = !released || sunk;
 
     Logger("SDI : entry : pad %u, released %u, sunk %u, DIR %u\n", (unsigned)SDI_DATA_PIN, released ? 1U : 0U,
            sunk ? 1U : 0U, rSWDIO->_fastdir.read() ? 1U : 0U);

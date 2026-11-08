@@ -34,10 +34,25 @@ extern rpPIO *swdpio;
 extern rpPIO_SM *xsm;
 extern uint32_t swd_frequency;
 
+static bool rv_pio_timeout = false;
+
+static inline bool rp2040_rv_consume_hw_timeout()
+{
+    const bool timed_out = rv_pio_timeout;
+    rv_pio_timeout = false;
+    return timed_out;
+}
+#define RVSWD_CONSUME_HW_TIMEOUT() rp2040_rv_consume_hw_timeout()
+
 uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
 {
     // Command word: [tx_bits:16][rx_bits:16]
     uint32_t cmd = ((uint32_t)tx_bits << 16) | (rx_bits & 0xFFFF);
+    if (!xsm->waitTxReady())
+    {
+        rv_pio_timeout = true;
+        return 0;
+    }
     xsm->write(1, &cmd);
 
     // TX Data: shift to MSB alignment
@@ -49,10 +64,20 @@ uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
             aligned_tx <<= (64 - tx_bits);
         }
         uint32_t w0 = aligned_tx >> 32;
+        if (!xsm->waitTxReady())
+        {
+            rv_pio_timeout = true;
+            return 0;
+        }
         xsm->write(1, &w0);
         if (tx_bits > 32)
         {
             uint32_t w1 = aligned_tx & 0xFFFFFFFF;
+            if (!xsm->waitTxReady())
+            {
+                rv_pio_timeout = true;
+                return 0;
+            }
             xsm->write(1, &w1);
         }
     }
@@ -68,6 +93,7 @@ uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
             // Report the frame as failed by returning a zero status instead of blocking:
             // rv_dm_read() turns that into a DMI failure and the bounded retry budget in
             // ch32_riscv_dmi_read() gives up on it with a log line.
+            rv_pio_timeout = true;
             return 0;
         }
         xsm->read(1, &w0);
@@ -82,6 +108,7 @@ uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
             uint32_t w1 = 0;
             if (!xsm->waitRxReady())
             {
+                rv_pio_timeout = true;
                 return 0;
             }
             xsm->read(1, &w1);

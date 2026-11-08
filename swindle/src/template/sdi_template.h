@@ -102,11 +102,11 @@ extern "C" void platform_nrst_set_val_internal(bool assert);
 #define SDI_READ_FLAG 0U  /* host reads from the DM */
 #define SDI_WRITE_FLAG 1U /* host writes to the DM */
 
-/* Post-frame idle. The stop convention (§2.2) needs >= 10 times the time base in
- * 1x (>= 18 in 2x): 55 us covers both, and only has to be that long after a
- * write because a read frame is followed by the caller's own turn-around. */
+/* Post-frame idle. Per QingKe SDI spec §2.2, stop-bit idle is >= 10T in 1x
+ * mode (10 * 125ns = 1.25us) and >= 18T in 2x mode (18 * 250ns = 4.5us).
+ * 5us covers both specifications cleanly without adding 50us dead-time per frame. */
 #define INTER_WORD_DELAY 2
-#define END_OF_WRITE_DELAY 55
+#define END_OF_WRITE_DELAY 5
 
 static inline uint32_t make_sdi_header(uint8_t tgt, uint8_t mode)
 {
@@ -259,21 +259,33 @@ bool LN_FAST_CODE sdi_dm_start()
     return false;
 }
 
+#ifndef SDI_CONSUME_HW_TIMEOUT
+#define SDI_CONSUME_HW_TIMEOUT() false
+#endif
+
 /**
- * @brief Write one DM register over SDI.
+ * @brief Write one DM register over SDI with explicit wire status.
  * @param adr Register address (7 bits).
  * @param val Value to write.
- * @return true
+ * @return BMP_WIRE_OK on success, or error code.
  */
-bool LN_FAST_CODE sdi_dm_write(const uint8_t adr, const uint32_t val)
+bmp_wire_status_t LN_FAST_CODE sdi_dm_write_status(const uint8_t adr, const uint32_t val)
 {
     if (adr > SDI_MAX_ADDRESS)
     {
         Logger("SDI : write to out-of-range address 0x%02x rejected\n", (unsigned)adr);
-        return false;
+        return BMP_WIRE_PROTOCOL_ERR;
     }
+    (void)SDI_CONSUME_HW_TIMEOUT();
     sdiFrameWrite(adr, val);
-    return true;
+    if (SDI_CONSUME_HW_TIMEOUT())
+        return BMP_WIRE_HW_TIMEOUT;
+    return BMP_WIRE_OK;
+}
+
+bool LN_FAST_CODE sdi_dm_write(const uint8_t adr, const uint32_t val)
+{
+    return sdi_dm_write_status(adr, val) == BMP_WIRE_OK;
 }
 
 /** Attempts per DM read frame before an unanswered access is given up (see
@@ -291,41 +303,66 @@ bool LN_FAST_CODE sdi_dm_write(const uint8_t adr, const uint32_t val)
  *
  * The two cases are told apart with a second frame: DMSTATUS has a fixed version
  * field (0b0010 in bits 3:0), so a live debug module can never answer all ones. If
- * it answers, the all-ones word was real data and is returned as is; only a silent
- * DMSTATUS means the frame was lost and the access is repeated.
+ * it answers, the all-ones word was real data and is returned as BMP_WIRE_OK;
+ * if all attempts see a silent DMSTATUS, BMP_WIRE_NO_RESPONSE is returned.
  *
- * @param adr Register address (7 bits).
- * @return The register value as read (all ones when the slave never answered).
+ * @param adr    Register address (7 bits).
+ * @param output Receives the 32-bit register value.
+ * @return BMP_WIRE_OK, BMP_WIRE_NO_RESPONSE, or BMP_WIRE_HW_TIMEOUT.
  */
-static uint32_t sdi_read_frame_retried(const uint8_t adr)
+static bmp_wire_status_t sdi_read_frame_retried(const uint8_t adr, uint32_t *const output)
 {
-    for (unsigned attempt = 0;; attempt++)
+    for (unsigned attempt = 0; attempt < SDI_READ_ATTEMPTS; attempt++)
     {
+        (void)SDI_CONSUME_HW_TIMEOUT();
         const uint32_t value = sdiFrameRead(adr);
-        if (value != 0xFFFFFFFFUL || attempt + 1 >= SDI_READ_ATTEMPTS)
-            return value;
-        if (sdiFrameRead(DMSTATUS) != 0xFFFFFFFFUL)
-            return value;
+        if (SDI_CONSUME_HW_TIMEOUT())
+        {
+            *output = 0xFFFFFFFFUL;
+            return BMP_WIRE_HW_TIMEOUT;
+        }
+        if (value != 0xFFFFFFFFUL)
+        {
+            *output = value;
+            return BMP_WIRE_OK;
+        }
+        const uint32_t dmstatus = sdiFrameRead(DMSTATUS);
+        if (SDI_CONSUME_HW_TIMEOUT())
+        {
+            *output = 0xFFFFFFFFUL;
+            return BMP_WIRE_HW_TIMEOUT;
+        }
+        if (dmstatus != 0xFFFFFFFFUL)
+        {
+            *output = value;
+            return BMP_WIRE_OK;
+        }
     }
+    *output = 0xFFFFFFFFUL;
+    return BMP_WIRE_NO_RESPONSE;
 }
 
 /**
- * @brief Read one DM register over SDI.
+ * @brief Read one DM register over SDI with explicit wire status.
  * @param adr    Register address (7 bits; see SDI_MAX_ADDRESS).
  * @param output Receives the 32-bit register value.
- * @return false when the address cannot be encoded in a frame, or output is null.
+ * @return BMP_WIRE_OK on success, or error code.
  */
-bool LN_FAST_CODE sdi_dm_read(const uint8_t adr, uint32_t *const output)
+bmp_wire_status_t LN_FAST_CODE sdi_dm_read_status(const uint8_t adr, uint32_t *const output)
 {
     if (!output)
-        return false;
+        return BMP_WIRE_PROTOCOL_ERR;
     if (adr > SDI_MAX_ADDRESS)
     {
         Logger("SDI : read of out-of-range address 0x%02x rejected\n", (unsigned)adr);
-        return false;
+        return BMP_WIRE_PROTOCOL_ERR;
     }
-    *output = sdi_read_frame_retried(adr);
-    return true;
+    return sdi_read_frame_retried(adr, output);
+}
+
+bool LN_FAST_CODE sdi_dm_read(const uint8_t adr, uint32_t *const output)
+{
+    return sdi_dm_read_status(adr, output) == BMP_WIRE_OK;
 }
 
 extern "C"
@@ -339,6 +376,16 @@ extern "C"
     bool bmp_sdi_dm_reset_c()
     {
         return sdi_dm_start();
+    }
+    /** @brief C entry point: SDI DM write with explicit wire status. */
+    uint8_t bmp_sdi_dm_write_status_c(const uint8_t adr, const uint32_t value)
+    {
+        return sdi_dm_write_status(adr, value);
+    }
+    /** @brief C entry point: SDI DM read with explicit wire status. */
+    uint8_t bmp_sdi_dm_read_status_c(const uint8_t adr, uint32_t *const value)
+    {
+        return sdi_dm_read_status(adr, value);
     }
     /** @brief C entry point: SDI DM write (mirror of bmp_rv_dm_write_c). */
     bool bmp_sdi_dm_write_c(const uint8_t adr, const uint32_t value)
@@ -358,11 +405,11 @@ extern "C"
             return false;
         }
 
-        uint32_t status = 0;
+        uint32_t status = 0xFFFFFFFFUL;
         for (int retry = 0; retry < SDI_DMSTATUS_RETRY_COUNT; retry++)
         {
-            (void)sdi_dm_read(DMSTATUS, &status);
-            if (status != 0xFFFFFFFFUL) break;
+            if (sdi_dm_read(DMSTATUS, &status) && status != 0xFFFFFFFFUL)
+                break;
             lnDelayMs(SDI_DMSTATUS_RETRY_DELAY_MS);
         }
 
@@ -387,35 +434,29 @@ extern "C"
  * so the retry loop only guards against the transport being momentarily
  * unresponsive (e.g. right after an unlock/reset). */
 #define SDI_DMI_MAX_ATTEMPTS 4U
-#define RV_DMI_SUCCESS 0U
-#define RV_DMI_FAILURE 2U
 
 static bool ch32_sdi_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
-    for (uint32_t attempt = 0U; attempt < SDI_DMI_MAX_ATTEMPTS; ++attempt)
+    if (address > SDI_MAX_ADDRESS)
     {
-        if (sdi_dm_read((uint8_t)address, value))
-        {
-            dmi->fault = RV_DMI_SUCCESS;
-            return true;
-        }
+        dmi->fault = BMP_WIRE_PROTOCOL_ERR;
+        return false;
     }
-    dmi->fault = RV_DMI_FAILURE;
-    return false;
+    const bmp_wire_status_t status = sdi_dm_read_status((uint8_t)address, value);
+    dmi->fault = status;
+    return status == BMP_WIRE_OK;
 }
 
 static bool ch32_sdi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
 {
-    for (uint32_t attempt = 0U; attempt < SDI_DMI_MAX_ATTEMPTS; ++attempt)
+    if (address > SDI_MAX_ADDRESS)
     {
-        if (sdi_dm_write((uint8_t)address, value))
-        {
-            dmi->fault = RV_DMI_SUCCESS;
-            return true;
-        }
+        dmi->fault = BMP_WIRE_PROTOCOL_ERR;
+        return false;
     }
-    dmi->fault = RV_DMI_FAILURE;
-    return false;
+    const bmp_wire_status_t status = sdi_dm_write_status((uint8_t)address, value);
+    dmi->fault = status;
+    return status == BMP_WIRE_OK;
 }
 
 /**
@@ -433,14 +474,19 @@ static bool ch32_sdi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, c
  */
 extern "C" bool sdi_scan()
 {
-    sdi_dm_start();
+    const bool unlocked = sdi_dm_start();
     target_list_free();
+    if (!unlocked && SDI_CONSUME_HW_TIMEOUT())
+    {
+        Logger("SDI : hardware pad fault or timeout during unlock\n");
+        return false;
+    }
 
-    uint32_t status = 0;
+    uint32_t status = 0xFFFFFFFFUL;
     for (int retry = 0; retry < 5; retry++)
     {
-        (void)sdi_dm_read(DMSTATUS, &status);
-        if (status != 0xFFFFFFFFUL) break;
+        if (sdi_dm_read(DMSTATUS, &status) && status != 0xFFFFFFFFUL)
+            break;
         lnDelayMs(1);
     }
 

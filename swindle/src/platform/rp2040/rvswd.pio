@@ -18,8 +18,8 @@ begin:
 tx_loop:
     jmp !x rx_start
     pull ifempty
-    out pins, 1 side WRITE_DIR_DOWN
-    nop         side WRITE_DIR_UP
+    out pins, 1 side WRITE_DIR_DOWN [1]
+    nop         side WRITE_DIR_UP   [1]
     jmp x-- tx_loop
 
 rx_start:
@@ -27,7 +27,7 @@ rx_start:
     set pindirs, 0
 rx_loop:
     jmp !y rx_end
-    nop         side READ_DIR_DOWN
+    nop         side READ_DIR_DOWN  [1]
     nop         side READ_DIR_UP
     in pins, 1
     push iffull
@@ -52,8 +52,13 @@ begin:
 tx_loop:
     jmp !x done
     pull ifempty
-    out pins, 1 side WRITE_DIR_DOWN
-    nop         side WRITE_DIR_UP
+    out pins, 1 side WRITE_DIR_DOWN [1]
+    nop         side WRITE_DIR_UP   [1]
     jmp x-- tx_loop
 done:
+    ; Stop bit: SWDIO rises while CLK high
+    set pindirs, 1 side WRITE_DIR_DOWN
+    set pins, 0    side WRITE_DIR_DOWN
+    nop            side WRITE_DIR_UP
+    set pins, 1    side WRITE_DIR_UP
     jmp begin

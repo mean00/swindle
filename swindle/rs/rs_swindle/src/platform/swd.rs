@@ -1,9 +1,13 @@
 //! Low-level SWD interface provided by the platform driver.
 
+use super::wire_error::{WireError, WireResult};
+
 #[cfg(not(feature = "hosted"))]
 unsafe extern "C" {
     fn ln_adiv5_swd_write_no_check(addr: u16, data: u32) -> bool;
     fn ln_adiv5_swd_read_no_check(addr: u16) -> u32;
+    fn ln_adiv5_swd_write_checked_c(addr: u16, data: u32) -> u8;
+    fn ln_adiv5_swd_read_checked_c(addr: u16, out_data: *mut u32) -> u8;
     fn ln_raw_swd_write(tick: u32, value: u32);
     fn swdptap_init();
     fn bmp_gpio_reset();
@@ -33,7 +37,22 @@ pub fn gpio_reset() {
     let _ = crate::hosted::rpc_host_generated::remote_gen_gpio_reset();
 }
 
-/// Raw write to an SWD register without checking ACK/fault.
+/// Write to an SWD register without retry, returning an explicit [`WireResult`].
+#[inline]
+pub fn try_write_no_check(addr: u16, data: u32) -> WireResult<()> {
+    #[cfg(not(feature = "hosted"))]
+    {
+        let status = unsafe { ln_adiv5_swd_write_checked_c(addr, data) };
+        WireError::check(status)
+    }
+    #[cfg(feature = "hosted")]
+    {
+        let failed = crate::hosted::rpc_host::remote_rpc::remote_adiv5_swd_write_no_check_rs(addr, data);
+        if failed { Err(WireError::Fault) } else { Ok(()) }
+    }
+}
+
+/// Raw write to an SWD register without retry (`true` = fault, matching C ABI).
 #[inline]
 pub fn write_no_check(addr: u16, data: u32) -> bool {
     #[cfg(not(feature = "hosted"))]
@@ -42,7 +61,27 @@ pub fn write_no_check(addr: u16, data: u32) -> bool {
     crate::hosted::rpc_host::remote_rpc::remote_adiv5_swd_write_no_check_rs(addr, data)
 }
 
-/// Raw read from an SWD register without checking ACK/fault.
+/// Read from an SWD register without retry, returning an explicit [`WireResult<u32>`].
+#[inline]
+pub fn try_read_no_check(addr: u16) -> WireResult<u32> {
+    #[cfg(not(feature = "hosted"))]
+    {
+        let mut data = 0u32;
+        let status = unsafe { ln_adiv5_swd_read_checked_c(addr, &mut data) };
+        WireError::into_read_result(status, data)
+    }
+    #[cfg(feature = "hosted")]
+    {
+        let val = crate::hosted::rpc_host::remote_rpc::remote_adiv5_swd_read_no_check_rs(addr);
+        if val == 0 {
+            Err(WireError::NoResponse)
+        } else {
+            Ok(val)
+        }
+    }
+}
+
+/// Raw read from an SWD register without retry (returns `0` on ACK/parity fault).
 #[inline]
 pub fn read_no_check(addr: u16) -> u32 {
     #[cfg(not(feature = "hosted"))]
@@ -75,6 +114,17 @@ pub fn raw_access_with_fault(rnw: u8, addr: u16, value: u32) -> (u32, u32) {
         let resp = crate::hosted::rpc_host::remote_rpc::remote_adiv5_swd_raw_access_rs(rnw, addr, value, &mut fault);
         LAST_FAULT.store(fault, core::sync::atomic::Ordering::Relaxed);
         (resp, fault)
+    }
+}
+
+/// Execute a raw SWD access (read or write), returning an explicit [`WireResult<u32>`].
+#[inline]
+pub fn try_raw_access(rnw: u8, addr: u16, value: u32) -> WireResult<u32> {
+    let (resp, fault) = raw_access_with_fault(rnw, addr, value);
+    if fault == 0 {
+        Ok(resp)
+    } else {
+        WireError::into_read_result(fault as u8, resp)
     }
 }
 

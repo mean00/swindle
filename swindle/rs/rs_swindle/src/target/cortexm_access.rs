@@ -192,6 +192,15 @@ impl CortexMAccess {
         crate::arm::cortexm::reg_read(self.target, reg, buf.as_mut_ptr().cast(), buf.len()) == buf.len()
     }
 
+    /// Write `buf.len()` bytes to core register `reg` (`target_s::reg_write`);
+    /// `false` if it could not be written.
+    pub fn reg_write(&self, reg: u32, buf: &[u8]) -> bool {
+        if self.target.is_null() || buf.is_empty() {
+            return false;
+        }
+        crate::arm::cortexm::reg_write(self.target, reg, buf.as_ptr().cast(), buf.len()) == buf.len()
+    }
+
     /// Read the whole register file in one go (`target_regs_read()`).
     pub fn regs_read(&self, data: &mut [u8]) -> bool {
         if self.target.is_null() || data.is_empty() {

@@ -53,6 +53,21 @@ uint32_t platform_time_ms(void);
 #define SWD_ACK_FAULT       0x04U
 #define SWD_ACK_NO_RESPONSE 0x07U
 
+/* Fixed-width wire transaction status shared between C++ taps and Rust FFI.
+ * 0 is always success; 1 is never used as an error code (avoiding collision
+ * with SWD_ACK_OK = 0x01). */
+typedef uint8_t bmp_wire_status_t;
+
+#define BMP_WIRE_OK           0x00U /* Frame succeeded and parity/status verified */
+/* 0x01U reserved (SWD_ACK_OK on wire) */
+#define BMP_WIRE_ACK_WAIT     0x02U /* Target answered WAIT (SWD 0x2) or DMI BUSY */
+#define BMP_WIRE_ACK_FAULT    0x04U /* Target answered FAULT (SWD 0x4) or DMI FAULT */
+#define BMP_WIRE_NO_RESPONSE  0x07U /* No target driving wire (SWD 0x7 / RVSWD 0xF / SDI 0xFFFFFFFF) */
+#define BMP_WIRE_PARITY_ERR   0x08U /* RX data parity mismatch (SWD 1-bit or RVSWD 2-bit parity) */
+#define BMP_WIRE_PROTOCOL_ERR 0x09U /* Invalid ACK/status nibble or out-of-range register address */
+#define BMP_WIRE_HW_TIMEOUT   0x0AU /* Probe hardware timeout (PIO RX/TX FIFO stall or pad stuck) */
+#define BMP_WIRE_DISABLED     0x0BU /* Transport not compiled in (e.g. SWINDLE_WITH_SDI=OFF) */
+
 /* Request direction */
 #define ADIV5_LOW_WRITE 0
 #define ADIV5_LOW_READ  1

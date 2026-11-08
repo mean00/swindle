@@ -13,6 +13,10 @@ use crate::target::{Target, target_ram_get};
 /// `invalidate` selects between clean and clean+invalidate. The walk is over the target's
 /// RAM regions, so a transfer that touches none of them (every PPB access) does nothing.
 pub(super) fn cache_clean(target: *mut Target, addr: u32, len: usize, invalidate: bool) {
+    // PPB/SCS space (0xE000_0000..0xFFFF_FFFF) is architecturally non-cacheable
+    if addr >= 0xe000_0000 {
+        return;
+    }
     let Some(priv_) = priv_ref(target) else {
         return;
     };

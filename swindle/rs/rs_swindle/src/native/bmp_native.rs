@@ -2,12 +2,14 @@
 // These functions are only used by the native (embedded) rpc_target code.
 // They are re-exported from crate::bmp when not(feature = "hosted").
 
+use crate::platform::wire_error::{WireError, WireResult};
+
 unsafe extern "C" {
     fn swindleRedirectLog_c(onoff: bool);
     fn platform_target_clk_output_enable(enable: bool);
     fn rv_dm_start_c();
-    fn bmp_rv_dm_read_c(adr: u8, value: *mut u32) -> bool;
-    fn bmp_rv_dm_write_c(adr: u8, value: u32) -> bool;
+    fn bmp_rv_dm_read_status_c(adr: u8, value: *mut u32) -> u8;
+    fn bmp_rv_dm_write_status_c(adr: u8, value: u32) -> u8;
 }
 
 pub fn swindleRedirectLog(onoff: bool) {
@@ -117,14 +119,24 @@ pub fn rv_dm_start() {
     }
 }
 
+pub fn try_rv_read(adr: u8) -> WireResult<u32> {
+    let mut ret: u32 = 0;
+    let status = unsafe { bmp_rv_dm_read_status_c(adr, &mut ret) };
+    WireError::into_read_result(status, ret)
+}
+
+pub fn try_rv_write(adr: u8, data: u32) -> WireResult<()> {
+    let status = unsafe { bmp_rv_dm_write_status_c(adr, data) };
+    WireError::check(status)
+}
+
 pub fn bmp_rv_read(adr: u8) -> (bool, u32) {
-    unsafe {
-        let mut ret: u32 = 0;
-        let status: bool = bmp_rv_dm_read_c(adr, &mut ret);
-        (status, ret)
+    match try_rv_read(adr) {
+        Ok(val) => (true, val),
+        Err(_) => (false, 0),
     }
 }
 
 pub fn bmp_rv_write(adr: u8, data: u32) -> bool {
-    unsafe { bmp_rv_dm_write_c(adr, data) }
+    try_rv_write(adr, data).is_ok()
 }

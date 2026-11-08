@@ -53,6 +53,15 @@ extern rpPIO_SM *xsm; // shared SWD/RVSWD/SDI PIO state machine (bmp_tap_rp2040.
  * timing. */
 static uint32_t sdi_read(rpPIO_SM *xsm, const uint8_t adr);
 static void sdi_write(rpPIO_SM *xsm, const uint8_t adr, const uint32_t data);
+static bool sdi_pio_timeout = false;
+
+static inline bool rp2040_sdi_consume_hw_timeout()
+{
+    const bool timed_out = sdi_pio_timeout;
+    sdi_pio_timeout = false;
+    return timed_out;
+}
+#define SDI_CONSUME_HW_TIMEOUT() rp2040_sdi_consume_hw_timeout()
 
 #define sdiFrameRead(adr) sdi_read(xsm, (adr))
 #define sdiFrameWrite(adr, val) sdi_write(xsm, (adr), (val))
@@ -79,10 +88,19 @@ static uint32_t sdi_read(rpPIO_SM *xsm, const uint8_t adr)
     // header (bits 30 down to 22)
     uint32_t header9 = make_sdi_header(adr, SDI_READ_FLAG);
     uint32_t w = (0 << 31) | (header9 << 22);
+    if (!xsm->waitTxReady())
+    {
+        sdi_pio_timeout = true;
+        return 0xFFFFFFFFUL;
+    }
     xsm->write(1, &w);
     lnDelayUs(INTER_WORD_DELAY);
 
-    xsm->read(1, &w);
+    if (!xsm->read(1, &w))
+    {
+        sdi_pio_timeout = true;
+        return 0xFFFFFFFFUL;
+    }
     lnDelayUs(INTER_WORD_DELAY);
     return w;
 }
@@ -93,10 +111,20 @@ static void sdi_write(rpPIO_SM *xsm, const uint8_t adr, const uint32_t data)
     // header (bits 30 down to 22)
     uint32_t header9 = make_sdi_header(adr, SDI_WRITE_FLAG);
     uint32_t w1 = (1U << 31) | (header9 << 22);
+    if (!xsm->waitTxReady())
+    {
+        sdi_pio_timeout = true;
+        return;
+    }
     xsm->write(1, &w1);
     lnDelayUs(INTER_WORD_DELAY);
 
     // Word 2: The exact 32-bit payload
+    if (!xsm->waitTxReady())
+    {
+        sdi_pio_timeout = true;
+        return;
+    }
     xsm->write(1, &data);
     lnDelayUs(END_OF_WRITE_DELAY);
 }

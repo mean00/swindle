@@ -24,7 +24,9 @@ pub(crate) const CORTEXM_ID_PFR1: u32 = CORTEXM_SCS_BASE + 0xd44;
 pub(crate) const CORTEXM_CTR: u32 = CORTEXM_SCS_BASE + 0xd7c;
 pub(crate) const CORTEXM_CPACR: u32 = CORTEXM_SCS_BASE + 0xd88;
 pub(crate) const CORTEXM_DHCSR: u32 = CORTEXM_SCS_BASE + 0xdf0;
+#[allow(dead_code)]
 pub(crate) const CORTEXM_DCRSR: u32 = CORTEXM_SCS_BASE + 0xdf4;
+#[allow(dead_code)]
 pub(crate) const CORTEXM_DCRDR: u32 = CORTEXM_SCS_BASE + 0xdf8;
 pub(crate) const CORTEXM_DEMCR: u32 = CORTEXM_SCS_BASE + 0xdfc;
 
@@ -64,6 +66,7 @@ pub(crate) const CORTEXM_DFSR_HALTED: u32 = 1;
 pub(crate) const CORTEXM_ID_PFR1_SECEXT_IMPL: u32 = 0x0f << 4;
 pub(crate) const CORTEXM_DHCSR_DBGKEY: u32 = 0xa05f_0000;
 pub(crate) const CORTEXM_DHCSR_S_RESET_ST: u32 = 1 << 25;
+pub(crate) const CORTEXM_DHCSR_S_REGRDY: u32 = 1 << 16;
 pub(crate) const CORTEXM_DHCSR_S_HALT: u32 = 1 << 17;
 pub(crate) const CORTEXM_DHCSR_C_MASKINTS: u32 = 1 << 3;
 pub(crate) const CORTEXM_DHCSR_C_STEP: u32 = 1 << 2;
@@ -124,6 +127,7 @@ pub(crate) const CORTEX_MAX_BREAKPOINTS: u8 = 8;
 pub(crate) const CORTEX_MAX_WATCHPOINTS: u8 = 8;
 
 /// `DB_*` indices of the banked debug registers (C `enum { DB_DHCSR, DB_DCRSR, … }`).
+pub(crate) const DB_DHCSR: u32 = 0;
 pub(crate) const DB_DCRSR: u32 = 1;
 pub(crate) const DB_DCRDR: u32 = 2;
 

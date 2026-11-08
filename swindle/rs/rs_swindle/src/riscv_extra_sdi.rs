@@ -49,8 +49,8 @@ mod c {
         );
         pub fn sdi_scan() -> bool;
         pub fn bmp_sdi_dm_reset_c() -> bool;
-        pub fn bmp_sdi_dm_read_c(adr: u8, value: *mut u32) -> bool;
-        pub fn bmp_sdi_dm_write_c(adr: u8, value: u32) -> bool;
+        pub fn bmp_sdi_dm_read_status_c(adr: u8, value: *mut u32) -> u8;
+        pub fn bmp_sdi_dm_write_status_c(adr: u8, value: u32) -> u8;
     }
 }
 
@@ -202,22 +202,34 @@ pub fn sdi_dm_start() {
     }
 }
 
+/// Read one SDI debug-module register returning an explicit [`WireResult<u32>`].
+#[cfg(not(feature = "hosted"))]
+pub fn try_sdi_read(adr: u8) -> crate::platform::wire_error::WireResult<u32> {
+    let mut ret: u32 = 0;
+    let status = unsafe { c::bmp_sdi_dm_read_status_c(adr, &mut ret) };
+    crate::platform::wire_error::WireError::into_read_result(status, ret)
+}
+
+/// Write one SDI debug-module register returning an explicit [`WireResult<()>`].
+#[cfg(not(feature = "hosted"))]
+pub fn try_sdi_write(adr: u8, data: u32) -> crate::platform::wire_error::WireResult<()> {
+    let status = unsafe { c::bmp_sdi_dm_write_status_c(adr, data) };
+    crate::platform::wire_error::WireError::check(status)
+}
+
 /// Read one SDI debug-module register. Returns `(ok, value)`.
 #[cfg(not(feature = "hosted"))]
 pub fn bmp_sdi_read(adr: u8) -> (bool, u32) {
-    unsafe {
-        let mut ret: u32 = 0;
-        let ret_ptr: *mut u32 = &mut ret;
-
-        let status: bool = c::bmp_sdi_dm_read_c(adr, ret_ptr);
-        (status, ret)
+    match try_sdi_read(adr) {
+        Ok(val) => (true, val),
+        Err(_) => (false, 0xFFFF_FFFF),
     }
 }
 
 /// Write one SDI debug-module register.
 #[cfg(not(feature = "hosted"))]
 pub fn bmp_sdi_write(adr: u8, data: u32) -> bool {
-    unsafe { c::bmp_sdi_dm_write_c(adr, data) }
+    try_sdi_write(adr, data).is_ok()
 }
 
 /// Handle `mon sdi_scan` — probe for WCH CH32V0xx SDI devices.

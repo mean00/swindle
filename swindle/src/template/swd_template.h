@@ -27,10 +27,32 @@ extern "C" volatile uint32_t ln_swd_tx_count;
     } while (0)
 #endif
 
-extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+#ifndef SWD_CONSUME_HW_TIMEOUT
+#define SWD_CONSUME_HW_TIMEOUT() false
+#endif
+
+static inline bmp_wire_status_t swd_ack_to_wire_status(const uint8_t ack)
+{
+    switch (ack)
+    {
+    case SWD_ACK_OK:
+        return BMP_WIRE_OK;
+    case SWD_ACK_WAIT:
+        return BMP_WIRE_ACK_WAIT;
+    case SWD_ACK_FAULT:
+        return BMP_WIRE_ACK_FAULT;
+    case SWD_ACK_NO_RESPONSE:
+        return BMP_WIRE_NO_RESPONSE;
+    default:
+        return BMP_WIRE_PROTOCOL_ERR;
+    }
+}
+
+extern "C" bmp_wire_status_t SWINDLE_FAST_IO ln_adiv5_swd_write_checked_c(const uint16_t addr, const uint32_t data)
 {
     ln_swd_tx_count++;
     SWD_TX_POLL();
+    (void)SWD_CONSUME_HW_TIMEOUT();
     const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
     zwrite(8, request);
     DIR_INPUT();
@@ -42,28 +64,60 @@ extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr,
     const bool parity = lnOddParity(data);
     zwrite(32, data);
     zwrite(9, parity);
-    return res != SWD_ACK_OK;
+    if (SWD_CONSUME_HW_TIMEOUT())
+        return BMP_WIRE_HW_TIMEOUT;
+    return swd_ack_to_wire_status(res);
+}
+
+extern "C" bool SWINDLE_FAST_IO ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data)
+{
+    return ln_adiv5_swd_write_checked_c(addr, data) != BMP_WIRE_OK;
 }
 //
-extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
+extern "C" bmp_wire_status_t SWINDLE_FAST_IO ln_adiv5_swd_read_checked_c(const uint16_t addr, uint32_t *const out_data)
 {
     ln_swd_tx_count++;
     SWD_TX_POLL();
+    (void)SWD_CONSUME_HW_TIMEOUT();
     const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
     zwrite(8, request);
     DIR_INPUT();
-    const uint8_t res = zread(4) >> 1; // turn + reply
+    const uint8_t res = (zread(4) >> 1) & 7; // turn + reply
     SWD_WAIT_PERIOD();
     uint32_t data = zread(32);
     bool parity = lnOddParity(data);
     const bool rd = zread(2) & 1; // parity + read
-    if (res == SWD_ACK_OK && rd != parity)
-    {
-        Logger("swd_read: wrong parity\n");
-    }
     DIR_OUTPUT();
     zwrite(8, 0); // idle
-    return res == SWD_ACK_OK ? data : 0;
+    if (SWD_CONSUME_HW_TIMEOUT())
+    {
+        if (out_data)
+            *out_data = 0;
+        return BMP_WIRE_HW_TIMEOUT;
+    }
+    if (res != SWD_ACK_OK)
+    {
+        if (out_data)
+            *out_data = 0;
+        return swd_ack_to_wire_status(res);
+    }
+    if (rd != parity)
+    {
+        Logger("swd_read: wrong parity\n");
+        if (out_data)
+            *out_data = 0;
+        return BMP_WIRE_PARITY_ERR;
+    }
+    if (out_data)
+        *out_data = data;
+    return BMP_WIRE_OK;
+}
+
+extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr)
+{
+    uint32_t data = 0;
+    (void)ln_adiv5_swd_read_checked_c(addr, &data);
+    return data;
 }
 //
 static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s *dp, const uint32_t cycles)
@@ -74,10 +128,17 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
     do
     {
         SWD_TX_POLL(); // keep the WDT fed even if the target holds us in WAIT/FAULT for a long time
+        (void)SWD_CONSUME_HW_TIMEOUT();
         zwrite(8, request);
         DIR_INPUT();
         ack = (zread(4) >> 1) & 7; // turn +  reply
         SWD_WAIT_PERIOD();
+        if (SWD_CONSUME_HW_TIMEOUT())
+        {
+            DIR_OUTPUT();
+            dp->fault = BMP_WIRE_HW_TIMEOUT;
+            return false;
+        }
         if (ack == SWD_ACK_OK)
             return true;
         if (ack == SWD_ACK_FAULT)
@@ -90,39 +151,45 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
                            ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
                                ADIV5_DP_ABORT_STKCMPCLR);
         }
-        // something is wrong, retry
-        DIR_INPUT();
-        zread(1); // turn
-        DIR_OUTPUT();
-        zwrite(8, 0);
+        else
+        {
+            // On WAIT: turnaround and clock 8 idle cycles before retrying
+            DIR_INPUT();
+            zread(1); // turn
+            DIR_OUTPUT();
+            zwrite(8, 0);
+        }
     } while ((ack == SWD_ACK_WAIT || ack == SWD_ACK_FAULT) && !platform_timeout_is_expired(&timeout));
 
     if (ack == SWD_ACK_WAIT)
     {
         DEBUG_ERROR("SWD access resulted in wait, aborting\n");
         ln_adiv5_swd_write_no_check(ADIV5_DP_ABORT, ADIV5_DP_ABORT_DAPABORT);
-        dp->fault = ack;
+        dp->fault = BMP_WIRE_ACK_WAIT;
         return false;
     }
 
     if (ack == SWD_ACK_FAULT)
     {
         DEBUG_ERROR("SWD access resulted in fault\n");
-        dp->fault = ack;
+        dp->fault = BMP_WIRE_ACK_FAULT;
         return false;
     }
 
     if (ack == SWD_ACK_NO_RESPONSE)
     {
         DEBUG_ERROR("SWD access resulted in no response\n");
-        dp->fault = ack;
+        dp->fault = BMP_WIRE_NO_RESPONSE;
         return false;
     }
 
     if (ack != SWD_ACK_OK)
     {
+        DIR_INPUT();
+        zread(1); // clock turnaround back to probe output
+        DIR_OUTPUT();
         DEBUG_ERROR("SWD access has invalid ack %x\n", ack);
-        dp->fault = ack ? ack : 1U;
+        dp->fault = BMP_WIRE_PROTOCOL_ERR;
         return false;
     }
     return true;
@@ -149,11 +216,16 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
         bool read_parity = zread(2) & 1; // parity + turn
         DIR_OUTPUT();
         zwrite(8, 0);
+        if (SWD_CONSUME_HW_TIMEOUT())
+        {
+            dp->fault = BMP_WIRE_HW_TIMEOUT;
+            return 0;
+        }
         bool parity = lnOddParity(response);
         if (read_parity != parity)
         {
             /* Give up on parity error */
-            dp->fault = 1U;
+            dp->fault = BMP_WIRE_PARITY_ERR;
             DEBUG_ERROR("SWD access resulted in parity error\n");
             return 0;
         }
@@ -170,6 +242,10 @@ extern "C" uint32_t SWINDLE_FAST_IO ln_adiv5_swd_raw_access(adiv5_debug_port_s *
     const bool parity = lnOddParity(value);
     zwrite(32, value);
     zwrite(9, parity);
+    if (SWD_CONSUME_HW_TIMEOUT())
+    {
+        dp->fault = BMP_WIRE_HW_TIMEOUT;
+    }
     return 0;
 }
 //

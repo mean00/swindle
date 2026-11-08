@@ -89,11 +89,6 @@ pub fn wait_command_complete(dmi: &mut dyn DmiTransport) -> Result<(), DmiError>
 
 /// Execute an abstract command and wait for completion.
 pub fn exec_command(dmi: &mut dyn DmiTransport, cmd: u32) -> Result<(), DmiError> {
-    // Clear any previous error before launching command
-    let cs = dmi.read(RV_DM_ABSTRACTCS)?;
-    if (cs & RV_DM_ABSTCS_CMDERR_MASK) != 0 {
-        dmi.write(RV_DM_ABSTRACTCS, cs)?;
-    }
     dmi.write(RV_DM_COMMAND, cmd)?;
     wait_command_complete(dmi)
 }

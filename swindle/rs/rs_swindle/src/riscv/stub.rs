@@ -235,6 +235,7 @@ fn run_stub_internal(
     let budget_ms = timeout.unwrap_or(STUB_TIMEOUT_DEFAULT_MS);
     let mut success = false;
     let mut waited_ms = 0u32;
+    let mut fast_polls = 0u32;
     loop {
         let (reason, _) = hart.halt_poll();
         match reason {
@@ -244,6 +245,10 @@ fn run_stub_internal(
             }
             HaltReason::Running => {}
             _ => break,
+        }
+        if fast_polls < 16 {
+            fast_polls += 1;
+            continue;
         }
         if waited_ms >= budget_ms {
             break;

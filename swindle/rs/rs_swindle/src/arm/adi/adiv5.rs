@@ -102,10 +102,14 @@ impl<T: SwdTransport> DebugPort<T> {
         let hw_fault = crate::platform::swd::fault() as u8;
         if hw_fault != 0 {
             self.fault = hw_fault;
-            return Err(AdiError::Fault);
+            return Err(crate::platform::wire_error::WireError::check(hw_fault)
+                .err()
+                .map_or(AdiError::Fault, AdiError::from));
         }
         if self.fault != 0 {
-            return Err(AdiError::Fault);
+            return Err(crate::platform::wire_error::WireError::check(self.fault)
+                .err()
+                .map_or(AdiError::Fault, AdiError::from));
         }
         Ok(())
     }
@@ -270,10 +274,11 @@ impl<T: SwdTransport> DebugPort<T> {
         if clr != 0 {
             self.transport.write_no_check(ADIV5_DP_ABORT, clr);
         }
+        let had_fault = self.fault;
         self.fault = 0;
         crate::platform::swd::clear_fault();
 
-        err & ADIV5_DP_CTRLSTAT_ERRORS
+        (err & ADIV5_DP_CTRLSTAT_ERRORS) | (had_fault as u32)
     }
 
     /// Clear all sticky errors.
@@ -298,6 +303,8 @@ pub struct AccessPort {
     pub flags: u32,
     pub refcnt: u32,
     pub ap_address: u32,
+    pub tar_cache: u32,
+    pub tar_cached: bool,
 }
 
 impl AccessPort {
@@ -322,6 +329,8 @@ impl AccessPort {
             flags: 0,
             refcnt: 1,
             ap_address: 0,
+            tar_cache: 0,
+            tar_cached: false,
         }
     }
 
@@ -346,12 +355,17 @@ impl AccessPort {
             flags: 0,
             refcnt: 1,
             ap_address,
+            tar_cache: 0,
+            tar_cached: false,
         }
     }
 
     pub fn ap_read(&mut self, addr: u16) -> Result<u32, AdiError> {
         if self.dp.is_null() {
             return Err(AdiError::NullPointer);
+        }
+        if addr == ADIV5_AP_DRW {
+            self.tar_cached = false;
         }
         let dp = unsafe { &mut *self.dp };
         dp.ap_reg_read(self.apsel, self.ap_address, addr)
@@ -366,12 +380,18 @@ impl AccessPort {
         if addr == ADIV5_AP_CSW {
             self.csw_cache = value;
             self.csw_cached = true;
+        } else if addr == ADIV5_AP_TAR {
+            self.tar_cache = value;
+            self.tar_cached = true;
+        } else if addr == ADIV5_AP_DRW {
+            self.tar_cached = false;
         }
         Ok(())
     }
 
     pub fn invalidate_caches(&mut self) {
         self.csw_cached = false;
+        self.tar_cached = false;
     }
 
     /// Configure this AP by reading its IDR, CSW, CFG, and BASE.
@@ -431,7 +451,10 @@ impl AccessPort {
         if !self.csw_cached || self.csw_cache != csw {
             self.ap_write(ADIV5_AP_CSW, csw)?;
         }
-        self.ap_write(ADIV5_AP_TAR, addr)
+        if !self.tar_cached || self.tar_cache != addr {
+            self.ap_write(ADIV5_AP_TAR, addr)?;
+        }
+        Ok(())
     }
 
     /// Setup banked debug register access (for Cortex-M register file transfers).
@@ -455,8 +478,8 @@ impl AccessPort {
         Ok(())
     }
 
-    /// Memory read bytes with alignment and 1024-byte auto-increment boundary management.
-    pub fn mem_read_bytes(&mut self, dest: &mut [u8], src: u32) -> Result<(), AdiError> {
+    /// Internal helper: read an aligned block of bytes using a uniform transfer size.
+    fn mem_read_aligned_block(&mut self, dest: &mut [u8], src: u32, align: u32) -> Result<(), AdiError> {
         if dest.is_empty() {
             return Ok(());
         }
@@ -465,54 +488,171 @@ impl AccessPort {
         }
 
         let dp = unsafe { &mut *self.dp };
-        let align = if (src & 3) == 0 && (dest.len() & 3) == 0 {
-            ALIGN_32BIT
-        } else if (src & 1) == 0 && (dest.len() & 1) == 0 {
-            ALIGN_16BIT
-        } else {
-            ALIGN_8BIT
-        };
-
         let stride = 1usize << align;
         let mut cur_addr = src;
         let mut idx = 0;
 
         self.setup_mem_access(cur_addr, align)?;
+        dp.select_ap_bank(self.apsel, self.ap_address, ADIV5_AP_DRW)?;
+        self.tar_cached = false;
 
         while idx < dest.len() {
+            // Re-assert TAR at 1024-byte boundary
             if cur_addr != src && (cur_addr & 0x3ff) == 0 {
                 self.ap_write(ADIV5_AP_TAR, cur_addr)?;
+                self.tar_cached = false;
             }
 
-            let val = dp.transport.dp_read(ADIV5_AP_DRW);
-            dp.check_fault()?;
+            // How many bytes left before the next 1KB boundary or end of buffer
+            let bytes_to_1k = 0x400 - ((cur_addr & 0x3ff) as usize);
+            let block_bytes = core::cmp::min(dest.len() - idx, bytes_to_1k);
+            let transfers = block_bytes / stride;
 
-            match align {
-                ALIGN_8BIT => {
-                    dest[idx] = ((val >> (8 * (cur_addr & 3))) & 0xff) as u8;
+            if transfers == 1 {
+                let val = dp.transport.dp_read(ADIV5_AP_DRW);
+                dp.check_fault()?;
+                match align {
+                    ALIGN_8BIT => {
+                        dest[idx] = ((val >> (8 * (cur_addr & 3))) & 0xff) as u8;
+                    }
+                    ALIGN_16BIT => {
+                        let hw = ((val >> (8 * (cur_addr & 2))) & 0xffff) as u16;
+                        dest[idx..idx + 2].copy_from_slice(&hw.to_le_bytes());
+                    }
+                    _ => {
+                        dest[idx..idx + 4].copy_from_slice(&val.to_le_bytes());
+                    }
                 }
-                ALIGN_16BIT => {
-                    let hw = ((val >> (8 * (cur_addr & 2))) & 0xffff) as u16;
-                    dest[idx..idx + 2].copy_from_slice(&hw.to_le_bytes());
+                idx += stride;
+                cur_addr = cur_addr.wrapping_add(stride as u32);
+            } else {
+                // Pipelined read across the 1KB auto-increment block:
+                // 1. Prime the AP pipeline with initial AP_DRW read (initiates transfer 0)
+                dp.transport.raw_access(ADIV5_LOW_READ, ADIV5_AP_DRW, 0);
+
+                // 2. Next transfers: each AP_DRW read returns word i-1 and triggers word i
+                for _ in 0..(transfers - 1) {
+                    let val = dp.transport.raw_access(ADIV5_LOW_READ, ADIV5_AP_DRW, 0);
+                    match align {
+                        ALIGN_8BIT => {
+                            dest[idx] = ((val >> (8 * (cur_addr & 3))) & 0xff) as u8;
+                        }
+                        ALIGN_16BIT => {
+                            let hw = ((val >> (8 * (cur_addr & 2))) & 0xffff) as u16;
+                            dest[idx..idx + 2].copy_from_slice(&hw.to_le_bytes());
+                        }
+                        _ => {
+                            dest[idx..idx + 4].copy_from_slice(&val.to_le_bytes());
+                        }
+                    }
+                    idx += stride;
+                    cur_addr = cur_addr.wrapping_add(stride as u32);
                 }
-                _ => {
-                    dest[idx..idx + 4].copy_from_slice(&val.to_le_bytes());
+
+                // 3. Final transfer: read DP_RDBUFF to retrieve the last word without triggering another AP read
+                let val = dp.transport.raw_access(ADIV5_LOW_READ, ADIV5_DP_RDBUFF, 0);
+                match align {
+                    ALIGN_8BIT => {
+                        dest[idx] = ((val >> (8 * (cur_addr & 3))) & 0xff) as u8;
+                    }
+                    ALIGN_16BIT => {
+                        let hw = ((val >> (8 * (cur_addr & 2))) & 0xffff) as u16;
+                        dest[idx..idx + 2].copy_from_slice(&hw.to_le_bytes());
+                    }
+                    _ => {
+                        dest[idx..idx + 4].copy_from_slice(&val.to_le_bytes());
+                    }
                 }
+                idx += stride;
+                cur_addr = cur_addr.wrapping_add(stride as u32);
+                dp.check_fault()?;
             }
-
-            idx += stride;
-            cur_addr = cur_addr.wrapping_add(stride as u32);
         }
         Ok(())
     }
 
+    /// Memory read bytes with unaligned head, 32-bit aligned body, and unaligned tail.
+    pub fn mem_read_bytes(&mut self, mut dest: &mut [u8], mut src: u32) -> Result<(), AdiError> {
+        if dest.is_empty() {
+            return Ok(());
+        }
+
+        // 1. Unaligned head: bring src up to 4-byte boundary
+        while !dest.is_empty() && (src & 3) != 0 {
+            if (src & 1) == 0 && dest.len() >= 2 {
+                self.mem_read_aligned_block(&mut dest[..2], src, ALIGN_16BIT)?;
+                src = src.wrapping_add(2);
+                dest = &mut dest[2..];
+            } else {
+                self.mem_read_aligned_block(&mut dest[..1], src, ALIGN_8BIT)?;
+                src = src.wrapping_add(1);
+                dest = &mut dest[1..];
+            }
+        }
+
+        // 2. 32-bit aligned body
+        let body_len = dest.len() & !3;
+        if body_len > 0 {
+            self.mem_read_aligned_block(&mut dest[..body_len], src, ALIGN_32BIT)?;
+            src = src.wrapping_add(body_len as u32);
+            dest = &mut dest[body_len..];
+        }
+
+        // 3. Unaligned tail: 0..3 remaining bytes
+        if dest.len() >= 2 {
+            self.mem_read_aligned_block(&mut dest[..2], src, ALIGN_16BIT)?;
+            src = src.wrapping_add(2);
+            dest = &mut dest[2..];
+        }
+        if !dest.is_empty() {
+            self.mem_read_aligned_block(&mut dest[..1], src, ALIGN_8BIT)?;
+        }
+
+        Ok(())
+    }
+
     /// Memory write bytes with alignment and 1024-byte boundary management.
-    pub fn mem_write_bytes(&mut self, dest: u32, src: &[u8]) -> Result<(), AdiError> {
-        self.mem_write_aligned(dest, src, ALIGN_32BIT)
+    pub fn mem_write_bytes(&mut self, mut dest: u32, mut src: &[u8]) -> Result<(), AdiError> {
+        if src.is_empty() {
+            return Ok(());
+        }
+
+        // 1. Unaligned head: bring dest up to 4-byte boundary
+        while !src.is_empty() && (dest & 3) != 0 {
+            if (dest & 1) == 0 && src.len() >= 2 {
+                self.mem_write_aligned(dest, &src[..2], ALIGN_16BIT)?;
+                dest = dest.wrapping_add(2);
+                src = &src[2..];
+            } else {
+                self.mem_write_aligned(dest, &src[..1], ALIGN_8BIT)?;
+                dest = dest.wrapping_add(1);
+                src = &src[1..];
+            }
+        }
+
+        // 2. 32-bit aligned body
+        let body_len = src.len() & !3;
+        if body_len > 0 {
+            self.mem_write_aligned(dest, &src[..body_len], ALIGN_32BIT)?;
+            dest = dest.wrapping_add(body_len as u32);
+            src = &src[body_len..];
+        }
+
+        // 3. Unaligned tail: 0..3 remaining bytes
+        if src.len() >= 2 {
+            self.mem_write_aligned(dest, &src[..2], ALIGN_16BIT)?;
+            dest = dest.wrapping_add(2);
+            src = &src[2..];
+        }
+        if !src.is_empty() {
+            self.mem_write_aligned(dest, &src[..1], ALIGN_8BIT)?;
+        }
+
+        Ok(())
     }
 
     /// Memory write with explicit alignment (8-bit, 16-bit, 32-bit).
-    pub fn mem_write_aligned(&mut self, dest: u32, src: &[u8], _align_hint: u32) -> Result<(), AdiError> {
+    pub fn mem_write_aligned(&mut self, dest: u32, src: &[u8], align_hint: u32) -> Result<(), AdiError> {
         if src.is_empty() {
             return Ok(());
         }
@@ -521,24 +661,28 @@ impl AccessPort {
         }
 
         let dp = unsafe { &mut *self.dp };
-        let align = if (dest & 3) == 0 && (src.len() & 3) == 0 {
+        let natural_align = if (dest & 3) == 0 && (src.len() & 3) == 0 {
             ALIGN_32BIT
         } else if (dest & 1) == 0 && (src.len() & 1) == 0 {
             ALIGN_16BIT
         } else {
             ALIGN_8BIT
         };
+        // Honor caller's align_hint if specified, but do not exceed natural alignment of dest/len
+        let align = core::cmp::min(natural_align, align_hint);
 
         let stride = 1usize << align;
         let mut cur_addr = dest;
         let mut idx = 0;
 
         self.setup_mem_access(cur_addr, align)?;
+        dp.select_ap_bank(self.apsel, self.ap_address, ADIV5_AP_DRW)?;
+        self.tar_cached = false;
 
         while idx < src.len() {
-            dp.check_fault()?;
             if cur_addr != dest && (cur_addr & 0x3ff) == 0 {
                 self.ap_write(ADIV5_AP_TAR, cur_addr)?;
+                self.tar_cached = false;
             }
 
             let val = match align {
@@ -556,7 +700,8 @@ impl AccessPort {
             cur_addr = cur_addr.wrapping_add(stride as u32);
         }
 
-        // Dummy read to complete write pipeline
+        // Complete write pipeline and verify no faults occurred during transfer
+        dp.check_fault()?;
         dp.transport.dp_read(ADIV5_DP_RDBUFF);
         dp.check_fault()
     }

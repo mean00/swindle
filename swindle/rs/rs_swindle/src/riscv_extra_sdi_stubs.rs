@@ -41,6 +41,16 @@ pub fn bmp_set_sdi_wire(
 /// No SDI debug module to reset.
 pub fn sdi_dm_start() {}
 
+/// No SDI debug module: every access fails with `WireError::Disabled`.
+pub fn try_sdi_read(_adr: u8) -> crate::platform::wire_error::WireResult<u32> {
+    Err(crate::platform::wire_error::WireError::Disabled)
+}
+
+/// No SDI debug module: every access fails with `WireError::Disabled`.
+pub fn try_sdi_write(_adr: u8, _data: u32) -> crate::platform::wire_error::WireResult<()> {
+    Err(crate::platform::wire_error::WireError::Disabled)
+}
+
 /// No SDI debug module: every access fails.
 pub fn bmp_sdi_read(_adr: u8) -> (bool, u32) {
     (false, 0)
@@ -91,6 +101,16 @@ pub extern "C" fn bmp_sdi_dm_read_c(_adr: u8, _value: *mut u32) -> bool {
 #[unsafe(no_mangle)]
 pub extern "C" fn bmp_sdi_dm_write_c(_adr: u8, _data: u32) -> bool {
     false
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn bmp_sdi_dm_read_status_c(_adr: u8, _value: *mut u32) -> u8 {
+    crate::platform::wire_error::BMP_WIRE_DISABLED
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn bmp_sdi_dm_write_status_c(_adr: u8, _data: u32) -> u8 {
+    crate::platform::wire_error::BMP_WIRE_DISABLED
 }
 
 /// No tap to re-tune: the wire knobs are accepted and dropped.

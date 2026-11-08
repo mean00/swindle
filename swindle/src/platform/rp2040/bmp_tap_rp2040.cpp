@@ -72,14 +72,14 @@ rpPIO_SM *xsm = NULL;
 /* PIO instructions per bit clock, per wire program. The state machine is clocked at
  * swd_frequency * <factor>, so a program spending N instructions per bit ends up at
  * swd_frequency * factor / N:
- *   rvswd.pio / rvswd_raw : 5 instructions per bit -> factor 5 -> the bit clock is
+ *   rvswd.pio / rvswd_raw : 7 cycles per bit -> factor 7 -> the bit clock is
  *                           exactly swd_frequency, i.e. `mon fq` *is* the wire clock.
  *   swd.pio               : 6 instructions per bit, kept at the historical factor 4
  *                           (its clock stays below the requested rate; changing it
  *                           would alter a known-good SWD path).
  */
 #define SWD_PIO_RATE_FACTOR 4
-#define RVSWD_PIO_RATE_FACTOR 5
+#define RVSWD_PIO_RATE_FACTOR 7
 
 /**
  * @brief State-machine rate factor (a multiple of swd_frequency) for a wire mode.

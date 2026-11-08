@@ -106,6 +106,12 @@ extern "C" volatile uint32_t ln_rv_tx_count;
 #define RVSWD_WRITE_RESPONSE_CLOCKS() 16
 #endif
 
+#ifndef RVSWD_CONSUME_HW_TIMEOUT
+#define RVSWD_CONSUME_HW_TIMEOUT() false
+#endif
+
+#define RVSWD_MAX_ADDRESS 0x7FU
+
 // ---------------------------------------------------------------
 // Diagnostics: the raw status word and the on-the-wire duration of the most
 // recent failed frame. Reported by the retry layer when it gives up, so a
@@ -115,6 +121,21 @@ extern "C" volatile uint32_t ln_rv_tx_count;
 static volatile uint32_t rv_last_bad_status = 0;
 static volatile uint32_t rv_last_bad_us = 0;
 
+static inline bmp_wire_status_t rv_status_to_wire_status(const uint32_t status)
+{
+    if (status == 3U || status == 7U)
+        return BMP_WIRE_OK;
+    if (status == 0xFU)
+        return BMP_WIRE_NO_RESPONSE;
+    if (status == 0x1U || status == 0x5U)
+        return BMP_WIRE_ACK_WAIT;
+    if (status == 0x0U)
+        return BMP_WIRE_PROTOCOL_ERR;
+    return BMP_WIRE_ACK_FAULT;
+}
+
+bmp_wire_status_t LN_FAST_CODE rv_dm_write_status(uint32_t adr, uint32_t val);
+bmp_wire_status_t LN_FAST_CODE rv_dm_read_status(uint32_t adr, uint32_t *output);
 bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val);
 bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output);
 /**
@@ -144,10 +165,13 @@ extern "C" void rv_dm_start_c()
 
 /**
  */
-bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
+bmp_wire_status_t LN_FAST_CODE rv_dm_write_status(uint32_t adr, uint32_t val)
 {
+    if (adr > RVSWD_MAX_ADDRESS)
+        return BMP_WIRE_PROTOCOL_ERR;
     ln_rv_tx_count++;
     SWD_TX_POLL();
+    (void)RVSWD_CONSUME_HW_TIMEOUT();
     uint64_t tx = (adr << 1) + 1; // 1 = write
     int parity1 = lnOddParity(tx);
     tx = (tx << 2) | (parity1 ? 3 : 0);
@@ -168,6 +192,12 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
     const int rx_clocks = RVSWD_WRITE_RESPONSE_CLOCKS();
     uint32_t t0 = lnGetUs();
     uint64_t rx = rvswd_write_then_read(tx, 48, rx_clocks);
+    if (RVSWD_CONSUME_HW_TIMEOUT())
+    {
+        rv_last_bad_status = BMP_WIRE_HW_TIMEOUT;
+        rv_last_bad_us = lnGetUs() - t0;
+        return BMP_WIRE_HW_TIMEOUT;
+    }
     uint32_t status = (uint32_t)(rx >> (rx_clocks - 4)) & 0xF;
 
     if (status != 3 && status != 7)
@@ -177,22 +207,29 @@ bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
         // when the retries are exhausted; the reason is kept for that line.
         rv_last_bad_status = status;
         rv_last_bad_us = lnGetUs() - t0;
-        return false;
+        return rv_status_to_wire_status(status);
     }
-    return true;
+    return BMP_WIRE_OK;
+}
+
+bool LN_FAST_CODE rv_dm_write(uint32_t adr, uint32_t val)
+{
+    return rv_dm_write_status(adr, val) == BMP_WIRE_OK;
 }
 /**
  * @brief
  *
  * @param adr
  * @param output
- * @return true
- * @return false
+ * @return bmp_wire_status_t
  */
-bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
+bmp_wire_status_t LN_FAST_CODE rv_dm_read_status(uint32_t adr, uint32_t *output)
 {
+    if (!output || adr > RVSWD_MAX_ADDRESS)
+        return BMP_WIRE_PROTOCOL_ERR;
     ln_rv_tx_count++;
     SWD_TX_POLL();
+    (void)RVSWD_CONSUME_HW_TIMEOUT();
     uint64_t tx = (adr << 1) + 0; // 0 = read
     int parity1 = lnOddParity(tx);
     tx = (tx << 2) | (parity1 ? 3 : 0);
@@ -204,6 +241,13 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
     // RX total = 32 (data) + 2 (parity) + 4 (status) = 38 bits
     uint32_t t0 = lnGetUs();
     uint64_t rx = rvswd_write_then_read(tx, 14, 38);
+    if (RVSWD_CONSUME_HW_TIMEOUT())
+    {
+        *output = 0;
+        rv_last_bad_status = BMP_WIRE_HW_TIMEOUT;
+        rv_last_bad_us = lnGetUs() - t0;
+        return BMP_WIRE_HW_TIMEOUT;
+    }
 
     uint32_t status = rx & 0xF;
     *output = (rx >> 6) & 0xFFFFFFFF;
@@ -215,9 +259,14 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
         // when the retries are exhausted; the reason is kept for that line.
         rv_last_bad_status = status;
         rv_last_bad_us = lnGetUs() - t0;
-        return false;
+        return rv_status_to_wire_status(status);
     }
-    return true;
+    return BMP_WIRE_OK;
+}
+
+bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
+{
+    return rv_dm_read_status(adr, output) == BMP_WIRE_OK;
 }
 
 /* RISC-V Debug Module (DM) registers */
@@ -225,6 +274,7 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
 #define DMSTATUS                0x11U
 #define DMDATA0                 0x04U
 #define DMDATA1                 0x05U
+#define DMABSTRACTCS            0x16U
 #define DMCOMMAND               0x17U
 #define DMCHIPID                0x7FU
 
@@ -246,37 +296,51 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
  */
 static bool rv_dm_probe(uint32_t *chip_id)
 {
-#define DELAY() lnDelayMs(1)
     *chip_id = 0;
 
     uint32_t out = 0;
     //
-    // init sequence, reverse eng from capture
+    // WCH DM initialization: activate DM first per Debug Spec 0.13.2 §3.4, then request halt
     //----------------------------------------------
-    WR(DMCONTROL, DMCONTROL_HALTREQ | DMCONTROL_DMACTIVE); // write DMCONTROL: active + halt request
-    DELAY();
-    WR(DMCONTROL, DMCONTROL_HALTREQ | DMCONTROL_DMACTIVE); // write DMCONTROL: active + halt request
-    DELAY();
+    WR(DMCONTROL, DMCONTROL_DMACTIVE);
+    WR(DMCONTROL, DMCONTROL_HALTREQ | DMCONTROL_DMACTIVE);
     uint32_t dm_status = 0;
     bool ok_status = rv_dm_read(DMSTATUS, &dm_status);
-    DELAY();
-    RD(DMCHIPID);  // read DMCHIPID (0x7F)
-    *chip_id = out;         // 0x203xxxx 0x303xxxx 0x305...
-    DELAY();
-    WR(DMDATA1, CH32V_FLASH_CHIPID_ADDR);
-    DELAY();
-    WR(DMCOMMAND, DM_ABSTRACT_CMD_MEM_READ32);
-    DELAY();
-    RD(DMDATA0);
-    uint32_t mem_id = out;
-    DELAY();
-    RD(DMDATA1);
+
+    if (RD(DMCHIPID)) // read DMCHIPID (0x7F)
+    {
+        *chip_id = out; // 0x203xxxx 0x303xxxx 0x305...
+    }
+    else
+    {
+        *chip_id = RVSWD_CHIPID_INVALID_MASK;
+    }
+
+    // If DMCHIPID did not return a valid ID, try reading FLASH CHIPID via abstract command
     if (((*chip_id) & RVSWD_CHIPID_INVALID_MASK) == RVSWD_CHIPID_INVALID_MASK)
     {
-        *chip_id = mem_id;
+        WR(DMDATA1, CH32V_FLASH_CHIPID_ADDR);
+        WR(DMCOMMAND, DM_ABSTRACT_CMD_MEM_READ32);
+        // Wait for abstract command to complete
+        bool abstract_ready = false;
+        for (int i = 0; i < 20; i++)
+        {
+            if (RD(DMABSTRACTCS) && !(out & (1 << 12))) // busy bit 12 == 0
+            {
+                abstract_ready = true;
+                break;
+            }
+        }
+        if (abstract_ready && RD(DMDATA0))
+        {
+            uint32_t mem_id = out;
+            (void)RD(DMDATA1);
+            *chip_id = mem_id;
+        }
     }
-    Logger("RVSWD : rv_dm_probe ok_status=%d dmstatus=0x%x chip_id=0x%x mem_id=0x%x\n",
-           (int)ok_status, (unsigned)dm_status, (unsigned)*chip_id, (unsigned)mem_id);
+
+    Logger("RVSWD : rv_dm_probe ok_status=%d dmstatus=0x%x chip_id=0x%x\n",
+           (int)ok_status, (unsigned)dm_status, (unsigned)*chip_id);
     return ((*chip_id) & RVSWD_CHIPID_INVALID_MASK) != RVSWD_CHIPID_INVALID_MASK;
 }
 /**
@@ -301,11 +365,13 @@ static bool rv_dm_probe(uint32_t *chip_id)
 
 static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, uint32_t *const value)
 {
+    bmp_wire_status_t status = BMP_WIRE_ACK_FAULT;
     for (uint32_t attempt = 0U; attempt < RVSWD_DMI_MAX_ATTEMPTS; ++attempt)
     {
-        if (rv_dm_read(address, value))
+        status = rv_dm_read_status(address, value);
+        if (status == BMP_WIRE_OK)
         {
-            dmi->fault = RV_DMI_SUCCESS;
+            dmi->fault = BMP_WIRE_OK;
             return true;
         }
         lnDelayUs(RVSWD_DMI_RETRY_DELAY_US);
@@ -313,7 +379,7 @@ static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, 
     Logger("DMI read failed Adr=0x%x after %u attempts (status=0x%x, %uus/frame, ws=%u)\n", address,
            (unsigned)RVSWD_DMI_MAX_ATTEMPTS, (unsigned)rv_last_bad_status, (unsigned)rv_last_bad_us,
            (unsigned)bmp_get_wait_state_c());
-    dmi->fault = RV_DMI_FAILURE;
+    dmi->fault = status;
     return false;
 }
 /**
@@ -327,11 +393,13 @@ static bool ch32_riscv_dmi_read(riscv_dmi_s *const dmi, const uint32_t address, 
  */
 static bool ch32_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, const uint32_t value)
 {
+    bmp_wire_status_t status = BMP_WIRE_ACK_FAULT;
     for (uint32_t attempt = 0U; attempt < RVSWD_DMI_MAX_ATTEMPTS; ++attempt)
     {
-        if (rv_dm_write(address, value))
+        status = rv_dm_write_status(address, value);
+        if (status == BMP_WIRE_OK)
         {
-            dmi->fault = RV_DMI_SUCCESS;
+            dmi->fault = BMP_WIRE_OK;
             return true;
         }
         lnDelayUs(RVSWD_DMI_RETRY_DELAY_US);
@@ -339,11 +407,19 @@ static bool ch32_riscv_dmi_write(riscv_dmi_s *const dmi, const uint32_t address,
     Logger("DMI write failed Adr=0x%x after %u attempts (status=0x%x, %uus/frame, ws=%u)\n", address,
            (unsigned)RVSWD_DMI_MAX_ATTEMPTS, (unsigned)rv_last_bad_status, (unsigned)rv_last_bad_us,
            (unsigned)bmp_get_wait_state_c());
-    dmi->fault = RV_DMI_FAILURE;
+    dmi->fault = status;
     return false;
 }
 extern "C"
 {
+    extern "C" bmp_wire_status_t bmp_rv_dm_read_status_c(uint8_t adr, uint32_t *value)
+    {
+        return rv_dm_read_status(adr, value);
+    }
+    extern "C" bmp_wire_status_t bmp_rv_dm_write_status_c(uint8_t adr, uint32_t value)
+    {
+        return rv_dm_write_status(adr, value);
+    }
     /**
      * @brief
      *
@@ -354,9 +430,7 @@ extern "C"
      */
     extern "C" bool bmp_rv_dm_read_c(uint8_t adr, uint32_t *value)
     {
-        bool r = rv_dm_read(adr, value);
-        //   Logger("bmp_rv_dm_read_c : ad=0x%x value=0x%x status=%d\n",adr,*value,r);
-        return r;
+        return rv_dm_read_status(adr, value) == BMP_WIRE_OK;
     }
     /**
      * @brief
@@ -368,9 +442,7 @@ extern "C"
      */
     extern "C" bool bmp_rv_dm_write_c(uint8_t adr, uint32_t value)
     {
-        bool r = rv_dm_write(adr, value);
-        //     Logger("bmp_rv_dm_write_c : ad=0x%x value=0x%x stat=%d\n",adr,value,r);
-        return r;
+        return rv_dm_write_status(adr, value) == BMP_WIRE_OK;
     }
     /**
      * @brief

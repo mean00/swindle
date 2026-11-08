@@ -21,6 +21,7 @@ pub const RV_DM_ABSTRACTAUTO: u8 = 0x18;
 pub const RV_DM_PROGBUF_MIN_WORDS: u8 = 2;
 pub const RV_DM_PROGBUF0: u8 = 0x20;
 pub const RV_DM_PROGBUF1: u8 = 0x21;
+pub const RV_DM_PROGBUF2: u8 = 0x22;
 pub const RV_DM_SBCS: u8 = 0x38;
 pub const RV_DM_SBADDRESS0: u8 = 0x39;
 pub const RV_DM_SBDATA0: u8 = 0x3c;

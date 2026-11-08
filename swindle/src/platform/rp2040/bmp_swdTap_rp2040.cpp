@@ -70,6 +70,16 @@ extern "C" void swdptap_init()
     bmp_clear_dp_fault_c();
 }
 
+static bool swd_pio_timeout = false;
+
+static inline bool rp2040_swd_consume_hw_timeout()
+{
+    const bool timed_out = swd_pio_timeout;
+    swd_pio_timeout = false;
+    return timed_out;
+}
+#define SWD_CONSUME_HW_TIMEOUT() rp2040_swd_consume_hw_timeout()
+
 /**
  * @brief Write @p size bits over PIO to SWDIO.
  * @param size  Number of bits to write.
@@ -78,7 +88,17 @@ extern "C" void swdptap_init()
 static void zwrite(uint32_t size, uint32_t value)
 {
     uint32_t zsize = ((size - 1) << 1) | 1;
+    if (!xsm->waitTxReady())
+    {
+        swd_pio_timeout = true;
+        return;
+    }
     xsm->write(1, &zsize);
+    if (!xsm->waitTxReady())
+    {
+        swd_pio_timeout = true;
+        return;
+    }
     xsm->write(1, &value);
 }
 /**
@@ -90,11 +110,17 @@ static uint32_t zread(uint32_t size)
 {
     uint32_t zsize = ((size - 1) << 1) | 0;
     uint32_t value = 0xFFFFFFFF;
+    if (!xsm->waitTxReady())
+    {
+        swd_pio_timeout = true;
+        return value >> (32 - size);
+    }
     xsm->write(1, &zsize);
     if (!xsm->waitRxReady())
     {
-        // Nothing came back: leave the word all ones so the frame decodes as the
-        // abnormal ACK (0b111) instead of a plausible-looking zero.
+        // Nothing came back: record the hardware PIO timeout and leave the word all ones
+        // so the frame decodes as abnormal ACK (0b111) instead of a plausible zero.
+        swd_pio_timeout = true;
         return value >> (32 - size);
     }
     xsm->read(1, &value);

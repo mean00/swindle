@@ -168,6 +168,8 @@ pub struct RiscvHart {
     pub triggers: TriggerUnit,
     /// Cached halt reason while the core remains continuously halted.
     pub last_halt_reason: Option<HaltReason>,
+    /// Last configured single-step mode on DCSR (to avoid redundant DCSR writes during resume)
+    pub last_step_mode: Option<bool>,
 }
 
 impl RiscvHart {
@@ -180,6 +182,12 @@ impl RiscvHart {
         let status = dmi.read(RV_DM_STATUS)?;
         if (status & (RV_DM_STAT_ANY_NONEXIST | RV_DM_STAT_ANY_UNAVAIL)) != 0 {
             return Err(DmiError::NotSupported);
+        }
+
+        // Clear any residual cmderr in abstractcs
+        let abstcs_init = dmi.read(RV_DM_ABSTRACTCS).unwrap_or(0);
+        if (abstcs_init & RV_DM_ABSTCS_CMDERR_MASK) != 0 {
+            let _ = dmi.write(RV_DM_ABSTRACTCS, abstcs_init);
         }
 
         // Discover progbuf size and data count
@@ -217,6 +225,7 @@ impl RiscvHart {
             active_method: MemoryAccessMethod::Abstract,
             triggers: TriggerUnit::NONE,
             last_halt_reason: None,
+            last_step_mode: None,
         };
 
         // Halt hart briefly to read IDs and MISA safely
@@ -269,6 +278,9 @@ impl RiscvHart {
 
     /// Write a 32-bit CSR using abstract register access command.
     pub fn csr_write(&mut self, csr: u16, val: u32) -> Result<(), DmiError> {
+        if csr == RV_CSR_DCSR {
+            self.last_step_mode = None;
+        }
         self.dmi.write(RV_DM_DATA0, val)?;
         let cmd = make_reg_access_cmd(csr, true, true, false);
         exec_command(&mut self.dmi, cmd)
@@ -360,7 +372,9 @@ impl RiscvHart {
             return Err(TargetError::InternalError);
         }
 
-        for i in 0..count {
+        // x0 (zero) is hardwired to 0 in RISC-V
+        buf[0..4].fill(0);
+        for i in 1..count {
             let val = self.gpr_read(i as u8).map_err(|_| TargetError::AccessFault)?;
             buf[i * 4..(i + 1) * 4].copy_from_slice(&val.to_le_bytes());
         }
@@ -378,7 +392,8 @@ impl RiscvHart {
             return Err(TargetError::InternalError);
         }
 
-        for i in 0..count {
+        // Skip x0 (zero), which is hardwired to 0 in RISC-V
+        for i in 1..count {
             let val = u32::from_le_bytes(data[i * 4..(i + 1) * 4].try_into().unwrap());
             self.gpr_write(i as u8, val).map_err(|_| TargetError::AccessFault)?;
         }
@@ -396,7 +411,7 @@ impl RiscvHart {
         self.dmi
             .write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ)?;
         let mut last_status = 0u32;
-        for _ in 0..RUN_CONTROL_TIMEOUT_MS {
+        for i in 0..(RUN_CONTROL_TIMEOUT_MS + 8) {
             let status = self.dmi.read(RV_DM_STATUS)?;
             last_status = status;
             if (status & RV_DM_STAT_ALL_HALTED) != 0 {
@@ -405,7 +420,9 @@ impl RiscvHart {
                 self.last_halt_reason = None;
                 return Ok(());
             }
-            crate::target::delay_ms(1);
+            if i >= 8 {
+                crate::target::delay_ms(1);
+            }
         }
         let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
         self.last_halt_reason = None;
@@ -420,21 +437,24 @@ impl RiscvHart {
     pub fn halt_resume(&mut self, step: bool) -> Result<(), DmiError> {
         self.last_halt_reason = None;
 
-        // Read dcsr and adjust step bit
-        let mut dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
-        if step {
-            dcsr |= RV_DCSR_STEP;
-        } else {
-            dcsr &= !RV_DCSR_STEP;
+        // Update dcsr only if step mode has changed or not yet initialized
+        if self.last_step_mode != Some(step) {
+            let mut dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
+            if step {
+                dcsr |= RV_DCSR_STEP;
+            } else {
+                dcsr &= !RV_DCSR_STEP;
+            }
+            // Always ensure ebreakm is set (patch 104)
+            dcsr |= RV_DCSR_EBREAKM;
+            let _ = self.csr_write(RV_CSR_DCSR, dcsr);
+            self.last_step_mode = Some(step);
         }
-        // Always ensure ebreakm is set (patch 104)
-        dcsr |= RV_DCSR_EBREAKM;
-        let _ = self.csr_write(RV_CSR_DCSR, dcsr);
 
         // Send resume request
         self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HART_RESUME_REQ)?;
         let mut last_status = 0u32;
-        for _ in 0..RUN_CONTROL_TIMEOUT_MS {
+        for i in 0..(RUN_CONTROL_TIMEOUT_MS + 8) {
             let status = self.dmi.read(RV_DM_STATUS)?;
             last_status = status;
             if (status & (RV_DM_STAT_ALL_RUNNING | RV_DM_STAT_ALL_RESUMEACK)) != 0
@@ -444,7 +464,9 @@ impl RiscvHart {
                 let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
                 return Ok(());
             }
-            crate::target::delay_ms(1);
+            if i >= 8 {
+                crate::target::delay_ms(1);
+            }
         }
         let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
         crate::gdb_println!("resume: no allrunning within timeout, dmstatus=", Hex(last_status));
@@ -488,6 +510,7 @@ impl RiscvHart {
     /// Reset the target through the Debug Module's `ndmreset`, with halt-request asserted.
     pub fn reset(&mut self) -> Result<(), DmiError> {
         self.last_halt_reason = None;
+        self.last_step_mode = None;
 
         // Clear what `allhavereset` may still be remembering from an earlier reset
         self.dmi.write(
@@ -501,8 +524,6 @@ impl RiscvHart {
             self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ | RV_DM_CTRL_NDM_RESET,
         )?;
 
-        self.dmi.invalidate_caches();
-
         // Release ndmreset while maintaining haltreq
         self.dmi.write(
             RV_DM_CONTROL,
@@ -510,7 +531,7 @@ impl RiscvHart {
         )?;
 
         // Wait until Debug Module reports reset reached the hart
-        self.wait_all_reset();
+        let already_halted = self.wait_all_reset();
 
         // Acknowledge the reset while holding haltreq
         self.dmi.write(
@@ -518,8 +539,12 @@ impl RiscvHart {
             self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ | RV_DM_CTRL_HART_ACK_RESET,
         )?;
 
-        // Ensure halted
-        self.halt_request()?;
+        // Ensure halted (if wait_all_reset already observed allhalted, just clear haltreq)
+        if already_halted {
+            self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
+        } else {
+            self.halt_request()?;
+        }
 
         self.dmi.invalidate_caches();
 
@@ -551,16 +576,23 @@ impl RiscvHart {
         Err(DmiError::Timeout)
     }
 
-    /// Wait (bounded) for `dmstatus.allhavereset`.
-    fn wait_all_reset(&mut self) {
-        // Bounded wait for dmstatus.allhavereset (100 ms max)
-        for _ in 0..100 {
+    /// Wait (bounded) for `dmstatus.allhavereset`, returning true if `allhalted` is also set.
+    fn wait_all_reset(&mut self) -> bool {
+        // Bounded wait for dmstatus.allhavereset (100 ms max, with 8 fast polls first)
+        for i in 0..108 {
             match self.dmi.read(RV_DM_STATUS) {
-                Ok(status) if (status & RV_DM_STAT_ALL_HAVERESET) != 0 => return,
-                Err(_) => return,
-                Ok(_) => crate::target::delay_ms(1),
+                Ok(status) if (status & RV_DM_STAT_ALL_HAVERESET) != 0 => {
+                    return (status & RV_DM_STAT_ALL_HALTED) != 0;
+                }
+                Err(_) => return false,
+                Ok(_) => {
+                    if i >= 8 {
+                        crate::target::delay_ms(1);
+                    }
+                }
             }
         }
+        false
     }
 
     // --- Direct DM / DMI access ---

@@ -513,8 +513,8 @@ impl crate::target::TargetDriver for CortexMTargetDriver {
         if self.target.is_null() {
             return Err(TargetError::NotAttached);
         }
-        mem_read(self.target, dest, addr)?;
-        if check_error(self.target) {
+        let res = mem_read(self.target, dest, addr);
+        if check_error(self.target) || res.is_err() {
             Err(TargetError::AccessFault)
         } else {
             Ok(())
@@ -525,8 +525,8 @@ impl crate::target::TargetDriver for CortexMTargetDriver {
         if self.target.is_null() {
             return Err(TargetError::NotAttached);
         }
-        mem_write(self.target, addr, src)?;
-        if check_error(self.target) {
+        let res = mem_write(self.target, addr, src);
+        if check_error(self.target) || res.is_err() {
             Err(TargetError::AccessFault)
         } else {
             Ok(())

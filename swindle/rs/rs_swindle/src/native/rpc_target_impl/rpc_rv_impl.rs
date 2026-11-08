@@ -28,19 +28,19 @@ struct ProbeDmi {
 
 impl DmiTransport for ProbeDmi {
     fn read(&mut self, addr: u8) -> Result<u32, DmiError> {
-        let (ok, value) = match self.leg {
-            DmiLeg::Rvswd => bmp::bmp_rv_read(addr),
-            DmiLeg::Sdi => crate::riscv_extra::bmp_sdi_read(addr),
+        let res = match self.leg {
+            DmiLeg::Rvswd => bmp::try_rv_read(addr),
+            DmiLeg::Sdi => crate::riscv_extra::try_sdi_read(addr),
         };
-        if ok { Ok(value) } else { Err(DmiError::Fault) }
+        res.map_err(DmiError::from)
     }
 
     fn write(&mut self, addr: u8, val: u32) -> Result<(), DmiError> {
-        let ok = match self.leg {
-            DmiLeg::Rvswd => bmp::bmp_rv_write(addr, val),
-            DmiLeg::Sdi => crate::riscv_extra::bmp_sdi_write(addr, val),
+        let res = match self.leg {
+            DmiLeg::Rvswd => bmp::try_rv_write(addr, val),
+            DmiLeg::Sdi => crate::riscv_extra::try_sdi_write(addr, val),
         };
-        if ok { Ok(()) } else { Err(DmiError::Fault) }
+        res.map_err(DmiError::from)
     }
 
     /// The SDI wire cannot report a lost access, so reads are confirmed exactly as the

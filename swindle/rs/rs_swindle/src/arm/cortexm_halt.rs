@@ -105,6 +105,7 @@ pub(crate) fn halt_resume(target: *mut Target, step: bool) {
         if read16(target, pc) & 0xff00 == 0xbe00 {
             pc_write(target, pc.wrapping_add(2));
         }
+        let _ = with_priv(target, |priv_| priv_.on_bkpt = false);
     }
 
     if icache_line_length != 0 {
@@ -131,16 +132,21 @@ pub(crate) fn halt_poll(target: *mut Target) -> (HaltReason, u32) {
     let dfsr = read32(target, CORTEXM_DFSR);
     write32(target, CORTEXM_DFSR, dfsr);
 
-    /* Remember which caches are enabled: the memory hooks maintain them. */
-    let ccr = read32(target, CORTEXM_CCR);
-    let (dcache_enabled, icache_enabled) = (
-        ccr & CORTEXM_CCR_DCACHE_ENABLE != 0,
-        ccr & CORTEXM_CCR_ICACHE_ENABLE != 0,
-    );
-    let _ = with_priv(target, |priv_| {
-        priv_.dcache_enabled = dcache_enabled;
-        priv_.icache_enabled = icache_enabled;
-    });
+    /* Remember which caches are enabled on cores that implement L1 cache: the memory hooks maintain them. */
+    let has_cache = priv_ref(target)
+        .map(|p| p.base.icache_line_length != 0 || p.base.dcache_line_length != 0)
+        .unwrap_or(false);
+    if has_cache {
+        let ccr = read32(target, CORTEXM_CCR);
+        let (dcache_enabled, icache_enabled) = (
+            ccr & CORTEXM_CCR_DCACHE_ENABLE != 0,
+            ccr & CORTEXM_CCR_ICACHE_ENABLE != 0,
+        );
+        let _ = with_priv(target, |priv_| {
+            priv_.dcache_enabled = dcache_enabled;
+            priv_.icache_enabled = icache_enabled;
+        });
+    }
 
     /*
      * On ARMv8-M execution may stop before the faulting instruction retires, so DFSR

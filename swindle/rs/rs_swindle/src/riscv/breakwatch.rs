@@ -49,7 +49,7 @@ const RV32_MATCH_READ: u32 = 0x0000_0001;
 const RV32_MATCH_WRITE: u32 = 0x0000_0002;
 /// Match in every privilege mode (M/S/U).
 const RV32_MATCH_PRIV_ALL: u32 = 0x0000_0058;
-/// `action` = 0: enter debug mode instead of raising an exception.
+/// `action` = 1: enter debug mode instead of raising an exception (Debug Spec 0.13.2 §5.2.9).
 const RV32_MATCH_ACTION_DEBUG: u32 = 0x0000_1000;
 /// `match` = 0: compare `tdata2` against the access address.
 const RV32_MATCH_SELECT_ADDR: u32 = 0x0000_0000;
@@ -175,9 +175,12 @@ fn config_trigger(
     Err(TargetError::Unsupported)
 }
 
-/// Turn a slot back into an unconfigured `mcontrol` trigger.
+/// Turn a slot back into an unconfigured `mcontrol` trigger (tdata1 = 0).
 fn disarm_slot(hart: &mut RiscvHart, slot: u8) -> Result<(), TargetError> {
-    config_trigger(hart, slot, RV32_MATCH_TYPE_MCONTROL, 0)
+    hart.csr_write(RV_CSR_TSELECT, u32::from(slot))
+        .map_err(|_| TargetError::AccessFault)?;
+    hart.csr_write(RV_CSR_TDATA1, 0)
+        .map_err(|_| TargetError::AccessFault)
 }
 
 /// Arm `breakwatch` on the trigger unit of `hart`.
@@ -217,6 +220,16 @@ pub fn set(hart: &mut RiscvHart, breakwatch: &mut Breakwatch) -> Result<(), Targ
 pub fn clear(hart: &mut RiscvHart, breakwatch: &Breakwatch) -> Result<(), TargetError> {
     let (kind, addr, size) = (breakwatch.kind(), breakwatch.addr(), breakwatch.size());
     let config = config_for(kind, size).ok_or(TargetError::Unsupported)?;
+
+    // Fast path: if the breakwatch recorded its slot from set(), check that slot directly
+    if let Some(slot) = breakwatch.slot() {
+        if slot < hart.triggers.slots {
+            let (tdata1, tdata2) = read_slot(hart, slot)?;
+            if tdata1 & RV32_MATCH_ID_MASK == config & RV32_MATCH_ID_MASK && tdata2 == addr {
+                return disarm_slot(hart, slot);
+            }
+        }
+    }
 
     for slot in 0..hart.triggers.slots {
         let (tdata1, tdata2) = read_slot(hart, slot)?;

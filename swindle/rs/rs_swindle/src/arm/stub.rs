@@ -68,11 +68,6 @@ const CORTEX_REG_PSP_S: usize = 26;
 const CORTEX_REG_MSPLIM_S: usize = 27;
 const CORTEX_REG_PSPLIM_S: usize = 28;
 
-/// How many argument registers a stub is handed (`r0..r3`).
-const CORTEXM_ARG_REG_COUNT: usize = 4;
-/// Size of the register file image C `cortexm_regs_write()` walks: 13 general (`r0..r12`),
-/// 4 (`sp`/`lr`/`pc`/`xpsr`), 3 (`msp`/`psp`/state), 10 TrustZone and 33 float registers.
-const CORTEXM_MAX_REG_COUNT: usize = 13 + 4 + 3 + 10 + 33;
 /// `xPSR.T`: the stub is Thumb code, so the core must resume in Thumb state.
 const CORTEXM_XPSR_THUMB: u32 = 1 << 24;
 /// Value written to the special register before a stub runs. Kept verbatim from the C runner
@@ -82,23 +77,6 @@ const CORTEXM_STUB_SPECIAL: u32 = 1;
 /// Encoded `bkpt` with immediate 0 (C `CORTEX_THUMB_BKPT`), the opcode the stubs trap with; the
 /// immediate carries the stub's result, see [`run_stub`] / [`run_stub_ret`].
 const CORTEX_THUMB_BKPT: u16 = 0xbe00;
-
-/// Read a Cortex-M register file image (`target_regs_read()`).
-fn regs_read(cm: &CortexMAccess, regs: &mut [u32; CORTEXM_MAX_REG_COUNT]) -> bool {
-    let bytes = unsafe {
-        core::slice::from_raw_parts_mut(regs.as_mut_ptr().cast::<u8>(), core::mem::size_of_val(regs))
-    };
-    cm.regs_read(bytes)
-}
-
-/// Write a Cortex-M register file image (C `cortexm_regs_write()`). The C side reinterprets the
-/// buffer as `uint32_t[]`, so hand it the array's own bytes instead of converting them.
-fn regs_write(cm: &CortexMAccess, regs: &[u32; CORTEXM_MAX_REG_COUNT]) -> bool {
-    let bytes = unsafe {
-        core::slice::from_raw_parts(regs.as_ptr().cast::<u8>(), core::mem::size_of_val(regs))
-    };
-    cm.regs_write(bytes)
-}
 
 /// Read the program counter (C `cortexm_pc_read()`): `DCRSR` selector `0x0f` through `DCRDR`,
 /// which is what a core register read of register 15 does.
@@ -222,29 +200,28 @@ fn run_stub_ret_internal(
         return None;
     }
 
-    let mut regs = [0u32; CORTEXM_MAX_REG_COUNT];
-    if !regs_read(cm, &mut regs) {
-        return None;
-    }
+    // Set argument registers r0..r3 directly
+    cm.reg_write(CORTEX_REG_R0 as u32, &r0.to_le_bytes());
+    cm.reg_write((CORTEX_REG_R0 + 1) as u32, &r1.to_le_bytes());
+    cm.reg_write((CORTEX_REG_R0 + 2) as u32, &r2.to_le_bytes());
+    cm.reg_write((CORTEX_REG_R0 + 3) as u32, &r3.to_le_bytes());
 
-    regs[CORTEX_REG_R0..CORTEX_REG_R0 + CORTEXM_ARG_REG_COUNT].copy_from_slice(&[r0, r1, r2, r3]);
     if let Some(sp_val) = stack {
         if sp_val != 0 {
-            regs[CORTEX_REG_SP] = sp_val;
-            regs[CORTEX_REG_MSP] = sp_val;
-            regs[CORTEX_REG_MSP_NS] = sp_val;
-            regs[CORTEX_REG_MSP_S] = sp_val;
-            regs[CORTEX_REG_MSPLIM_NS] = 0;
-            regs[CORTEX_REG_MSPLIM_S] = 0;
-            regs[CORTEX_REG_PSPLIM_NS] = 0;
-            regs[CORTEX_REG_PSPLIM_S] = 0;
+            cm.reg_write(CORTEX_REG_SP as u32, &sp_val.to_le_bytes());
+            cm.reg_write(CORTEX_REG_MSP as u32, &sp_val.to_le_bytes());
+            cm.reg_write(CORTEX_REG_MSP_NS as u32, &sp_val.to_le_bytes());
+            cm.reg_write(CORTEX_REG_MSP_S as u32, &sp_val.to_le_bytes());
+            cm.reg_write(CORTEX_REG_MSPLIM_NS as u32, &0u32.to_le_bytes());
+            cm.reg_write(CORTEX_REG_MSPLIM_S as u32, &0u32.to_le_bytes());
+            cm.reg_write(CORTEX_REG_PSPLIM_NS as u32, &0u32.to_le_bytes());
+            cm.reg_write(CORTEX_REG_PSPLIM_S as u32, &0u32.to_le_bytes());
         }
     }
-    regs[CORTEX_REG_PC] = loadaddr;
-    regs[CORTEX_REG_XPSR] = CORTEXM_XPSR_THUMB;
-    regs[CORTEX_REG_SPECIAL] = CORTEXM_STUB_SPECIAL;
+    cm.reg_write(CORTEX_REG_PC as u32, &loadaddr.to_le_bytes());
+    cm.reg_write(CORTEX_REG_XPSR as u32, &CORTEXM_XPSR_THUMB.to_le_bytes());
+    cm.reg_write(CORTEX_REG_SPECIAL as u32, &CORTEXM_STUB_SPECIAL.to_le_bytes());
 
-    regs_write(cm, &regs);
     if cm.check_error() {
         return None;
     }
@@ -257,13 +234,15 @@ fn run_stub_ret_internal(
 
     let mut reason = HaltReason::Running;
     let mut timed_out = true;
-    for _ in 0..STUB_TIMEOUT_MS {
+    for i in 0..(STUB_TIMEOUT_MS + 16) {
         reason = cm.halt_poll().0;
         if reason != HaltReason::Running {
             timed_out = false;
             break;
         }
-        delay_ms(1);
+        if i >= 16 {
+            delay_ms(1);
+        }
     }
 
     if timed_out {

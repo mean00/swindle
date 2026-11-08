@@ -185,7 +185,10 @@ impl DmiTransport for CDmiTransport {
         if unsafe { read_fn(ptr, addr as u32, &mut val) } {
             Ok(val)
         } else {
-            Err(DmiError::Fault)
+            let fault = self.dmi_ref().map_or(0, |d| d.fault);
+            Err(crate::platform::wire_error::WireError::check(fault)
+                .err()
+                .map_or(DmiError::Fault, DmiError::from))
         }
     }
 
@@ -201,7 +204,10 @@ impl DmiTransport for CDmiTransport {
         if unsafe { write_fn(ptr, addr as u32, val) } {
             Ok(())
         } else {
-            Err(DmiError::Fault)
+            let fault = self.dmi_ref().map_or(0, |d| d.fault);
+            Err(crate::platform::wire_error::WireError::check(fault)
+                .err()
+                .map_or(DmiError::Fault, DmiError::from))
         }
     }
 

@@ -7,4 +7,5 @@ pub mod session;
 pub mod swd;
 pub mod timing;
 pub mod voltage;
+pub mod wire_error;
 pub use crate::reset_pin;

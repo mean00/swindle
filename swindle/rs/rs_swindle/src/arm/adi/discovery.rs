@@ -56,7 +56,12 @@ pub fn decode_pidr(pidr: u64) -> (u16, u16) {
 /// Read 32-bit CIDR from an AP at component base address.
 pub fn read_cidr(ap: &mut AccessPort, base_addr: u32) -> Result<u32, AdiError> {
     let mut words = [0u8; 16];
-    ap.mem_read_bytes(&mut words, base_addr.wrapping_add(CORESIGHT_ROM_CIDR0 as u32))?;
+    if let Err(e) = ap.mem_read_bytes(&mut words, base_addr.wrapping_add(CORESIGHT_ROM_CIDR0 as u32)) {
+        if !ap.dp.is_null() {
+            unsafe { (*ap.dp).clear_errors(); }
+        }
+        return Err(e);
+    }
     let c0 = words[0] as u32;
     let c1 = words[4] as u32;
     let c2 = words[8] as u32;
@@ -67,7 +72,12 @@ pub fn read_cidr(ap: &mut AccessPort, base_addr: u32) -> Result<u32, AdiError> {
 /// Read 64-bit PIDR from an AP at component base address.
 pub fn read_pidr(ap: &mut AccessPort, base_addr: u32) -> Result<u64, AdiError> {
     let mut words = [0u8; 32];
-    ap.mem_read_bytes(&mut words, base_addr.wrapping_add(CORESIGHT_ROM_PIDR4 as u32))?;
+    if let Err(e) = ap.mem_read_bytes(&mut words, base_addr.wrapping_add(CORESIGHT_ROM_PIDR4 as u32)) {
+        if !ap.dp.is_null() {
+            unsafe { (*ap.dp).clear_errors(); }
+        }
+        return Err(e);
+    }
     let pidr4 = words[0] as u64;
     let pidr0 = words[16] as u64;
     let pidr1 = words[20] as u64;

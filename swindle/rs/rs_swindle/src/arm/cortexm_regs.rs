@@ -5,20 +5,34 @@ use core::ffi::c_void;
 use super::c_seam::{debug_access_setup, dp_reg_read, dp_reg_write};
 use super::cortex::{AccessPort, CORTEXM_TOPT_FLAVOUR_FLOAT, CORTEXM_TOPT_TRUSTZONE};
 use super::cortexm::ap_of;
-use super::cortexm_memaccess::{read32, write32};
 use super::cortexm_registers::*;
 use crate::target::{Target, TargetView};
 
-/// Read the program counter through DCRSR/DCRDR (C `cortexm_pc_read()`).
-pub(super) fn pc_read(target: *mut Target) -> u32 {
-    write32(target, CORTEXM_DCRSR, 0x0f);
-    read32(target, CORTEXM_DCRDR)
+/// Wait until DHCSR.S_REGRDY is set (register transfer complete).
+fn wait_regrdy(ap: *mut AccessPort) {
+    for _ in 0..100 {
+        if let Ok(dhcsr) = dp_reg_read(ap, DB_DHCSR) {
+            if (dhcsr & CORTEXM_DHCSR_S_REGRDY) != 0 {
+                return;
+            }
+        }
+    }
 }
 
-/// Write the program counter through DCRDR/DCRSR (C `cortexm_pc_write()`).
+/// Read the program counter through banked DCRSR/DCRDR (C `cortexm_pc_read()`).
+pub(super) fn pc_read(target: *mut Target) -> u32 {
+    let ap = ap_of(target);
+    let _ = debug_access_setup(ap);
+    let mut value = [0u32; 1];
+    read_reg_sequence(ap, &[0x0f], &mut value);
+    value[0]
+}
+
+/// Write the program counter through banked DCRDR/DCRSR (C `cortexm_pc_write()`).
 pub(super) fn pc_write(target: *mut Target, pc: u32) {
-    write32(target, CORTEXM_DCRDR, pc);
-    write32(target, CORTEXM_DCRSR, CORTEXM_DCRSR_REG_WRITE | 0x0f);
+    let ap = ap_of(target);
+    let _ = debug_access_setup(ap);
+    write_reg_sequence(ap, &[0x0f], &[pc]);
 }
 
 /// How many 32-bit registers the file holds for a target with `options` (C `regs_size` / 4).
@@ -37,6 +51,7 @@ fn reg_count(options: u32) -> usize {
 fn read_reg_sequence(ap: *mut AccessPort, map: &[u8], values: &mut [u32]) {
     for (selector, value) in map.iter().zip(values.iter_mut()) {
         let _ = dp_reg_write(ap, DB_DCRSR, u32::from(*selector));
+        wait_regrdy(ap);
         *value = dp_reg_read(ap, DB_DCRDR).unwrap_or(0);
     }
 }
@@ -46,6 +61,7 @@ fn write_reg_sequence(ap: *mut AccessPort, map: &[u8], values: &[u32]) {
     for (selector, value) in map.iter().zip(values.iter()) {
         let _ = dp_reg_write(ap, DB_DCRDR, *value);
         let _ = dp_reg_write(ap, DB_DCRSR, CORTEXM_DCRSR_REG_WRITE | u32::from(*selector));
+        wait_regrdy(ap);
     }
 }
 
@@ -167,10 +183,14 @@ pub(crate) fn reg_read(
     if data.is_null() || max < core::mem::size_of::<u32>() {
         return 0;
     }
+    let r = dcrsr_regnum(target, reg);
+    if r < 0 {
+        return 0;
+    }
     let ap = ap_of(target);
     unsafe {
         let _ = debug_access_setup(ap);
-        let selector = dcrsr_regnum(target, reg) as u8;
+        let selector = r as u8;
         let mut value = [0u32; 1];
         read_reg_sequence(ap, &[selector], &mut value);
         data.cast::<u32>().write_unaligned(value[0]);
@@ -188,10 +208,14 @@ pub(crate) fn reg_write(
     if data.is_null() || max < core::mem::size_of::<u32>() {
         return 0;
     }
+    let r = dcrsr_regnum(target, reg);
+    if r < 0 {
+        return 0;
+    }
     let ap = ap_of(target);
     unsafe {
         let _ = debug_access_setup(ap);
-        let selector = dcrsr_regnum(target, reg) as u8;
+        let selector = r as u8;
         let value = data.cast::<u32>().read_unaligned();
         write_reg_sequence(ap, &[selector], &[value]);
     }
