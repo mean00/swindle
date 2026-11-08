@@ -263,6 +263,13 @@ bool LN_FAST_CODE sdi_dm_start()
 #define SDI_CONSUME_HW_TIMEOUT() false
 #endif
 
+// ---------------------------------------------------------------
+// Phase 0 instrumentation: global RVSWD/SDI (DMI) transaction counter.
+// Incremented once per complete DMI request/response exchange.
+// Definition lives in bmp_interface_c.cpp (single TU).
+// ---------------------------------------------------------------
+extern "C" volatile uint32_t ln_rv_tx_count;
+
 /**
  * @brief Write one DM register over SDI with explicit wire status.
  * @param adr Register address (7 bits).
@@ -276,6 +283,7 @@ bmp_wire_status_t LN_FAST_CODE sdi_dm_write_status(const uint8_t adr, const uint
         Logger("SDI : write to out-of-range address 0x%02x rejected\n", (unsigned)adr);
         return BMP_WIRE_PROTOCOL_ERR;
     }
+    ln_rv_tx_count++;
     (void)SDI_CONSUME_HW_TIMEOUT();
     sdiFrameWrite(adr, val);
     if (SDI_CONSUME_HW_TIMEOUT())
@@ -357,6 +365,7 @@ bmp_wire_status_t LN_FAST_CODE sdi_dm_read_status(const uint8_t adr, uint32_t *c
         Logger("SDI : read of out-of-range address 0x%02x rejected\n", (unsigned)adr);
         return BMP_WIRE_PROTOCOL_ERR;
     }
+    ln_rv_tx_count++;
     return sdi_read_frame_retried(adr, output);
 }
 

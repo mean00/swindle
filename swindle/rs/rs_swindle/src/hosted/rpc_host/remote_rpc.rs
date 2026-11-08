@@ -39,6 +39,9 @@ pub fn remote_ch32_riscv_dmi_reset_rs() -> bool {
 
 #[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_read_rs(address: u32, value: &mut u32) -> bool {
+    unsafe {
+        crate::hosted::c_stubs::ln_rv_tx_count = crate::hosted::c_stubs::ln_rv_tx_count.wrapping_add(1);
+    }
     let (ok, val) = remote_rv_dm_read(address);
     if ok {
         *value = val;
@@ -48,6 +51,9 @@ pub fn remote_ch32_riscv_dmi_read_rs(address: u32, value: &mut u32) -> bool {
 
 #[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_write_rs(address: u32, value: u32) -> bool {
+    unsafe {
+        crate::hosted::c_stubs::ln_rv_tx_count = crate::hosted::c_stubs::ln_rv_tx_count.wrapping_add(1);
+    }
     let (ok, _val) = remote_rv_dm_write(address, value);
     ok
 }
@@ -60,6 +66,9 @@ pub fn remote_sdi_reset_rs() -> bool {
 
 #[unsafe(no_mangle)]
 pub fn remote_sdi_dm_read_rs(address: u32, value: &mut u32) -> bool {
+    unsafe {
+        crate::hosted::c_stubs::ln_rv_tx_count = crate::hosted::c_stubs::ln_rv_tx_count.wrapping_add(1);
+    }
     let (ok, v) = remote_sdi_dm_read(address);
     if ok {
         *value = v;
@@ -69,6 +78,9 @@ pub fn remote_sdi_dm_read_rs(address: u32, value: &mut u32) -> bool {
 
 #[unsafe(no_mangle)]
 pub fn remote_sdi_dm_write_rs(address: u32, value: u32) -> bool {
+    unsafe {
+        crate::hosted::c_stubs::ln_rv_tx_count = crate::hosted::c_stubs::ln_rv_tx_count.wrapping_add(1);
+    }
     let (ok, _val) = remote_sdi_dm_write(address, value);
     ok
 }

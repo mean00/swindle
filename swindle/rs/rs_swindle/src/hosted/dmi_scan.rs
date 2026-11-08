@@ -110,6 +110,9 @@ const RVSWD_DMI_MAX_ATTEMPTS: u32 = 10;
 /// Used by the unlock sequence, whose steps are unconditional in the reference
 /// implementation: a missing answer only shows up in the chip-id read.
 fn rvswd_dm_access(address: u32, value: Option<u32>, out: &mut u32) {
+    unsafe {
+        crate::hosted::c_stubs::ln_rv_tx_count = crate::hosted::c_stubs::ln_rv_tx_count.wrapping_add(1);
+    }
     match value {
         Some(v) => {
             let _ = crate::hosted::rpc_host_generated::remote_rv_dm_write(address, v);
@@ -129,6 +132,9 @@ unsafe extern "C" fn rvswd_dmi_read(dmi: *mut RiscvDmiC, address: u32, value: *m
         return false;
     }
     for _ in 0..RVSWD_DMI_MAX_ATTEMPTS {
+        unsafe {
+            crate::hosted::c_stubs::ln_rv_tx_count = crate::hosted::c_stubs::ln_rv_tx_count.wrapping_add(1);
+        }
         let (ok, data) = crate::hosted::rpc_host_generated::remote_rv_dm_read(address);
         if ok {
             unsafe {
@@ -150,6 +156,9 @@ unsafe extern "C" fn rvswd_dmi_write(dmi: *mut RiscvDmiC, address: u32, value: u
         return false;
     }
     for _ in 0..RVSWD_DMI_MAX_ATTEMPTS {
+        unsafe {
+            crate::hosted::c_stubs::ln_rv_tx_count = crate::hosted::c_stubs::ln_rv_tx_count.wrapping_add(1);
+        }
         let (ok, _) = crate::hosted::rpc_host_generated::remote_rv_dm_write(address, value);
         if ok {
             unsafe {

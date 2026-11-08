@@ -150,19 +150,30 @@ pub extern "C" fn platform_target_clk_output_enable(enable: bool) {
 }
 
 #[unsafe(no_mangle)]
+pub static mut ln_swd_tx_count: u32 = 0;
+
+#[unsafe(no_mangle)]
+pub static mut ln_rv_tx_count: u32 = 0;
+
+#[unsafe(no_mangle)]
 pub extern "C" fn bmp_mem_counts_c(swd: *mut u32, rv: *mut u32) {
     unsafe {
         if !swd.is_null() {
-            *swd = 0;
+            *swd = ln_swd_tx_count;
         }
         if !rv.is_null() {
-            *rv = 0;
+            *rv = ln_rv_tx_count;
         }
     }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn bmp_mem_counts_reset_c() {}
+pub extern "C" fn bmp_mem_counts_reset_c() {
+    unsafe {
+        ln_swd_tx_count = 0;
+        ln_rv_tx_count = 0;
+    }
+}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn min_free_heap_c() -> usize {
