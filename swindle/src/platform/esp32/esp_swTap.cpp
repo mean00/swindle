@@ -7,9 +7,7 @@
 #include "lnBMP_pinout.h"
 extern "C"
 {
-#include "adiv5.h"
-#include "general.h"
-#include "timing.h"
+#include "platform_support.h"
 }
 #include "bmp_pinmode.h"
 #include "lnBMP_pinout.h"

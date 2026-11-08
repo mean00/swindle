@@ -28,7 +28,6 @@ pub mod breakpoints;
 mod flash;
 mod memory;
 pub mod mon;
-mod mon_ch32vxx;
 mod mon_rtt;
 pub mod q;
 pub mod q_thread;
@@ -61,23 +60,21 @@ pub enum CallbackType {
 //
 //#[derive(Sized)]
 /// A single entry in the GDB command dispatch tree.
+///
+/// The fields are public so that target driver crates can declare their own
+/// `mon` commands (see `RustRiscvTargetDriver::commands()`).
 pub struct CommandTree {
-    command: &'static str,
-    min_args: usize,
-    require_connected: bool,
-    cb: CallbackType, // string + strings
+    pub command: &'static str,
+    pub min_args: usize,
+    pub require_connected: bool,
+    pub cb: CallbackType, // string + strings
     // this is the separator (if any) after the command
     // for example for vCont:A, it is ':'
-    start_separator: u8,
+    pub start_separator: u8,
     // this is the separator between next args
     // for example vCont:A,B,C it is ','
-    next_separator: u8,
-}
-//
-/// A help entry mapping a command to its description.
-pub struct HelpTree {
-    command: &'static str,
-    help: &'static str,
+    pub next_separator: u8,
+    pub help: &'static str,
 }
 //
 const main_command_tree: [CommandTree; 23] = [
@@ -88,6 +85,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_qStartNoAckMode),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "!",
@@ -96,6 +94,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_extendedMode),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // enable extended mode
     CommandTree {
         command: "T",
@@ -104,6 +103,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(q_thread::_T),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // enable extended mode
     CommandTree {
         command: "Hg",
@@ -112,6 +112,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(q_thread::_Hg),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // select thread
     CommandTree {
         command: "Hc",
@@ -120,6 +121,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_Hc),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, //
     CommandTree {
         command: "vCont", // vCont;c
@@ -128,6 +130,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_vCont),
         start_separator: b';',
         next_separator: b';',
+        help: "",
     },
     CommandTree {
         command: "vFlash",
@@ -136,6 +139,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::raw(_flashv),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // test
     CommandTree {
         command: "v",
@@ -144,6 +148,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::raw(_v),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // test
     CommandTree {
         command: "q",
@@ -152,6 +157,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::raw(_q),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // see q commands in commands/q.rs
     CommandTree {
         command: "g",
@@ -160,6 +166,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_g),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // read registers
     CommandTree {
         command: "?",
@@ -168,6 +175,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_mark),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // reason for halt
     CommandTree {
         command: "X",
@@ -176,6 +184,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::raw(_X), // addr,length:XX…’  X2000000;4:4
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // write binary
     CommandTree {
         command: "m",
@@ -184,6 +193,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_m), // m2000000,4
         start_separator: 0,
         next_separator: b',',
+        help: "",
     }, // read memory
     CommandTree {
         command: "p",
@@ -192,6 +202,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_p),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // read register
     CommandTree {
         // Pf=123
@@ -201,6 +212,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_P),
         start_separator: 0,
         next_separator: b'=',
+        help: "",
     }, // write register
     CommandTree {
         command: "z",
@@ -209,6 +221,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_z), // breakpoint (remove) ‘z type,addr,kind’
         start_separator: 0,
         next_separator: b',',
+        help: "",
     }, // read memory
     CommandTree {
         command: "Z",
@@ -217,6 +230,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_Z), // breakpoint (set) '‘Z type,addr,kind’'
         start_separator: 0,
         next_separator: b',',
+        help: "",
     },
     CommandTree {
         command: "R",
@@ -225,6 +239,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_R), // restart
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "r",
@@ -233,6 +248,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_R), // reset the whole system
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "s",
@@ -241,6 +257,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_s), // single step
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "k",
@@ -249,6 +266,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_k), // kill
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "c",
@@ -257,6 +275,7 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_c), // resume c[addr]
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "D",
@@ -265,16 +284,31 @@ const main_command_tree: [CommandTree; 23] = [
         cb: CallbackType::text(_D), // detach
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
 ];
 /// Execute a single command by matching it against a dispatch tree.
 ///
+/// When `partial_match` is `false`, the command token must end at `c.command.len()`
+/// or be followed by `b' '` (or `c.start_separator` when non-zero).
+///
 /// Returns `true` if the command was recognised and handled.
 #[unsafe(no_mangle)]
-pub fn exec_one(tree: &[CommandTree], command: &[u8]) -> bool {
+pub fn exec_one(tree: &[CommandTree], command: &[u8], partial_match: bool) -> bool {
     let connected: bool = bmp::bmp_attached();
     for c in tree {
         if command.starts_with(c.command.as_bytes()) {
+            if !partial_match {
+                let n = c.command.len();
+                let sep = if c.start_separator != 0 {
+                    c.start_separator
+                } else {
+                    b' '
+                };
+                if command.len() > n && command[n] != sep && command[n] != b' ' {
+                    continue;
+                }
+            }
             if !connected && c.require_connected {
                 gdb_print!(
                     "The following command  cannot be used while not connected :<",
@@ -324,7 +358,7 @@ pub fn exec_one(tree: &[CommandTree], command: &[u8]) -> bool {
 /// If the command is not recognised, sends an empty reply (unsupported).
 #[unsafe(no_mangle)]
 pub fn exec(command: &[u8]) {
-    if !exec_one(&main_command_tree, command) {
+    if !exec_one(&main_command_tree, command, true) {
         encoder::simple_send(""); // unsupported
         bmplog!("Unsupported cmd\n");
     }

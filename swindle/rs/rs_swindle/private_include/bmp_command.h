@@ -4,10 +4,7 @@
 typedef void target_s;
 // typedef int bool;
 
-bool bmp_custom_crc32_c(uint32_t adr, uint32_t size_in_bytes, uint32_t *crc);
 const unsigned char *bmp_get_driver_name_c();
-bool bmp_ch32v3xx_write_user_option_byte_c(uint8_t memory_conf);
-uint8_t bmp_ch32v3xx_read_user_option_byte_c();
 
 void bmp_set_wait_state_c(unsigned int ws); // this is used to set the clock on SWD
 unsigned int bmp_get_wait_state_c();        // this is used to set the clock on SWD
@@ -15,8 +12,9 @@ unsigned int bmp_get_wait_state_c();        // this is used to set the clock on 
 void bmp_set_frequency_c(unsigned int fs); // this is used to set the clock on SWD
 unsigned int bmp_get_frequency_c();        // this is used to set the clock on SWD
 
-bool cmd_swd_scan(const target_s *t, int argc, const unsigned char **argv);
-bool cmd_rvswd_scan(const target_s *t, int argc, const unsigned char **argv);
+bool swdp_scan(void);
+bool rvswdp_scan(void);
+bool sdi_scan(void);
 void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
 
 bool bmp_attach_c(uint32_t target);
@@ -49,18 +47,10 @@ bool bmp_crc32_c(const unsigned int address, unsigned int length, unsigned int *
 
 bool bmp_reset_target_c();
 void rv_dm_start_c();
-bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
-bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len);
 bool bmp_target_halt_resume_c(bool step);
 bool bmp_target_halt_c();
 
 unsigned int bmp_poll_target_c(unsigned int *watchpoint);
-
-bool bmp_rpc_init_swd_c();
-bool bmp_rpc_swd_in_c(uint32_t *value, const unsigned int nb_bits);
-bool bmp_rpc_swd_in_par_c(uint32_t *value, bool *par, const unsigned int nb_bits);
-bool bmp_rpc_swd_out_c(const uint32_t value, const unsigned int nb_bits);
-bool bmp_rpc_swd_out_par_c(const uint32_t value, const unsigned int nb_bits);
 //
 bool bmp_mem_read_c(uint32_t address, uint32_t len, uint8_t *data);
 bool bmp_mem_write_c(uint32_t address, uint32_t len, const uint8_t *data);
@@ -75,21 +65,6 @@ void bmp_mem_counts_c(uint32_t *swd, uint32_t *rv);
 void bmp_mem_counts_reset_c();
 // SDI wire timing ('mon sdi_wire'): ns overrides, 0 leaves the SDI tap's default.
 void bmp_set_sdi_wire_c(uint32_t tbit_ns, uint32_t low1_ns, uint32_t low0_ns, uint32_t sample_ns, bool no_trim);
-//
-bool bmp_adiv5_full_dp_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint16_t address,
-                              int32_t *err, uint32_t *value);
-bool bmp_adiv5_full_dp_low_level_c(const uint32_t device_index, const uint32_t ap_selection, const uint16_t address,
-                                   const uint32_t value, int32_t *err, uint32_t *outvalue);
-
-uint32_t bmp_adiv5_ap_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address);
-void bmp_adiv5_ap_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t address,
-                          uint32_t value);
-
-int32_t bmp_adiv5_mem_read_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
-                             const uint32_t address, uint8_t *buffer, uint32_t len);
-
-int32_t bmp_adiv5_mem_write_c(const uint32_t device_index, const uint32_t ap_selection, const uint32_t csw,
-                              const uint32_t address, const uint32_t align, const uint8_t *buffer, uint32_t len);
 void swindleRedirectLog_c(bool onoff);
 
 // platform
@@ -128,10 +103,8 @@ void platform_write_flush();
 
 // adiv
 void bmp_clear_dp_fault_c();
+uint32_t bmp_get_dp_fault_c();
 
-bool bmp_adiv5_swd_write_no_check_c(const uint16_t addr, const uint32_t data);
-uint32_t bmp_adiv5_swd_read_no_check_c(const uint16_t addr);
-void bmp_raw_swd_write_c(uint32_t tick, uint32_t value);
 uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t addr, const uint32_t value, uint32_t *fault);
 #include "bmp_rtt_command.h"
 void bmp_rtt_get_info_c(rttInfo *info);
@@ -142,8 +115,6 @@ int bmp_execute_with_catch_c(void (*callback)(void *), void *ctx);
 void bmp_enable_reset_pin_c(bool enabled);
 void bmp_breakpoint_watchpoint_count_c(uint32_t *brk, uint32_t *wtch);
 bool bmp_has_hw_breakpoint_c();
-bool target_has_mw_helpers(void);
-uint32_t target_mw_page_size(void);
 /*
  * Warning this define is duplicated in  blackmagic/.../include/target.h
  */

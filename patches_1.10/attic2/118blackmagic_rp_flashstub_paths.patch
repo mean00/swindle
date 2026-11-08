@@ -1,0 +1,35 @@
+# Point the RP2040/RP2350 CRC stub includes at the Rust crates that now own the images.
+#
+# The stub sources, their generator scripts and the generated `.stub` arrays moved out of
+# `blackmagic_addon/flashstub` into the crates whose drivers load them:
+#   rp2040_crc32.{c,stub}  -> swindle/rs/rs_targets/rs_rp_common/src/flashstub/
+#   rp_crc32_riscv.{c,stub} -> swindle/rs/rs_targets/rs_rp2350_common/flashstub/
+# So the flashstub tooling in swindle/rs never reaches into the blackmagic tree any more
+# (patches 60 and 114 created the old paths).
+#
+diff --git a/src/target/rp2040.c b/src/target/rp2040.c
+--- a/src/target/rp2040.c
++++ b/src/target/rp2040.c
+@@ -741,7 +741,7 @@
+ 	return true;
+ }
+ 
+-#include "../../../blackmagic_addon/flashstub/rp2040_crc32.stub"
++#include "../../../swindle/rs/rs_targets/rs_rp_common/src/flashstub/rp2040_crc32.stub"
+ #define RP_CRC_STUB_ADDR 0x20000000
+ //#define RP_CRC_STUB_ADDR 0x20040000 // scratch
+ 
+diff --git a/src/target/rp2350.c b/src/target/rp2350.c
+--- a/src/target/rp2350.c
++++ b/src/target/rp2350.c
+@@ -157,8 +157,8 @@
+ 		rp2350_spi_resume(target);
+ }
+ 
+-#include "../../../blackmagic_addon/flashstub/rp2040_crc32.stub"
+-#include "../../../blackmagic_addon/flashstub/rp_crc32_riscv.stub"
++#include "../../../swindle/rs/rs_targets/rs_rp_common/src/flashstub/rp2040_crc32.stub"
++#include "../../../swindle/rs/rs_targets/rs_rp2350_common/flashstub/rp_crc32_riscv.stub"
+ 
+ /* SRAM the CRC stub is parked in; the DMA writes its single byte at the first word. */
+ #define RP2350_CRC_STUB_ADDR RP2350_SRAM_BASE

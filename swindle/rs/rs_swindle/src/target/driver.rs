@@ -1,5 +1,7 @@
 //! Target driver trait and core execution / control types.
 
+use super::breakwatch::Breakwatch;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum HaltReason {
@@ -38,6 +40,25 @@ pub enum BreakwatchType {
     WatchAccess = 4,
 }
 
+impl BreakwatchType {
+    /// Decode the numeric tag GDB uses in its `Z`/`z` packets (C `target_breakwatch_e`).
+    pub const fn from_int(value: u32) -> Option<Self> {
+        match value {
+            0 => Some(Self::BreakSoft),
+            1 => Some(Self::BreakHard),
+            2 => Some(Self::WatchWrite),
+            3 => Some(Self::WatchRead),
+            4 => Some(Self::WatchAccess),
+            _ => None,
+        }
+    }
+
+    /// True for the types a hardware trigger unit can implement.
+    pub const fn is_hardware(self) -> bool {
+        !matches!(self, Self::BreakSoft)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetError {
     NotAttached,
@@ -45,6 +66,10 @@ pub enum TargetError {
     Timeout,
     Unsupported,
     InternalError,
+    /// The resource the request needs (e.g. a hardware comparator) is exhausted.
+    NoResources,
+    /// The entry a clear request names is not armed.
+    NotFound,
 }
 
 /// Abstract driver interface for target CPU operations.
@@ -96,4 +121,24 @@ pub trait TargetDriver {
 
     /// Detach from target core.
     fn detach(&mut self);
+
+    /// Arm a hardware breakpoint/watchpoint.
+    ///
+    /// The driver owns the bookkeeping: it allocates the comparator slot, records
+    /// the entry in its own table and programs the unit, then reports the slot in
+    /// `breakwatch.slot()`. Targets without a trigger unit keep the default.
+    fn breakwatch_set(&mut self, breakwatch: &mut Breakwatch) -> Result<(), TargetError> {
+        let _ = breakwatch;
+        Err(TargetError::Unsupported)
+    }
+
+    /// Disarm a trigger previously armed through [`TargetDriver::breakwatch_set`],
+    /// freeing its comparator slot. `breakwatch` carries the identity of the entry.
+    fn breakwatch_clear(&mut self, breakwatch: &Breakwatch) -> Result<(), TargetError> {
+        let _ = breakwatch;
+        Err(TargetError::Unsupported)
+    }
+
+    /// Drop every armed trigger and release its comparator (detach path).
+    fn breakwatch_clear_all(&mut self) {}
 }

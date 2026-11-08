@@ -11,6 +11,7 @@ use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
 use rust_esprit::EventGroup;
 use rust_esprit::delay_ms;
 
+use crate::SyncCell;
 use crate::bmp;
 use crate::rtt;
 
@@ -93,7 +94,8 @@ pub struct GdbCdc {
 }
 
 // The GdbCdc lives here — pinned for the lifetime of the USB stack.
-static mut GDB_CDC: core::mem::MaybeUninit<GdbCdc> = core::mem::MaybeUninit::uninit();
+static GDB_CDC: SyncCell<core::mem::MaybeUninit<GdbCdc>> =
+    SyncCell::new(core::mem::MaybeUninit::uninit());
 static GDB_CDC_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 // GdbCdc is safe to access from a single task (FreeRTOS task context).
@@ -110,7 +112,7 @@ impl GdbCdc {
 
         // Write placeholder into static first (avoids Drop running on stack copy)
         unsafe {
-            GDB_CDC.write(GdbCdc {
+            (*GDB_CDC.as_ptr()).write(GdbCdc {
                 cdc: core::mem::zeroed(),
                 event_group: EventGroup::uninit(),
                 in_session: AtomicBool::new(false),
@@ -129,7 +131,7 @@ impl GdbCdc {
 
     /// Get a mutable reference to the global GDB CDC instance.
     fn instance() -> &'static mut GdbCdc {
-        unsafe { &mut *GDB_CDC.as_mut_ptr() }
+        unsafe { (*GDB_CDC.as_ptr()).assume_init_mut() }
     }
 
     /// Take ownership of the event group (must be called from the task that owns it).

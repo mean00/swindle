@@ -1,0 +1,156 @@
+diff --git a/src/target/cortexm.c b/src/target/cortexm.c
+--- a/src/target/cortexm.c
++++ b/src/target/cortexm.c
+@@ -427,132 +427,11 @@
+ 
+ 	DEBUG_TARGET("%s: Examining Part ID 0x%04x, AP Part ID: 0x%04x\n", __func__, target->part_id, ap->partno);
+ 
+-	switch (target->designer_code) {
+-	case JEP106_MANUFACTURER_FREESCALE:
+-		PROBE(imxrt_probe);
+-		PROBE(kinetis_probe);
+-		PROBE(s32k3xx_probe);
+-		PROBE(ke04_probe);
+-		break;
+-	case JEP106_MANUFACTURER_GIGADEVICE:
+-		PROBE(gd32f1_probe);
+-		PROBE(gd32f4_probe);
+-		break;
+-	case JEP106_MANUFACTURER_STM:
+-		PROBE(stm32f1_probe);
+-		PROBE(stm32f4_probe);
+-		PROBE(stm32h5_probe);
+-		PROBE(stm32h7_probe);
+-		PROBE(stm32h7rs_probe);
+-		PROBE(stm32mp15_cm4_probe);
+-		PROBE(stm32l0_probe);
+-		PROBE(stm32l1_probe);
+-		PROBE(stm32l4_probe);
+-		PROBE(stm32g0_probe);
+-		PROBE(stm32wb0_probe);
+-		PROBE(stm32c5_probe);
+-		break;
+-	case JEP106_MANUFACTURER_CYPRESS:
+-		DEBUG_WARN("Unhandled Cypress device\n");
+-		break;
+-	case JEP106_MANUFACTURER_INFINEON:
+-		DEBUG_WARN("Unhandled Infineon device\n");
+-		break;
+-	case JEP106_MANUFACTURER_NORDIC:
+-		PROBE(nrf51_probe);
+-		PROBE(nrf54l_probe);
+-		PROBE(nrf91_probe);
+-		break;
+-	case JEP106_MANUFACTURER_ATMEL:
+-		PROBE(samx7x_probe);
+-		PROBE(sam4l_probe);
+-		PROBE(samd_probe);
+-		PROBE(samx5x_probe);
+-		break;
+-	case JEP106_MANUFACTURER_ENERGY_MICRO:
+-		PROBE(efm32_probe);
+-		break;
+-	case JEP106_MANUFACTURER_TEXAS:
+-		PROBE(msp432p4_probe);
+-		PROBE(mspm0_probe);
+-		break;
+-	case JEP106_MANUFACTURER_SPECULAR:
+-		PROBE(lpc11xx_probe); /* LPC845 */
+-		break;
+-	case JEP106_MANUFACTURER_RASPBERRY:
+-		PROBE(rp2040_probe);
+-		PROBE(rp2350_probe);
+-		break;
+-	case JEP106_MANUFACTURER_RENESAS:
+-		PROBE(renesas_ra_probe);
+-		break;
+-	case JEP106_MANUFACTURER_WCH:
+-		PROBE(ch579_probe);
+-		break;
+-	case JEP106_MANUFACTURER_NXP:
+-		if ((target->cpuid & CORTEX_CPUID_PARTNO_MASK) == CORTEX_M33)
+-			PROBE(lpc55xx_probe);
+-		else
+-			DEBUG_WARN("Unhandled NXP device\n");
+-		break;
+-	case JEP106_MANUFACTURER_ARM_CHINA:
+-		PROBE(mm32f3xx_probe); /* MindMotion Star-MC1 */
+-		break;
+-	case JEP106_MANUFACTURER_ARM:
+-		/*
+-		 * All of these have braces as a brake from the standard so they're completely
+-		 * consistent and easier to add new probe calls to.
+-		 */
+-		if (target->part_id == 0x4c0U) {        /* Cortex-M0+ ROM */
+-			PROBE(lpc11xx_probe);               /* LPC8 */
+-			PROBE(hc32l110_probe);              /* HDSC HC32L110 */
+-			PROBE(puya_probe);                  /* Puya PY32 */
+-		} else if (target->part_id == 0x4c1U) { /* NXP Cortex-M0+ ROM */
+-			PROBE(lpc11xx_probe);               /* newer LPC11U6x */
+-		} else if (target->part_id == 0x4c3U) { /* Cortex-M3 ROM */
+-			PROBE(lmi_probe);
+-			PROBE(ch32f1_probe);
+-			PROBE(stm32f1_probe);               /* Care for other STM32F1 clones (?) */
+-			PROBE(lpc15xx_probe);               /* Thanks to JojoS for testing */
+-			PROBE(mm32f3xx_probe);              /* MindMotion MM32 */
+-		} else if (target->part_id == 0x471U) { /* Cortex-M0 ROM */
+-			PROBE(lpc11xx_probe);               /* LPC24C11 */
+-			PROBE(lpc43xx_probe);
+-			PROBE(mm32l0xx_probe);              /* MindMotion MM32 */
+-		} else if (target->part_id == 0x4c4U) { /* Cortex-M4 ROM */
+-			PROBE(sam3x_probe);
+-			PROBE(lmi_probe);
+-			PROBE(apollo_3_probe);
+-			/*
+-			 * The LPC546xx and LPC43xx parts present with the same AP ROM part number,
+-			 * so we need to probe both. Unfortunately, when probing for the LPC43xx
+-			 * when the target is actually an LPC546xx, the memory location checked
+-			 * is illegal for the LPC546xx and puts the chip into lockup, requiring a
+-			 * reset pulse to recover. Instead, make sure to probe for the LPC546xx first,
+-			 * which experimentally doesn't harm LPC43xx detection.
+-			 */
+-			PROBE(lpc546xx_probe);
+-			PROBE(lpc43xx_probe);
+-			PROBE(at32f40x_probe);
+-			PROBE(at32f43x_probe); /* AT32F435 doesn't survive LPC40xx IAP */
+-			PROBE(lpc40xx_probe);
+-			PROBE(kinetis_probe); /* Older K-series */
+-			PROBE(msp432e4_probe);
+-		} else if (target->part_id == 0x4cbU) { /* Cortex-M23 ROM */
+-			PROBE(gd32f1_probe);                /* GD32E23x uses GD32F1 peripherals */
+-		}
+-		break;
+-	case ASCII_CODE_FLAG:
+-		/*
+-		 * these devices enumerate an AP with an empty ascii code,
+-		 * and have no available designer code elsewhere
+-		 */
+-		PROBE(sam3x_probe);
+-		PROBE(ke04_probe);
+-		PROBE(lpc17xx_probe);
+-		PROBE(lpc11xx_probe); /* LPC1343 */
+-		break;
+-	}
++	/* Which driver gets the target is the probe chain of the ARM drivers: the Rust module
++	 * `arm_probe_chain` (rs_swindle_wrapper/src/arm_probe_chain.rs) holds the designer/part-id
++	 * table and calls back into the C probes of the families that are not ported to Rust yet. */
++	if (cortexm_probe_chain(target))
++		return true;
+ #if NOT_USED_HERE_CONFIG_BMDA == 0
+ 	gdb_outf("Please report unknown device with Designer 0x%x Part ID 0x%x\n", target->designer_code, target->part_id);
+ #else
+diff --git a/src/target/target_probe.h b/src/target/target_probe.h
+--- a/src/target/target_probe.h
++++ b/src/target/target_probe.h
+@@ -25,6 +25,11 @@
+ 
+ /* -- MEANX -- */
+ void bmp_tweak_options(uint32_t *opt);
++/*
++ * Probe chain of the Cortex-M drivers: which driver gets to look at a target. Implemented in
++ * Rust (rs_swindle_wrapper/src/arm_probe_chain.rs); it calls the probes declared below.
++ */
++bool cortexm_probe_chain(target_s *target);
+ 
+ #define STRINGIFY(x) #x
+ /* Probe launch macro used by the CPU-generic layers to then call CPU-specific routines safely */

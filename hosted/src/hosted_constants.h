@@ -19,6 +19,9 @@ static constexpr uint16_t USB_PID_SWINDLE_PICO = 0x6050;  // RP2040 "pSwindle"
 // Serial communication configuration
 static constexpr int SERIAL_BAUD_RATE = 115200;
 static constexpr int SERIAL_WAIT_TIMEOUT_MS = 10;
+// Only used when QSerialPort had to buffer a partial write; waiting for the
+// write notification with an empty buffer just burns the whole timeout.
+static constexpr int SERIAL_WRITE_DRAIN_TIMEOUT_MS = 50;
 static constexpr int SERIAL_BUFFER_SIZE = 512;
 static constexpr int PLATFORM_BUFFER_SIZE = 512;
 

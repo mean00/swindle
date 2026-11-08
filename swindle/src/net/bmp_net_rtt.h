@@ -8,11 +8,8 @@
 
 extern "C"
 {
-#include "exception.h"
+#include "platform_support.h"
 #include "gdb_main.h"
-#include "gdb_packet.h"
-#include "general.h"
-#include "target.h"
 #include "version.h"
 }
 #include "bmp_net.h"

@@ -57,7 +57,7 @@ extern "C" SWINDLE_FAST_IO uint32_t ln_adiv5_swd_read_no_check(const uint16_t ad
     uint32_t data = zread(32);
     bool parity = lnOddParity(data);
     const bool rd = zread(2) & 1; // parity + read
-    if (rd != parity)
+    if (res == SWD_ACK_OK && rd != parity)
     {
         Logger("swd_read: wrong parity\n");
     }
@@ -84,12 +84,9 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
         {
             DEBUG_ERROR("SWD access resulted in fault, retrying\n");
             /* On fault, abort the request and repeat */
-            /* Yes, this is self-recursive.. no, we can't think of a better option */
-            //        swdptap_turnaround(SWDIO_STATUS_DRIVE);
             zread(1); // turn
             DIR_OUTPUT();
-            //        switch_to_output();
-            adiv5_dp_write(dp, ADIV5_DP_ABORT,
+            ln_adiv5_swd_write_no_check(ADIV5_DP_ABORT,
                            ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
                                ADIV5_DP_ABORT_STKCMPCLR);
         }
@@ -103,7 +100,7 @@ static bool SWINDLE_FAST_IO sendHeader(const uint8_t request, adiv5_debug_port_s
     if (ack == SWD_ACK_WAIT)
     {
         DEBUG_ERROR("SWD access resulted in wait, aborting\n");
-        dp->abort(dp, ADIV5_DP_ABORT_DAPABORT);
+        ln_adiv5_swd_write_no_check(ADIV5_DP_ABORT, ADIV5_DP_ABORT_DAPABORT);
         dp->fault = ack;
         return false;
     }

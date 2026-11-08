@@ -1,6 +1,6 @@
 /**
  * @file swd_tap_stubs.cpp
- * @brief SWD TAP stub initialisation (shared across platforms)
+ * @brief Shared SWD request-byte encoder
  */
 
 /*
@@ -36,38 +36,20 @@ Original license header
 #include "esprit.h"
 extern "C"
 {
-#include "adiv5.h"
-#include "general.h"
-#include "timing.h"
+#include "platform_support.h"
 }
 
-static uint32_t SwdRead(size_t len)
+extern "C" uint8_t make_packet_request(const uint8_t rnw, const uint16_t addr)
 {
-    xAssert(0);
-    return 0;
-}
-static bool SwdRead_parity(uint32_t *ret, size_t len)
-{
-    xAssert(0);
-    return true;
-}
-static void SwdWrite(uint32_t MS, size_t ticks)
-{
-    xAssert(0);
-}
-static void SwdWrite_parity(uint32_t MS, size_t ticks)
-{
-    xAssert(0);
-}
-/**
-
-*/
-swd_proc_s swd_proc;
-extern "C" void swdptap_init_stubs()
-{
-    swd_proc.seq_in = SwdRead;
-    swd_proc.seq_in_parity = SwdRead_parity;
-    swd_proc.seq_out = SwdWrite;
-    swd_proc.seq_out_parity = SwdWrite_parity;
+    uint8_t request = 0x81U;
+    if (addr & ADIV5_APnDP)
+        request ^= 0x22U;
+    if (rnw)
+        request ^= 0x24U;
+    const uint8_t reg = addr & 0x0cU;
+    request |= (reg << 1U) & 0x18U;
+    if (reg == 4U || reg == 8U)
+        request ^= 0x20U;
+    return request;
 }
 // EOF

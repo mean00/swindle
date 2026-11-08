@@ -24,6 +24,7 @@ use crate::packet_symbols::{
     CHAR_END, CHAR_ESCAPE, CHAR_RESET_04, CHAR_START, RPC_END, RPC_START, RPC_START_SESSION,
 };
 use crate::parsing_util::ascii_octet_to_hex;
+use crate::rpc_wire::{ESCAPE_XOR, RPC_ESCAPE};
 //
 setup_log!(false);
 //use crate::{bmplog, bmpwarning};
@@ -80,6 +81,8 @@ pub struct gdb_stream<const INPUT_BUFFER_SIZE: usize> {
     indx: usize,
     checksum: usize,
     checksum_received: [u8; 2],
+    /// An RPC body byte arrived escaped (`}` prefix): XOR the next one.
+    escaped: bool,
 }
 impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
     /// Create a new decoder in the `Idle` state.
@@ -91,6 +94,7 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
             indx: 0,
             checksum: 0,               // only 1 byte is actually used
             checksum_received: [0, 0], // 2 Hex digits
+            escaped: false,
         }
     }
     /// Mark the decoder as available or unavailable.
@@ -115,6 +119,7 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
         self.indx = 0;
         self.checksum = 0;
         self.checksum_received = [0, 0];
+        self.escaped = false;
     }
     /// Reset the automaton to `Idle` without clearing the buffer.
     pub fn reset(&mut self) {
@@ -175,6 +180,7 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
                                                 RPC_START  /* '!' */    => {
                                                                             bmplog!("rpc start\n");
                                                                             self.indx=0;
+                                                                            self.escaped=false;
                                                                             PARSER_AUTOMATON::RpcBody
                                                                             },
                                                 _                       => PARSER_AUTOMATON::Idle,
@@ -191,18 +197,31 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
                     bmplog!("RPC_body\n");
                     match c
                                             {
-                                                RPC_END /*'$'*/         => {
+                                                // `}` escapes the next body byte (XOR 0x20): the
+                                                // CBOR payload is binary, so `#`, `!`, `$`, `{`
+                                                // and `}` itself only ever arrive escaped.
+                                                RPC_ESCAPE if !self.escaped => {
+                                                                        self.escaped = true;
+                                                                        PARSER_AUTOMATON::RpcBody
+                                                                        },
+                                                RPC_END /*'#'*/ if !self.escaped => {
                                                                         bmplog!("rpc done( {} )\n",self.indx);
                                                                         PARSER_AUTOMATON::RpcDone
                                                                         },
-                                                RPC_START /*'#'*/       => {self.indx=0;PARSER_AUTOMATON::RpcBody},  // restart ? wtf ?
+                                                RPC_START /*'!'*/ if !self.escaped => {self.indx=0;PARSER_AUTOMATON::RpcBody},  // restart ? wtf ?
                                                 _                       => {
+                                                                        let byte = if self.escaped {
+                                                                            self.escaped = false;
+                                                                            c ^ ESCAPE_XOR
+                                                                        } else {
+                                                                            c
+                                                                        };
                                                                         if self.indx >= INPUT_BUFFER_SIZE
                                                                         {
                                                                             bmplog!("RPC input buffer overflow\n");
                                                                             PARSER_AUTOMATON::Error
                                                                         }else {
-                                                                            self.input_buffer[self.indx]= c;
+                                                                            self.input_buffer[self.indx]= byte;
                                                                             self.indx+=1;
                                                                             PARSER_AUTOMATON::RpcBody
                                                                         }
@@ -299,5 +318,68 @@ impl<const INPUT_BUFFER_SIZE: usize> gdb_stream<INPUT_BUFFER_SIZE> {
     }
 }
 //
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::format;
+    use std::vec::Vec;
+    use crate::rpc_wire::escape_and_send;
+
+    /// Run a whole frame through the automaton the way `run_parser()` does and
+    /// return what a completed packet decodes to.
+    fn payload(mut frame: &[u8]) -> (Vec<u8>, RESULT_AUTOMATON) {
+        let mut stream = gdb_stream::<256>::new();
+        let mut out = Vec::new();
+        let mut outcome = RESULT_AUTOMATON::Continue;
+        while !frame.is_empty() {
+            let (consumed, result) = stream.parse(frame);
+            assert!(consumed > 0, "the automaton must always make progress");
+            if matches!(result, RESULT_AUTOMATON::Ready | RESULT_AUTOMATON::RpcReady) {
+                out = stream.get_result().to_vec();
+                outcome = result;
+            }
+            frame = &frame[consumed..];
+        }
+        (out, outcome)
+    }
+
+    #[test]
+    fn rpc_body_unescapes_the_frame_markers() {
+        // A CBOR payload is binary: every marker below has to come back as-is.
+        let data = [0x23u8, 0x21, 0x7d, 0x24, 0x7b, 0x00, 0xff];
+        let mut frame = Vec::from(*b"!GZ");
+        escape_and_send(&data, &mut |chunk| frame.extend_from_slice(chunk));
+        frame.push(RPC_END);
+        frame.extend_from_slice(b"9A"); // the hex checksum, ignored by the RPC path
+
+        let (body, outcome) = payload(&frame);
+        assert!(matches!(outcome, RESULT_AUTOMATON::RpcReady));
+        let mut expected = Vec::from(*b"GZ");
+        expected.extend_from_slice(&data);
+        assert_eq!(body, expected);
+    }
+
+    #[test]
+    fn rpc_body_restarts_on_an_unescaped_start_marker() {
+        // `!` inside the body (unescaped) restarts the packet, so only what
+        // follows it survives — the host always escapes it.
+        let mut frame = Vec::from(*b"!GZjunk!GZ");
+        frame.push(RPC_END);
+        let (body, outcome) = payload(&frame);
+        assert!(matches!(outcome, RESULT_AUTOMATON::RpcReady));
+        assert_eq!(body, Vec::from(*b"GZ"));
+    }
+
+    #[test]
+    fn gdb_packets_are_unaffected() {
+        let body = b"OK";
+        let checksum: u8 = body.iter().fold(0u8, |sum, byte| sum.wrapping_add(*byte));
+        let frame = format!("${}#{checksum:02x}", "OK");
+        let (packet, outcome) = payload(frame.as_bytes());
+        assert!(matches!(outcome, RESULT_AUTOMATON::Ready));
+        assert_eq!(packet, body.to_vec());
+    }
+}
 
 // EOF

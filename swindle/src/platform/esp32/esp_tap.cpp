@@ -18,12 +18,15 @@
 spi_device_handle_t esp_spi_handle = NULL;
 uint32_t esp_spi_speed = 10000;
 
+extern "C" void bmp_clear_dp_fault_c();
+
 /*
  *
  *
  */
 extern "C" void swdptap_init()
 {
+    bmp_clear_dp_fault_c();
 }
 /*
  *

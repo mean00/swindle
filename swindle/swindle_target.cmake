@@ -8,8 +8,15 @@ else()
   set(EXTRA _ln)
 endif()
 set(BRIDGE_SRCS
-      ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_jtagstubs.cpp ${B}/bmp_reset_pin.cpp ${B}/bmp_helpers.cpp
+      ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_reset_pin.cpp
       CACHE INTERNAL "")
+# Target nRST: driven in Rust on every board that has a table
+# (rs_swindle_board's ln::/rp2xxx::reset_pin — GD32/CH32 and RP2040/RP2350). The
+# ESP32 is the last platform that still goes through the C++ SwdReset (pReset), and
+# that is the only build that may define these symbols and the class.
+if("${LN_MCU}" STREQUAL "ESP32")
+  list(APPEND BRIDGE_SRCS ${B}/bmp_nrst_c.cpp ${B}/bmp_reset.cpp ${B}/bmp_reset_inv.cpp)
+endif()
 if(SWINDLE_USE_W5500)
   # W5500 builds provide their own user_init() and don't need bridge.cpp
   # Also include lnSocketRunner.cpp directly (not compiled via ln_utils when LN_ENABLE_ETH=OFF)
@@ -39,10 +46,15 @@ endif()
 # directory here. Each target compiling blackmagic code links it explicitly.
 include(./swindle_common.cmake)
 # ==========================================================================
-if(USE_INVERTED_NRST)
-  set(EXTRA_SOURCE ${EXTRA_SOURCE} ${B}/bmp_reset_inv.cpp)
-else()
-  set(EXTRA_SOURCE ${EXTRA_SOURCE} ${B}/bmp_reset.cpp)
+if("${LN_MCU}" STREQUAL "ESP32")
+  # The C++ reset driver (SwdReset / pReset): only the ESP32 taps still use it. The
+  # GD32/CH32 and RP2040/RP2350 boards drive nRST from their board table in Rust
+  # (rs_swindle_board's ln::/rp2xxx::reset_pin).
+  if(USE_INVERTED_NRST)
+    set(EXTRA_SOURCE ${EXTRA_SOURCE} ${B}/bmp_reset_inv.cpp)
+  else()
+    set(EXTRA_SOURCE ${EXTRA_SOURCE} ${B}/bmp_reset.cpp)
+  endif()
 endif()
 
 # O0, 1, 2 works OZ does not work rvTap does not like -Oz Something to fix here MESSAGE(STATUS "Restricting flags for
@@ -58,6 +70,11 @@ endif()
 # ===========================================================================================
 
 add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE})
+# bmp_pinout.h (bmp_reset*.cpp, bridge.cpp, bmp_gpio.cpp) includes the generated
+# probe board header, rendered by swindle/board.cmake.
+if(TARGET swindle_board_header)
+  add_dependencies(libswindle swindle_board_header)
+endif()
 # ---------------------------------------------------------------------------
 # Session arena (malloc_used.md): force-include the allocation shim into the
 # blackmagic C sources only, so that the `calloc`/`malloc`/`free` of the
@@ -122,8 +139,9 @@ else()
 endif()
 
 target_link_libraries(libswindle PUBLIC swindleio_impl)
-# Board-selection defines (USE_RP_CARRIER, LN_UART_*, USE_48PIN_PACKAGE ...)
-# live on the ln_bsp interface, populated by the platform CMakeLists above.
+# Board-selection defines (USE_RP_CARRIER, LN_UART_* ...) live on the ln_bsp
+# interface, populated by the platform CMakeLists above. The pinout itself is the
+# probe board table, rendered by swindle/board.cmake.
 target_link_libraries(libswindle PUBLIC ln_bsp)
 if(USE_GD32F3)
   target_compile_definitions(libswindle PUBLIC USE_GD32F303)

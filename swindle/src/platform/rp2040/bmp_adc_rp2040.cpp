@@ -38,45 +38,11 @@ Original license header
 #include "lnGPIO.h"
 extern "C"
 {
-#include "adiv5.h"
-#include "general.h"
-#include "timing.h"
+#include "platform_support.h"
 }
 #include "lnADC.h"
 
-#include <new> // placement new for the .bss lnSimpleADC instance
-/**
- * @brief ADC handle for target voltage measurement.
- */
-static lnSimpleADC *adc = NULL;
-/**
- * @brief One-time init of the ADC peripheral for target voltage sensing.
- * Uses the NRST/2 divider pin.
- */
 void gmp_gpio_init_adc()
 {
-    if (!adc)
-    {
-        /* One ADC handle for the lifetime of the probe: .bss, not the heap.
-         * lnSimpleADC has a virtual destructor, so placement new into a static
-         * buffer rather than a function-local static (which would register an
-         * exit-time destructor: __cxa_atexit + on_exits, 384 B). */
-        alignas(lnSimpleADC) static uint8_t adc_storage[sizeof(lnSimpleADC)];
-        adc = new (adc_storage) lnSimpleADC(0, PIN_ADC_NRESET_DIV_BY_TWO); // this pins is connected to NRST/2
-    }
-}
-
-/**
- * @brief Read target MCU voltage through the ADC.
- * Averages 16 samples and converts the 12-bit reading to volts.
- * @return Target VCC voltage in volts.
- */
-extern "C" float bmp_get_target_voltage_c()
-{
-    xAssert(adc);
-    float vcc = (float)adc->simpleRead(16);
-    vcc = vcc * 3.3;
-    vcc /= 4095.;
-    return vcc;
 }
 // EOF

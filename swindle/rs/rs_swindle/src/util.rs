@@ -8,7 +8,7 @@
 
 use alloc::alloc::Layout;
 use alloc::alloc::alloc;
-use cty::size_t;
+use core::ffi::c_void;
 
 #[cfg(feature = "hosted")]
 extern crate std;
@@ -20,16 +20,13 @@ use std::print;
 
 //-----------
 unsafe extern "C" {
-    pub fn malloc(size: size_t) -> *mut cty::c_void;
+    pub fn malloc(size: usize) -> *mut c_void;
 }
 
 /// Allocate a `&'static mut [T]` on the heap using C `malloc`.
-///
 /// # Safety
-///
 /// The caller must ensure the returned slice is used in a single-threaded
 /// context and that `T` is `Copy` or properly initialised.
-
 #[cfg(feature = "fake_std")]
 pub fn unsafe_slice_alloc<T>(count: usize) -> &'static mut [T] {
     let layout = Layout::array::<T>(count).expect("Invalid Layout");
@@ -48,20 +45,14 @@ pub fn unsafe_slice_alloc<T>(count: usize) -> &'static mut [T] {
     }
 }
 
-
 /// Allocate a `*mut T` array on the heap using C `malloc`.
-///
 /// # Safety
-///
 /// The caller must ensure the returned pointer is properly sized, aligned,
 /// and freed.
-
 #[cfg(feature = "fake_std")]
 pub fn unsafe_array_alloc<T>(count: usize) -> *mut T {
     let layout = Layout::array::<T>(count).expect("Invalid Layout");
-    unsafe {
-        alloc(layout) as *mut T
-    }
+    unsafe { alloc(layout) as *mut T }
 }
 
 #[cfg(not(feature = "fake_std"))]
@@ -72,7 +63,6 @@ pub fn unsafe_array_alloc<T>(count: usize) -> *mut T {
         ptr as *mut T
     }
 }
-
 
 /// Allocate space for a single `T` on the heap using Rust's `alloc`.
 ///

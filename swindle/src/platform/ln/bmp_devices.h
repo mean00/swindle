@@ -1,9 +1,10 @@
 /**
  * @file bmp_devices.h
- * @brief Device declarations for LN (GD32/WCH) platform
+ * @brief USB device instances of the LN (GD32/WCH) probe.
+ *
+ * The values are the probe board table's (swindle/rs/rs_swindle_board/src/
+ * ln_*pins.rs), rendered as bmp_pinout_board.h by swindle/board.cmake.
  */
 
 #pragma once
-#define LN_USB_INSTANCE 1
-#define LN_SERIAL_INSTANCE 2
-#define LN_LOGGER_INSTANCE 2
+#include "bmp_pinout_board.h"

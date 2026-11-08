@@ -13,12 +13,12 @@
 //! - Targets that support non-halting memory I/O (eg. RISC-V system bus)
 //!   can read RTT without halting (no-stop mode)
 
+use crate::SyncCell;
 use crate::bmp;
 use crate::commands::run::HaltState;
 //use crate::gdb_print;
 use crate::setting_keys::{RTT_PERIOD_KEY, RTT_SETTING_KEY};
 use crate::settings;
-use core::mem::MaybeUninit;
 #[cfg(not(feature = "hosted"))]
 use rust_esprit::tick_count;
 //crate::gdb_print_init!();
@@ -238,28 +238,19 @@ struct SeggerRTT {
     last_time: u32,
     write_room: [u32; 4],
 }
-// SAFETY: SeggerRTT is only used in a single-threaded debugger context.
-unsafe impl Sync for SeggerRTT {}
-static mut RTT_BUFFER: [u32; TRANSFER_BUFFER_SIZE / 4 + 1] = [0; TRANSFER_BUFFER_SIZE / 4 + 1];
+static RTT_BUFFER: SyncCell<[u32; TRANSFER_BUFFER_SIZE / 4 + 1]> =
+    SyncCell::new([0; TRANSFER_BUFFER_SIZE / 4 + 1]);
 fn get_transfer_buffer() -> *mut u8 {
-    unsafe { &mut RTT_BUFFER as *mut _ as *mut u8 }
+    RTT_BUFFER.as_ptr() as *mut u8
 }
 
-//
+static RTT: SyncCell<SeggerRTT> = SyncCell::new(SeggerRTT {
+    enabled: false,
+    last_time: 0,
+    write_room: [0, 0, 0, 0],
+});
 fn swindle_get_rtt() -> &'static mut SeggerRTT {
-    static mut RTT: MaybeUninit<SeggerRTT> = MaybeUninit::uninit();
-    static mut RTT_INIT: bool = false;
-    unsafe {
-        if !RTT_INIT {
-            RTT.write(SeggerRTT {
-                enabled: false,
-                last_time: 0,
-                write_room: [0, 0, 0, 0],
-            });
-            RTT_INIT = true;
-        }
-        RTT.assume_init_mut()
-    }
+    unsafe { RTT.as_mut() }
 }
 /// Initialise the RTT subsystem (currently a no-op).
 #[unsafe(no_mangle)]

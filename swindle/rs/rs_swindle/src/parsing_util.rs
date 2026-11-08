@@ -71,6 +71,29 @@ pub fn ascii_hex_or_dec_to_u32(input: &str) -> u32 {
         ascii_string_decimal_to_u32(input)
     }
 }
+/// Strict variant of [`ascii_hex_or_dec_to_u32`].
+///
+/// Supports the same `"123"` (decimal) and `"0x1234"` (hex) forms, but returns
+/// `None` instead of a silent 0 when the string is empty or holds a stray
+/// non-digit character (e.g. the `"_mass"` left over when `mon erase_mass` is
+/// matched by the prefixed `erase` command).
+pub fn try_ascii_hex_or_dec_to_u32(input: &str) -> Option<u32> {
+    let trimmed = input.trim();
+    if let Some(hex) = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+    {
+        if hex.is_empty() || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return None;
+        }
+        u32::from_str_radix(hex, 16).ok()
+    } else {
+        if trimmed.is_empty() || !trimmed.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        u32::from_str_radix(trimmed, 10).ok()
+    }
+}
 /// Convert a string to a boolean value.
 ///
 /// Accepts `"on"`/`"off"` (case-insensitive) or numeric values (0 = false, non-zero = true).
@@ -138,21 +161,22 @@ pub fn u8s_string_to_u32(datain: &[u8]) -> u32 {
     }
     val
 }
-/// Convert a u32 to a 4-byte little-endian hex ASCII buffer.
-pub fn _u32_to_ascii_le_buffer(value: u32, out: &mut [u8]) {
-    let mut value = value;
-    for i in 0..4 {
-        let ascii = u8_to_ascii((value & 0xff) as u8);
-        value >>= 8;
-        out[i * 2] = ascii[0];
-        out[1 + i * 2] = ascii[1];
+/// Convert a u32 to an 8-byte big-endian hex ASCII buffer.
+pub fn u32_to_ascii_be_buffer(value: u32, out: &mut [u8; 8]) {
+    for (i, b) in value.to_be_bytes().into_iter().enumerate() {
+        u8_to_ascii_to_buffer(b, &mut out[i * 2..i * 2 + 2]);
+    }
+}
+/// Convert a u32 to an 8-byte little-endian hex ASCII buffer.
+pub fn u32_to_ascii_le_buffer(value: u32, out: &mut [u8; 8]) {
+    for (i, b) in value.to_le_bytes().into_iter().enumerate() {
+        u8_to_ascii_to_buffer(b, &mut out[i * 2..i * 2 + 2]);
     }
 }
 /// Convert a u8 to a 2-character hex ASCII array.
 pub fn u8_to_ascii(value: u8) -> [u8; 2] {
-    let mut out: [u8; 2] = [0, 0];
-    out[0] = _tohex(value >> 4);
-    out[1] = _tohex(value & 0xf);
+    let mut out = [0u8; 2];
+    u8_to_ascii_to_buffer(value, &mut out);
     out
 }
 /// Write a u8 as 2 hex ASCII characters into a buffer.

@@ -10,11 +10,11 @@
 //! Exposes `bmp_settings_set`, `bmp_settings_get_or_default`, and
 //! `bmp_settings_unset` for use from C code.
 
+#[cfg(not(feature = "fake_std"))]
+use crate::SyncCell;
 use crate::setting_keys::MAX_SETTING_ENTRIES;
 use crate::setting_keys::SW_TOKEN_SIZE;
 use arraystring::{ArrayString, typenum::U32};
-#[cfg(not(feature = "fake_std"))]
-use core::mem::MaybeUninit;
 use heapless::LinearMap;
 type token = ArrayString<U32>;
 //
@@ -30,7 +30,7 @@ struct swindle_settings {
 unsafe impl Sync for swindle_settings {}
 impl swindle_settings {
     /// Create an empty settings store.
-    fn new() -> Self {
+    const fn new() -> Self {
         swindle_settings {
             hash: LinearMap::new(),
         }
@@ -51,16 +51,11 @@ use rust_esprit::{LazyLock, Mutex};
 static SETTINGS: LazyLock<Mutex<swindle_settings>> = LazyLock::new(|| Mutex::new(swindle_settings::new()));
 
 #[cfg(not(feature = "fake_std"))]
+static SETTINGS: SyncCell<swindle_settings> = SyncCell::new(swindle_settings::new());
+
+#[cfg(not(feature = "fake_std"))]
 fn get_settings() -> &'static mut swindle_settings {
-    static mut SETTINGS: MaybeUninit<swindle_settings> = MaybeUninit::uninit();
-    static mut SETTINGS_INIT: bool = false;
-    unsafe {
-        if !SETTINGS_INIT {
-            SETTINGS.write(swindle_settings::new());
-            SETTINGS_INIT = true;
-        }
-        SETTINGS.assume_init_mut()
-    }
+    unsafe { SETTINGS.as_mut() }
 }
 
 #[cfg(feature = "fake_std")]

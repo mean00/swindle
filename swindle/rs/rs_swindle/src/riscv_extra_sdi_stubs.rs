@@ -18,10 +18,10 @@ use crate::encoder::encoder;
 setup_log!(false);
 
 /// No transport, so no probe: `mon sdi_scan` reports the failure it already
-/// knows how to report. Unused here by construction (the handler below fails
-/// without asking), kept so the seam keeps the same names in both builds.
-#[allow(dead_code)]
-pub fn sdi_scan() -> bool {
+/// knows how to report. Also the C-level `sdi_scan()` the seam header declares, so
+/// the C side of the build links without any C++ no-op twin.
+#[unsafe(no_mangle)]
+pub extern "C" fn sdi_scan() -> bool {
     false
 }
 
@@ -54,12 +54,7 @@ pub fn bmp_sdi_write(_adr: u8, _data: u32) -> bool {
 /// Handle `mon sdi_scan` — same output as the real handler hitting a dead
 /// transport, which is what a build without SDI has.
 pub fn _sdi_scan(_command: &str, _args: &[&str]) -> bool {
-    bmplog!("sdi_scan:\n");
-    // The scan may detach from the current target and attach a different one:
-    // cached lines are target-specific and must be dropped.
-    crate::mem_cache::invalidate();
-    bmpwarning!("sdi_scan failed!\n");
-    false
+    crate::commands::mon::common_scan("sdi_scan", sdi_scan)
 }
 
 /// Handle `mon sdi_wire` — say why nothing happened instead of echoing numbers
@@ -68,5 +63,44 @@ pub fn _sdi_wire(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("SDI support is not built in (SWINDLE_WITH_SDI=OFF)\n");
     encoder::reply_ok();
     true
+}
+/// The C-level seam a build without SDI still has to answer, in Rust now (both
+/// `swindle/src/template/bmp_riscv_extra_stubs.cpp` and
+/// `c_interface/bmp_riscv_extra_sdi_stubs_c.cpp` are no longer compiled): the pin
+/// hand-over the platform's `bmp_gpio_pinmode()` calls, the native SDI RPC leaves
+/// and the `mon sdi_wire` setter.
+#[unsafe(no_mangle)]
+pub extern "C" fn sdi_pinmode_enter() {}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sdi_pinmode_leave() {}
+
+/// No SDI debug module to reset.
+#[unsafe(no_mangle)]
+pub extern "C" fn bmp_sdi_dm_reset_c() -> bool {
+    false
+}
+
+/// No SDI debug module: every access fails.
+#[unsafe(no_mangle)]
+pub extern "C" fn bmp_sdi_dm_read_c(_adr: u8, _value: *mut u32) -> bool {
+    false
+}
+
+/// No SDI debug module: every access fails.
+#[unsafe(no_mangle)]
+pub extern "C" fn bmp_sdi_dm_write_c(_adr: u8, _data: u32) -> bool {
+    false
+}
+
+/// No tap to re-tune: the wire knobs are accepted and dropped.
+#[unsafe(no_mangle)]
+pub extern "C" fn bmp_set_sdi_wire_c(
+    _tbit_ns: u32,
+    _low1_ns: u32,
+    _low0_ns: u32,
+    _sample_ns: u32,
+    _no_trim: bool,
+) {
 }
 // EOF

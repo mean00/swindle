@@ -22,7 +22,12 @@ uint32_t swd_delay_cnt = 4;
 uint32_t swd_frequency = 1000 * 1000; // 1MHz default
 SwdDirectionPin *rSWDIO;
 SwdWaitPin *rSWCLK;
-SwdReset *pReset;
+/* The target nRST line is not driven from here any more: the pin comes from the
+ * probe board table and is driven in Rust (swindle/rs/rs_swindle/src/reset_pin.rs),
+ * which is also where the two C entry points below are defined on these probes.
+ * Same for the boot-time setup (reset_pin_init). */
+extern "C" void reset_pin_init(void);
+extern "C" void platform_nrst_set_val_internal(bool assert);
 
 /**
  * @brief Set the SWD wait-state (delay-loop count).
@@ -91,17 +96,13 @@ void bmp_gpio_init_once()
      * first call (same ordering as the old `new`) but keep them in .bss. */
     static SwdDirectionPin swdio(TSWDIO_PIN, TDIRECTION_PIN);
     static SwdWaitPin swdclk(TSWDCK_PIN); // automatically add delay after toggle
-    static SwdReset reset(TRESET_PIN);    // automatically add delay after toggle
     rSWDIO = &swdio;
     rSWCLK = &swdclk;
-    pReset = &reset;
-    pReset->setup();
+    reset_pin_init(); // released, output, polarity from the board (Rust)
     rSWDIO->hiZ();
     rSWDIO->hiZ();
     rSWCLK->hiZ();
     rSWCLK->hiZ();
-    pReset->hiZ(); // hi-z by default
-    pReset->off(); // hi-z by default
     gmp_gpio_init_adc();
 }
 /**
@@ -113,7 +114,7 @@ extern "C" void bmp_io_begin_session()
     rSWDIO->output();
     rSWCLK->clockOn();
     rSWCLK->output();
-    pReset->off(); // hi-z by default
+    platform_nrst_set_val_internal(false); // release
 }
 /**
  * @brief End an SWD debug session: return pins to Hi-Z.
@@ -124,7 +125,7 @@ extern "C" void bmp_io_end_session()
     rSWDIO->hiZ();
     rSWCLK->hiZ();
     rSWCLK->hiZ();
-    pReset->off(); // hi-z by default
+    platform_nrst_set_val_internal(false); // release
 }
 
 /* SDI pin hand-over (bmp_sdiTap_ln_bitbang_riscv_extra.cpp /

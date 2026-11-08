@@ -4,9 +4,9 @@
 //! debug symbols, such as `pxCurrentTCB` and list headers, allowing the debugger
 //! to inspect OS state dynamically.
 
+use crate::SyncCell;
 use crate::bmp;
 use crate::parsing_util;
-use core::mem::MaybeUninit;
 
 use crate::freertos::LN_MCU_CORE;
 
@@ -82,27 +82,18 @@ pub struct FreeRTOSSymbols {
     /// Detailed offset mapping extracted from `freeRTOSDebug`
     pub debug_offsets: Option<FreeRTOSDebugOffsets>,
 }
-// SAFETY: FreeRTOSSymbols is only used in a single-threaded debugger context.
-unsafe impl Sync for FreeRTOSSymbols {}
+static SYMBOLS: SyncCell<FreeRTOSSymbols> = SyncCell::new(FreeRTOSSymbols {
+    running: false,
+    valid: false,
+    addresses: [None; NB_FREERTOS_SYMBOLS],
+    cpuid: 0,
+    mcu_handler: LN_MCU_CORE::LN_MCU_NONE,
+    debug_offsets: None,
+});
 
 /// Retrieves a mutable reference to the global `FreeRTOSSymbols` cache.
 pub fn get_symbols() -> &'static mut FreeRTOSSymbols {
-    static mut SYMBOLS: MaybeUninit<FreeRTOSSymbols> = MaybeUninit::uninit();
-    static mut SYMBOLS_INIT: bool = false;
-    unsafe {
-        if !SYMBOLS_INIT {
-            SYMBOLS.write(FreeRTOSSymbols {
-                running: false,
-                valid: false,
-                addresses: [None; NB_FREERTOS_SYMBOLS],
-                cpuid: 0,
-                mcu_handler: LN_MCU_CORE::LN_MCU_NONE,
-                debug_offsets: None,
-            });
-            SYMBOLS_INIT = true;
-        }
-        SYMBOLS.assume_init_mut()
-    }
+    unsafe { SYMBOLS.as_mut() }
 }
 
 /// Clears all loaded FreeRTOS symbols and marks the context as invalid.

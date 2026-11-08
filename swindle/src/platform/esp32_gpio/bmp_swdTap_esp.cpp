@@ -26,9 +26,7 @@
 #include "esprit.h"
 extern "C"
 {
-#include "adiv5.h"
-#include "general.h"
-#include "timing.h"
+#include "platform_support.h"
 }
 #include "bmp_pinmode.h"
 #include "bmp_swdio_esp.h"
@@ -38,8 +36,6 @@ extern "C"
 
 #include "swd_tap_stubs.cpp"
 
-extern "C" void swdptap_init_stubs();
-
 /**
  * @brief Set pin mode (stub — not implemented for ESP32 GPIO).
  */
@@ -48,12 +44,14 @@ void bmp_gpio_pinmode(bmp_pin_mode pioMode)
     (void)pioMode;
 }
 
+extern "C" void bmp_clear_dp_fault_c();
+
 /**
  * @brief Initialise the SWD TAP for ESP32 GPIO.
  */
 extern "C" void swdptap_init()
 {
-    swdptap_init_stubs();
+    bmp_clear_dp_fault_c();
 }
 /*
  *

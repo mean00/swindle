@@ -16,6 +16,7 @@
 //! | `reboot` | Reboot the debugger probe |
 //! | `version` | Show firmware version |
 //! | `map` | Show target memory map |
+//! | `xml reg` / `xml memory` | Dump target.xml / memory-map XML exactly as GDB receives it |
 //! | `ram` | Show debugger heap usage |
 //! | `stacks` | Per-task stack high-water marks of the probe's own FreeRTOS kernel |
 //! | `boards` | List supported target boards |
@@ -35,22 +36,20 @@
 //! | `breakpoint_info` | Show HW breakpoint/watchpoint count |
 //! | `enable_reset_pin` | Enable/disable reset pin control |
 //! | `set_reset_pin` | Manually set reset pin state |
-//! | `ch32v3_option_byte` | Read/write CH32V3 option bytes |
-//! | `ch32v3_obr` | Read/write CH32V3 read protection |
+//! | `help` | Show this help, plus the attached driver's own commands |
 
 use core::sync::atomic::{AtomicU32, Ordering};
 
 use crate::bmp;
-use crate::commands::mon_ch32vxx;
-use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
+use crate::commands::{CallbackType, CommandTree, exec_one};
 use crate::encoder::encoder;
 use crate::freertos;
 use crate::freertos::{enable_freertos, freertos_symbols, os_detach};
 #[cfg(not(feature = "hosted"))]
 use crate::parsing_util;
 use crate::parsing_util::{
-    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, convert_param_to_integer,
-    string_to_bool, u8_hex_string_to_u8s,
+    ascii_hex_or_dec_to_u32, ascii_string_decimal_to_u32, convert_param_to_integer, string_to_bool,
+    u8_hex_string_to_u8s,
 };
 use crate::riscv::{
     RV_CSR_DCSR, RV_CSR_DPC, RV_CSR_DSCRATCH0, RV_CSR_DSCRATCH1, RV_CSR_MCAUSE, RV_CSR_MEPC,
@@ -83,15 +82,25 @@ pub const spacebar: [u8; MAX_SPACE] = [32; MAX_SPACE];
 use crate::SyncCell;
 
 static targetCommandTree: SyncCell<Option<&'static [CommandTree]>> = SyncCell::new(None);
-static targetHelpTree: SyncCell<Option<&'static [HelpTree]>> = SyncCell::new(None);
+
+/// A set of `mon` commands declared by a Rust target driver:
+/// `(driver name, commands)`.
+type DriverCommandSet = (&'static str, &'static [CommandTree]);
+
+/// How many target drivers may declare their own `mon` commands.
+const MAX_DRIVER_COMMAND_SETS: usize = 16;
+
+/// Commands declared by the probed drivers, keyed by driver name.
+///
+/// A driver declares them through `RustRiscvTargetDriver::commands()` /
+/// `RustArmTargetDriver::commands()` and its shim registers them here at probe time;
+/// `add_target_commands()` then installs the set that matches the attached target's
+/// driver name.
+static driverCommandSets: SyncCell<[Option<DriverCommandSet>; MAX_DRIVER_COMMAND_SETS]> =
+    SyncCell::new([None; MAX_DRIVER_COMMAND_SETS]);
 //
 unsafe extern "C" {
     pub fn _Z17lnSoftSystemResetv();
-}
-#[cfg(not(feature = "hosted"))]
-unsafe extern "C" {
-    //pub fn resetTest();
-    pub fn resetTest2();
 }
 
 /// The probe's own FreeRTOS task table, for `mon stacks`.
@@ -192,46 +201,15 @@ fn systemReset() {
 }
 
 //
-const mon_command_tree: [CommandTree; 38] = [
+const mon_command_tree: [CommandTree; 44] = [
     CommandTree {
-        command: "breakpoint_info",
-        min_args: 0,
-        require_connected: true,
-        cb: CallbackType::text(_breakpoint_count),
-        start_separator: 0,
-        next_separator: 0,
-    },
-    CommandTree {
-        command: "crash",
+        command: "help",
         min_args: 0,
         require_connected: false,
-        cb: CallbackType::text(_crash),
-        start_separator: 0,
-        next_separator: 0,
-    },
-    CommandTree {
-        command: "csr",
-        min_args: 1,
-        require_connected: true,
-        cb: CallbackType::text(_csr),
+        cb: CallbackType::text(_mon_help),
         start_separator: b' ',
         next_separator: b' ',
-    },
-    CommandTree {
-        command: "map",
-        min_args: 0,
-        require_connected: true,
-        cb: CallbackType::text(_map),
-        start_separator: b' ',
-        next_separator: b' ',
-    },
-    CommandTree {
-        command: "redirect",
-        min_args: 1,
-        require_connected: false,
-        cb: CallbackType::text(_redirect),
-        start_separator: b' ',
-        next_separator: b' ',
+        help: "Display help.",
     },
     CommandTree {
         command: "bmp",
@@ -240,7 +218,17 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_bmp_mon),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp..",
+    },
+    CommandTree {
+        command: "breakpoint_info",
+        min_args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_breakpoint_count),
+        start_separator: 0,
+        next_separator: 0,
+        help: "Display the total number of hardware breakpoints and watchpoints.",
+    },
     CommandTree {
         command: "boards",
         min_args: 0,
@@ -248,7 +236,17 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_boards),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Display supported boards. This is set at build time.",
+    },
+    CommandTree {
+        command: "csr",
+        min_args: 1,
+        require_connected: true,
+        cb: CallbackType::text(_csr),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Read and dump RISC-V CSR (e.g. mon csr dcsr, mon csr 0x7b0). Only for RISC-V targets.",
+    },
     CommandTree {
         command: "delay",
         min_args: 1,
@@ -256,7 +254,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_delay),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "wait <value> ms.",
+    },
     CommandTree {
         command: "enable_reset_pin",
         min_args: 1,
@@ -264,7 +263,17 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_enable_reset_pin),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Enable reset through RSTn pin, default is enabled (1).",
+    },
+    CommandTree {
+        command: "erase",
+        min_args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_erase),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Erase the target flash pages covering <start>..<start>+<length>; both take decimal or 0x hex.",
+    },
     CommandTree {
         command: "frequency",
         min_args: 0,
@@ -272,6 +281,7 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_fq),
         start_separator: b' ',
         next_separator: b' ',
+        help: "set/get SWD frequency.",
     },
     CommandTree {
         command: "fq",
@@ -280,6 +290,7 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_fq),
         start_separator: b' ',
         next_separator: b' ',
+        help: "",
     },
     CommandTree {
         command: "memlog",
@@ -288,7 +299,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_memlog),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
+        help: "Phase 0 instrumentation: enable/disable per-call [MEMLOG] lines; reset SWD/RVSWD tx counters.",
+    },
     CommandTree {
         command: "fos",
         min_args: 0,
@@ -296,7 +308,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_fos),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
+        help: "Enable FreeRTOS support.",
+    },
     CommandTree {
         command: "freertos",
         min_args: 0,
@@ -304,39 +317,17 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_fos),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
+        help: "",
+    },
     CommandTree {
-        command: "unset",
-        min_args: 1,
-        require_connected: false,
-        cb: CallbackType::text(_unset),
-        start_separator: b' ',
-        next_separator: b' ',
-    }, //
-    CommandTree {
-        command: "help",
+        command: "map",
         min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_mon_help),
+        require_connected: true,
+        cb: CallbackType::text(_map),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
-    CommandTree {
-        command: "test",
-        min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_mon_test),
-        start_separator: b' ',
-        next_separator: b' ',
-    }, //
-    CommandTree {
-        command: "test2",
-        min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_mon_test2),
-        start_separator: b' ',
-        next_separator: b' ',
-    }, //
+        help: "Show the memory map .",
+    },
     CommandTree {
         command: "os_info",
         min_args: 0,
@@ -344,7 +335,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_fos_info),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
+        help: "Dump FreeRTOS internal state.",
+    },
     CommandTree {
         command: "ram",
         min_args: 0,
@@ -352,7 +344,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_ram),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Display stats about Ram usage.",
+    },
     CommandTree {
         command: "arena",
         min_args: 0,
@@ -360,7 +353,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_arena),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Session arena usage: transport/pool bump regions, frees, rewinds.",
+    },
     CommandTree {
         command: "stacks",
         min_args: 0,
@@ -368,7 +362,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_stacks),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Per-task stack high-water marks (free bytes left at the worst moment).",
+    },
     CommandTree {
         command: "reboot",
         min_args: 0,
@@ -376,47 +371,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_reboot),
         start_separator: 0,
         next_separator: 0,
-    }, //
-    CommandTree {
-        command: "reset",
-        min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_target_reset),
-        start_separator: 0,
-        next_separator: 0,
-    }, //
-    CommandTree {
-        command: "rtt",
-        min_args: 1,
-        require_connected: false,
-        cb: CallbackType::text(crate::commands::mon_rtt::_rtt),
-        start_separator: 0,
-        next_separator: 0,
-    }, //
-    CommandTree {
-        command: "rvswdp_scan",
-        min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(_rvswdp_scan),
-        start_separator: 0,
-        next_separator: 0,
-    }, //
-    CommandTree {
-        command: "sdi_scan",
-        min_args: 0,
-        require_connected: false,
-        cb: CallbackType::text(crate::riscv_extra::_sdi_scan),
-        start_separator: 0,
-        next_separator: 0,
-    }, //
-    CommandTree {
-        command: "sdi_wire",
-        min_args: 1,
-        require_connected: false,
-        cb: CallbackType::text(crate::riscv_extra::_sdi_wire),
-        start_separator: b' ',
-        next_separator: b' ',
-    }, //
+        help: "Reboot the debugger.",
+    },
     CommandTree {
         command: "riscv_benchmark",
         min_args: 0,
@@ -424,7 +380,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_riscv_benchmark),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Benchmark the RISC-V memory access methods (abstract, progbuf, sysbus).",
+    },
     CommandTree {
         command: "riscv_memory_benchmark",
         min_args: 0,
@@ -432,7 +389,80 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_riscv_memory_benchmark),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Benchmark the RISC-V memory access via the generic target API (verifies best-path routing).",
+    },
+    CommandTree {
+        command: "redirect",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(_redirect),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Redirect log to usb2. mon redirect 1 to redirect, mon redirect 0 to not disable",
+    },
+    CommandTree {
+        command: "reset",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_target_reset),
+        start_separator: 0,
+        next_separator: 0,
+        help: "Reset the target by pulsing the reset pin.",
+    },
+    CommandTree {
+        command: "rtt",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(crate::commands::mon_rtt::_rtt),
+        start_separator: 0,
+        next_separator: 0,
+        help: "use mon rtt help to get the details.",
+    },
+    CommandTree {
+        command: "rvswdp_scan",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_rvswdp_scan),
+        start_separator: 0,
+        next_separator: 0,
+        help: "Probe WCH RISCV device(s).",
+    },
+    CommandTree {
+        command: "sdi_scan",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(crate::riscv_extra::_sdi_scan),
+        start_separator: 0,
+        next_separator: 0,
+        help: "Probe WCH CH32V0xx device(s) over the single-wire SDI interface.",
+    },
+    CommandTree {
+        command: "stub_stats",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_stub_stats),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Show (or 'mon stub_stats reset') the flash-stub statistics: runs, halts seen, register-repair fallbacks, poll wait/hold and the last failing run's state.",
+    },
+    CommandTree {
+        command: "stub_hold",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_stub_hold),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Show/set the per-page flash-stub hold in ms: 'mon stub_hold <ms>' ('0' = poll from the start) or 'mon stub_hold auto' for the part's own value.",
+    },
+    CommandTree {
+        command: "sdi_wire",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(crate::riscv_extra::_sdi_wire),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Override the SDI bit-bang wire timing in ns (0 = keep the tap's default); 'mon sdi_scan' re-calibrates with it.",
+    },
     CommandTree {
         command: "riscv_stream",
         min_args: 0,
@@ -440,7 +470,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_riscv_stream),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
+        help: "Select the RISC-V program-buffer streaming sub-path (BMP 103): 'off' makes every word wait for its own command, which is the A/B for the silent read losses (riscv_fault.md 12.9).",
+    },
     CommandTree {
         command: "riscv_confirm",
         min_args: 0,
@@ -448,7 +479,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_riscv_confirm),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
+        help: "Show (or clear) the RISC-V confirmed-read counters (BMP 103): windows, disagreements, faults, latched command errors, abstractauto retries, and where the last disagreement was.",
+    },
     CommandTree {
         command: "set_reset_pin",
         min_args: 1,
@@ -456,15 +488,26 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_set_reset_pin),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Set the reset pin value to <value>. 1 means pull to ground, 0 mean floating.",
+    },
     CommandTree {
-        command: "set", // that one begins like the one above, it must be after
+        command: "set",
         min_args: 0,
         require_connected: false,
         cb: CallbackType::text(_set),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
+        help: "set [key] [value] , just set to get the current set",
+    },
+    CommandTree {
+        command: "unset",
+        min_args: 1,
+        require_connected: false,
+        cb: CallbackType::text(_unset),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "unset key",
+    },
     CommandTree {
         command: "swdp_scan",
         min_args: 0,
@@ -472,7 +515,26 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_swdp_scan),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Probe device(s) over SWD. You might want to increase wait state if it fails.",
+    },
+    CommandTree {
+        command: "targets",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_targets),
+        start_separator: 0,
+        next_separator: 0,
+        help: "Display discovered targets.",
+    },
+    CommandTree {
+        command: "vector_catch",
+        min_args: 0,
+        require_connected: true,
+        cb: CallbackType::text(_vector_catch),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Catch exception vectors (enable/disable)",
+    },
     CommandTree {
         command: "version",
         min_args: 0,
@@ -480,7 +542,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_get_version),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Display version.",
+    },
     CommandTree {
         command: "voltage",
         min_args: 0,
@@ -488,7 +551,8 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_voltage),
         start_separator: 0,
         next_separator: 0,
-    }, //
+        help: "Display target voltage.",
+    },
     CommandTree {
         command: "ws",
         min_args: 0,
@@ -496,149 +560,43 @@ const mon_command_tree: [CommandTree; 38] = [
         cb: CallbackType::text(_ws),
         start_separator: b' ',
         next_separator: b' ',
-    }, //
-];
-//
-const help_tree: [HelpTree; 35] = [
-    HelpTree {
-        command: "help",
-        help: "Display help.",
-    },
-    HelpTree {
-        command: "bmp",
-        help: "Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp..",
-    },
-    HelpTree {
-        command: "breakpoint_info",
-        help: "Display the total number of hardware breakpoints and watchpoints.",
-    },
-    HelpTree {
-        command: "boards",
-        help: "Display supported boards. This is set at build time.",
-    },
-    HelpTree {
-        command: "ch32v3_obr",
-        help: "Read/write the read protection status.",
-    },
-    HelpTree {
-        command: "ch32v3_option_byte",
-        help: "Read/write the user option byte on ch32v3 chip.\n\tThat changes the flash/ram split.\n\tUsual value : 256/64 -> 0x9f, 192/128 -> 0x1f.",
-    },
-    HelpTree {
-        command: "csr name|hex",
-        help: "Read and dump RISC-V CSR (e.g. mon csr dcsr, mon csr 0x7b0). Only for RISC-V targets.",
-    },
-    HelpTree {
-        command: "delay value",
-        help: "wait <value> ms.",
-    },
-    HelpTree {
-        command: "enable_reset_pin value",
-        help: "Enable reset through RSTn pin, default is enabled (1).",
-    },
-    HelpTree {
-        command: "fq or frequency",
-        help: "set/get SWD frequency.",
-    },
-    HelpTree {
-        command: "memlog on|off|reset",
-        help: "Phase 0 instrumentation: enable/disable per-call [MEMLOG] lines; reset SWD/RVSWD tx counters.",
-    },
-    HelpTree {
-        command: "fos",
-        help: "Enable FreeRTOS support.",
-    },
-    HelpTree {
-        command: "map",
-        help: "Show the memory map .",
-    },
-    HelpTree {
-        command: "os_info",
-        help: "Dump FreeRTOS internal state.",
-    },
-    HelpTree {
-        command: "ram",
-        help: "Display stats about Ram usage.",
-    },
-    HelpTree {
-        command: "arena",
-        help: "Session arena usage: transport/pool bump regions, frees, rewinds.",
-    },
-    HelpTree {
-        command: "stacks",
-        help: "Per-task stack high-water marks (free bytes left at the worst moment).",
-    },
-    HelpTree {
-        command: "reboot",
-        help: "Reboot the debugger.",
-    },
-    HelpTree {
-        command: "riscv_benchmark",
-        help: "Benchmark the RISC-V memory access methods (abstract, progbuf, sysbus).",
-    },
-    HelpTree {
-        command: "riscv_memory_benchmark",
-        help: "Benchmark the RISC-V memory access via the generic target API (verifies best-path routing).",
-    },
-    HelpTree {
-        command: "redirect 0|1",
-        help: "Redirect log to usb2. mon redirect 1 to redirect, mon redirect 0 to not disable",
-    },
-    HelpTree {
-        command: "reset",
-        help: "Reset the target by pulsing the reset pin.",
-    },
-    HelpTree {
-        command: "rtt",
-        help: "use mon rtt help to get the details.",
-    },
-    HelpTree {
-        command: "rvswdp_scan",
-        help: "Probe WCH RISCV device(s).",
-    },
-    HelpTree {
-        command: "sdi_scan",
-        help: "Probe WCH CH32V0xx device(s) over the single-wire SDI interface.",
-    },
-    HelpTree {
-        command: "sdi_wire tbit low1 low0 sample [notrim]",
-        help: "Override the SDI bit-bang wire timing in ns (0 = keep the tap's default); 'mon sdi_scan' re-calibrates with it.",
-    },
-    HelpTree {
-        command: "riscv_stream on|off",
-        help: "Select the RISC-V program-buffer streaming sub-path (BMP 103): 'off' makes every word wait for its own command, which is the A/B for the silent read losses (riscv_fault.md 12.9).",
-    },
-    HelpTree {
-        command: "riscv_confirm [reset]",
-        help: "Show (or clear) the RISC-V confirmed-read counters (BMP 103): windows, disagreements, faults, latched command errors, abstractauto retries, and where the last disagreement was.",
-    },
-    HelpTree {
-        command: "set",
-        help: "set [key] [value] , just set to get the current set",
-    },
-    HelpTree {
-        command: "unset key",
-        help: "unset key",
-    },
-    HelpTree {
-        command: "set_reset_pin value",
-        help: "Set the reset pin value to <value>. 1 means pull to ground, 0 mean floating.",
-    },
-    HelpTree {
-        command: "swdp_scan",
-        help: "Probe device(s) over SWD. You might want to increase wait state if it fails.",
-    },
-    HelpTree {
-        command: "version",
-        help: "Display version.",
-    },
-    HelpTree {
-        command: "voltage",
-        help: "Display target voltage.",
-    },
-    HelpTree {
-        command: "ws",
         help: "Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is.\nYou should rather use mon frequency.",
+    },
+    CommandTree {
+        command: "xml",
+        min_args: 1,
+        require_connected: true,
+        cb: CallbackType::text(_xml),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "Dump the GDB XML description: mon xml reg (target.xml / registers), mon xml memory (memory map).",
+    },
+    CommandTree {
+        command: "crash",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_crash),
+        start_separator: 0,
+        next_separator: 0,
+        help: "",
+    },
+    CommandTree {
+        command: "test",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_mon_test),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "",
+    },
+    CommandTree {
+        command: "test2",
+        min_args: 0,
+        require_connected: false,
+        cb: CallbackType::text(_mon_test2),
+        start_separator: b' ',
+        next_separator: b' ',
+        help: "",
     },
 ];
 /*
@@ -663,6 +621,57 @@ fn _target_reset(_command: &str, _args: &[&str]) -> bool {
     crate::mem_cache::invalidate();
     swindle_nrst_set_val(1);
     swindle_nrst_set_val(0);
+    encoder::reply_ok();
+    true
+}
+
+/*
+ *
+ */
+/// Print the `mon erase` usage lines.
+fn _erase_usage() {
+    gdb_print!("usage: mon erase <start> <length>\n");
+    gdb_print!("\t<start> is an address in the first page to erase\n");
+    gdb_print!("\t<length> is the number of bytes after it, rounded up to whole pages\n");
+    gdb_print!("\tboth take decimal (1024) or 0x hexadecimal (0x400)\n");
+}
+
+/// Handle `mon erase <start> <length>` — erase the flash pages covering the range.
+///
+/// `<start>` is an address inside the first page to erase and `<length>` the number of
+/// bytes after it (rounded up to whole pages); both take decimal or `0x` hexadecimal.
+/// This is the same `target_flash_erase()` walk GDB's `vFlashErase` does, so the flash
+/// banks of the attached driver get erased with their own geometry.
+fn _erase(_command: &str, args: &[&str]) -> bool {
+    if args.len() < 2 {
+        _erase_usage();
+        encoder::reply_e01();
+        return true;
+    }
+    let (start, length) = match (
+        crate::parsing_util::try_ascii_hex_or_dec_to_u32(args[0]),
+        crate::parsing_util::try_ascii_hex_or_dec_to_u32(args[1]),
+    ) {
+        (Some(start), Some(length)) => (start, length),
+        _ => {
+            gdb_print!("mon erase : <start> and <length> must be decimal or 0x hex numbers\n");
+            _erase_usage();
+            encoder::reply_e01();
+            return true;
+        }
+    };
+    if length == 0 {
+        gdb_print!("mon erase : length must not be zero\n");
+        encoder::reply_e01();
+        return true;
+    }
+    if !bmp::bmp_flash_erase(start, length) {
+        // `target_flash_erase()` fails when the range is not inside the target flash.
+        gdb_print!("mon erase : no flash at ", Hex(start), "\n");
+        encoder::reply_e01();
+        return true;
+    }
+    gdb_print!("erased ", Hex(length), " bytes at ", Hex(start), "\n");
     encoder::reply_ok();
     true
 }
@@ -737,13 +746,35 @@ fn _arena(_command: &str, _args: &[&str]) -> bool {
         encoder::reply_ok();
         return true;
     }
-    gdb_println!("Session arena : armed ", a.armed, " freed ", a.frees, " rewound ", a.rewinds);
-    gdb_println!("  tr   : ", a.transport_used, " / ", a.transport_size, " B (peak ", a.transport_peak, ")");
-    gdb_println!("  pool : ", a.pool_used, " / ", a.pool_size, " B (peak ", a.pool_peak, ")");
+    gdb_println!(
+        "Session arena : armed ",
+        a.armed,
+        " freed ",
+        a.frees,
+        " rewound ",
+        a.rewinds
+    );
+    gdb_println!(
+        "  tr   : ",
+        a.transport_used,
+        " / ",
+        a.transport_size,
+        " B (peak ",
+        a.transport_peak,
+        ")"
+    );
+    gdb_println!(
+        "  pool : ",
+        a.pool_used,
+        " / ",
+        a.pool_size,
+        " B (peak ",
+        a.pool_peak,
+        ")"
+    );
     encoder::reply_ok();
     true
 }
-
 
 /// Handle `mon stacks` — per-task stack high-water marks of the probe's own
 /// FreeRTOS kernel, i.e. the numbers the task stack sizes are right-sized from.
@@ -762,7 +793,8 @@ fn _stacks(_command: &str, _args: &[&str]) -> bool {
 
     let mut status = [TaskStatus::empty(); MAX_TASKS];
     let mut total_run_time: u32 = 0;
-    let got = unsafe { uxTaskGetSystemState(status.as_mut_ptr(), MAX_TASKS as u32, &mut total_run_time) };
+    let got =
+        unsafe { uxTaskGetSystemState(status.as_mut_ptr(), MAX_TASKS as u32, &mut total_run_time) };
 
     gdb_println!("task           state prio  free stack (worst case so far)");
     for t in &status[..got as usize] {
@@ -787,7 +819,13 @@ fn _stacks(_command: &str, _args: &[&str]) -> bool {
     }
     let nb = unsafe { uxTaskGetNumberOfTasks() };
     if nb as usize > MAX_TASKS {
-        gdb_print!("only the first ", MAX_TASKS, " of ", nb, " tasks are shown\n");
+        gdb_print!(
+            "only the first ",
+            MAX_TASKS,
+            " of ",
+            nb,
+            " tasks are shown\n"
+        );
     }
     gdb_print!("total run time : ", total_run_time);
     gdb_print!(" ticks\n");
@@ -851,7 +889,11 @@ fn _riscv_stream(_command: &str, args: &[&str]) -> bool {
     } else {
         "off"
     };
-    gdb_println!("riscv stream : ", state, " (program buffer streaming sub-path)");
+    gdb_println!(
+        "riscv stream : ",
+        state,
+        " (program buffer streaming sub-path)"
+    );
     encoder::reply_ok();
     true
 }
@@ -877,8 +919,22 @@ fn _riscv_confirm(_command: &str, args: &[&str]) -> bool {
         }
     }
     let s = bmp::bmp_riscv_confirm_stats();
-    gdb_println!("riscv confirm : windows=", s[0], " disagreeing=", s[1], " elements=", s[2]);
-    gdb_println!("riscv confirm : faults=", s[3], " latched_cmderr=", s[4], " autoexec_retries=", s[5]);
+    gdb_println!(
+        "riscv confirm : windows=",
+        s[0],
+        " disagreeing=",
+        s[1],
+        " elements=",
+        s[2]
+    );
+    gdb_println!(
+        "riscv confirm : faults=",
+        s[3],
+        " latched_cmderr=",
+        s[4],
+        " autoexec_retries=",
+        s[5]
+    );
     gdb_println!(
         "riscv confirm : last @ ",
         Hex(s[6]),
@@ -891,10 +947,10 @@ fn _riscv_confirm(_command: &str, args: &[&str]) -> bool {
     true
 }
 //
-pub(crate) fn print_help_tree(prefix: &str, helptree: &[HelpTree]) {
+pub(crate) fn print_help_tree(prefix: &str, helptree: &[CommandTree]) {
     let mut mxsize: usize = 0;
     for i in helptree {
-        if i.command.len() > mxsize {
+        if !i.help.is_empty() && i.command.len() > mxsize {
             mxsize = i.command.len();
         }
     }
@@ -902,6 +958,9 @@ pub(crate) fn print_help_tree(prefix: &str, helptree: &[HelpTree]) {
         panic!("padding too big");
     }
     for i in helptree {
+        if i.help.is_empty() {
+            continue;
+        }
         let cmd = i.command;
         let len = cmd.len();
         let pad = core::str::from_utf8(&spacebar[..(mxsize - len)]).unwrap();
@@ -913,14 +972,17 @@ pub(crate) fn print_help_tree(prefix: &str, helptree: &[HelpTree]) {
 fn _mon_help(_command: &str, _args: &[&str]) -> bool {
     gdb_print!("Help, use mon [cmd] [params] :\n");
     gdb_print!("-----------------------------\n");
-    print_help_tree("mon ", &help_tree);
-    match get_custom_target_help() {
-        None => (),
-        Some(x) => {
-            gdb_print!("Board specific commands :\n");
-            gdb_print!("------------------------\n");
-            print_help_tree("mon ", x);
-        }
+    print_help_tree("mon ", &mon_command_tree);
+    if let Some(x) = get_custom_target_command() {
+        gdb_print!("Board specific commands :\n");
+        gdb_print!("------------------------\n");
+        print_help_tree("mon ", x);
+    }
+    // Which driver owns the block above (it is only shown when that driver
+    // declared commands and its target is the one attached).
+    let driver_name = bmp::bmp_get_target_name();
+    if !driver_name.is_empty() {
+        gdb_println!("Attached driver : ", driver_name);
     }
 
     encoder::reply_ok();
@@ -948,15 +1010,7 @@ fn _mon_test(_command: &str, _args: &[&str]) -> bool {
     //encoder::reply_ok();
     true
 }
-#[cfg(feature = "hosted")]
 fn _mon_test2(_command: &str, _args: &[&str]) -> bool {
-    true
-}
-#[cfg(not(feature = "hosted"))]
-fn _mon_test2(_command: &str, _args: &[&str]) -> bool {
-    unsafe {
-        resetTest2();
-    }
     encoder::reply_ok();
     true
 }
@@ -1006,18 +1060,13 @@ pub fn _qRcmd(_command: &str, args: &[&str]) -> bool {
     let rcmd = u8_hex_string_to_u8s(args[0].as_bytes(), &mut out);
 
     // Check if it is in the per target tree ...
-    match get_custom_target_command() {
-        None => (),
-        Some(x) => {
-            for i in x {
-                if rcmd.starts_with(i.command.as_bytes()) {
-                    return exec_one(x, rcmd);
-                }
-            }
-        }
+    if let Some(x) = get_custom_target_command()
+        && exec_one(x, rcmd, false)
+    {
+        return true;
     }
     // if not, look the generic one
-    exec_one(&mon_command_tree, rcmd)
+    exec_one(&mon_command_tree, rcmd, false)
 }
 
 /// Handle `mon version` — display firmware version.
@@ -1027,7 +1076,60 @@ pub fn _get_version(_command: &str, _args: &[&str]) -> bool {
     true
 }
 
-fn common_scan<F>(name: &str, scan_fn: F) -> bool
+pub fn swindle_display_targets() -> bool {
+    crate::gdb_print!("Available Targets:\n");
+    crate::gdb_print!("No. Att Driver\n");
+    let mut count = 0usize;
+    let mut cur = unsafe { crate::target::target_list };
+    while !cur.is_null() {
+        count += 1;
+        let view = crate::target::TargetView::new(cur);
+        let attached = if view.attached() { "*" } else { " " };
+        let driver = view.driver_str().unwrap_or("");
+        let core = view.core_str().unwrap_or("");
+        if driver == "ARM Cortex-M" {
+            crate::gdb_print!(
+                "***",
+                count,
+                " ",
+                attached,
+                " Unknown ",
+                driver,
+                " Designer 0x",
+                Hex(view.designer_code()),
+                " Part ID 0x",
+                Hex(view.part_id()),
+                " ",
+                core,
+                "\n"
+            );
+        } else {
+            crate::gdb_print!(" ", count, "   ", attached, "  ", driver, " ", core, "\n");
+        }
+        cur = unsafe { (*cur).next };
+    }
+    if count == 0 {
+        crate::gdb_print!("No usable targets found.\n");
+        false
+    } else {
+        true
+    }
+}
+
+/// Handle `mon vector_catch` — catch exception vectors.
+pub fn _vector_catch(_command: &str, args: &[&str]) -> bool {
+    let target = crate::target::get_cur_target();
+    if target.is_null() || !crate::arm::cortexm::is_cortexm(target) {
+        crate::gdb_println!("vector_catch: no Cortex-M target attached");
+        encoder::reply_ok();
+        return false;
+    }
+    let res = crate::arm::cortexm::vector_catch_cmd(target, args);
+    encoder::reply_ok();
+    res
+}
+
+pub fn common_scan<F>(name: &str, scan_fn: F) -> bool
 where
     F: FnOnce() -> bool,
 {
@@ -1037,10 +1139,19 @@ where
     crate::mem_cache::invalidate();
 
     if !scan_fn() {
+        crate::gdb_println!("{} failed!", name);
         bmpwarning!("{} failed!\n", name);
         return false;
     }
+    swindle_display_targets();
     os_detach();
+    encoder::reply_ok();
+    true
+}
+
+/// Handle `mon targets` — display discovered targets.
+pub fn _targets(_command: &str, _args: &[&str]) -> bool {
+    swindle_display_targets();
     encoder::reply_ok();
     true
 }
@@ -1170,19 +1281,56 @@ pub fn _enable_reset_pin(_command: &str, args: &[&str]) -> bool {
  *
  *
  */
-/// Register target-specific monitor commands based on the target name.
+/// Register the `mon` commands a Rust target driver declares.
 ///
-/// Currently adds CH32V2/CH32V3-specific commands when those targets
-/// are detected.
-pub fn add_target_commands(target_name: &str) {
-    if target_name.starts_with("CH32V2") || target_name.starts_with("CH32V3") {
-        set_custom_target_command(
-            &mon_ch32vxx::ch32vxx_command_tree,
-            &mon_ch32vxx::ch32vxx_help_tree,
-        );
-    } else {
-        clear_custom_target_command();
+/// Called by the driver dispatchers (`riscv/driver_registry.rs`, `arm/driver_registry.rs`) at
+/// probe time with `commands()` / `command_help()`; the entry is stored under the driver name,
+/// so any number of drivers can declare their own commands without `mon.rs` knowing about them.
+pub fn register_driver_commands(driver_name: &'static str, commands: &'static [CommandTree]) {
+    // A driver `name()` doubles as a C string (`"CH32V303\0"`), while the
+    // name handed back by `bmp_get_target_name()` stops at the terminator: compare
+    // the C-visible name on both sides.
+    let driver_name = driver_name.trim_end_matches('\0');
+    let mut sets = driverCommandSets.get();
+    let mut free_slot = None;
+    for (index, slot) in sets.iter_mut().enumerate() {
+        match slot {
+            // Same family: the ARM/RISC-V drivers expose one command set per crate, which
+            // they re-register under the concrete part name on every probe. Reuse the slot
+            // (comparing the command table identity) instead of burning one per part.
+            Some((name, cmds)) if *name == driver_name || core::ptr::eq(*cmds, commands) => {
+                *slot = Some((driver_name, commands));
+                driverCommandSets.set(sets);
+                return;
+            }
+            None if free_slot.is_none() => free_slot = Some(index),
+            _ => (),
+        }
     }
+    match free_slot {
+        Some(index) => {
+            sets[index] = Some((driver_name, commands));
+            driverCommandSets.set(sets);
+        }
+        None => gdb_println!("mon : driver command table full, ", driver_name, " ignored"),
+    }
+}
+
+/// Install the monitor commands of the attached target's driver.
+///
+/// Looks the driver name up in the sets registered by `register_driver_commands()`
+/// and installs that command tree; no match clears them, so a driver that
+/// declares nothing (or a C-driven target) exposes only the generic `mon` tree.
+pub fn add_target_commands(target_name: &str) {
+    // `bmp_get_target_name()` is the C `target_s::driver`, i.e. a NUL-terminated name.
+    let target_name = target_name.trim_end_matches('\0');
+    for set in driverCommandSets.get().iter().flatten() {
+        if !set.0.is_empty() && target_name.starts_with(set.0) {
+            set_custom_target_command(set.1);
+            return;
+        }
+    }
+    clear_custom_target_command();
 }
 
 /*
@@ -1192,33 +1340,63 @@ pub fn add_target_commands(target_name: &str) {
 /// Clear any registered target-specific commands.
 pub fn clear_custom_target_command() {
     targetCommandTree.set(None);
-    targetHelpTree.set(None);
 }
 /*
  *
  *
  */
-/// Register a custom command tree and help tree for the current target.
-pub fn set_custom_target_command(
-    commandTree: &'static [CommandTree],
-    helpTree: &'static [HelpTree],
-) {
+/// Register a custom command tree for the current target.
+pub fn set_custom_target_command(commandTree: &'static [CommandTree]) {
     targetCommandTree.set(Some(commandTree));
-    targetHelpTree.set(Some(helpTree));
 }
 fn _map(_command: &str, _args: &[&str]) -> bool {
     let ram = bmp::bmp_get_mapping(bmp::mapping::Ram);
     for i in ram {
-        gdb_print!(" RAM   : start=0x", Hex(i.start_address));
+        gdb_print!(" RAM   : start=", Hex(i.start_address));
         gdb_print!(" size=", i.length / 1024, " kB\n");
     }
     let flash = bmp::bmp_get_mapping(bmp::mapping::Flash);
     for i in flash {
-        gdb_print!(" FLASH   : start=0x", Hex(i.start_address));
+        gdb_print!(" FLASH   : start=", Hex(i.start_address));
         gdb_print!(" size=", i.length / 1024, " kB\n");
     }
     encoder::reply_ok();
     true
+}
+/*
+ * `mon xml reg|registers|target`  : the target.xml GDB receives (registers)
+ * `mon xml mem|memory|map|memory-map` : the memory-map XML GDB receives
+ */
+/// Print the `mon xml` usage lines.
+fn _xml_usage() {
+    gdb_print!("usage: mon xml reg    -> target.xml : the register description GDB receives\n");
+    gdb_print!("       mon xml memory -> memory-map XML : the memory map GDB receives\n");
+}
+
+/// Handle `mon xml <reg|memory>` — dump the XML description the probe answers GDB with.
+///
+/// `reg` prints `target.xml` (the registers and their features), `memory` prints the
+/// `<memory-map>` document. Both are generated by the same code that serves
+/// `qXfer:features:read` / `qXfer:memory-map:read`, so what is printed is exactly what
+/// GDB is told, one tag per line.
+fn _xml(_command: &str, args: &[&str]) -> bool {
+    match args.first().copied() {
+        Some("reg") | Some("registers") | Some("target") => {
+            crate::target_xml::dump_target_xml();
+            encoder::reply_ok();
+            true
+        }
+        Some("mem") | Some("memory") | Some("map") | Some("memory-map") => {
+            crate::memory_map_xml::dump_memory_map_xml();
+            encoder::reply_ok();
+            true
+        }
+        _ => {
+            _xml_usage();
+            encoder::reply_e01();
+            false
+        }
+    }
 }
 /*
  *
@@ -1279,15 +1457,81 @@ pub fn get_custom_target_command() -> Option<&'static [CommandTree]> {
  *
  *
  */
-/// Get the currently registered target-specific help tree.
-pub fn get_custom_target_help() -> Option<&'static [HelpTree]> {
-    targetHelpTree.get()
-}
-/*
-*
-*
-*/
 /// Handle `mon delay` — wait N milliseconds.
+/// Handle `mon stub_stats [reset]` — what the flash-stub runner and the drivers actually did.
+///
+/// A load can report success through paths that are invisible in its timing: the stub may
+/// never have reported its halt (500 ms of polling per block), or the block's content check
+/// may have failed and the driver re-programmed it through the register path. Those are
+/// counted here, per session, so a test can read one load's worth (`reset` first) instead of
+/// inferring them.
+pub fn _stub_stats(_command: &str, args: &[&str]) -> bool {
+    if let Some(arg) = args.first() {
+        if *arg == "reset" {
+            crate::riscv::stub::stub_stats_reset();
+            gdb_println!("stub stats : counters cleared");
+        } else {
+            gdb_println!("usage: mon stub_stats [reset]");
+        }
+    }
+    let s = crate::riscv::stub::stub_stats();
+    gdb_println!(
+        "stub stats : runs=",
+        s[0],
+        " halted=",
+        s[1],
+        " repairs=",
+        s[2]
+    );
+    gdb_println!(
+        "stub stats : wait_ms=",
+        s[3],
+        " hold_ms=",
+        s[4]
+    );
+    if s[0] != s[1] {
+        gdb_println!(
+            "stub stats : last unruly run pc=0x",
+            Hex(s[5]),
+            " sp=0x",
+            Hex(s[6]),
+            " code=0x",
+            Hex(s[7]),
+            ",0x",
+            Hex(s[8])
+        );
+    }
+    encoder::reply_ok();
+    true
+}
+
+/// Handle `mon stub_hold [<ms>|auto]` — the flash-stub silence, per hardware page.
+///
+/// The hold is the period a flash driver stays off the debug module after resuming its
+/// programming stub, because a CH32V00x corrupts its own flash programming if the debug
+/// module is accessed while the stub runs (doc/ch32v00x.md). Its value is a property of
+/// the part, so it is swept on real pages: `mon stub_hold 0`, load a block, check the
+/// content, repeat; `mon stub_hold auto` puts the driver's own number back.
+pub fn _stub_hold(_command: &str, args: &[&str]) -> bool {
+    if let Some(arg) = args.first() {
+        if *arg == "auto" {
+            crate::riscv::stub::set_stub_hold_override_ms(None);
+        } else {
+            let (ok, ms) = convert_param_to_integer(arg);
+            if !ok {
+                return false;
+            }
+            crate::riscv::stub::set_stub_hold_override_ms(Some(ms));
+        }
+    }
+    match crate::riscv::stub::stub_hold_override_ms() {
+        Some(ms) => gdb_println!("stub hold : ", ms, " ms per page (override)"),
+        None => gdb_print!("stub hold : the part's own value (override off)\n"),
+    }
+    encoder::reply_ok();
+    true
+}
+
 pub fn _delay(_command: &str, args: &[&str]) -> bool {
     let ret: bool;
     let val: u32;
@@ -1300,29 +1544,23 @@ pub fn _delay(_command: &str, args: &[&str]) -> bool {
     true
 }
 /*
-*
-*
-*/
+ *
+ *
+ */
 /// Handle `mon set_reset_pin` — manually set reset pin state.
 #[unsafe(no_mangle)]
 pub fn _set_reset_pin(_command: &str, args: &[&str]) -> bool {
     let ret: bool = string_to_bool(args[0]);
     // Asserting NRST may reset the target: drop cached lines to be safe.
     crate::mem_cache::invalidate();
-    unsafe { platform_nrst_set_val_internal(ret) };
+    crate::reset_pin::ResetPin::set_internal(ret);
     encoder::reply_ok();
     gdb_println!("reset pin is now ", ret);
     true
 }
-unsafe extern "C" {
-    pub fn platform_nrst_set_val_internal(set: bool);
-}
+
 fn set_nrst(set: bool) {
-    let d: u32 = match set {
-        false => 0,
-        _ => 1,
-    };
-    unsafe { platform_nrst_set_val_internal(d != 0) };
+    crate::reset_pin::ResetPin::set_internal(set);
 }
 /// Set the NRST pin value with delay handling (C-callable).
 #[unsafe(no_mangle)]
@@ -1338,12 +1576,23 @@ pub fn platform_nrst_set_val(set: u32) {
 pub fn swindle_nrst_set_val(set: u32) {
     let is_set = set != 0;
     set_nrst(is_set);
-    let key = if is_set { RESET_PULSE_DURATION } else { RESET_HOLDOFF_DURATION };
+    let key = if is_set {
+        RESET_PULSE_DURATION
+    } else {
+        RESET_HOLDOFF_DURATION
+    };
     delay_ms(settings::get_or_default(key, 10));
 }
 /// Handle `mon breakpoint_info` — show HW breakpoint/watchpoint count.
 pub fn _breakpoint_count(_command: &str, _args: &[&str]) -> bool {
     let (bkpt, wtch) = bmp::bmp_watchpoint_breakpoint_count();
+    // A Rust-driven RISC-V target has no C-side trigger bookkeeping: its count comes
+    // from the driver that probed the hart's trigger unit.
+    let bkpt = if bkpt == 0 {
+        crate::riscv::driver_registry::active_hw_breakpoint_count()
+    } else {
+        bkpt
+    };
     gdb_println!("\t HW Breakpoints    : ", bkpt);
     gdb_println!("\t HW Watchpoints    : ", wtch);
     encoder::reply_ok();
@@ -1371,7 +1620,10 @@ fn parse_csr_name_or_num(arg: &str) -> Option<u32> {
         "dscratch0" => Some(RV_CSR_DSCRATCH0 as u32),
         "dscratch1" => Some(RV_CSR_DSCRATCH1 as u32),
         _ => {
-            let s = arg.strip_prefix("0x").or_else(|| arg.strip_prefix("0X")).unwrap_or(arg);
+            let s = arg
+                .strip_prefix("0x")
+                .or_else(|| arg.strip_prefix("0X"))
+                .unwrap_or(arg);
             let mut val: u32 = 0;
             if s.is_empty() {
                 return None;
@@ -1449,6 +1701,4 @@ pub fn _csr(_command: &str, args: &[&str]) -> bool {
     }
 }
 
-
 //-- EOF --
-

@@ -41,6 +41,7 @@ const v_command_tree: [CommandTree; 3] = [
         cb: CallbackType::text(_vMustReply),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // test
     CommandTree {
         command: "vAttach",
@@ -49,6 +50,7 @@ const v_command_tree: [CommandTree; 3] = [
         cb: CallbackType::text(_vAttach),
         start_separator: b';',
         next_separator: 0,
+        help: "",
     }, // test
     CommandTree {
         command: "vRun",
@@ -57,6 +59,7 @@ const v_command_tree: [CommandTree; 3] = [
         cb: CallbackType::text(vRun),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // test
 ];
 //
@@ -79,10 +82,11 @@ const v_command_tree: [CommandTree; 3] = [
 /// stop, so `load` + `b main` + `run` never reached `main`, while `continue`
 /// worked because it enters through `vCont;c` and needs no reset.
 ///
-/// This matters most for the CH32V003, the only target with
-/// `no_hw_breakpoint` set (`blackmagic_addon/target/CH32V0xx/ch32v0x.c`): its
-/// breakpoints are flash pages patched through the mass-write helpers, and
-/// that patch has to be in place while the hart is parked on the entry point.
+/// This matters most for a target whose driver reports no trigger unit, i.e. that
+/// has `no_hw_breakpoint` set (`swindle/rs/rs_targets/rs_ch32v00x/src/driver.rs`,
+/// CH32V003): its breakpoints are flash pages patched through the mass-write
+/// helpers, and that patch has to be in place while the hart is parked on the
+/// entry point.
 fn vRun(_command: &str, _args: &[&str]) -> bool {
     crate::mem_cache::invalidate();
     bmp::bmp_reset_target();
@@ -95,7 +99,7 @@ fn vRun(_command: &str, _args: &[&str]) -> bool {
 
 /// Dispatch `v*` packets to the appropriate handler.
 pub fn _v(command: &[u8]) -> bool {
-    exec_one(&v_command_tree, command)
+    exec_one(&v_command_tree, command, true)
 }
 
 //
@@ -140,7 +144,7 @@ fn _vAttach(_command: &str, args: &[&str]) -> bool {
     bmplog!("Attach failed\n");
     symbols::reset_symbols();
     os_detach();
-    sw_breakpoints::clear_sw_breakpoint();
+    sw_breakpoints::clear_ram_breakpoints();
     mon::clear_custom_target_command();
     encoder::reply_e01();
     true

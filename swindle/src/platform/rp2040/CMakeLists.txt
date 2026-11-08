@@ -14,7 +14,9 @@ if(SWINDLE_WITH_SDI)
   list(APPEND EXTRA_SOURCE ${CMAKE_BINARY_DIR}/bmp_pio_sdi.h)
   set(SDI_SOURCES bmp_sdiTap_rp2040_riscv_extra.cpp bmp_tap_rp2040_riscv_extra.cpp)
 else()
-  set(SDI_SOURCES ../../template/bmp_riscv_extra_stubs.cpp)
+  # Nothing to add: with no SDI transport the seam (sdi_pinmode_enter/leave,
+  # sdi_scan, bmp_sdi_dm_*) is Rust (swindle/rs/rs_swindle/src/riscv_extra_sdi_stubs.rs).
+  set(SDI_SOURCES)
 endif()
 
 add_library(swindleio_impl STATIC bmp_adc_rp2040.cpp bmp_rvTap_rp2040.cpp

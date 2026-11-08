@@ -42,7 +42,37 @@ use super::dm::*;
 use super::dm_regs::*;
 use super::dmi::{CDmiTransport, DmiError, DmiTransport};
 use super::rv_csr::*;
+use super::triggers::TriggerUnit;
+use crate::reset_pin;
 use crate::target::driver::{HaltReason, TargetError};
+
+/// How long `reset()` waits for the Debug Module to report that the reset reached the hart.
+///
+/// The legacy C driver waited 500 ms for the same condition in its part-specific reset.
+const RESET_ALL_RESET_TIMEOUT_MS: u32 = 500;
+
+/// How long the nRST pulse driven by [`RiscvHart::reset_via_pin`] is held, in ms.
+///
+/// 1 ms, the width the Cortex-M sequence uses (`reset_pin::pulse(1)`): far longer than any
+/// reset input filter, far shorter than a user would notice in a `mon reset`.
+const RESET_PIN_PULSE_MS: u32 = 1;
+
+/// How long [`RiscvHart::halt_request`] and [`RiscvHart::halt_resume`] wait for the Debug
+/// Module to report the state change they asked for, in ms.
+///
+/// Both loops used to be a flat 1000 polls with no delay between them: on a fast transport
+/// that gave up after a few milliseconds, on a slow one the same loop sat inside the DMI
+/// layer for minutes - and a WCH DM that never acknowledges the request turned a
+/// `mon riscv_benchmark` into a wedged GDB CDC. Bounding the wait in *time* makes the
+/// failure reportable, the way [`RiscvHart::wait_all_reset`] already was.
+const RUN_CONTROL_TIMEOUT_MS: u32 = 250;
+
+/// Settle time after nRST is released, before the first DMI access.
+///
+/// The part needs its clocks up before the Debug Module answers again; the Cortex-M sequence
+/// waits the same 10 ms after its pulse. The re-activation loop in [`RiscvHart::reset_via_pin`]
+/// covers a part that is slower still.
+const RESET_PIN_SETTLE_MS: u32 = 10;
 
 /// Supported RISC-V 32-bit core architectures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +119,34 @@ pub enum MemoryAccessMethod {
     Sysbus,
 }
 
+impl MemoryAccessMethod {
+    /// Wire value of the `method` parameter of `RV.MEM_READ` / `RV.MEM_WRITE`.
+    ///
+    /// The hosted build sends the method it selected so the probe runs the same
+    /// access sequence instead of guessing one. Both ends compile this file, so
+    /// the numbering cannot drift; the values are still part of the wire format.
+    pub const fn wire_id(self) -> u8 {
+        match self {
+            Self::Abstract => 0,
+            Self::AbstAuto => 1,
+            Self::Progbuf => 2,
+            Self::Sysbus => 3,
+        }
+    }
+
+    /// Decode a [`Self::wire_id`]; `None` for a value this build does not know
+    /// (a newer host talking to an older probe).
+    pub const fn from_wire_id(id: u32) -> Option<Self> {
+        match id {
+            0 => Some(Self::Abstract),
+            1 => Some(Self::AbstAuto),
+            2 => Some(Self::Progbuf),
+            3 => Some(Self::Sysbus),
+            _ => None,
+        }
+    }
+}
+
 /// RISC-V Hart state and controller.
 pub struct RiscvHart {
     pub dmi: CDmiTransport,
@@ -103,6 +161,13 @@ pub struct RiscvHart {
     pub has_sysbus: bool,
     pub has_abstauto: bool,
     pub active_method: MemoryAccessMethod,
+    /// Hardware breakpoint / watchpoint capability of this hart's trigger unit.
+    ///
+    /// Filled by [`super::triggers::HwTriggers::resolve`] during the driver probe;
+    /// [`TriggerUnit::NONE`] until then (or on parts that were never scanned).
+    pub triggers: TriggerUnit,
+    /// Cached halt reason while the core remains continuously halted.
+    pub last_halt_reason: Option<HaltReason>,
 }
 
 impl RiscvHart {
@@ -150,6 +215,8 @@ impl RiscvHart {
             has_sysbus,
             has_abstauto,
             active_method: MemoryAccessMethod::Abstract,
+            triggers: TriggerUnit::NONE,
+            last_halt_reason: None,
         };
 
         // Halt hart briefly to read IDs and MISA safely
@@ -170,6 +237,15 @@ impl RiscvHart {
         hart.arch_id = hart.csr_read(RV_CSR_MARCHID).unwrap_or(0);
         hart.impl_id = hart.csr_read(RV_CSR_MIMPID).unwrap_or(0);
         hart.hart_id = hart.csr_read(RV_CSR_MHARTID).unwrap_or(0);
+
+        // Which accessors this Debug Module actually has, and which of them is the
+        // fastest, has to be settled here - before the first memory read. The
+        // per-family driver probe reads its signature out of the ESIG window first
+        // thing, and a part whose DM has no abstract memory command (the QingKe V2
+        // core in the CH32V003 answers it with cmderr "not supported") can only be
+        // identified through its program buffer. Detection *is* this benchmark:
+        // no register says which commands a DM implements.
+        super::benchmark::auto_select_fastest_method(&mut hart);
 
         Ok(hart)
     }
@@ -313,22 +389,37 @@ impl RiscvHart {
     }
 
     /// Request halt of target core.
+    ///
+    /// Bounded in time ([`RUN_CONTROL_TIMEOUT_MS`]) so a Debug Module that never reports
+    /// `allhalted` costs a fraction of a second and a log line, not a stuck task.
     pub fn halt_request(&mut self) -> Result<(), DmiError> {
-        self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ)?;
-        for _ in 0..1000 {
+        self.dmi
+            .write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ)?;
+        let mut last_status = 0u32;
+        for _ in 0..RUN_CONTROL_TIMEOUT_MS {
             let status = self.dmi.read(RV_DM_STATUS)?;
+            last_status = status;
             if (status & RV_DM_STAT_ALL_HALTED) != 0 {
                 // Clear haltreq once halted, matching C Blackmagic line 1337 and sdi.txt Table 3-16
                 self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
+                self.last_halt_reason = None;
                 return Ok(());
             }
+            crate::target::delay_ms(1);
         }
         let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+        self.last_halt_reason = None;
+        crate::gdb_println!("halt: no allhalted within timeout, dmstatus=", Hex(last_status));
         Err(DmiError::Timeout)
     }
 
     /// Resume core execution, optionally single-stepping.
+    ///
+    /// Follows RISC-V Debug Spec 0.13 §3.12.1 resume protocol without illegal abstract
+    /// command access or stale cause checks during resume transition.
     pub fn halt_resume(&mut self, step: bool) -> Result<(), DmiError> {
+        self.last_halt_reason = None;
+
         // Read dcsr and adjust step bit
         let mut dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
         if step {
@@ -340,27 +431,23 @@ impl RiscvHart {
         dcsr |= RV_DCSR_EBREAKM;
         let _ = self.csr_write(RV_CSR_DCSR, dcsr);
 
-        // Step 1: Clear haltreq before resume (sdi.txt Table 3-16)
-        self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE)?;
-
-        // Step 2: Send resume request (0x40000001)
+        // Send resume request
         self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HART_RESUME_REQ)?;
-        for _ in 0..1000 {
+        let mut last_status = 0u32;
+        for _ in 0..RUN_CONTROL_TIMEOUT_MS {
             let status = self.dmi.read(RV_DM_STATUS)?;
-            if (status & RV_DM_STAT_ALL_RUNNING) != 0 || (status & RV_DM_STAT_ALL_HALTED) == 0 {
-                // Target is running
+            last_status = status;
+            if (status & (RV_DM_STAT_ALL_RUNNING | RV_DM_STAT_ALL_RESUMEACK)) != 0
+                || (status & RV_DM_STAT_ALL_HALTED) == 0
+            {
+                // Target acknowledged resume request / is running
                 let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
                 return Ok(());
             }
-            // Check if core already ran and halted on ebreak/step
-            let dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
-            let cause = (dcsr & RV_DCSR_CAUSE_MASK) >> RV_DCSR_CAUSE_SHIFT;
-            if cause == 1 /* ebreak */ || (step && cause == 4 /* step */) {
-                let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
-                return Ok(());
-            }
+            crate::target::delay_ms(1);
         }
         let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+        crate::gdb_println!("resume: no allrunning within timeout, dmstatus=", Hex(last_status));
         Err(DmiError::Timeout)
     }
 
@@ -368,10 +455,16 @@ impl RiscvHart {
     pub fn halt_poll(&mut self) -> (HaltReason, u32) {
         let status = match self.dmi.read(RV_DM_STATUS) {
             Ok(s) => s,
-            Err(_) => return (HaltReason::Error, 0),
+            Err(_) => {
+                self.last_halt_reason = None;
+                return (HaltReason::Error, 0);
+            }
         };
 
         if (status & RV_DM_STAT_ALL_HALTED) != 0 {
+            if let Some(reason) = self.last_halt_reason {
+                return (reason, 0);
+            }
             let dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
             let cause = (dcsr & RV_DCSR_CAUSE_MASK) >> RV_DCSR_CAUSE_SHIFT;
             let reason = match cause {
@@ -381,27 +474,43 @@ impl RiscvHart {
                 4 => HaltReason::Stepping,   // step
                 _ => HaltReason::Unknown,
             };
+            self.last_halt_reason = Some(reason);
             (reason, 0)
         } else if (status & RV_DM_STAT_ALL_RUNNING) != 0 {
+            self.last_halt_reason = None;
             (HaltReason::Running, 0)
         } else {
+            self.last_halt_reason = None;
             (HaltReason::Unknown, 0)
         }
     }
 
-    /// Reset target core with halt request asserted (patch 101).
+    /// Reset the target through the Debug Module's `ndmreset`, with halt-request asserted.
     pub fn reset(&mut self) -> Result<(), DmiError> {
+        self.last_halt_reason = None;
+
+        // Clear what `allhavereset` may still be remembering from an earlier reset
+        self.dmi.write(
+            RV_DM_CONTROL,
+            self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ | RV_DM_CTRL_HART_ACK_RESET,
+        )?;
+
         // Assert haltreq and ndmreset together
         self.dmi.write(
             RV_DM_CONTROL,
             self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ | RV_DM_CTRL_NDM_RESET,
         )?;
 
+        self.dmi.invalidate_caches();
+
         // Release ndmreset while maintaining haltreq
         self.dmi.write(
             RV_DM_CONTROL,
             self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ,
         )?;
+
+        // Wait until Debug Module reports reset reached the hart
+        self.wait_all_reset();
 
         // Acknowledge the reset while holding haltreq
         self.dmi.write(
@@ -412,12 +521,46 @@ impl RiscvHart {
         // Ensure halted
         self.halt_request()?;
 
+        self.dmi.invalidate_caches();
+
         // Set ebreakm in dcsr so software breakpoints trigger debug halt
         let mut dcsr = self.csr_read(RV_CSR_DCSR).unwrap_or(0);
         dcsr |= RV_DCSR_EBREAKM;
         let _ = self.csr_write(RV_CSR_DCSR, dcsr);
 
         Ok(())
+    }
+
+    /// Give the part a hardware reset through the probe's nRST line, then bring the Debug Module
+    /// back up, ready for [`Self::reset`].
+    pub fn pulse_nrst(&mut self) -> Result<(), DmiError> {
+        self.last_halt_reason = None;
+
+        reset_pin::pulse(RESET_PIN_PULSE_MS);
+        crate::target::delay_ms(RESET_PIN_SETTLE_MS);
+
+        let control = self.hartsel | RV_DM_CTRL_ACTIVE | RV_DM_CTRL_HALT_REQ;
+        for _ in 0..RESET_ALL_RESET_TIMEOUT_MS {
+            if self.dmi.write(RV_DM_CONTROL, control).is_ok()
+                && matches!(self.dmi.read(RV_DM_CONTROL), Ok(value) if value & RV_DM_CTRL_ACTIVE != 0)
+            {
+                return Ok(());
+            }
+            crate::target::delay_ms(1);
+        }
+        Err(DmiError::Timeout)
+    }
+
+    /// Wait (bounded) for `dmstatus.allhavereset`.
+    fn wait_all_reset(&mut self) {
+        // Bounded wait for dmstatus.allhavereset (100 ms max)
+        for _ in 0..100 {
+            match self.dmi.read(RV_DM_STATUS) {
+                Ok(status) if (status & RV_DM_STAT_ALL_HAVERESET) != 0 => return,
+                Err(_) => return,
+                Ok(_) => crate::target::delay_ms(1),
+            }
+        }
     }
 
     // --- Direct DM / DMI access ---
@@ -432,11 +575,27 @@ impl RiscvHart {
     }
 
     // --- Direct Memory Access (Native Rust API) ---
+    //
+    // Hosted builds hand the block to the probe (`RV.MEM_READ` / `RV.MEM_WRITE`):
+    // there every DM access is an RPC round trip, so running the access sequence
+    // per word is what capped a `load` at 2 KB/s. The probe runs the very same
+    // sequence from its own DMI (see `hosted/bulk_mem.rs`).
+    //
+    // `swindle_hosted --raw-dmi` turns that around again: the sequence runs here
+    // and each DM op is its own round trip, which is the pre-bulk behaviour.
     pub fn mem_read(&mut self, addr: u32, dest: &mut [u8]) -> Result<(), TargetError> {
+        #[cfg(feature = "hosted")]
+        if !crate::hosted::bulk_mem::raw_dmi() {
+            return crate::hosted::bulk_mem::read(self.active_method, addr, dest);
+        }
         super::mem::RiscvMem::read(self, addr, dest).map_err(|_| TargetError::AccessFault)
     }
 
     pub fn mem_write(&mut self, addr: u32, src: &[u8]) -> Result<(), TargetError> {
+        #[cfg(feature = "hosted")]
+        if !crate::hosted::bulk_mem::raw_dmi() {
+            return crate::hosted::bulk_mem::write(self.active_method, addr, src);
+        }
         super::mem::RiscvMem::write(self, addr, src).map_err(|_| TargetError::AccessFault)
     }
 
@@ -469,16 +628,88 @@ impl RiscvHart {
     }
 
     // --- Stub Execution (Native Rust API) ---
+
+    /// Run the stub at `loadaddr` with `p1..p4` in `a0..a3`.
+    ///
+    /// `true` means the stub published the common exit code (`STUB_EXIT_OK`, i.e. `a0 = 1`)
+    /// once it was done; see [`crate::stub_exit`].
     pub fn run_stub(&mut self, loadaddr: u32, p1: u32, p2: u32, p3: u32, p4: u32) -> bool {
         super::stub::run_stub(self, loadaddr, p1, p2, p3, p4)
     }
 
+    /// Run the stub with an explicit stack pointer, reporting whether it published
+    /// `STUB_EXIT_OK` in `a0`.
     pub fn run_stub_with_stack(&mut self, loadaddr: u32, stack: u32, p1: u32, p2: u32, p3: u32, p4: u32) -> bool {
         super::stub::run_stub_with_stack(self, loadaddr, stack, p1, p2, p3, p4)
     }
 
+    /// Re-activate the debug module (`dmcontrol.dmactive`) and confirm it took.
+    ///
+    /// The flash-mode entry resets the target (`target_enter_flash_mode()`), and that
+    /// reset leaves the DM inactive. An inactive DM still accepts register writes and
+    /// still reports plausible status, it just does not *steer the core* - so every
+    /// write the stub runner makes would be accepted and ignored.
+    pub fn dm_activate(&mut self) -> bool {
+        for _ in 0..3 {
+            let _ = self.dmi.write(RV_DM_CONTROL, self.hartsel | RV_DM_CTRL_ACTIVE);
+            if let Ok(control) = self.dmi.read(RV_DM_CONTROL)
+                && (control & RV_DM_CTRL_ACTIVE) != 0
+            {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// [`Self::run_stub_with_stack`] with an explicit bound on how long the polling may
+    /// take, in milliseconds; `None` means the default of one second (see
+    /// [`super::stub::run_stub_with_stack_timeout`]).
+    pub fn run_stub_with_stack_timeout(
+        &mut self,
+        loadaddr: u32,
+        stack: u32,
+        p1: u32,
+        p2: u32,
+        p3: u32,
+        p4: u32,
+        timeout: Option<u32>,
+    ) -> bool {
+        super::stub::run_stub_with_stack_timeout(self, loadaddr, stack, p1, p2, p3, p4, timeout)
+    }
+
+    /// [`Self::run_stub_with_stack_timeout`] plus a silence of `hold_ms` milliseconds
+    /// between the resume and the first `dmstatus` read (see
+    /// [`super::stub::run_stub_with_stack_hold`]).
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_stub_with_stack_hold(
+        &mut self,
+        loadaddr: u32,
+        stack: u32,
+        p1: u32,
+        p2: u32,
+        p3: u32,
+        p4: u32,
+        timeout: Option<u32>,
+        hold_ms: u32,
+    ) -> bool {
+        super::stub::run_stub_with_stack_hold(self, loadaddr, stack, p1, p2, p3, p4, timeout, hold_ms)
+    }
+
     /// Like [`Self::run_stub_with_stack`] but returns the result the stub left in `a2`
-    /// (`None` when the stub failed).
+    /// (`None` when the stub did not report `STUB_EXIT_OK`).
+    pub fn run_stub_with_stack_result(
+        &mut self,
+        loadaddr: u32,
+        stack: u32,
+        p1: u32,
+        p2: u32,
+        p3: u32,
+        p4: u32,
+    ) -> Option<u32> {
+        super::stub::run_stub_with_stack_result(self, loadaddr, stack, p1, p2, p3, p4)
+    }
+
+    /// Alias of [`Self::run_stub_with_stack_result`].
     pub fn run_stub_with_stack_ret(
         &mut self,
         loadaddr: u32,
@@ -489,5 +720,35 @@ impl RiscvHart {
         p4: u32,
     ) -> Option<u32> {
         super::stub::run_stub_with_stack_ret(self, loadaddr, stack, p1, p2, p3, p4)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MemoryAccessMethod;
+
+    /// The `method` byte of `RV.MEM_READ` / `RV.MEM_WRITE` is a wire value: it has
+    /// to survive the round trip and stay stable (a probe and a host from
+    /// different builds may meet).
+    #[test]
+    fn memory_access_method_wire_ids_round_trip() {
+        for method in [
+            MemoryAccessMethod::Abstract,
+            MemoryAccessMethod::AbstAuto,
+            MemoryAccessMethod::Progbuf,
+            MemoryAccessMethod::Sysbus,
+        ] {
+            assert_eq!(
+                MemoryAccessMethod::from_wire_id(method.wire_id() as u32),
+                Some(method)
+            );
+        }
+        // The numbering is part of the wire format, not an implementation detail.
+        assert_eq!(MemoryAccessMethod::Abstract.wire_id(), 0);
+        assert_eq!(MemoryAccessMethod::AbstAuto.wire_id(), 1);
+        assert_eq!(MemoryAccessMethod::Progbuf.wire_id(), 2);
+        assert_eq!(MemoryAccessMethod::Sysbus.wire_id(), 3);
+        // An unknown id is rejected instead of silently mapping onto one of ours.
+        assert_eq!(MemoryAccessMethod::from_wire_id(4), None);
     }
 }

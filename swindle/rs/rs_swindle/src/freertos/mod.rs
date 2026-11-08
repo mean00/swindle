@@ -20,8 +20,8 @@ pub mod freertos_riscv_rv32_wch;
 pub mod freertos_symbols;
 pub mod freertos_tcb;
 pub mod freertos_trait;
+use crate::SyncCell;
 use crate::bmp::bmp_cpuid;
-use core::mem::MaybeUninit;
 
 use freertos_arm::create_arm_switch_handler;
 use freertos_riscv_common::create_rv32_switch_handler;
@@ -36,6 +36,8 @@ crate::gdb_print_init!();
 /// Supported MCU core layouts for FreeRTOS thread context extraction.
 #[derive(PartialEq, Copy, Clone)]
 pub enum LN_MCU_CORE {
+    /// No supported core or FreeRTOS disabled (first variant = 0 so `SYMBOLS` lives in `.bss`).
+    LN_MCU_NONE = 0,
     /// Auto-detect the core based on CPUID.
     LN_MCU_AUTO,
     /// ARM Cortex-M0/M0+
@@ -48,8 +50,6 @@ pub enum LN_MCU_CORE {
     LN_MCU_CM33,
     /// RISC-V 32-bit (Standard or WCH/Bumblebee variations)
     LN_MCU_RV32,
-    /// No supported core or FreeRTOS disabled.
-    LN_MCU_NONE,
 }
 
 /// Global singleton state for OS awareness.
@@ -64,21 +64,11 @@ pub struct FreeRTOS_switcher {
     pub switcher: Option<&'static mut dyn freertos_switch_handler>,
 }
 
-// SAFETY: FreeRTOS_switcher is only used in a single-threaded debugger context.
-unsafe impl Send for FreeRTOS_switcher {}
-unsafe impl Sync for FreeRTOS_switcher {}
+static SWITCHER: SyncCell<FreeRTOS_switcher> = SyncCell::new(FreeRTOS_switcher { switcher: None });
 
 /// Retrieves a mutable reference to the global `FreeRTOS_switcher` instance.
 fn get_switcher() -> &'static mut FreeRTOS_switcher {
-    static mut SWITCHER: MaybeUninit<FreeRTOS_switcher> = MaybeUninit::uninit();
-    static mut SWITCHER_INIT: bool = false;
-    unsafe {
-        if !SWITCHER_INIT {
-            SWITCHER.write(FreeRTOS_switcher { switcher: None });
-            SWITCHER_INIT = true;
-        }
-        SWITCHER.assume_init_mut()
-    }
+    unsafe { SWITCHER.as_mut() }
 }
 
 /// Orchestrates a full FreeRTOS thread context switch.

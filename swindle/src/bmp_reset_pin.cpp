@@ -1,55 +1,17 @@
 /**
  * @file bmp_reset_pin.cpp
- * @brief Platform reset-pin glue and frequency accessor.
+ * @brief SWD clock frequency accessor.
  *
- * Connects the SwdReset object (pReset) to the BMP platform hooks
- * for nRST assertion/de-assertion and SWD clock frequency queries.
+ * The target nRST line used to be driven from here too. On the LN probes (GD32 /
+ * CH32) it now comes from the probe board table and is driven in Rust
+ * (swindle/rs/rs_swindle/src/reset_pin.rs, esprit GPIO trait), while the C++
+ * implementation the RP2040/RP2350 and ESP32 builds still need (through SwdReset
+ * / pReset) is in bmp_nrst_c.cpp, which only those platforms compile. That keeps
+ * exactly one definition of platform_nrst_set_val_internal() per firmware.
  */
 #include "esprit.h"
-#include "lnBMP_pins.h"
-#include "lnBMP_reset.h"
-// clang-format on
-extern SwdReset *pReset;
+
 extern uint32_t swd_frequency;
-
-/** @brief Test routine — toggles reset 5 times with 2 s delay. */
-extern "C" void resetTest(void)
-{
-    for (int i = 0; i < 5; i++)
-    {
-        pReset->off();
-        lnDelayMs(2000);
-        pReset->on();
-        lnDelayMs(2000);
-    }
-}
-
-/**
- * @brief Get current nRST state from the platform reset driver.
- * @return true if asserted, false otherwise.
- */
-extern "C" bool platform_nrst_get_val(void)
-{
-    return pReset->state();
-}
-
-/**
- * @brief Assert or de-assert the target nRST line.
- * @param assrt true → hold reset, false → release.
- */
-extern "C" void platform_nrst_set_val_internal(bool assrt)
-{
-    if (assrt)
-    {
-        Logger("Reset on\n");
-        pReset->on();
-    }
-    else
-    {
-        Logger("Reset off\n");
-        pReset->off();
-    }
-}
 
 /**
  * @brief Get the current SWD frequency.
@@ -60,5 +22,6 @@ extern "C" uint32_t bmp_get_frequency_c()
     return swd_frequency;
 }
 // EOF
+
 
 //

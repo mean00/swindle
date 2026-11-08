@@ -50,8 +50,6 @@ IO is sampled when clock goes ___---
 
 extern "C"
 {
-#include "jep106.h"
-#include "riscv_debug.h"
 }
 
 #ifndef __clang__
@@ -188,6 +186,7 @@ uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
 bool rv_dm_reset()
 {
     // toggle the clock 100 times
+    rSWCLK->output();
     rSWDIO->dir_output();
     rSWDIO->set(1);
     for (int i = 0; i < 100; i++)
@@ -195,7 +194,13 @@ bool rv_dm_reset()
         rSWCLK->clockOff();
         rSWCLK->clockOn();
     }
-    rSWDIO->set(0); // going low high with CLK = high => stop bit
+    // Stop bit: SWDIO rising edge while CLK high.
+    // Drive low, ensure stable with CLK high, then drive high.
+    rSWCLK->clockOff();
+    rSWDIO->set(0);
+    rSWCLK->wait();
+    rSWCLK->clockOn();
+    rSWCLK->wait();
     rSWDIO->set(1);
     lnDelayMs(10);
     return true;

@@ -6,9 +6,7 @@
 #include "lnBMPArduino.h"
 extern "C"
 {
-
-#include "adiv5.h"
-#include "general.h"
+#include "platform_support.h"
 #define BOARD_STUB(x)                                                                                                  \
     bool x(adiv5_access_port_s *apb)                                                                                   \
     {                                                                                                                  \

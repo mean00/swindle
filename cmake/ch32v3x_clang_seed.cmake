@@ -5,7 +5,7 @@
 #
 # The ch32v307 firmware toolchain (esprit/mcus/riscv_ch32v3x/toolchain_clang.cmake
 # - a vendored git submodule) and the standalone flashstub build
-# (blackmagic_addon/target/CH32V3xx/flashstub/CMakeLists.txt) used to carry two
+# (swindle/rs/rs_targets/rs_ch32v123xx/flashstub/CMakeLists.txt) used to carry two
 # hand-copied copies of the same GD32_MCU_C_FLAGS / GD32_C_FLAGS formula.
 # The flashstub now sources this module; when the esprit submodule can be
 # changed, its riscv_ch32v3x toolchain should include this module instead of

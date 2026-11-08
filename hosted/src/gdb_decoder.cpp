@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
+#include <cstdarg>
+#include <ctime>
 
 // ANSI color escape codes for terminal output
 #define ANSI_CYAN    "\033[36m"
@@ -59,11 +61,31 @@ struct CommandContext {
 
 static CommandContext s_last_cmd;
 
+/**
+ * @brief Print one decoder line prefixed with the local wall-clock time (HH:MM:SS).
+ *
+ * Every decoder message goes through this helper so the output can be correlated
+ * with the probe log / a capture:  "17:03:10 [GDB Req] ...".
+ * @param fmt  printf-style format string.
+ */
+static void decoderPrintf(const char *fmt, ...)
+{
+    time_t now = time(nullptr);
+    struct tm local_time;
+    localtime_r(&now, &local_time);
+    fprintf(stdout, "%02d:%02d:%02d ", local_time.tm_hour, local_time.tm_min, local_time.tm_sec);
+
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stdout, fmt, args);
+    va_end(args);
+}
+
 void gdb_decoder_set_enabled(bool enabled)
 {
     s_decoder_enabled = enabled;
     if (s_decoder_enabled) {
-        printf(ANSI_GREEN "[GDB Decoder] On-the-fly GDB packet & reply decoding ENABLED" ANSI_RESET "\n");
+        decoderPrintf(ANSI_GREEN "[GDB Decoder] On-the-fly GDB packet & reply decoding ENABLED" ANSI_RESET "\n");
     }
 }
 
@@ -123,11 +145,11 @@ void gdb_decode_request_packet(const char *packet, size_t len)
             s_last_cmd.type = LastCommandType::MEM_READ;
             s_last_cmd.addr = addr;
             s_last_cmd.length = length;
-            printf(ANSI_CYAN "[GDB Req] Memory READ: addr=0x%llx, len=%lu bytes (%lu words)" ANSI_RESET "\n",
+            decoderPrintf(ANSI_CYAN "[GDB Req] Memory READ: addr=0x%llx, len=%lu bytes (%lu words)" ANSI_RESET "\n",
                    addr, length, (length + 3) / 4);
         } else {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_CYAN "[GDB Req] Memory READ (raw: %s)" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_CYAN "[GDB Req] Memory READ (raw: %s)" ANSI_RESET "\n", packet);
         }
         break;
     }
@@ -140,10 +162,10 @@ void gdb_decode_request_packet(const char *packet, size_t len)
             s_last_cmd.length = length;
             const char *colon = strchr(args, ':');
             const char *data_preview = colon ? colon + 1 : "";
-            printf(ANSI_YELLOW "[GDB Req] Memory WRITE: addr=0x%llx, len=%lu bytes (preview: %.16s...)" ANSI_RESET "\n",
+            decoderPrintf(ANSI_YELLOW "[GDB Req] Memory WRITE: addr=0x%llx, len=%lu bytes (preview: %.16s...)" ANSI_RESET "\n",
                    addr, length, data_preview);
         } else {
-            printf(ANSI_YELLOW "[GDB Req] Memory WRITE (raw: %s)" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_YELLOW "[GDB Req] Memory WRITE (raw: %s)" ANSI_RESET "\n", packet);
         }
         break;
     }
@@ -154,29 +176,29 @@ void gdb_decode_request_packet(const char *packet, size_t len)
         if (sscanf(args, "%llx,%lx", &addr, &length) == 2) {
             s_last_cmd.addr = addr;
             s_last_cmd.length = length;
-            printf(ANSI_YELLOW "[GDB Req] Binary memory WRITE: addr=0x%llx, len=%lu bytes" ANSI_RESET "\n",
+            decoderPrintf(ANSI_YELLOW "[GDB Req] Binary memory WRITE: addr=0x%llx, len=%lu bytes" ANSI_RESET "\n",
                    addr, length);
         } else {
-            printf(ANSI_YELLOW "[GDB Req] Binary memory WRITE (raw: %s)" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_YELLOW "[GDB Req] Binary memory WRITE (raw: %s)" ANSI_RESET "\n", packet);
         }
         break;
     }
     case 'g': // Read general registers
         s_last_cmd.type = LastCommandType::ALL_REGS_READ;
-        printf(ANSI_CYAN "[GDB Req] Read all general registers" ANSI_RESET "\n");
+        decoderPrintf(ANSI_CYAN "[GDB Req] Read all general registers" ANSI_RESET "\n");
         break;
     case 'G': // Write general registers
         s_last_cmd.type = LastCommandType::OTHER;
-        printf(ANSI_YELLOW "[GDB Req] Write all general registers (%zu hex chars)" ANSI_RESET "\n", len - 1);
+        decoderPrintf(ANSI_YELLOW "[GDB Req] Write all general registers (%zu hex chars)" ANSI_RESET "\n", len - 1);
         break;
     case 'p': { // Read single register: p<reg>
         unsigned int reg_num = 0;
         s_last_cmd.type = LastCommandType::REG_READ;
         if (sscanf(args, "%x", &reg_num) == 1) {
             s_last_cmd.reg_num = reg_num;
-            printf(ANSI_CYAN "[GDB Req] Read register #%u (0x%x)" ANSI_RESET "\n", reg_num, reg_num);
+            decoderPrintf(ANSI_CYAN "[GDB Req] Read register #%u (0x%x)" ANSI_RESET "\n", reg_num, reg_num);
         } else {
-            printf(ANSI_CYAN "[GDB Req] Read register (raw: %s)" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_CYAN "[GDB Req] Read register (raw: %s)" ANSI_RESET "\n", packet);
         }
         break;
     }
@@ -185,52 +207,52 @@ void gdb_decode_request_packet(const char *packet, size_t len)
         char val_str[64] = {0};
         s_last_cmd.type = LastCommandType::OTHER;
         if (sscanf(args, "%x=%63s", &reg_num, val_str) == 2) {
-            printf(ANSI_YELLOW "[GDB Req] Write register #%u = 0x%s" ANSI_RESET "\n", reg_num, val_str);
+            decoderPrintf(ANSI_YELLOW "[GDB Req] Write register #%u = 0x%s" ANSI_RESET "\n", reg_num, val_str);
         } else {
-            printf(ANSI_YELLOW "[GDB Req] Write register (raw: %s)" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_YELLOW "[GDB Req] Write register (raw: %s)" ANSI_RESET "\n", packet);
         }
         break;
     }
     case 'c': { // Continue
         s_last_cmd.type = LastCommandType::CONTINUE;
         if (len > 1) {
-            printf(ANSI_GREEN "[GDB Req] Continue execution at 0x%s" ANSI_RESET "\n", args);
+            decoderPrintf(ANSI_GREEN "[GDB Req] Continue execution at 0x%s" ANSI_RESET "\n", args);
         } else {
-            printf(ANSI_GREEN "[GDB Req] Continue execution" ANSI_RESET "\n");
+            decoderPrintf(ANSI_GREEN "[GDB Req] Continue execution" ANSI_RESET "\n");
         }
         break;
     }
     case 's': { // Step
         s_last_cmd.type = LastCommandType::STEP;
         if (len > 1) {
-            printf(ANSI_GREEN "[GDB Req] Single-step at 0x%s" ANSI_RESET "\n", args);
+            decoderPrintf(ANSI_GREEN "[GDB Req] Single-step at 0x%s" ANSI_RESET "\n", args);
         } else {
-            printf(ANSI_GREEN "[GDB Req] Single-step" ANSI_RESET "\n");
+            decoderPrintf(ANSI_GREEN "[GDB Req] Single-step" ANSI_RESET "\n");
         }
         break;
     }
     case '?': // Halt status query
         s_last_cmd.type = LastCommandType::HALT_QUERY;
-        printf(ANSI_MAGENTA "[GDB Req] Query target halt reason / stop status" ANSI_RESET "\n");
+        decoderPrintf(ANSI_MAGENTA "[GDB Req] Query target halt reason / stop status" ANSI_RESET "\n");
         break;
     case 'k': // Kill
         s_last_cmd.type = LastCommandType::OTHER;
-        printf(ANSI_YELLOW "[GDB Req] Kill target" ANSI_RESET "\n");
+        decoderPrintf(ANSI_YELLOW "[GDB Req] Kill target" ANSI_RESET "\n");
         break;
     case 'D': // Detach
         s_last_cmd.type = LastCommandType::OTHER;
-        printf(ANSI_MAGENTA "[GDB Req] Detach from target" ANSI_RESET "\n");
+        decoderPrintf(ANSI_MAGENTA "[GDB Req] Detach from target" ANSI_RESET "\n");
         break;
     case 'H': { // Set thread: H<op><thread>
         s_last_cmd.type = LastCommandType::OTHER;
         char op = args[0];
         const char *op_str = (op == 'c') ? "continue/step" : (op == 'g') ? "other operations" : "unknown";
-        printf(ANSI_MAGENTA "[GDB Req] Set thread for %s: thread=%s" ANSI_RESET "\n", op_str, &args[1]);
+        decoderPrintf(ANSI_MAGENTA "[GDB Req] Set thread for %s: thread=%s" ANSI_RESET "\n", op_str, &args[1]);
         break;
     }
     case 'T': // Thread alive query
         s_last_cmd.type = LastCommandType::OTHER;
-        printf(ANSI_MAGENTA "[GDB Req] Check if thread %s is alive" ANSI_RESET "\n", args);
+        decoderPrintf(ANSI_MAGENTA "[GDB Req] Check if thread %s is alive" ANSI_RESET "\n", args);
         break;
     case 'Z':
     case 'z': { // Breakpoints / Watchpoints
@@ -248,10 +270,10 @@ void gdb_decode_request_packet(const char *packet, size_t len)
             case 3: type_name = "read watchpoint"; break;
             case 4: type_name = "access watchpoint"; break;
             }
-            printf(ANSI_YELLOW "[GDB Req] %s %s at 0x%llx (kind=%u)" ANSI_RESET "\n",
+            decoderPrintf(ANSI_YELLOW "[GDB Req] %s %s at 0x%llx (kind=%u)" ANSI_RESET "\n",
                    insert ? "Insert" : "Remove", type_name, addr, kind);
         } else {
-            printf(ANSI_YELLOW "[GDB Req] Breakpoint %s (raw: %s)" ANSI_RESET "\n",
+            decoderPrintf(ANSI_YELLOW "[GDB Req] Breakpoint %s (raw: %s)" ANSI_RESET "\n",
                    insert ? "Insert" : "Remove", packet);
         }
         break;
@@ -259,16 +281,16 @@ void gdb_decode_request_packet(const char *packet, size_t len)
     case 'v': { // Extended 'v' packets
         if (strncmp(packet, "vCont?", 6) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query supported vCont actions" ANSI_RESET "\n");
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query supported vCont actions" ANSI_RESET "\n");
         } else if (strncmp(packet, "vCont;", 6) == 0) {
             s_last_cmd.type = (packet[6] == 's') ? LastCommandType::STEP : LastCommandType::CONTINUE;
-            printf(ANSI_GREEN "[GDB Req] Action vCont: %s" ANSI_RESET "\n", packet + 6);
+            decoderPrintf(ANSI_GREEN "[GDB Req] Action vCont: %s" ANSI_RESET "\n", packet + 6);
         } else if (strncmp(packet, "vAttach;", 8) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Attach to PID: %s" ANSI_RESET "\n", packet + 8);
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Attach to PID: %s" ANSI_RESET "\n", packet + 8);
         } else {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Extended packet: %s" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Extended packet: %s" ANSI_RESET "\n", packet);
         }
         break;
     }
@@ -276,43 +298,43 @@ void gdb_decode_request_packet(const char *packet, size_t len)
         if (strncmp(packet, "qRcmd,", 6) == 0) {
             s_last_cmd.type = LastCommandType::MONITOR;
             decode_hex_ascii(packet + 6, s_last_cmd.mon_cmd, sizeof(s_last_cmd.mon_cmd));
-            printf(ANSI_GREEN "[GDB Req] Monitor command: \"mon %s\"" ANSI_RESET "\n", s_last_cmd.mon_cmd);
+            decoderPrintf(ANSI_GREEN "[GDB Req] Monitor command: \"mon %s\"" ANSI_RESET "\n", s_last_cmd.mon_cmd);
         } else if (strncmp(packet, "qSupported", 10) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query supported features: %s" ANSI_RESET "\n", packet + 10);
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query supported features: %s" ANSI_RESET "\n", packet + 10);
         } else if (strncmp(packet, "qXfer:memory-map:read:", 22) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_CYAN "[GDB Req] Read target memory-map XML" ANSI_RESET "\n");
+            decoderPrintf(ANSI_CYAN "[GDB Req] Read target memory-map XML" ANSI_RESET "\n");
         } else if (strncmp(packet, "qXfer:features:read:", 20) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_CYAN "[GDB Req] Read target description XML (%s)" ANSI_RESET "\n", packet + 20);
+            decoderPrintf(ANSI_CYAN "[GDB Req] Read target description XML (%s)" ANSI_RESET "\n", packet + 20);
         } else if (strcmp(packet, "qAttached") == 0 || strncmp(packet, "qAttached:", 10) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query attached status (%s)" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query attached status (%s)" ANSI_RESET "\n", packet);
         } else if (strcmp(packet, "qOffsets") == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query section offsets" ANSI_RESET "\n");
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query section offsets" ANSI_RESET "\n");
         } else if (strcmp(packet, "qC") == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query current thread ID" ANSI_RESET "\n");
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query current thread ID" ANSI_RESET "\n");
         } else if (strncmp(packet, "qfThreadInfo", 12) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query thread list (first)" ANSI_RESET "\n");
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query thread list (first)" ANSI_RESET "\n");
         } else if (strncmp(packet, "qsThreadInfo", 12) == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query thread list (subsequent)" ANSI_RESET "\n");
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query thread list (subsequent)" ANSI_RESET "\n");
         } else if (strcmp(packet, "qTStatus") == 0) {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query trace status" ANSI_RESET "\n");
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query trace status" ANSI_RESET "\n");
         } else {
             s_last_cmd.type = LastCommandType::OTHER;
-            printf(ANSI_MAGENTA "[GDB Req] Query: %s" ANSI_RESET "\n", packet);
+            decoderPrintf(ANSI_MAGENTA "[GDB Req] Query: %s" ANSI_RESET "\n", packet);
         }
         break;
     }
     default:
         s_last_cmd.type = LastCommandType::OTHER;
-        printf("[GDB Req] Packet: $%s\n", packet);
+        decoderPrintf("[GDB Req] Packet: $%s\n", packet);
         break;
     }
 }
@@ -320,19 +342,19 @@ void gdb_decode_request_packet(const char *packet, size_t len)
 void gdb_decode_reply_packet(const char *packet, size_t len)
 {
     if (len == 0) {
-        printf(ANSI_YELLOW "  [GDB Rep] <unsupported / empty reply>" ANSI_RESET "\n");
+        decoderPrintf(ANSI_YELLOW "  [GDB Rep] <unsupported / empty reply>" ANSI_RESET "\n");
         return;
     }
 
     // Success response
     if (strcmp(packet, "OK") == 0) {
-        printf(ANSI_GREEN "  [GDB Rep] OK (success)" ANSI_RESET "\n");
+        decoderPrintf(ANSI_GREEN "  [GDB Rep] OK (success)" ANSI_RESET "\n");
         return;
     }
 
     // Error response: E<nn>
     if (packet[0] == 'E' && len == 3 && isxdigit(packet[1]) && isxdigit(packet[2])) {
-        printf(ANSI_RED "  [GDB Rep] ERROR code %s" ANSI_RESET "\n", packet);
+        decoderPrintf(ANSI_RED "  [GDB Rep] ERROR code %s" ANSI_RESET "\n", packet);
         return;
     }
 
@@ -347,7 +369,7 @@ void gdb_decode_reply_packet(const char *packet, size_t len)
             case 0x0b: sig_name = "SIGSEGV (access fault)"; break;
             }
             const char *info = (packet[0] == 'T' && len > 3) ? packet + 3 : "";
-            printf(ANSI_MAGENTA "  [GDB Rep] Target HALTED: %s (sig 0x%02x%s%s)" ANSI_RESET "\n",
+            decoderPrintf(ANSI_MAGENTA "  [GDB Rep] Target HALTED: %s (sig 0x%02x%s%s)" ANSI_RESET "\n",
                    sig_name, sig, info[0] ? ", " : "", info);
             return;
         }
@@ -357,9 +379,9 @@ void gdb_decode_reply_packet(const char *packet, size_t len)
     if (packet[0] == 'O') {
         char console_text[512] = {0};
         decode_hex_ascii(packet + 1, console_text, sizeof(console_text));
-        printf(ANSI_GREEN "  [GDB Console] %s" ANSI_RESET, console_text);
+        decoderPrintf(ANSI_GREEN "  [GDB Console] %s" ANSI_RESET, console_text);
         if (console_text[strlen(console_text) - 1] != '\n') {
-            printf("\n");
+            decoderPrintf("\n");
         }
         return;
     }
@@ -373,15 +395,15 @@ void gdb_decode_reply_packet(const char *packet, size_t len)
             // Short read: display all bytes and 32-bit word if 4 bytes
             if (byte_count == 4) {
                 uint32_t w = parse_target_le_u32(packet);
-                printf(ANSI_BLUE "  [GDB Rep] Memory READ data (addr=0x%llx): 0x%08x (hex: %s)" ANSI_RESET "\n",
+                decoderPrintf(ANSI_BLUE "  [GDB Rep] Memory READ data (addr=0x%llx): 0x%08x (hex: %s)" ANSI_RESET "\n",
                        s_last_cmd.addr, w, packet);
             } else {
-                printf(ANSI_BLUE "  [GDB Rep] Memory READ data (addr=0x%llx, %zu bytes): %s" ANSI_RESET "\n",
+                decoderPrintf(ANSI_BLUE "  [GDB Rep] Memory READ data (addr=0x%llx, %zu bytes): %s" ANSI_RESET "\n",
                        s_last_cmd.addr, byte_count, packet);
             }
         } else {
             // Longer read: preview first 16 bytes
-            printf(ANSI_BLUE "  [GDB Rep] Memory READ data (addr=0x%llx, %zu bytes): %.32s..." ANSI_RESET "\n",
+            decoderPrintf(ANSI_BLUE "  [GDB Rep] Memory READ data (addr=0x%llx, %zu bytes): %.32s..." ANSI_RESET "\n",
                    s_last_cmd.addr, byte_count, packet);
         }
         break;
@@ -390,23 +412,23 @@ void gdb_decode_reply_packet(const char *packet, size_t len)
     case LastCommandType::REG_READ: {
         // Reply contains 32-bit register value in target endian
         uint32_t reg_val = parse_target_le_u32(packet);
-        printf(ANSI_BLUE "  [GDB Rep] Register #%u value: 0x%08x (raw: %s)" ANSI_RESET "\n",
+        decoderPrintf(ANSI_BLUE "  [GDB Rep] Register #%u value: 0x%08x (raw: %s)" ANSI_RESET "\n",
                s_last_cmd.reg_num, reg_val, packet);
         break;
     }
 
     case LastCommandType::ALL_REGS_READ: {
-        printf(ANSI_BLUE "  [GDB Rep] All general registers dump (%zu bytes hex)" ANSI_RESET "\n", len);
+        decoderPrintf(ANSI_BLUE "  [GDB Rep] All general registers dump (%zu bytes hex)" ANSI_RESET "\n", len);
         break;
     }
 
     case LastCommandType::MONITOR: {
-        printf(ANSI_BLUE "  [GDB Rep] Monitor reply: %s" ANSI_RESET "\n", packet);
+        decoderPrintf(ANSI_BLUE "  [GDB Rep] Monitor reply: %s" ANSI_RESET "\n", packet);
         break;
     }
 
     default:
-        printf(ANSI_BLUE "  [GDB Rep] Data (%zu bytes): %.64s%s" ANSI_RESET "\n",
+        decoderPrintf(ANSI_BLUE "  [GDB Rep] Data (%zu bytes): %.64s%s" ANSI_RESET "\n",
                len, packet, (len > 64) ? "..." : "");
         break;
     }
@@ -427,11 +449,11 @@ void gdb_decode_incoming(const uint8_t *data, uint32_t len)
                 s_req_index = 0;
                 s_req_state = ReqParserState::IN_PACKET;
             } else if (c == 0x03) { // Ctrl-C
-                printf(ANSI_YELLOW "[GDB Req] Break / Interrupt request (0x03)" ANSI_RESET "\n");
+                decoderPrintf(ANSI_YELLOW "[GDB Req] Break / Interrupt request (0x03)" ANSI_RESET "\n");
             } else if (c == '+') {
                 // Client ACK (silent)
             } else if (c == '-') {
-                printf(ANSI_YELLOW "[GDB Req] NACK received (-)" ANSI_RESET "\n");
+                decoderPrintf(ANSI_YELLOW "[GDB Req] NACK received (-)" ANSI_RESET "\n");
             }
             break;
 
@@ -476,7 +498,7 @@ void gdb_decode_outgoing(const uint8_t *data, uint32_t len)
             } else if (c == '+') {
                 // Server ACK
             } else if (c == '-') {
-                printf(ANSI_YELLOW "  [GDB Rep] NACK (-)" ANSI_RESET "\n");
+                decoderPrintf(ANSI_YELLOW "  [GDB Rep] NACK (-)" ANSI_RESET "\n");
             }
             break;
 

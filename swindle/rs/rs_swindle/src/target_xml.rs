@@ -78,7 +78,8 @@ const DEC_STR: [&str; 32] = [
     "30", "31",
 ];
 
-/// XML emission sink that either counts bytes or streams a window into the encoder.
+/// XML emission sink that either counts bytes, streams a window into the encoder,
+/// or dumps the whole document to the GDB console (`mon xml ...`).
 pub(crate) enum XmlSink<'a> {
     Count(usize),
     Stream {
@@ -87,6 +88,8 @@ pub(crate) enum XmlSink<'a> {
         offset: usize,
         encoder: &'a mut encoder,
     },
+    /// Print the document to the console, starting a new line after each tag close.
+    Console,
 }
 
 impl<'a> XmlSink<'a> {
@@ -111,6 +114,13 @@ impl<'a> XmlSink<'a> {
                     encoder.add(&chunk[s_start..s_end]);
                 }
                 *offset = chunk_end;
+            }
+            XmlSink::Console => {
+                crate::bmplogger::G::print_str(chunk);
+                // One tag per line: only break after a tag close, never inside a tag.
+                if chunk.ends_with('>') {
+                    crate::bmplogger::G::print_str("\n");
+                }
             }
         }
     }
@@ -401,4 +411,10 @@ pub fn send_target_xml_chunk(e: &mut encoder, start_address: usize, length: usiz
         encoder: e,
     };
     for_each_target_xml_chunk(&mut sink);
+}
+
+/// Dump the whole target description XML (`target.xml`, i.e. the registers GDB is told
+/// about) to the GDB console, one tag per line. Backs `mon xml reg`.
+pub fn dump_target_xml() {
+    for_each_target_xml_chunk(&mut XmlSink::Console);
 }

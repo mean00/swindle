@@ -38,15 +38,16 @@
 
 //! Native Rust TargetDriver implementation for RISC-V targets.
 
-use super::c_adapter::RiscvTargetContext;
+use super::probe::RiscvTargetContext;
 use super::mem::RiscvMem;
-use crate::target::c_adapter::{target_get_options_c, target_set_attached_c, TargetC};
+use crate::target::{Target, TargetView, TOPT_INHIBIT_NRST};
 use crate::target::driver::{HaltReason, TargetDriver, TargetError};
+use crate::target::Breakwatch;
 
 /// First-class Rust target driver for RISC-V cores.
 pub struct RiscvTargetDriver {
     pub ctx: *mut RiscvTargetContext,
-    pub target: *mut TargetC,
+    pub target: *mut Target,
 }
 
 impl RiscvTargetDriver {
@@ -59,13 +60,17 @@ impl RiscvTargetDriver {
 impl TargetDriver for RiscvTargetDriver {
     fn mem_read(&self, dest: &mut [u8], addr: u32) -> Result<(), TargetError> {
         let ctx = self.ctx();
-        RiscvMem::read(&mut ctx.hart, addr, dest)
+        // Via the hart, not `RiscvMem` directly: hosted builds route the block
+        // to the probe there (and `--raw-dmi` back to one DMI op at a time).
+        ctx.hart
+            .mem_read(addr, dest)
             .map_err(|_| TargetError::AccessFault)
     }
 
     fn mem_write(&self, addr: u32, src: &[u8]) -> Result<(), TargetError> {
         let ctx = self.ctx();
-        RiscvMem::write(&mut ctx.hart, addr, src)
+        ctx.hart
+            .mem_write(addr, src)
             .map_err(|_| TargetError::AccessFault)
     }
 
@@ -85,7 +90,7 @@ impl TargetDriver for RiscvTargetDriver {
         if self.target.is_null() {
             return true;
         }
-        let opts = unsafe { target_get_options_c(self.target) };
+        let opts = TargetView::new(self.target).options();
         (opts & (1 << 30)) == 0
     }
 
@@ -123,6 +128,26 @@ impl TargetDriver for RiscvTargetDriver {
 
     fn reset(&self) {
         let ctx = self.ctx();
+        // A driver that declares its own reset sequence owns the reset; `None` means it has no
+        // opinion and the generic sequences below run. This is the hook the port to Rust was
+        // missing for the per-part resets the C drivers carried (`ch32v003_reset()`).
+        if let Some(driver) = crate::riscv::driver_registry::active_driver()
+            && driver.custom_reset(&mut ctx.hart).is_some()
+        {
+            return;
+        }
+        // Then, in order: the physical reset line when the part tolerates it, and always the
+        // Debug Module's own reset. The pin gives the whole part a hardware reset (peripherals,
+        // clocks, the DM), the ndmreset after it puts the hart at the reset vector with haltreq
+        // held - so the part is reset twice, which is cheap and leaves nothing to chance. A part
+        // that inhibits nRST - the CH32V0xx over SDI does - only ever gets the second half.
+        let pin_usable = !self.target.is_null()
+            && (TargetView::new(self.target).options() & TOPT_INHIBIT_NRST) == 0;
+        if pin_usable {
+            // Best effort: a pin that is not wired leaves the DM answering, and the ndmreset
+            // below covers the reset either way.
+            let _ = ctx.hart.pulse_nrst();
+        }
         let _ = ctx.hart.reset();
     }
 
@@ -146,16 +171,32 @@ impl TargetDriver for RiscvTargetDriver {
         ctx.hart
             .halt_request()
             .map_err(|_| TargetError::AccessFault)?;
+        // A trigger left armed by an earlier session would halt the hart for a
+        // reason GDB knows nothing about (C `riscv_attach()` does the same).
+        super::breakwatch::clear_all(&mut ctx.hart);
         if !self.target.is_null() {
-            unsafe { target_set_attached_c(self.target, true) };
+            TargetView::new(self.target).set_attached(true);
         }
         Ok(())
     }
 
     fn detach(&mut self) {
+        super::breakwatch::clear_all(&mut self.ctx().hart);
         if !self.target.is_null() {
             crate::bmp::disconnect_cleanup(self.target);
-            unsafe { target_set_attached_c(self.target, false) };
+            TargetView::new(self.target).set_attached(false);
         }
+    }
+
+    fn breakwatch_set(&mut self, breakwatch: &mut Breakwatch) -> Result<(), TargetError> {
+        super::breakwatch::set(&mut self.ctx().hart, breakwatch)
+    }
+
+    fn breakwatch_clear(&mut self, breakwatch: &Breakwatch) -> Result<(), TargetError> {
+        super::breakwatch::clear(&mut self.ctx().hart, breakwatch)
+    }
+
+    fn breakwatch_clear_all(&mut self) {
+        super::breakwatch::clear_all(&mut self.ctx().hart);
     }
 }

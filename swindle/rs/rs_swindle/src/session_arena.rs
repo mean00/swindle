@@ -66,9 +66,9 @@
 //! the next scan wipes it.  `swindle_session_free()` on an arena pointer
 //! therefore reclaims nothing in general - with one exception, the LIFO case
 //! that actually happens: freeing the block at the top of a region rewinds the
-//! bump pointer to it.  The transient per-session objects (`breakwatch_set()` /
-//! `breakwatch_clear()`, target descriptions) are allocated and released one at
-//! a time, so that keeps a long session from filling the region with dead nodes.
+//! bump pointer to it.  The transient per-session objects (target descriptions,
+//! flash descriptors) are allocated and released one at a time, so that keeps a
+//! long session from filling the region with dead blocks.
 //! Any other order, and a double `free()`, only count.
 //!
 //! The wipe zeroes both regions, so a use-after-detach of an arena object lands

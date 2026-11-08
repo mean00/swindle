@@ -7,6 +7,15 @@ Produces:
   - rpc_target_generated.rs  (target-side dispatch)
   - rpc_host_generated.rs    (host-side client callers)
 
+Wire format (see doc/rpc.md, and src/rpc_wire.rs):
+
+  request: '!' [class_byte][cmd_byte] <CBOR array of the params>       '#' <checksum>
+  reply:   '&' status                 <CBOR array of the reply fields> '#'
+
+Only the payload is generated here: framing, escaping and the CBOR codec are
+shared by both halves in src/rpc_wire.rs, so the two ends cannot drift apart.
+The `[class_byte][cmd_byte]` header stays two raw bytes.
+
 Usage:
   python3 generate_rpc.py rpc_protocol.toml --out-dir src/
 """
@@ -27,17 +36,18 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
-# Type → hex digit count + encoder/decoder helpers
+# Type → CBOR encoding
 # ---------------------------------------------------------------------------
+# The parameters of a command travel as one CBOR array, one element per
+# `params` entry: `u8`/`u16`/`u32` as unsigned integers, `bool` as
+# `false`/`true`, `hex_block` as a byte string (no hex expansion, no copy).
+# The reply payload is the same shape: one array, one element per reply field.
 
 TYPE_INFO = {
-    "u8":       {"digits": 2,  "enc": "add_u32_no_padding", "dec": "next_u8"},
-    "u16":      {"digits": 4,  "enc": "add_u32_le",         "dec": "next_u16"},
-    "u16_be":   {"digits": 4,  "enc": "add_u32",            "dec": "next_u16_be"},
-    "u32":      {"digits": 8,  "enc": "add_u32_le",         "dec": "next_u32"},
-    "u32_le":   {"digits": 8,  "enc": "add_u32_le",         "dec": "next_u32"},
-    "u32_be":   {"digits": 8,  "enc": "add_u32",            "dec": "next_u32_be"},
-    "bool":     {"digits": 1,  "enc": "add_u8",             "dec": "next_bool"},
+    "u8":       {"cbor": "u8",   "dec": "next_u8"},
+    "u16":      {"cbor": "u16",  "dec": "next_u16"},
+    "u32":      {"cbor": "u32",  "dec": "next_u32"},
+    "bool":     {"cbor": "bool", "dec": "next_bool"},
 }
 
 # Reverse mapping: class id byte → class name
@@ -95,6 +105,11 @@ def const_name(class_name, cmd_name=None):
     return f"RPC_{class_name}_PACKET"
 
 
+def to_pascal_case(s):
+    """Convert an UPPER_SNAKE_CASE string to PascalCase."""
+    return "".join(p.capitalize() for p in s.split("_"))
+
+
 def rust_byte_literal(c):
     """Convert a single ASCII character to a Rust byte literal."""
     if c.isascii() and c.isprintable() and c not in "'\\":
@@ -116,26 +131,121 @@ def gen_common(classes):
         "#![allow(unused_variables)]",
         "#![allow(unused_imports)]",
         "",
-        "// ── Packet class bytes ──",
+        "// ── Strongly-typed RPC Packet Classes ──",
+        "#[derive(Copy, Clone, Debug, PartialEq, Eq)]",
+        "#[repr(u8)]",
+        "pub enum RpcClass {",
+    ]
+    for cls in classes:
+        pname = to_pascal_case(cls['name'])
+        lines.append(f"    {pname} = {rust_byte_literal(cls['id'])},")
+    lines += [
+        "}",
+        "",
+        "impl TryFrom<u8> for RpcClass {",
+        "    type Error = u8;",
+        "    #[inline]",
+        "    fn try_from(b: u8) -> Result<Self, u8> {",
+        "        match b {",
+    ]
+    for cls in classes:
+        pname = to_pascal_case(cls['name'])
+        lines.append(f"            {rust_byte_literal(cls['id'])} => Ok(Self::{pname}),")
+    lines += [
+        "            _ => Err(b),",
+        "        }",
+        "    }",
+        "}",
+        "",
+        "// ── Strongly-typed Command Enums ──",
+    ]
+
+    for cls in classes:
+        if not cls["commands"]:
+            continue
+        c_enum = f"{to_pascal_case(cls['name'])}Command"
+        lines += [
+            f"#[derive(Copy, Clone, Debug, PartialEq, Eq)]",
+            f"#[repr(u8)]",
+            f"pub enum {c_enum} {{",
+        ]
+        for cmd in cls["commands"]:
+            vname = to_pascal_case(cmd["name"])
+            lines.append(f"    {vname} = {rust_byte_literal(cmd['id'])},")
+        lines += [
+            "}",
+            "",
+            f"impl TryFrom<u8> for {c_enum} {{",
+            "    type Error = u8;",
+            "    #[inline]",
+            "    fn try_from(b: u8) -> Result<Self, u8> {",
+            "        match b {",
+        ]
+        for cmd in cls["commands"]:
+            vname = to_pascal_case(cmd["name"])
+            lines.append(f"            {rust_byte_literal(cmd['id'])} => Ok(Self::{vname}),")
+        lines += [
+            "            _ => Err(b),",
+            "        }",
+            "    }",
+            "}",
+            "",
+        ]
+
+    lines += [
+        "// ── Response codes ──",
+        "#[derive(Copy, Clone, Debug, PartialEq, Eq)]",
+        "#[repr(u8)]",
+        "pub enum RpcResponseStatus {",
+        "    Ok = b'K',",
+        "    ParityError = b'P',",
+        "    Error = b'E',",
+        "    NotSupported = b'N',",
+        "}",
+        "",
+        "impl TryFrom<u8> for RpcResponseStatus {",
+        "    type Error = u8;",
+        "    #[inline]",
+        "    fn try_from(b: u8) -> Result<Self, u8> {",
+        "        match b {",
+        "            b'K' => Ok(Self::Ok),",
+        "            b'P' => Ok(Self::ParityError),",
+        "            b'E' => Ok(Self::Error),",
+        "            b'N' => Ok(Self::NotSupported),",
+        "            _ => Err(b),",
+        "        }",
+        "    }",
+        "}",
+        "",
+        "// ── Error codes ──",
+        "#[derive(Copy, Clone, Debug, PartialEq, Eq)]",
+        "#[repr(u8)]",
+        "pub enum RpcErrorCode {",
+        "    Unrecognised = 1,",
+        "    WrongLength = 2,",
+        "    Fault = 3,",
+        "    Exception = 4,",
+        "}",
+        "",
+        "// ── Backward-compatible Packet Class Constants ──",
     ]
     for cls in classes:
         cname = const_name(cls['name'])
         lines.append(f"pub const {cname}: u8 = {rust_byte_literal(cls['id'])};")
 
-    lines += ["", "// ── Command bytes ──"]
+    lines += ["", "// ── Backward-compatible Command Constants ──"]
     for cls in classes:
         for cmd in cls["commands"]:
             cname = const_name(cls['name'], cmd['name'])
             lines.append(f"pub const {cname}: u8 = {rust_byte_literal(cmd['id'])};")
 
-    lines += ["", "// ── Response codes ──",
+    lines += ["", "// ── Backward-compatible Response & Error Constants ──",
               "pub const RPC_RESP_OK: u8 = b'K';",
               "pub const RPC_RESP_PARERR: u8 = b'P';",
               "pub const RPC_RESP_ERR: u8 = b'E';",
               "pub const RPC_RESP_NOTSUP: u8 = b'N';",
               "pub const RPC_REMOTE_RESP: u8 = b'&';",
               "",
-              "// ── Error codes ──",
               "pub const RPC_ERROR_UNRECOGNISED: u8 = 1;",
               "pub const RPC_ERROR_WRONGLEN: u8 = 2;",
               "pub const RPC_ERROR_FAULT: u8 = 3;",
@@ -163,7 +273,7 @@ def gen_target(classes):
         "#![allow(unused_imports)]",
         "",
         "use crate::rpc_common_generated::*;",
-        "use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;",
+        "use crate::native::rpc_target::rpc_parser::RpcParameterParser;",
         "use crate::native::rpc_target::*;",
         "use crate::native::rpc_target::rpc_reply::*;",
         "use crate::bmp;",
@@ -180,21 +290,27 @@ def gen_target(classes):
         "        bmplog!(\"**short rpc\\n\");",
         "        return false;",
         "    }",
-        "    let mut parser = rpc_parameter_parser::new(input);",
-        "    match parser.next_cmd() {",
+        "    let mut parser = RpcParameterParser::new(input);",
+        "    let class_byte = parser.next_cmd();",
+        "    let res = match RpcClass::try_from(class_byte) {",
     ]
 
     for cls in classes:
         if not cls["commands"]:
             continue
-        lines.append(f"        {const_name(cls['name'])} => {cls['handler']}::dispatch(&mut parser),")
+        pname = to_pascal_case(cls['name'])
+        lines.append(f"        Ok(RpcClass::{pname}) => {cls['handler']}::dispatch(&mut parser),")
 
     lines += [
         "        _ => {",
-        "            bmplog!(\"wrong RPC header\\n\");",
+        "            bmplog!(\"wrong RPC header: {}\\n\", class_byte);",
         "            false",
         "        }",
+        "    };",
+        "    if !res {",
+        "        rpc_reply_error(RPC_ERROR_UNRECOGNISED as i32);",
         "    }",
+        "    res",
         "}",
         "",
     ]
@@ -203,22 +319,24 @@ def gen_target(classes):
     for cls in classes:
         if not cls["commands"]:
             continue
+        c_enum = f"{to_pascal_case(cls['name'])}Command"
         lines += [f"// ── {cls['name']} dispatch ──",
                   f"pub mod {cls['handler']} {{",
                   f"    use crate::native::rpc_target::*;",
-                  f"    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;",
+                  f"    use crate::native::rpc_target::rpc_parser::RpcParameterParser;",
                   f"    use crate::rpc_common_generated::*;",
                   f"",
-                  f"    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {{",
-                  f"        match parser.next_cmd() {{",
+                  f"    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {{",
+                  f"        let cmd_byte = parser.next_cmd();",
+                  f"        match {c_enum}::try_from(cmd_byte) {{",
                   ]
 
         for cmd in cls["commands"]:
-            cname = const_name(cls["name"], cmd["name"])
-            lines.append(f"            {cname} => cmd_{cmd['name'].lower()}(parser),")
+            vname = to_pascal_case(cmd["name"])
+            lines.append(f"            Ok({c_enum}::{vname}) => cmd_{cmd['name'].lower()}(parser),")
 
         lines += ["            _ => {",
-                   "                bmplog!(\"unknown command in {} packet\\n\", stringify!(" + cls["name"] + "));",
+                   "                bmplog!(\"unknown command {:#x} in {} packet\\n\", cmd_byte, stringify!(" + cls["name"] + "));",
                    "                false",
                    "            }",
                    "        }",
@@ -228,7 +346,7 @@ def gen_target(classes):
         # Generate per-command handler functions
         for cmd in cls["commands"]:
             fn_name = f"cmd_{cmd['name'].lower()}"
-            lines.append(f"    fn {fn_name}(parser: &mut rpc_parameter_parser) -> bool {{")
+            lines.append(f"    fn {fn_name}(parser: &mut RpcParameterParser) -> bool {{")
 
             # Decode params
             for p in cmd["params"]:
@@ -237,7 +355,7 @@ def gen_target(classes):
                 if ptype == "hex_block":
                     lines.append(f"        let {pname} = parser.end();")
                 elif ptype == "bool":
-                    lines.append(f"        let {pname} = parser.next_cmd() != b'0';")
+                    lines.append(f"        let {pname} = parser.next_bool();")
                 else:
                     ti = TYPE_INFO[ptype]
                     lines.append(f"        let {pname} = parser.{ti['dec']}();")
@@ -258,7 +376,7 @@ def gen_target(classes):
             if isinstance(reply, str):
                 if reply == "ok":
                     lines.append(f"        crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
-                    lines.append("        rpc_reply_encoder::new().end();")
+                    lines.append("        rpc_reply_ok();")
                     lines.append("        true")
                 elif reply == "string":
                     lines.append(f"        let s = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
@@ -267,7 +385,7 @@ def gen_target(classes):
                 else:
                     # Simple type reply
                     lines.append(f"        let result = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
-                    lines.append(f"        rpc_reply32_le_ok(result);")
+                    lines.append(f"        rpc_reply_u32(result);")
                     lines.append("        true")
             elif isinstance(reply, dict):
                 rtype = reply.get("type", "ok")
@@ -277,31 +395,28 @@ def gen_target(classes):
                     lines.append("        rpc_reply_string(s);")
                     lines.append("        true")
                 elif rtype == "compound":
-                    # Compound reply with multiple fields
+                    # One CBOR array element per field, in `fields` order.
                     fields = reply.get("fields", [])
                     field_names = [f["name"] for f in fields]
-                    field_types = [f["type"] for f in fields]
                     # Call impl, get tuple back
                     field_list = ", ".join(field_names)
                     lines.append(f"        let ({field_list}) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     if on_error == "fault":
-                        lines.append(f"        if {field_names[0] if 'fault' not in field_names else 'fault'} != 0 {{")
-                        lines.append("            rpc_reply_error(RPC_ERROR_FAULT);")
+                        fault_name = "fault" if "fault" in field_names else field_names[0]
+                        lines.append(f"        if {fault_name} != 0 {{")
+                        lines.append(f"            rpc_reply_error({fault_name} as i32);")
                         lines.append("            return true;")
                         lines.append("        }")
                     lines.append("        let mut reply = rpc_reply_encoder::new();")
+                    lines.append(f"        reply.array({len(fields)});")
                     for i, f in enumerate(fields):
-                        ft = f["type"]
-                        if ft == "u32_le":
-                            lines.append(f"        reply.add_u32_le_wrapped({field_names[i]});")
-                        elif ft == "u8":
-                            lines.append(f"        reply.add_u8_wrapped({field_names[i]} as u8);")
+                        if f["type"] == "u8":
+                            lines.append(f"        reply.u8({field_names[i]} as u8);")
                         else:
-                            lines.append(f"        reply.add_u32_le_wrapped({field_names[i]});")
+                            lines.append(f"        reply.u32({field_names[i]});")
                     lines.append("        reply.end();")
                     lines.append("        true")
                 elif rtype == "hex_block":
-                    max_len = reply.get("max_length", 1024)
                     lines.append(f"        let buffer = crate::native::rpc_target::rpc_reply::get_temp_buffer();")
                     # Add buffer param to impl args
                     buffer_impl_args = impl_args
@@ -310,28 +425,26 @@ def gen_target(classes):
                     buffer_impl_args += "buffer"
                     lines.append(f"        let (fault, len) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({buffer_impl_args});")
                     if on_error == "fault":
-                        lines.append("        if fault != 0 {")
-                        lines.append("            rpc_reply_error(fault as u8);")
-                        lines.append("            return true;")
-                        lines.append("        }")
-                    lines.append(f"        rpc_reply_hex_string(RPC_RESP_OK, &buffer[..len]);")
+                        lines.append("        rpc_reply_fault_bytes(fault, &buffer[..len]);")
+                    else:
+                        lines.append("        rpc_reply_bytes(&buffer[..len]);")
                     lines.append("        true")
                 elif rtype == "u8":
                     lines.append(f"        let val = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
                     lines.append(f"        #[allow(clippy::unnecessary_cast)]")
-                    lines.append(f"        rpc_reply_ok(val as u8);")
+                    lines.append(f"        rpc_reply_u8(val as u8);")
                     lines.append("        true")
                 elif on_error == "ok_bool":
                     lines.append(f"        let (ok, value) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
-                    lines.append("        rpc_reply_bool_32le(ok, value);")
+                    lines.append("        rpc_reply_bool_u32(ok, value);")
                     lines.append("        true")
                 elif on_error == "fault":
                     lines.append(f"        let (fault, value) = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
-                    lines.append("        reply_adiv5_32(fault, value);")
+                    lines.append("        rpc_reply_fault_u32(fault, value);")
                     lines.append("        true")
                 else:
                     lines.append(f"        let value = crate::native::rpc_target_impl::{cls['handler']}::{impl_fn}({impl_args});")
-                    lines.append(f"        rpc_reply32_le_ok(value);")
+                    lines.append(f"        rpc_reply_u32(value);")
                     lines.append("        true")
             lines.append("    }")
             lines.append("")
@@ -357,8 +470,8 @@ def gen_host(classes):
         "",
         "use crate::rpc_common_generated::*;",
         "use crate::hosted::rpc_host::remote_encoder::rpc_encoder;",
-        "use crate::parsing_util::{u8s_string_to_u32_le, u8s_string_to_u8};",
-        "use crate::hosted::transport::{check_reply, remote_get_reply};",
+        "use crate::hosted::transport::{remote_get_reply, reply_bytes, reply_fault, reply_fields,",
+        "    reply_is_ok, reply_text, reply_u8, reply_u32};",
         "",
         "crate::setup_log!(false);",
         "crate::gdb_print_init!();",
@@ -382,9 +495,8 @@ def gen_host(classes):
                     rust_params.append(f"{p['name']}: &[u8]")
                 elif p["type"] == "bool":
                     rust_params.append(f"{p['name']}: bool")
-                elif p["type"] in ("u8", "u16", "u16_be"):
-                    rust_params.append(f"{p['name']}: u32")
                 else:
+                    # u8 / u16 / u32 all arrive as a Rust u32 on the host side
                     rust_params.append(f"{p['name']}: u32")
 
             # Determine return type
@@ -400,14 +512,17 @@ def gen_host(classes):
                 on_error = reply.get("on_error", None)
                 if rtype == "compound":
                     fields = reply.get("fields", [])
-                    # Map type names to Rust types (u32_le → u32, etc.)
-                    type_map = {"u32_le": "u32", "u32": "u32", "u8": "u8", "u16": "u32", "u16_be": "u32"}
+                    # Map type names to Rust types (u8 stays u8, u16/u32 → u32)
+                    type_map = {"u8": "u8", "u16": "u32"}
                     field_types = ", ".join(type_map.get(f["type"], f["type"]) for f in fields)
                     ret_type = f"({field_types})"
                 elif rtype == "hex_block":
                     ret_type = "(i32, &'static [u8])"
                 elif rtype == "u8":
                     ret_type = "u8"
+                elif rtype == "string":
+                    # GEN.START (`{ type = "string", fixed = "LNBMP" }`)
+                    ret_type = "&'static [u8]"
                 elif on_error == "ok_bool":
                     ret_type = "(bool, u32)"
                 elif on_error == "fault":
@@ -422,84 +537,75 @@ def gen_host(classes):
             lines.append("    e.begin();")
             lines.append(f"    e.add_u8(&[{const_name(cls['name'])}, {const_name(cls['name'], cmd['name'])}]);")
 
-            # Encode params
+            # Encode the params as one CBOR array, one element per param
+            lines.append("    {")
+            lines.append("        let mut cbor = e.cbor();")
+            lines.append(f"        let _ = cbor.array({len(params)});")
             for p in params:
                 ptype = p["type"]
                 pname = p["name"]
                 if ptype == "hex_block":
-                    lines.append(f"    // SAFETY: data is valid UTF-8 hex encoding")
-                    lines.append(f"    e.hex_and_add(unsafe {{ core::str::from_utf8_unchecked({pname}) }});")
-                elif ptype == "bool":
-                    lines.append(f"    e.add_u8(&[if {pname} {{ b'1' }} else {{ b'0' }}]);")
+                    lines.append(f"        let _ = cbor.bytes({pname});")
                 elif ptype == "u8":
-                    lines.append(f"    e.add_u8_hex({pname} as u32);")
+                    lines.append(f"        let _ = cbor.u8({pname} as u8);")
                 elif ptype == "u16":
-                    lines.append(f"    e.add_u16_le({pname} as u32);")
-                elif ptype == "u16_be":
-                    lines.append(f"    e.add_u16_be({pname} as u32);")
-                elif ptype == "u32_be":
-                    lines.append(f"    e.add_u32({pname} as u32);")
+                    lines.append(f"        let _ = cbor.u16({pname} as u16);")
+                elif ptype == "bool":
+                    lines.append(f"        let _ = cbor.bool({pname});")
                 else:
-                    # u32, u32_le: send as 8 hex digits LE
-                    lines.append(f"    e.add_u32_le({pname} as u32);")
+                    # u32
+                    lines.append(f"        let _ = cbor.u32({pname} as u32);")
+            lines.append("    }")
 
             lines.append("    e.end();")
             lines.append("    let reply = remote_get_reply();")
 
-            # Decode reply
+            # Decode the reply: status first, then the CBOR fields
             if isinstance(reply, str):
                 if reply == "ok":
-                    lines.append("    check_reply(reply, 0)")
+                    lines.append("    reply_is_ok(reply)")
                 elif reply == "string":
-                    lines.append("    reply")
+                    lines.append("    reply_text(reply).unwrap_or(&[])")
                 else:
-                    lines.append(f"    if !check_reply(reply, 8) {{ return 0; }}")
-                    lines.append("    u8s_string_to_u32_le(&reply[1..])")
+                    lines.append("    reply_u32(reply).unwrap_or(0)")
             elif isinstance(reply, dict):
                 rtype = reply.get("type", "ok")
                 on_error = reply.get("on_error", None)
-                if rtype == "compound":
+                if rtype == "string":
+                    lines.append("    reply_text(reply).unwrap_or(&[])")
+                elif rtype == "compound":
                     fields = reply.get("fields", [])
-                    expected_len = sum(TYPE_INFO[f["type"]]["digits"] for f in fields)
-                    lines.append(f"    if !check_reply(reply, {expected_len}) {{")
-                    if on_error == "fault":
-                        lines.append("        return (1, 0);")
-                    else:
-                        lines.append("        return (0, 0);")
+                    # A failed compound reports (1, 0) — "something failed".
+                    on_failure = "(1, 0)" if on_error == "fault" else "(0, 0)"
+                    decoders = ", ".join(
+                        f"fields.{'u8' if f['type'] == 'u8' else 'u32'}().unwrap_or(0)"
+                        for f in fields
+                    )
+                    lines.append("    match reply_fields(reply) {")
+                    lines.append(f"        Some(mut fields) => ({decoders}),")
+                    lines.append(f"        None => {on_failure},")
                     lines.append("    }")
-                    decodes = []
-                    offset = 1
-                    for f in fields:
-                        ft = f["type"]
-                        if ft == "u32_le":
-                            decodes.append(f"u8s_string_to_u32_le(&reply[{offset}..{offset + 8}])")
-                            offset += 8
-                        elif ft == "u8":
-                            decodes.append(f"u8s_string_to_u32_le(&reply[{offset}..{offset + 2}])")
-                            offset += 2
-                        else:
-                            decodes.append(f"u8s_string_to_u32_le(&reply[{offset}..{offset + 8}])")
-                            offset += 8
-                    lines.append(f"    ({', '.join(decodes)})")
                 elif rtype == "hex_block":
-                    lines.append("    if reply.is_empty() || reply[0] != RPC_RESP_OK {")
-                    lines.append("        return (reply.get(1).copied().unwrap_or(1) as i32, &[]);")
+                    lines.append("    match reply_bytes(reply) {")
+                    lines.append("        Some(data) => (0, data),")
+                    lines.append("        None => (reply_fault(reply), &[]),")
                     lines.append("    }")
-                    lines.append("    (0, &reply[1..])")
                 elif rtype == "u8":
-                    lines.append("    if !check_reply(reply, 2) { return 0; }")
-                    lines.append("    u8s_string_to_u8(&reply[1..])")
+                    lines.append("    reply_u8(reply).unwrap_or(0)")
                 elif on_error == "ok_bool":
-                    lines.append("    if !check_reply(reply, 8) { return (false, 0); }")
-                    lines.append("    (true, u8s_string_to_u32_le(&reply[1..]))")
-                elif on_error == "fault":
-                    lines.append("    if reply.is_empty() || reply[0] != RPC_RESP_OK {")
-                    lines.append("        return (reply.get(1).copied().unwrap_or(1) as i32, 0);")
+                    lines.append("    match reply_u32(reply) {")
+                    lines.append("        Some(value) => (true, value),")
+                    lines.append("        None => (false, 0),")
                     lines.append("    }")
-                    lines.append("    (0, u8s_string_to_u32_le(&reply[1..]))")
+                elif on_error == "fault":
+                    lines.append("    match reply_u32(reply) {")
+                    lines.append("        Some(value) => (0, value),")
+                    lines.append("        None => (reply_fault(reply), 0),")
+                    lines.append("    }")
                 else:
-                    lines.append("    if !check_reply(reply, 8) { return 0; }")
-                    lines.append("    u8s_string_to_u32_le(&reply[1..])")
+                    lines.append("    reply_u32(reply).unwrap_or(0)")
+            else:
+                lines.append("    reply_is_ok(reply)")
 
             lines.append("}")
             lines.append("")
@@ -512,9 +618,10 @@ def gen_host(classes):
 # ---------------------------------------------------------------------------
 
 def main():
+    default_out = str(Path(__file__).parent / "src")
     parser = argparse.ArgumentParser(description="Generate Rust RPC code from TOML spec")
     parser.add_argument("spec", help="Path to rpc_protocol.toml")
-    parser.add_argument("--out-dir", default="src", help="Output directory for generated files")
+    parser.add_argument("--out-dir", default=default_out, help="Output directory for generated files")
     args = parser.parse_args()
 
     classes = load_spec(args.spec)

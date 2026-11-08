@@ -28,6 +28,7 @@ const vflash_command_tree: [CommandTree; 3] = [
         cb: CallbackType::text(_vFlashErase),
         start_separator: b':',
         next_separator: b',',
+        help: "",
     }, // flash erase
     CommandTree {
         command: "vFlashWrite",
@@ -36,6 +37,7 @@ const vflash_command_tree: [CommandTree; 3] = [
         cb: CallbackType::raw(_vFlashWrite),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // flash write
     CommandTree {
         command: "vFlashDone",
@@ -44,6 +46,7 @@ const vflash_command_tree: [CommandTree; 3] = [
         cb: CallbackType::text(_vFlashDone),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // flash erase
 ];
 
@@ -55,7 +58,7 @@ const DISABLE_FLASH: bool = false;
 
 /// Dispatch `vFlash*` commands to the appropriate handler.
 pub fn _flashv(command: &[u8]) -> bool {
-    exec_one(&vflash_command_tree, command)
+    exec_one(&vflash_command_tree, command, true)
 }
 
 //

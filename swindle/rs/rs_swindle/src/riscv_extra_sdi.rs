@@ -11,14 +11,14 @@
 //! this file deleted leaves a plain SWD/RVSWD probe whose `mon sdi_scan` reports
 //! the failure it always reports, exactly like the C stubs behind it.
 //!
-//! A hosted (Blackmagic-app) build always takes this file: its C side
-//! (`blackmagic_addon/hosted/remote_sdi_protocol.c`) always links the native leg,
-//! and the RPC leaves it drives live in `hosted/rpc_host/remote_rpc.rs`. The
-//! `mon sdi_wire` knobs go the same way, over the SDI class's `SET_WIRE` command,
-//! because the tap they tune is the probe's, not this process's.
+//! A hosted (Blackmagic-app) build always takes this file: the tap it drives runs
+//! on the probe, reached over the class-I SDI RPC (leaves in
+//! `hosted/rpc_host/remote_rpc.rs`), and the target attach is orchestrated here
+//! in Rust via `hosted/dmi_scan.rs`. The `mon sdi_wire` knobs go the same way,
+//! over the SDI class's `SET_WIRE` command, because the tap they tune is the
+//! probe's, not this process's.
 
 use crate::encoder::encoder;
-use crate::freertos::os_detach;
 use crate::parsing_util::convert_param_to_integer;
 
 // bmplog! is a compile-time toggle: setup_log!(false) makes it a no-op in this
@@ -41,16 +41,16 @@ mod c {
     #[cfg(not(feature = "hosted"))]
     unsafe extern "C" {
         pub fn bmp_set_sdi_wire_c(
-            tbit_ns: cty::c_uint,
-            low1_ns: cty::c_uint,
-            low0_ns: cty::c_uint,
-            sample_ns: cty::c_uint,
+            tbit_ns: u32,
+            low1_ns: u32,
+            low0_ns: u32,
+            sample_ns: u32,
             no_trim: bool,
         );
         pub fn sdi_scan() -> bool;
         pub fn bmp_sdi_dm_reset_c() -> bool;
-        pub fn bmp_sdi_dm_read_c(adr: u8, value: *mut cty::c_uint) -> bool;
-        pub fn bmp_sdi_dm_write_c(adr: u8, value: cty::c_uint) -> bool;
+        pub fn bmp_sdi_dm_read_c(adr: u8, value: *mut u32) -> bool;
+        pub fn bmp_sdi_dm_write_c(adr: u8, value: u32) -> bool;
     }
 }
 
@@ -61,26 +61,111 @@ mod c {
 /// RPC primitives (see the `hosted` variant below).
 #[cfg(not(feature = "hosted"))]
 pub fn sdi_scan() -> bool {
+    if let Some(volt_str) = crate::platform::voltage::target_voltage_str() {
+        crate::gdb_println!("Target voltage: ", volt_str);
+    }
     unsafe { c::sdi_scan() }
 }
 /// Hosted variant of [`sdi_scan`].
 ///
-/// The scan + full RISC-V target attach is orchestrated in C
-/// (`blackmagic_addon/hosted/remote_sdi_protocol.c::bmda_sdi_scan2`, mirroring
-/// `remote_rv_protocol.c::bmda_rvswd_scan2` for the RVSWD leg): clear the
-/// blackmagic target list, gate on DMSTATUS, then hand `riscv_dmi_init()` a
-/// real, header-typed `riscv_dmi_s` (designer = WCH) so the C RISC-V framework
-/// (riscv32 + the CH32V0xx driver) discovers the hart — exactly like native
-/// `sdi_scan()` attaches. Only the DM-access leaf functions live in Rust
-/// (`remote_sdi_reset_rs` / `remote_sdi_dm_read_rs` / `remote_sdi_dm_write_rs`
-/// in `hosted/rpc_host/remote_rpc.rs`); there is no Rust-side layout mirror of
-/// `struct riscv_dmi` to keep in sync with riscv_debug.h.
+/// The target list lives in this process and the tap runs on the probe, so the
+/// scan is orchestrated here over the class-I SDI RPC leaves — the same split
+/// the RVSWD leg makes in `crate::hosted::dmi_scan`, which also provides the
+/// attach itself (`attach_dmi()`): clear the target list, gate on DMSTATUS, then
+/// hand `riscv_dmi_init()` an SDI-backed transport (designer = WCH) so the
+/// RISC-V driver discovers the hart and runs the CH32V0xx probe, exactly like
+/// native `sdi_scan()`. Only the DM-access leaf functions live in
+/// `hosted/rpc_host/remote_rpc.rs` (`remote_sdi_reset_rs` / `remote_sdi_dm_read_rs`
+/// / `remote_sdi_dm_write_rs`).
 #[cfg(feature = "hosted")]
-pub fn sdi_scan() -> bool {
-    unsafe extern "C" {
-        fn bmda_sdi_scan2() -> bool;
+#[unsafe(no_mangle)]
+pub extern "C" fn sdi_scan() -> bool {
+    if let Some(volt_str) = crate::platform::voltage::target_voltage_str() {
+        crate::gdb_println!("Target voltage: ", volt_str);
     }
-    unsafe { bmda_sdi_scan2() }
+    // Enter SDI debug mode on the probe: NRST pulse and the unlock sequence.
+    // The native tap ignores the reset result and gates on DMSTATUS instead —
+    // keep that, so a reset that reports nothing still lets the status read
+    // decide.
+    let _ = crate::hosted::rpc_host::remote_rpc::remote_sdi_reset_rs();
+
+    let mut status: u32 = 0;
+    if !crate::hosted::rpc_host::remote_rpc::remote_sdi_dm_read_rs(SDI_DMSTATUS, &mut status) {
+        bmpwarning!("SDI : DMSTATUS read failed, no device answering\n");
+        return false;
+    }
+    if status == SDI_BUS_IDLE_HIGH {
+        bmpwarning!("SDI : no target (DMSTATUS=0x{:x}, bus idle high)\n", status);
+        return false;
+    }
+
+    unsafe {
+        crate::hosted::dmi_scan::attach_dmi(
+            crate::riscv::dmi::DmiLeg::Sdi,
+            sdi_dmi_read,
+            sdi_dmi_write,
+        )
+    }
+}
+
+/// CH32V0xx debug-module status register.
+#[cfg(feature = "hosted")]
+const SDI_DMSTATUS: u32 = crate::riscv::dm_regs::RV_DM_STATUS as u32;
+/// What an SDI read returns with nothing driving the wire.
+#[cfg(feature = "hosted")]
+const SDI_BUS_IDLE_HIGH: u32 = u32::MAX;
+/// Bounded retry budget for one DMI access. An SDI transfer carries no per-access
+/// status word, so this only covers a transport that is momentarily busy (right
+/// after the unlock, or while the tap re-locks).
+#[cfg(feature = "hosted")]
+const SDI_DMI_MAX_ATTEMPTS: u32 = 4;
+
+/// `riscv_dmi_s.read` over the SDI RPC leg.
+#[cfg(feature = "hosted")]
+unsafe extern "C" fn sdi_dmi_read(
+    dmi: *mut crate::riscv::dmi::RiscvDmiC,
+    address: u32,
+    value: *mut u32,
+) -> bool {
+    use crate::hosted::dmi_scan::{RV_DMI_FAILURE, RV_DMI_SUCCESS};
+
+    if dmi.is_null() || value.is_null() {
+        return false;
+    }
+    for _ in 0..SDI_DMI_MAX_ATTEMPTS {
+        if crate::hosted::rpc_host::remote_rpc::remote_sdi_dm_read_rs(address, unsafe { &mut *value }) {
+            unsafe {
+                (*dmi).fault = RV_DMI_SUCCESS;
+            }
+            return true;
+        }
+    }
+    unsafe {
+        (*dmi).fault = RV_DMI_FAILURE;
+    }
+    false
+}
+
+/// `riscv_dmi_s.write` over the SDI RPC leg.
+#[cfg(feature = "hosted")]
+unsafe extern "C" fn sdi_dmi_write(dmi: *mut crate::riscv::dmi::RiscvDmiC, address: u32, value: u32) -> bool {
+    use crate::hosted::dmi_scan::{RV_DMI_FAILURE, RV_DMI_SUCCESS};
+
+    if dmi.is_null() {
+        return false;
+    }
+    for _ in 0..SDI_DMI_MAX_ATTEMPTS {
+        if crate::hosted::rpc_host::remote_rpc::remote_sdi_dm_write_rs(address, value) {
+            unsafe {
+                (*dmi).fault = RV_DMI_SUCCESS;
+            }
+            return true;
+        }
+    }
+    unsafe {
+        (*dmi).fault = RV_DMI_FAILURE;
+    }
+    false
 }
 /// Override the SDI wire timing ('mon sdi_wire'), in ns.
 ///
@@ -137,18 +222,7 @@ pub fn bmp_sdi_write(adr: u8, data: u32) -> bool {
 
 /// Handle `mon sdi_scan` — probe for WCH CH32V0xx SDI devices.
 pub fn _sdi_scan(_command: &str, _args: &[&str]) -> bool {
-    bmplog!("sdi_scan:\n");
-    // The scan may detach from the current target and attach a different one:
-    // cached lines are target-specific and must be dropped.
-    crate::mem_cache::invalidate();
-
-    if !sdi_scan() {
-        bmpwarning!("sdi_scan failed!\n");
-        return false;
-    }
-    os_detach();
-    encoder::reply_ok();
-    true
+    crate::commands::mon::common_scan("sdi_scan", sdi_scan)
 }
 /**
  * SDI bit-bang wire timing: `mon sdi_wire <tbit> <low1> <low0> <sample> [notrim]`,

@@ -5,6 +5,7 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use crate::SyncCell;
 use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
 use rust_esprit::EventGroup;
 use rust_esprit::{Serial, SerialEvent, SerialEventHandler};
@@ -160,7 +161,8 @@ pub struct UsbSerialBridge {
     serial2usb: DirectionChannel,
 }
 
-static mut BRIDGE: core::mem::MaybeUninit<UsbSerialBridge> = core::mem::MaybeUninit::uninit();
+static BRIDGE: SyncCell<core::mem::MaybeUninit<UsbSerialBridge>> =
+    SyncCell::new(core::mem::MaybeUninit::uninit());
 static BRIDGE_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 unsafe impl Sync for UsbSerialBridge {}
@@ -176,7 +178,7 @@ impl UsbSerialBridge {
 
         // Write uninitialised placeholder into static first
         unsafe {
-            BRIDGE.write(UsbSerialBridge {
+            (*BRIDGE.as_ptr()).write(UsbSerialBridge {
                 cdc: core::mem::zeroed(),
                 serial: Serial::new(serial_instance, BRIDGE_BUFFER_SIZE as u32, true),
                 event_group: EventGroup::uninit(),
@@ -207,7 +209,7 @@ impl UsbSerialBridge {
     }
 
     fn instance() -> &'static mut UsbSerialBridge {
-        unsafe { &mut *BRIDGE.as_mut_ptr() }
+        unsafe { (*BRIDGE.as_ptr()).assume_init_mut() }
     }
 
     /// Take ownership of the event group (must be called from the owning task).
@@ -368,7 +370,7 @@ pub extern "C" fn rn_serial_bridge_write(n: u32, data: *const u8) {
         return;
     }
     let slice = unsafe { core::slice::from_raw_parts(data, n as usize) };
-    let this = unsafe { &mut *BRIDGE.as_mut_ptr() };
+    let this = UsbSerialBridge::instance();
     let written = this.cdc.write(slice);
     if written > 0 {
         this.cdc.flush();

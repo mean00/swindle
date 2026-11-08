@@ -9,12 +9,8 @@
 
 extern "C"
 {
-#include "gdb_packet.h"
-#include "general.h"
-#include "hex_utils.h"
+#include "platform_support.h"
 #include "lnFreeRTOSDebug.h"
-#include "target.h"
-#include "target_internal.h"
 }
 #include "bmp_string.h"
 
@@ -33,9 +29,6 @@ uint32_t readMem32(uint32_t base, uint32_t offset);
  * @param value  32-bit value to write.
  */
 void writeMem32(uint32_t base, uint32_t offset, uint32_t value);
-
-/** @brief Pointer to the currently selected debug target. */
-extern target *cur_target;
 
 /**
  * @brief Send a GDB response packet (wraps gdb_putpacket).

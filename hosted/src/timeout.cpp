@@ -1,7 +1,7 @@
 
 extern "C"
 {
-#include "general.h"
+#include "platform_support.h"
 }
 #include <QElapsedTimer>
 static QElapsedTimer timer;        // timeout base, restarted by platform_timeout_init()

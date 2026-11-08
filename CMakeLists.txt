@@ -27,11 +27,11 @@ option(SWINDLE_WITH_SDI "Build the WCH CH32V0xx single-wire (SDI) debug support"
 # Off => session_arena_stubs.rs forwards to the heap (old behaviour, no .bss).
 option(SWINDLE_SESSION_ARENA "Serve session allocations from a static arena instead of the heap" ON)
 # What those regions cost the probe, in KiB.  They are `.bss`
-# (rs_swindle/src/session_arena_size.rs: POOL 1728 B + TRANSPORT 896 B = 2624 B,
-# rounded up here), and LN_FREERTOS_HEAP_SIZE = RAM - LN_MCU_STATIC_RAM - 1, so
-# the heap gives back exactly this much: see the block after
-# include(./mcuSelect.cmake).
-set(SWINDLE_SESSION_ARENA_RAM_KIB 3 CACHE STRING "KiB of static RAM taken by the session arena")
+# (rs_swindle/src/session_arena_size.rs: POOL 3072 B + TRANSPORT 896 B = 3968 B),
+# and the figure here is that plus the rest of the static RAM headroom the linker
+# region needs.  LN_FREERTOS_HEAP_SIZE = RAM - LN_MCU_STATIC_RAM - 1, so the heap
+# gives back exactly this much: see the block after include(./mcuSelect.cmake).
+set(SWINDLE_SESSION_ARENA_RAM_KIB 5 CACHE STRING "KiB of static RAM taken by the session arena")
 #
 set(BMP_VERSION_BRANCH 1.10)
 set(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/patches_${BMP_VERSION_BRANCH})
@@ -175,7 +175,10 @@ gen_version_file()
 #
 include(all_boards)
 #
-include(patch_blackmagic)
+# The blackmagic sources are no longer part of the build: their remaining pieces
+# live in swindle/private_include (headers) and in Rust (target / transport
+# layers), so there is nothing left to patch.
+# include(patch_blackmagic)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -247,7 +250,7 @@ if(SWINDLE_USE_NETWORK)
   if(SWINDLE_USE_W5500)
     target_link_libraries(swindle_main PUBLIC w5500)
     target_include_directories(swindle PRIVATE ${CMAKE_SOURCE_DIR}/src/net ${CMAKE_SOURCE_DIR}/swindle/include ${CMAKE_SOURCE_DIR}/swindle/src ${CMAKE_SOURCE_DIR}/swindle/src/net)
-    target_include_directories(swindle PRIVATE ${BMP}/src/include ${BMP}/src ${BMP}/src/target)
+    target_include_directories(swindle PRIVATE ${CMAKE_SOURCE_DIR}/swindle/private_include)
   else()
     target_link_libraries(swindle PUBLIC lwipcore lnEth_wch)
   endif()

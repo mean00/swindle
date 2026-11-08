@@ -38,7 +38,7 @@
 #undef vaprintf
 #undef vasprintf
 #include "embedded_printf/printf.h"
-#include "timing.h"
+#include "platform_support.h"
 #define vasprintf vasprintf_
 #define snprintf snprintf_
 

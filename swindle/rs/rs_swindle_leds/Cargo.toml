@@ -10,20 +10,25 @@ edition.workspace = true
 #   bluepill            GD32F3 / CH32V3xx boards
 #   bluepill + ws2812   same, with a single WS2812B LED (CMake: USE_WS2812)
 # RP2040 / RP2350 : no feature, the crate is empty (their LED code is still in C++).
+#
+# The plain variant is platform-neutral: pins from the probe board table, driven
+# through the esprit `GpioPin` trait, so it names no MCU backend crate and this
+# manifest carries no path into esprit beyond the workspace `rust_esprit`. Only the
+# WS2812B variant names its driver crate (`ws2812b`), which is deliberate.
 
 [features]
 bluepill = [
-    "dep:rs_gpio_bluepill",
-    "dep:rs_rcu_bluepill",
     "dep:rust_esprit",
     "rust_esprit/bluepill",
 ]
-bluepill48 = ["bluepill", "rust_esprit/bluepill48", "ws2812b?/bluepill48"]
-bluepill64 = ["bluepill", "rust_esprit/bluepill64", "ws2812b?/bluepill64"]
+bluepill48 = ["bluepill", "rust_esprit/bluepill48", "ws2812b?/bluepill48", "dep:rs_swindle_board", "rs_swindle_board/ln48"]
+bluepill64 = ["bluepill", "rust_esprit/bluepill64", "ws2812b?/bluepill64", "dep:rs_swindle_board", "rs_swindle_board/ln64"]
 ws2812 = ["bluepill", "dep:ws2812b"]
 
 [dependencies]
 rust_esprit = { workspace = true, optional = true }
-rs_gpio_bluepill = { path = "../../../esprit/rust/bluepill/rs_gpio_bluepill", optional = true }
-rs_rcu_bluepill = { path = "../../../esprit/rust/bluepill/rs_rcu_bluepill", optional = true }
+# WS2812B strip driver: an esprit library, named explicitly (it is bluepill-backed
+# inside). The plain LED variant does not need it.
 ws2812b = { path = "../../../esprit/rust/libraries/ws2812b", optional = true }
+# Probe board table: the LED pins are the board's, not this crate's (see registers.rs)
+rs_swindle_board = { path = "../rs_swindle_board", optional = true }

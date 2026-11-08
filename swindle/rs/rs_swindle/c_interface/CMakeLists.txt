@@ -2,20 +2,17 @@
 # hosted mode + freeRTOS support ___________________________________________________________
 
 cmake_minimum_required(VERSION 3.13)
-if(SWINDLE_HOSTED)
-  set(RPC bmp_rpc_hosted.cpp)
-else()
-  set(RPC bmp_rpc.cpp)
-endif()
 # The SDI support is optional (SWINDLE_WITH_SDI, top level CMakeLists.txt): the
 # c_interface side of it is the 'mon sdi_wire' knob setter, and this is the one
 # place the option changes (see swindle/include/bmp_riscv_extra.h for the seam).
 if(SWINDLE_WITH_SDI)
   set(SDI_SRC bmp_riscv_extra_sdi_c.cpp)
 else()
-  set(SDI_SRC bmp_riscv_extra_sdi_stubs_c.cpp)
+  # The no-op twin (bmp_riscv_extra_sdi_stubs_c.cpp) is Rust now: see
+  # swindle/rs/rs_swindle/src/riscv_extra_sdi_stubs.rs, bmp_set_sdi_wire_c.
+  set(SDI_SRC)
 endif()
-set(SRC bmp_interface_c.cpp ${SDI_SRC} bmp_stubs_c.cpp ${RPC})
+set(SRC bmp_interface_c.cpp ${SDI_SRC} bmp_stubs_c.cpp)
 # bmp_rtt.cpp
 add_library(swindle_interface STATIC ${SRC})
 target_link_libraries(swindle_interface PRIVATE esprit_dev)

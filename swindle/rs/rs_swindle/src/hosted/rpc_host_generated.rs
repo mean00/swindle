@@ -8,109 +8,145 @@
 
 use crate::rpc_common_generated::*;
 use crate::hosted::rpc_host::remote_encoder::rpc_encoder;
-use crate::parsing_util::{u8s_string_to_u32_le, u8s_string_to_u8};
-use crate::hosted::transport::{check_reply, remote_get_reply};
+use crate::hosted::transport::{remote_get_reply, reply_bytes, reply_fault, reply_fields,
+    reply_is_ok, reply_text, reply_u8, reply_u32};
 
 crate::setup_log!(false);
 crate::gdb_print_init!();
 
 // ── GEN commands ──
-pub fn remote_gen_start() -> u32 {
+pub fn remote_gen_start() -> &'static [u8] {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_START]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return 0; }
-    u8s_string_to_u32_le(&reply[1..])
+    reply_text(reply).unwrap_or(&[])
 }
 
 pub fn remote_gen_voltage() -> &'static [u8] {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_VOLTAGE]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    reply
+    reply_text(reply).unwrap_or(&[])
 }
 
 pub fn remote_gen_nrst_set(assert: bool) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_NRST_SET]);
-    e.add_u8(&[if assert { b'1' } else { b'0' }]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.bool(assert);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 
 pub fn remote_gen_nrst_get() -> u8 {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_NRST_GET]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 2) { return 0; }
-    u8s_string_to_u8(&reply[1..])
+    reply_u8(reply).unwrap_or(0)
 }
 
 pub fn remote_gen_target_clk_oe(enable: bool) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_TARGET_CLK_OE]);
-    e.add_u8(&[if enable { b'1' } else { b'0' }]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.bool(enable);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 
 pub fn remote_gen_freq_set(freq_khz: u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_FREQ_SET]);
-    e.add_u32_le(freq_khz as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.u32(freq_khz as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 
 pub fn remote_gen_freq_get() -> u32 {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_FREQ_GET]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return 0; }
-    u8s_string_to_u32_le(&reply[1..])
+    reply_u32(reply).unwrap_or(0)
 }
 
 pub fn remote_gen_pwr_set(enabled: bool) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_PWR_SET]);
-    e.add_u8(&[if enabled { b'1' } else { b'0' }]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.bool(enabled);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 
 pub fn remote_gen_pwr_get() -> u8 {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_PWR_GET]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 2) { return 0; }
-    u8s_string_to_u8(&reply[1..])
+    reply_u8(reply).unwrap_or(0)
 }
 
 pub fn remote_gen_gpio_reset() -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_GPIO_RESET]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 
 // ── SWDP commands ──
@@ -118,9 +154,13 @@ pub fn remote_swdp_init() -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SWDP_PACKET, RPC_SWDP_INIT]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 
 // ── HL commands ──
@@ -128,20 +168,26 @@ pub fn remote_hl_check() -> u8 {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_HL_PACKET, RPC_HL_CHECK]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 2) { return 0; }
-    u8s_string_to_u8(&reply[1..])
+    reply_u8(reply).unwrap_or(0)
 }
 
 pub fn remote_hl_accel() -> u8 {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_HL_PACKET, RPC_HL_ACCEL]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 2) { return 0; }
-    u8s_string_to_u8(&reply[1..])
+    reply_u8(reply).unwrap_or(0)
 }
 
 // ── SDI commands ──
@@ -149,47 +195,69 @@ pub fn remote_sdi_reset() -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_RESET]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_sdi_dm_read(address: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_DM_READ]);
-    e.add_u8_hex(address as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.u8(address as u8);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_sdi_dm_write(address: u32, value: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_DM_WRITE]);
-    e.add_u8_hex(address as u32);
-    e.add_u32_le(value as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(2);
+        let _ = cbor.u8(address as u8);
+        let _ = cbor.u32(value as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_sdi_set_wire(tbit_ns: u32, low1_ns: u32, low0_ns: u32, sample_ns: u32, no_trim: bool) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SDI_PACKET, RPC_SDI_SET_WIRE]);
-    e.add_u32_le(tbit_ns as u32);
-    e.add_u32_le(low1_ns as u32);
-    e.add_u32_le(low0_ns as u32);
-    e.add_u32_le(sample_ns as u32);
-    e.add_u8(&[if no_trim { b'1' } else { b'0' }]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(5);
+        let _ = cbor.u32(tbit_ns as u32);
+        let _ = cbor.u32(low1_ns as u32);
+        let _ = cbor.u32(low0_ns as u32);
+        let _ = cbor.u32(sample_ns as u32);
+        let _ = cbor.bool(no_trim);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 
 // ── RV commands ──
@@ -197,33 +265,92 @@ pub fn remote_rv_reset() -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_RV_PACKET, RPC_RV_RESET]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_rv_dm_read(address: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_READ]);
-    e.add_u8_hex(address as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.u8(address as u8);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_rv_dm_write(address: u32, value: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_WRITE]);
-    e.add_u8_hex(address as u32);
-    e.add_u32_le(value as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(2);
+        let _ = cbor.u8(address as u8);
+        let _ = cbor.u32(value as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
+}
+
+pub fn remote_rv_mem_read(method: u32, leg: u32, address: u32, length: u32) -> (i32, &'static [u8]) {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_RV_PACKET, RPC_RV_MEM_READ]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(4);
+        let _ = cbor.u8(method as u8);
+        let _ = cbor.u8(leg as u8);
+        let _ = cbor.u32(address as u32);
+        let _ = cbor.u32(length as u32);
+    }
+    e.end();
+    let reply = remote_get_reply();
+    match reply_bytes(reply) {
+        Some(data) => (0, data),
+        None => (reply_fault(reply), &[]),
+    }
+}
+
+pub fn remote_rv_mem_write(method: u32, leg: u32, address: u32, length: u32, data: &[u8]) -> (i32, u32) {
+    let mut e = rpc_encoder::new();
+    e.begin();
+    e.add_u8(&[RPC_RV_PACKET, RPC_RV_MEM_WRITE]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(5);
+        let _ = cbor.u8(method as u8);
+        let _ = cbor.u8(leg as u8);
+        let _ = cbor.u32(address as u32);
+        let _ = cbor.u32(length as u32);
+        let _ = cbor.bytes(data);
+    }
+    e.end();
+    let reply = remote_get_reply();
+    match reply_u32(reply) {
+        Some(value) => (0, value),
+        None => (reply_fault(reply), 0),
+    }
 }
 
 // ── LNADIV commands ──
@@ -231,50 +358,72 @@ pub fn remote_lnadiv_write(address: u32, data: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_WRITE]);
-    e.add_u16_le(address as u32);
-    e.add_u32_le(data as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(2);
+        let _ = cbor.u16(address as u16);
+        let _ = cbor.u32(data as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_lnadiv_read(address: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_READ]);
-    e.add_u16_le(address as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.u16(address as u16);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_lnadiv_raw_write(tick_count: u32, value: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_RAW_WRITE]);
-    e.add_u32_le(tick_count as u32);
-    e.add_u32_le(value as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(2);
+        let _ = cbor.u32(tick_count as u32);
+        let _ = cbor.u32(value as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_lnadiv_lowlevel(rnw: u32, address: u32, value: u32) -> (u32, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_LOWLEVEL]);
-    e.add_u8_hex(rnw as u32);
-    e.add_u16_le(address as u32);
-    e.add_u32_le(value as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(3);
+        let _ = cbor.u8(rnw as u8);
+        let _ = cbor.u16(address as u16);
+        let _ = cbor.u32(value as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 16) {
-        return (0, 0);
+    match reply_fields(reply) {
+        Some(mut fields) => (fields.u32().unwrap_or(0), fields.u32().unwrap_or(0)),
+        None => (0, 0),
     }
-    (u8s_string_to_u32_le(&reply[1..9]), u8s_string_to_u32_le(&reply[9..17]))
 }
 
 // ── ADIV5 commands ──
@@ -282,99 +431,122 @@ pub fn remote_adiv5_raw_access_v3(device_index: u32, ap_selection: u32, address:
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_ADIV5_PACKET, RPC_ADIV5_RAW_ACCESS_V3]);
-    e.add_u8_hex(device_index as u32);
-    e.add_u8_hex(ap_selection as u32);
-    e.add_u16_be(address as u32);
-    e.add_u32(value as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(4);
+        let _ = cbor.u8(device_index as u8);
+        let _ = cbor.u8(ap_selection as u8);
+        let _ = cbor.u16(address as u16);
+        let _ = cbor.u32(value as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 16) {
-        return (1, 0);
+    match reply_fields(reply) {
+        Some(mut fields) => (fields.u32().unwrap_or(0), fields.u32().unwrap_or(0)),
+        None => (1, 0),
     }
-    (u8s_string_to_u32_le(&reply[1..9]), u8s_string_to_u32_le(&reply[9..17]))
 }
 
 pub fn remote_adiv5_dp_read(device_index: u32, ap_selection: u32, address: u32) -> (i32, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_ADIV5_PACKET, RPC_ADIV5_DP_READ]);
-    e.add_u8_hex(device_index as u32);
-    e.add_u8_hex(ap_selection as u32);
-    e.add_u32(address as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(3);
+        let _ = cbor.u8(device_index as u8);
+        let _ = cbor.u8(ap_selection as u8);
+        let _ = cbor.u32(address as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if reply.is_empty() || reply[0] != RPC_RESP_OK {
-        return (reply.get(1).copied().unwrap_or(1) as i32, 0);
+    match reply_u32(reply) {
+        Some(value) => (0, value),
+        None => (reply_fault(reply), 0),
     }
-    (0, u8s_string_to_u32_le(&reply[1..]))
 }
 
 pub fn remote_adiv5_ap_read(device_index: u32, ap_selection: u32, address: u32) -> (i32, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_ADIV5_PACKET, RPC_ADIV5_AP_READ]);
-    e.add_u8_hex(device_index as u32);
-    e.add_u8_hex(ap_selection as u32);
-    e.add_u16_be(address as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(3);
+        let _ = cbor.u8(device_index as u8);
+        let _ = cbor.u8(ap_selection as u8);
+        let _ = cbor.u16(address as u16);
+    }
     e.end();
     let reply = remote_get_reply();
-    if reply.is_empty() || reply[0] != RPC_RESP_OK {
-        return (reply.get(1).copied().unwrap_or(1) as i32, 0);
+    match reply_u32(reply) {
+        Some(value) => (0, value),
+        None => (reply_fault(reply), 0),
     }
-    (0, u8s_string_to_u32_le(&reply[1..]))
 }
 
 pub fn remote_adiv5_ap_write(device_index: u32, ap_selection: u32, address: u32, value: u32) -> (i32, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_ADIV5_PACKET, RPC_ADIV5_AP_WRITE]);
-    e.add_u8_hex(device_index as u32);
-    e.add_u8_hex(ap_selection as u32);
-    e.add_u16_be(address as u32);
-    e.add_u32(value as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(4);
+        let _ = cbor.u8(device_index as u8);
+        let _ = cbor.u8(ap_selection as u8);
+        let _ = cbor.u16(address as u16);
+        let _ = cbor.u32(value as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if reply.is_empty() || reply[0] != RPC_RESP_OK {
-        return (reply.get(1).copied().unwrap_or(1) as i32, 0);
+    match reply_u32(reply) {
+        Some(value) => (0, value),
+        None => (reply_fault(reply), 0),
     }
-    (0, u8s_string_to_u32_le(&reply[1..]))
 }
 
 pub fn remote_adiv5_mem_read(device_index: u32, ap_selection: u32, csw: u32, address: u32, length: u32) -> (i32, &'static [u8]) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_ADIV5_PACKET, RPC_ADIV5_MEM_READ]);
-    e.add_u8_hex(device_index as u32);
-    e.add_u8_hex(ap_selection as u32);
-    e.add_u32(csw as u32);
-    e.add_u32(address as u32);
-    e.add_u32(length as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(5);
+        let _ = cbor.u8(device_index as u8);
+        let _ = cbor.u8(ap_selection as u8);
+        let _ = cbor.u32(csw as u32);
+        let _ = cbor.u32(address as u32);
+        let _ = cbor.u32(length as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if reply.is_empty() || reply[0] != RPC_RESP_OK {
-        return (reply.get(1).copied().unwrap_or(1) as i32, &[]);
+    match reply_bytes(reply) {
+        Some(data) => (0, data),
+        None => (reply_fault(reply), &[]),
     }
-    (0, &reply[1..])
 }
 
 pub fn remote_adiv5_mem_write(device_index: u32, ap_selection: u32, csw: u32, align: u32, address: u32, length: u32, data: &[u8]) -> (i32, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_ADIV5_PACKET, RPC_ADIV5_MEM_WRITE]);
-    e.add_u8_hex(device_index as u32);
-    e.add_u8_hex(ap_selection as u32);
-    e.add_u32(csw as u32);
-    e.add_u8_hex(align as u32);
-    e.add_u32(address as u32);
-    e.add_u32(length as u32);
-    // SAFETY: data is valid UTF-8 hex encoding
-    e.hex_and_add(unsafe { core::str::from_utf8_unchecked(data) });
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(7);
+        let _ = cbor.u8(device_index as u8);
+        let _ = cbor.u8(ap_selection as u8);
+        let _ = cbor.u32(csw as u32);
+        let _ = cbor.u8(align as u8);
+        let _ = cbor.u32(address as u32);
+        let _ = cbor.u32(length as u32);
+        let _ = cbor.bytes(data);
+    }
     e.end();
     let reply = remote_get_reply();
-    if reply.is_empty() || reply[0] != RPC_RESP_OK {
-        return (reply.get(1).copied().unwrap_or(1) as i32, 0);
+    match reply_u32(reply) {
+        Some(value) => (0, value),
+        None => (reply_fault(reply), 0),
     }
-    (0, u8s_string_to_u32_le(&reply[1..]))
 }
 
 // ── SWINDLE commands ──
@@ -382,31 +554,47 @@ pub fn remote_swindle_crc32(address: u32, length: u32) -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SWINDLE_PACKET, RPC_SWINDLE_CRC32]);
-    e.add_u32_le(address as u32);
-    e.add_u32_le(length as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(2);
+        let _ = cbor.u32(address as u32);
+        let _ = cbor.u32(length as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_swindle_get_fq() -> (bool, u32) {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SWINDLE_PACKET, RPC_SWINDLE_GET_FQ]);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(0);
+    }
     e.end();
     let reply = remote_get_reply();
-    if !check_reply(reply, 8) { return (false, 0); }
-    (true, u8s_string_to_u32_le(&reply[1..]))
+    match reply_u32(reply) {
+        Some(value) => (true, value),
+        None => (false, 0),
+    }
 }
 
 pub fn remote_swindle_set_fq(freq_hz: u32) -> bool {
     let mut e = rpc_encoder::new();
     e.begin();
     e.add_u8(&[RPC_SWINDLE_PACKET, RPC_SWINDLE_SET_FQ]);
-    e.add_u32_le(freq_hz as u32);
+    {
+        let mut cbor = e.cbor();
+        let _ = cbor.array(1);
+        let _ = cbor.u32(freq_hz as u32);
+    }
     e.end();
     let reply = remote_get_reply();
-    check_reply(reply, 0)
+    reply_is_ok(reply)
 }
 

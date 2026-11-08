@@ -19,6 +19,13 @@ cdc = ["rust_esprit/cdc"]
 # (src/riscv_extra_sdi_stubs.rs) in lib.rs.
 sdi = []
 
+# Inverted target nRST line — CMake option USE_INVERTED_NRST (a MOSFET on the
+# board), wired in swindle/rs/CMakeLists.txt. Off: open drain / active low, on:
+# push-pull / active high. Same switch that picks bmp_reset.cpp or
+# bmp_reset_inv.cpp for the C++ SwdReset; the Rust half lives with the board
+# table (rs_swindle_board/ln/reset_pin.rs), this only passes it through.
+nrst_inverted = ["rs_swindle_board?/nrst_inverted"]
+
 # Session-scoped static arena — CMake option SWINDLE_SESSION_ARENA, wired in
 # swindle/rs/CMakeLists.txt. Off selects src/session_arena_stubs.rs, which
 # forwards the swindle_session_* symbols to the heap (old behaviour, no .bss).
@@ -35,7 +42,7 @@ logger_uart2 = ["rust_esprit/logger_uart2"]
 
 fake_std = ["rust_esprit/fake_std"]
 
-# Platform backend selection for rust_esprit — see esprit/rust/rp2xxx/README.md.
+# Platform backend selection for rust_esprit — see esprit/rust/rs_mcus/rp2xxx/README.md.
 # Exactly one of these must be enabled by the consumer:
 #   * `bluepill` — GD32 / CH32: rs_*_bluepill Rust peripheral backends
 #   * `rp2040`   — RP2040 / RP2350: rp2xxx backends (the C++ bridges for
@@ -44,8 +51,13 @@ fake_std = ["rust_esprit/fake_std"]
 # swindle/rs/CMakeLists.txt picks it from USE_RP2040 / USE_RP2350.
 bluepill = ["rust_esprit/bluepill"]
 # Package of the bluepill chip (USE_48PIN_PACKAGE / USE_64PIN_PACKAGE), see rs_pinout48_bluepill
-bluepill48 = ["rust_esprit/bluepill48"]
-bluepill64 = ["rust_esprit/bluepill64"]
+bluepill48 = ["rust_esprit/bluepill48", "dep:rs_swindle_board", "rs_swindle_board/ln48"]
+bluepill64 = ["rust_esprit/bluepill64", "dep:rs_swindle_board", "rs_swindle_board/ln64"]
+# RP2040 / RP2350 board table (swindle/rs/rs_swindle_board/src/rp2xxx/): selected by
+# CMake from USE_RP_CARRIER, next to the `rp2040` platform feature. This is what
+# brings the board crate into an RP build (the nRST line comes from it, like on LN).
+rp_zero = ["rp2040", "dep:rs_swindle_board", "rs_swindle_board/rp_zero"]
+rp_carrier = ["rp2040", "dep:rs_swindle_board", "rs_swindle_board/rp_carrier"]
 rp2040 = ["rust_esprit/rp2040"]
 esp32 = ["rust_esprit/esp32"]
 use_esprit = ["dep:rust_esprit"]
@@ -54,6 +66,9 @@ use_esprit = ["dep:rust_esprit"]
 [dependencies]
 cty = "0.2.2"
 rust_esprit = { workspace = true, optional = true }
+# Probe board table (pinout / ADC / UART / USB / LEDs), enabled with the package
+# features above — see swindle/rs/rs_swindle_board.
+rs_swindle_board = { path = "../rs_swindle_board", optional = true }
 ufmt = { workspace = true } #version = "*", default-features = false }
 heapless =  { workspace = true } #{ version = "*", features = ["ufmt-impl"] }
 numtoa = {version = "0.3.0"}
@@ -62,6 +77,10 @@ arraystring = { version = "0.3.0", default-features = false, features = [] }
 strum = { version = "0.27.2", default-features = false, features = []}
 strum_macros = { version = "0.27.2", default-features = false, features = []}
 cfg-if = "1.0"
+# CBOR codec for the RPC payload (see doc/rpc.md): both halves encode their
+# parameters with it. `derive` is not needed — the generated code calls the
+# encoder/decoder directly.
+minicbor = { version = "2.3.1", default-features = false }
 #
 [lib]
 name = "rsbmp"

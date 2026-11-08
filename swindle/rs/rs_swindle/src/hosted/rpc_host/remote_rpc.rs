@@ -1,48 +1,29 @@
-/**
- * This file is used by the host in bmpa mode
- * It is NOT used by lnBMP as a standalone probe
- */
-use crate::rpc_host::remote_encoder::*;
+//! Client/host RPC stubs for hosted (bmpa) mode.
+//!
+//! Exclusively used by the host runner when forwarding debug requests
+//! across the RPC link to a physical probe.
 
-use crate::parsing_util::u8s_string_to_u32_le;
-use crate::rpc_common_generated::*;
+use crate::rpc_host_generated::*;
 
-setup_log!(false);
-
-crate::gdb_print_init!();
-//use crate::{bmplog, gdb_print};
-
-use crate::hosted::transport::{check_reply, remote_get_reply};
-
-//_______________________________________
 #[unsafe(no_mangle)]
 pub fn remote_bmp_set_frequency_rs(fq: u32) -> bool {
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_SWINDLE_PACKET, RPC_SWINDLE_SET_FQ]);
-    e.add_u32_le(fq);
-    e.end();
-    let reply = remote_get_reply();
-    check_reply(reply, 8)
+    remote_swindle_set_fq(fq)
 }
-//_______________________________________
+
 #[unsafe(no_mangle)]
 pub fn remote_bmp_get_frequency_rs(fq: &mut u32) -> bool {
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_SWINDLE_PACKET, RPC_SWINDLE_GET_FQ]);
-    e.end();
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        return false;
+    let (ok, val) = remote_swindle_get_fq();
+    if ok {
+        *fq = val;
     }
-    *fq = u8s_string_to_u32_le(&reply[1..]);
-    true
+    ok
 }
+
 #[unsafe(no_mangle)]
 pub fn bmp_set_frequency_c(fq: u32) {
     remote_bmp_set_frequency_rs(fq);
 }
+
 #[unsafe(no_mangle)]
 pub fn bmp_get_frequency_c() -> u32 {
     let mut fq: u32 = 0;
@@ -50,72 +31,36 @@ pub fn bmp_get_frequency_c() -> u32 {
     fq
 }
 
-
-
 #[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_reset_rs() -> bool {
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_RV_PACKET, RPC_RV_RESET]);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        return false;
-    }
-    true
+    let (ok, _val) = remote_rv_reset();
+    ok
 }
 
-/**
- *
- */
 #[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_read_rs(address: u32, value: &mut u32) -> bool {
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_READ]);
-    e.add_u8_hex(address);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        return false;
+    let (ok, val) = remote_rv_dm_read(address);
+    if ok {
+        *value = val;
     }
-    *value = u8s_string_to_u32_le(&reply[1..]);
-    true
+    ok
 }
 
-/**
- *
- */
 #[unsafe(no_mangle)]
 pub fn remote_ch32_riscv_dmi_write_rs(address: u32, value: u32) -> bool {
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_RV_PACKET, RPC_RV_DM_WRITE]);
-    e.add_u8_hex(address);
-    e.add_u32_le(value);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        return false;
-    }
-    true
+    let (ok, _val) = remote_rv_dm_write(address, value);
+    ok
 }
 
 #[unsafe(no_mangle)]
 pub fn remote_sdi_reset_rs() -> bool {
-    // Enter SDI debug mode on the remote probe (PIO upload, NRST pulse,
-    // unlock). The C glue only needs to know whether the RPC leg answered
-    // (mirror of remote_ch32_riscv_dmi_reset_rs).
-    let (ok, _value) = crate::rpc_host_generated::remote_sdi_reset();
+    let (ok, _val) = remote_sdi_reset();
     ok
 }
 
 #[unsafe(no_mangle)]
 pub fn remote_sdi_dm_read_rs(address: u32, value: &mut u32) -> bool {
-    let (ok, v) = crate::rpc_host_generated::remote_sdi_dm_read(address);
+    let (ok, v) = remote_sdi_dm_read(address);
     if ok {
         *value = v;
     }
@@ -124,129 +69,49 @@ pub fn remote_sdi_dm_read_rs(address: u32, value: &mut u32) -> bool {
 
 #[unsafe(no_mangle)]
 pub fn remote_sdi_dm_write_rs(address: u32, value: u32) -> bool {
-    let (ok, _value) = crate::rpc_host_generated::remote_sdi_dm_write(address, value);
+    let (ok, _val) = remote_sdi_dm_write(address, value);
     ok
 }
 
-/// The 'mon sdi_wire' knobs for a hosted build: 'mon sdi_wire' runs on this PC,
-/// but the numbers tune the probe's bit-bang tap, so they go over the class-I
-/// SDI RPC (`SDI.SET_WIRE`) and are read by the tap on its next mode entry
-/// (i.e. the `mon sdi_scan` that follows). False means the probe did not take
-/// them - no answer, or a firmware without the command - which is worth saying
-/// out loud: nothing here would have changed the wire.
 #[unsafe(no_mangle)]
 pub fn remote_sdi_set_wire_rs(tbit_ns: u32, low1_ns: u32, low0_ns: u32, sample_ns: u32, no_trim: bool) -> bool {
-    crate::rpc_host_generated::remote_sdi_set_wire(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim)
+    remote_sdi_set_wire(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim)
 }
 
 #[unsafe(no_mangle)]
 pub fn remote_crc32(address: u32, length: u32, out_crc: &mut u32) -> bool {
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_SWINDLE_PACKET, RPC_SWINDLE_CRC32]);
-    e.add_u32_le(address);
-    e.add_u32_le(length);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        return false;
+    let (ok, val) = remote_swindle_crc32(address, length);
+    if ok {
+        *out_crc = val;
     }
-    *out_crc = u8s_string_to_u32_le(&reply[1..]);
-    true
+    ok
 }
-//-------------------------------------------------------------------------------
+
 #[unsafe(no_mangle)]
 pub fn remote_adiv5_swd_write_no_check_rs(addr: u16, data: u32) -> bool {
-    bmplog!("lnAdiv5SwdWrite:Addr{:x}:Data{:x}\n", addr, data);
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_WRITE]);
-    e.add_u16_le(addr as u32);
-    e.add_u32_le(data);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        gdb_print!("Incorrect reply to adiv_swd_write\n");
-        return false;
-    }
-    true
+    let (ok, _) = remote_lnadiv_write(addr as u32, data);
+    ok
 }
+
 #[unsafe(no_mangle)]
-//---------------------
 pub fn remote_raw_swd_write_rs(tick: u32, value: u32) {
-    bmplog!("lnraw_swd_write:Tick{:x}:Value{:x}\n", tick, value);
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_RAW_WRITE]);
-    e.add_u32_le(tick);
-    e.add_u32_le(value);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        gdb_print!("Incorrect reply to adiv_swd_raw_write\n");
-    }
+    let _ = remote_lnadiv_raw_write(tick, value);
 }
-//---------------------
+
 #[unsafe(no_mangle)]
 pub fn remote_adiv5_swd_read_no_check_rs(addr: u16) -> u32 {
-    bmplog!("lnadiv5_swd_read:Addr{:x}\n", addr);
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_READ]);
-    e.add_u16_le(addr as u32);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 8) {
-        gdb_print!("Incorrect reply to adiv_swd_read\n");
-        return 0;
-    }
-    u8s_string_to_u32_le(&reply[1..])
+    let (_ok, val) = remote_lnadiv_read(addr as u32);
+    val
 }
+
 #[unsafe(no_mangle)]
 pub fn remote_adiv5_swd_raw_access_rs(rnw: u8, addr: u16, value: u32, fault: &mut u32) -> u32 {
-    bmplog!(
-        "lnadiv5_swd_raw_access:rnw{:x}, addr {:x}, value {:x} \n",
-        rnw,
-        addr,
-        value
-    );
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_LNADIV_PACKET, RPC_LNADIV_LOWLEVEL]);
-    e.add_u8_hex(rnw as u32);
-    e.add_u16_le(addr as u32);
-    e.add_u32_le(value);
-    e.end();
-    // now get the reply
-    let reply = remote_get_reply();
-    if !check_reply(reply, 16) {
-        gdb_print!("Incorrect reply to adiv_swd_raw_access\n");
-        *fault = 2;
-        return 0;
-    }
-    *fault = u8s_string_to_u32_le(&reply[9..]);
-    u8s_string_to_u32_le(&reply[1..9])
+    let (resp, f) = remote_lnadiv_lowlevel(rnw as u32, addr as u32, value);
+    *fault = f;
+    resp
 }
 
-/// Reset SWDIO GPIO state via RPC.
-///
-/// Sends a GEN_GPIO_RESET command to the target probe, which drives the
-/// SWDIO pin high and configures it as an output. Called during target
-/// detach to release the SWD bus to a known idle state.
 #[unsafe(no_mangle)]
 pub fn bmp_gpio_reset_c() {
-    let mut e = rpc_encoder::new();
-    e.begin();
-    e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_GPIO_RESET]);
-    e.end();
-    let reply = remote_get_reply();
-    if !check_reply(reply, 0) {
-        bmplog!("bmp_gpio_reset_c: RPC failed\n");
-    }
+    let _ = remote_gen_gpio_reset();
 }
-
-//

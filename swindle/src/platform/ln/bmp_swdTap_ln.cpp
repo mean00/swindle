@@ -8,9 +8,7 @@
 #include "esprit.h"
 extern "C"
 {
-#include "adiv5.h"
-#include "general.h"
-#include "timing.h"
+#include "platform_support.h"
 }
 #include "bmp_pinmode.h"
 #include "bmp_swdio_ln.h"
@@ -19,14 +17,14 @@ extern "C"
 #include "lnbmp_parity.h"
 
 extern void gmp_gpio_init_adc();
-extern "C" void swdptap_init_stubs();
+extern "C" void bmp_clear_dp_fault_c();
 
 /**
  * @brief Initialise the SWD TAP.
  */
 extern "C" void swdptap_init()
 {
-    swdptap_init_stubs();
+    bmp_clear_dp_fault_c();
     rSWDIO->output();
 }
 

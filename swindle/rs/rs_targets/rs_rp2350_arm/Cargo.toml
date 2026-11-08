@@ -1,0 +1,9 @@
+[package]
+name = "rs_rp2350_arm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rsbmp = { path = "../../rs_swindle" }
+rs_rp_common = { path = "../rs_rp_common" }
+rs_rp2350_common = { path = "../rs_rp2350_common" }

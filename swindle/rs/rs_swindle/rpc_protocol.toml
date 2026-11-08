@@ -11,7 +11,10 @@
 #   [class_byte][cmd_byte][hex_encoded_params...]
 #   Reply: &K[hex_encoded_data]  (OK) or &E[hex_encoded_error] (error)
 #
-# All integer params are ASCII hex-encoded on the wire.
+# Every integer param/reply is ASCII hex, little-endian byte order:
+#   u8 = 2 digits, u16 = 4 digits, u32 = 8 digits.
+# There is one byte order only (no _be/_le suffix): both ends are generated
+# from this file, so an integer is just an integer.
 # ============================================================================
 
 # ---------------------------------------------------------------------------
@@ -122,7 +125,7 @@ description = "High-level protocol (version negotiation, capabilities)"
 id = "C"
 old_name = "RPC_HL_CHECK"
 description = "Get protocol version"
-reply = { type = "u8", doc = "Protocol version (currently 3)" }
+reply = { type = "u8", doc = "Protocol version (5, see doc/rpc.md)" }
 
 [class.HL.command.ACCEL]
 id = "A"
@@ -151,7 +154,7 @@ description = "Read RISC-V DM register"
 params = [
   { name = "address", type = "u8", doc = "DM register address (5 bits)" }
 ]
-reply = { type = "u32_le", on_error = "ok_bool" }
+reply = { type = "u32", on_error = "ok_bool" }
 
 [class.SDI.command.DM_WRITE]
 id = "w"
@@ -202,7 +205,7 @@ description = "Read RISC-V DM register"
 params = [
   { name = "address", type = "u8", doc = "DM register address (5 bits)" }
 ]
-reply = { type = "u32_le", on_error = "ok_bool" }
+reply = { type = "u32", on_error = "ok_bool" }
 
 [class.RV.command.DM_WRITE]
 id = "w"
@@ -213,6 +216,34 @@ params = [
   { name = "value", type = "u32" }
 ]
 reply = { type = "u32", on_error = "ok_bool" }
+
+# Bulk memory access. A DM memory access costs ~11 DMI transactions per word, and
+# one RPC frame per DMI transaction is what made a hosted `load` run at 2 KB/s
+# (~45k round trips for 16 KiB). These two leaves carry a whole block per frame
+# and let the probe run the very same access sequence (`RiscvMem`) itself.
+# `method` is `MemoryAccessMethod::wire_id()` (`riscv/hart.rs`).
+[class.RV.command.MEM_READ]
+id = "R"
+description = "Read target memory block (the probe runs the DM access sequence)"
+params = [
+  { name = "method", type = "u8", doc = "0 = abstract, 1 = abstauto, 2 = progbuf, 3 = sysbus" },
+  { name = "leg", type = "u8", doc = "DM wire: 0 = RVSWD, 1 = SDI" },
+  { name = "address", type = "u32" },
+  { name = "length", type = "u32", doc = "Bytes to read, <= 1024" }
+]
+reply = { type = "hex_block", max_length = 1024, on_error = "fault" }
+
+[class.RV.command.MEM_WRITE]
+id = "M"
+description = "Write target memory block (the probe runs the DM access sequence)"
+params = [
+  { name = "method", type = "u8", doc = "0 = abstract, 1 = abstauto, 2 = progbuf, 3 = sysbus" },
+  { name = "leg", type = "u8", doc = "DM wire: 0 = RVSWD, 1 = SDI" },
+  { name = "address", type = "u32" },
+  { name = "length", type = "u32", doc = "Bytes in data, <= 1024" },
+  { name = "data", type = "hex_block", doc = "Hex-encoded data bytes (must match length)" }
+]
+reply = { type = "u32", on_error = "fault", doc = "fault code" }
 
 # ---------------------------------------------------------------------------
 # LNADIV — Low-level ADIv5 SWD register access
@@ -261,8 +292,8 @@ params = [
   { name = "value", type = "u32" }
 ]
 reply = { type = "compound", fields = [
-  { name = "response", type = "u32_le", doc = "Readback value" },
-  { name = "fault", type = "u32_le", doc = "Fault code" }
+  { name = "response", type = "u32", doc = "Readback value" },
+  { name = "fault", type = "u32", doc = "Fault code" }
 ] }
 
 # ---------------------------------------------------------------------------
@@ -280,12 +311,12 @@ description = "DP raw access with fault reporting"
 params = [
   { name = "device_index", type = "u8" },
   { name = "ap_selection", type = "u8" },
-  { name = "address", type = "u16_be" },
-  { name = "value", type = "u32_be", optional = true, doc = "Write value (omit for read)" }
+  { name = "address", type = "u16" },
+  { name = "value", type = "u32", doc = "Write value (ignored on reads)" }
 ]
 reply = { type = "compound", on_error = "fault", fields = [
-  { name = "outvalue", type = "u32_le" },
-  { name = "fault", type = "u32_le" }
+  { name = "outvalue", type = "u32" },
+  { name = "fault", type = "u32" }
 ] }
 
 [class.ADIV5.command.DP_READ]
@@ -295,9 +326,9 @@ description = "Read DP register"
 params = [
   { name = "device_index", type = "u8" },
   { name = "ap_selection", type = "u8" },
-  { name = "address", type = "u32_be" }
+  { name = "address", type = "u32" }
 ]
-reply = { type = "u32_le", on_error = "fault" }
+reply = { type = "u32", on_error = "fault" }
 
 [class.ADIV5.command.AP_READ]
 id = "a"
@@ -306,7 +337,7 @@ description = "Read AP register"
 params = [
   { name = "device_index", type = "u8" },
   { name = "ap_selection", type = "u8" },
-  { name = "address", type = "u16_be" }
+  { name = "address", type = "u16" }
 ]
 reply = { type = "u32", on_error = "fault" }
 
@@ -317,8 +348,8 @@ description = "Write AP register"
 params = [
   { name = "device_index", type = "u8" },
   { name = "ap_selection", type = "u8" },
-  { name = "address", type = "u16_be" },
-  { name = "value", type = "u32_be" }
+  { name = "address", type = "u16" },
+  { name = "value", type = "u32" }
 ]
 reply = { type = "u32", on_error = "fault", doc = "0 on success" }
 
@@ -329,9 +360,9 @@ description = "Read memory block via AP"
 params = [
   { name = "device_index", type = "u8" },
   { name = "ap_selection", type = "u8" },
-  { name = "csw", type = "u32_be" },
-  { name = "address", type = "u32_be" },
-  { name = "length", type = "u32_be" }
+  { name = "csw", type = "u32" },
+  { name = "address", type = "u32" },
+  { name = "length", type = "u32" }
 ]
 reply = { type = "hex_block", max_length = 1024, on_error = "fault" }
 
@@ -342,10 +373,10 @@ description = "Write memory block via AP"
 params = [
   { name = "device_index", type = "u8" },
   { name = "ap_selection", type = "u8" },
-  { name = "csw", type = "u32_be" },
+  { name = "csw", type = "u32" },
   { name = "align", type = "u8" },
-  { name = "address", type = "u32_be" },
-  { name = "length", type = "u32_be" },
+  { name = "address", type = "u32" },
+  { name = "length", type = "u32" },
   { name = "data", type = "hex_block", doc = "Hex-encoded data bytes (must match length)" }
 ]
 reply = { type = "u32", on_error = "fault", doc = "fault code" }
@@ -366,14 +397,14 @@ params = [
   { name = "address", type = "u32", doc = "Start address" },
   { name = "length", type = "u32", doc = "Length in bytes" }
 ]
-reply = { type = "u32_le", on_error = "ok_bool", doc = "CRC32 value" }
+reply = { type = "u32", on_error = "ok_bool", doc = "CRC32 value" }
 
 [class.SWINDLE.command.GET_FQ]
 id = "G"
 old_name = "RPC_SWINDLE_GET_FQ"
 description = "Get current SWD frequency"
 params = []
-reply = { type = "u32_le", on_error = "ok_bool", doc = "Frequency in Hz" }
+reply = { type = "u32", on_error = "ok_bool", doc = "Frequency in Hz" }
 
 [class.SWINDLE.command.SET_FQ]
 id = "S"

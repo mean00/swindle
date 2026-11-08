@@ -1,0 +1,54 @@
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -101,25 +101,6 @@
+ 	target_command_s *next;
+ };
+ 
+-typedef struct breakwatch breakwatch_s;
+-
+-struct breakwatch {
+-	breakwatch_s *next;
+-#if CONFIG_POINTER_SIZE == 8
+-	target_addr64_t addr;
+-	size_t size;
+-	target_breakwatch_e type;
+-	uint32_t reserved[2]; /* For use by the implementing driver */
+-#else
+-	target_breakwatch_e type;
+-	target_addr64_t addr;
+-	size_t size;
+-	uint32_t reserved[4]; /* For use by the implementing driver */
+-#endif
+-};
+-
+-_Static_assert(sizeof(breakwatch_s) == 40U, "Breakwatch size unexpected");
+-
+ #define MAX_CMDLINE 81
+ 
+ /* 
+@@ -169,11 +150,6 @@
+ 	target_halt_reason_e (*halt_poll)(target_s *target, target_addr64_t *watch);
+ 	void (*halt_resume)(target_s *target, bool step);
+ 
+-	/* Break-/watchpoint functions */
+-	int (*breakwatch_set)(target_s *target, breakwatch_s *);
+-	int (*breakwatch_clear)(target_s *target, breakwatch_s *);
+-	breakwatch_s *bw_list;
+-
+ 	/* Recovery functions */
+ 	bool (*mass_erase)(target_s *target, platform_timeout_s *print_progess); /* Mass erase all target flash */
+ 
+diff --git a/src/include/target.h b/src/include/target.h
+--- a/src/include/target.h
++++ b/src/include/target.h
+@@ -139,9 +139,6 @@
+ 	TARGET_WATCH_ACCESS,
+ } target_breakwatch_e;
+ 
+-int target_breakwatch_set(target_s *target, target_breakwatch_e type, target_addr_t addr, size_t len);
+-int target_breakwatch_clear(target_s *target, target_breakwatch_e type, target_addr_t addr, size_t len);
+-
+ /* Command interpreter */
+ void target_command_help(target_s *target);
+ int target_command(target_s *target, int argc, const char *argv[]);

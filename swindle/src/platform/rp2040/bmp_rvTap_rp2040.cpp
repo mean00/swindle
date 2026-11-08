@@ -18,8 +18,7 @@
 
 extern "C"
 {
-#include "jep106.h"
-#include "riscv_debug.h"
+#include "platform_support.h"
 }
 #pragma GCC optimize("Ofast")
 #include "bmp_pinmode.h"
@@ -63,7 +62,14 @@ uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
     if (rx_bits > 0)
     {
         uint32_t w0 = 0;
-        xsm->waitRxReady();
+        if (!xsm->waitRxReady())
+        {
+            // The target never drove its response (silent pin after a reset, lost line).
+            // Report the frame as failed by returning a zero status instead of blocking:
+            // rv_dm_read() turns that into a DMI failure and the bounded retry budget in
+            // ch32_riscv_dmi_read() gives up on it with a log line.
+            return 0;
+        }
         xsm->read(1, &w0);
 
         int expected_words = (rx_bits / 32) + 1;
@@ -74,7 +80,10 @@ uint64_t rvswd_write_then_read(uint64_t tx_data, int tx_bits, int rx_bits)
         else if (expected_words == 2)
         {
             uint32_t w1 = 0;
-            xsm->waitRxReady();
+            if (!xsm->waitRxReady())
+            {
+                return 0;
+            }
             xsm->read(1, &w1);
             if (rx_bits == 32)
             {

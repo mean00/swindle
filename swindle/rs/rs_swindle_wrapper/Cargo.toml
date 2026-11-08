@@ -9,14 +9,22 @@ fake_std = ["rsbmp/fake_std"]
 native = ["rsbmp/native"]
 hosted = ["rsbmp/hosted"]
 sdi = ["rsbmp/sdi"]
+# Inverted target nRST line (CMake: USE_INVERTED_NRST, a MOSFET on the board):
+# reset_pin.rs then drives the pin push-pull / active high instead of open drain /
+# active low — the Rust half of what picks bmp_reset_inv.cpp over bmp_reset.cpp.
+nrst_inverted = ["rsbmp/nrst_inverted"]
 # Session-scoped static arena (CMake: SWINDLE_SESSION_ARENA), see malloc_used.md
 session_arena = ["rsbmp/session_arena"]
 # Platform backend for rust_esprit — exactly one of these (see
-# esprit/rust/rp2xxx/README.md); selected by swindle/rs/CMakeLists.txt.
+# esprit/rust/rs_mcus/rp2xxx/README.md); selected by swindle/rs/CMakeLists.txt.
 bluepill = ["rsbmp/bluepill", "rs_swindle_leds/bluepill"]
 bluepill48 = ["rsbmp/bluepill48", "rs_swindle_leds/bluepill48"]
 bluepill64 = ["rsbmp/bluepill64", "rs_swindle_leds/bluepill64"]
 rp2040 = ["rsbmp/rp2040"]
+# RP2040 / RP2350 board table (CMake: USE_RP_CARRIER decides which), same idea as
+# bluepill48/64: it is what enables rs_swindle_board for an RP build.
+rp_zero = ["rsbmp/rp_zero"]
+rp_carrier = ["rsbmp/rp_carrier"]
 esp32 = ["rsbmp/esp32"]
 # Single WS2812B led (CMake: USE_WS2812), bluepill compatible targets only
 ws2812 = ["rs_swindle_leds/ws2812"]
@@ -25,14 +33,38 @@ rust_logger = ["rsbmp/rust_logger"]
 # Debug UART of that logger (CMake: LN_DEBUG_UART), instance 0 by default
 logger_uart1 = ["rsbmp/logger_uart1"]
 logger_uart2 = ["rsbmp/logger_uart2"]
+# Pure Rust STM32F1-style ARM drivers (CMake: SWINDLE_RUST_ARM_TARGETS, the probe chain
+# dispatches to them, see src/arm_probe_chain.rs)
+rust_stm32f1 = ["dep:rs_stm32f1"]
+# Pure Rust STM32F4-style ARM drivers (STM32F2/F4/F7 + GD32F4), same mechanism
+rust_stm32f4 = ["dep:rs_stm32f4"]
+# Pure Rust STM32G0/C0/U0 drivers, same mechanism
+rust_stm32g0 = ["dep:rs_stm32g0"]
+# Pure Rust RP2040 / RP2350 drivers, same mechanism. The RP2350 has two of them, one
+# per core family (Cortex-M33 / Hazard3), enabled together: the ARM probe chain uses
+# `rs_rp2350_arm`, the RISC-V one in src/riscv_shim.rs uses `rs_rp2350_riscv`.
+rust_rp2040 = ["dep:rs_rp2040"]
+rust_rp2350 = ["dep:rs_rp2350_arm", "dep:rs_rp2350_riscv"]
+# Pure Rust Nordic drivers (nRF51, nRF52, nRF54L, nRF91)
+rust_nrf = ["dep:rs_nrf"]
+rust_nrf51 = ["dep:rs_nrf"]
+rust_nrf54l = ["dep:rs_nrf"]
+rust_nrf91 = ["dep:rs_nrf"]
 
 default =  ["native"]
 
 [dependencies]
 rsbmp = { path="../rs_swindle"}
 rs_swindle_leds = { path="../rs_swindle_leds"}
-rs_ch32v00x = { path="../../../blackmagic_addon/target/rs_ch32v00x" }
-rs_ch32v123xx = { path="../../../blackmagic_addon/target/rs_ch32v123xx" }
+rs_ch32v00x = { path="../rs_targets/rs_ch32v00x" }
+rs_ch32v123xx = { path="../rs_targets/rs_ch32v123xx" }
+rs_stm32f1 = { path="../rs_targets/rs_stm32f1", optional = true }
+rs_stm32f4 = { path="../rs_targets/rs_stm32f4", optional = true }
+rs_stm32g0 = { path="../rs_targets/rs_stm32g0", optional = true }
+rs_rp2040 = { path="../rs_targets/rs_rp2040", optional = true }
+rs_rp2350_arm = { path="../rs_targets/rs_rp2350_arm", optional = true }
+rs_rp2350_riscv = { path="../rs_targets/rs_rp2350_riscv", optional = true }
+rs_nrf = { path="../rs_targets/rs_nrf", optional = true }
 rust_esprit = { workspace = true, optional = true }
 
 [lib]

@@ -42,9 +42,7 @@ Original license header
 #include "esprit.h"
 extern "C"
 {
-#include "adiv5.h"
-#include "general.h"
-#include "timing.h"
+#include "platform_support.h"
 }
 
 #include "bmp_pinout.h"
@@ -56,21 +54,20 @@ extern "C"
 {
 #include "bmp_pio_rvswd.h"
 #include "bmp_pio_swd.h"
-#include "platform_support.h"
 }
 #include "ln_rp_clocks.h"
 #include "lnbmp_parity.h"
 extern void gmp_gpio_init_adc();
 extern rpPIO *swdpio;
 extern rpPIO_SM *xsm;
-extern "C" void swdptap_init_stubs();
+extern "C" void bmp_clear_dp_fault_c();
 /**
  * @brief Initialise SWD TAP via PIO (RP2040).
  */
 extern "C" void swdptap_init()
 {
     bmp_gpio_pinmode(BMP_PINMODE_SWD);
-    swdptap_init_stubs();
+    bmp_clear_dp_fault_c();
 }
 
 /**
@@ -92,9 +89,14 @@ static void zwrite(uint32_t size, uint32_t value)
 static uint32_t zread(uint32_t size)
 {
     uint32_t zsize = ((size - 1) << 1) | 0;
-    uint32_t value = 0;
+    uint32_t value = 0xFFFFFFFF;
     xsm->write(1, &zsize);
-    xsm->waitRxReady();
+    if (!xsm->waitRxReady())
+    {
+        // Nothing came back: leave the word all ones so the frame decodes as the
+        // abnormal ACK (0b111) instead of a plausible-looking zero.
+        return value >> (32 - size);
+    }
     xsm->read(1, &value);
     return value >> (32 - size);
 }

@@ -14,6 +14,7 @@
 
 use crate::bmp;
 use crate::encoder::encoder;
+use crate::format_util::{hex_digits, HexCase, MAX_HEX_DIGITS};
 use crate::target_xml::XmlSink;
 
 const MAP_OPEN: &str = "<memory-map>";
@@ -26,21 +27,6 @@ const RAM_END: &str = "\"/>";
 const FLASH_MID_BLOCKSIZE: &str = "\"><property name=\"blocksize\">0x";
 const FLASH_END: &str = "</property></memory>";
 
-const HEX_CHARS: &[u8; 16] = b"0123456789abcdef";
-
-/// Formats a 32-bit integer as an 8-character lowercase hex string without heap allocation.
-fn fmt_hex8(val: u32, buf: &mut [u8; 8]) -> &str {
-    buf[0] = HEX_CHARS[((val >> 28) & 0xf) as usize];
-    buf[1] = HEX_CHARS[((val >> 24) & 0xf) as usize];
-    buf[2] = HEX_CHARS[((val >> 20) & 0xf) as usize];
-    buf[3] = HEX_CHARS[((val >> 16) & 0xf) as usize];
-    buf[4] = HEX_CHARS[((val >> 12) & 0xf) as usize];
-    buf[5] = HEX_CHARS[((val >> 8) & 0xf) as usize];
-    buf[6] = HEX_CHARS[((val >> 4) & 0xf) as usize];
-    buf[7] = HEX_CHARS[(val & 0xf) as usize];
-    unsafe { core::str::from_utf8_unchecked(buf) }
-}
-
 /// Generates all memory map XML chunks via XmlSink.
 fn for_each_memory_map_chunk(sink: &mut XmlSink) {
     if !bmp::bmp_attached() {
@@ -49,7 +35,7 @@ fn for_each_memory_map_chunk(sink: &mut XmlSink) {
 
     sink.write(MAP_OPEN);
 
-    let mut hex_buf = [0u8; 8];
+    let mut hex_buf = [0u8; MAX_HEX_DIGITS];
 
     // 1. RAM entries
     let ram_count = bmp::bmp_map_count(bmp::mapping::Ram);
@@ -57,9 +43,9 @@ fn for_each_memory_map_chunk(sink: &mut XmlSink) {
         if let Some(block) = bmp::bmp_map_get(bmp::mapping::Ram, i) {
             // <memory type="ram" start="0x{start}" length="0x{size}"/>
             sink.write(RAM_START);
-            sink.write(fmt_hex8(block.start_address, &mut hex_buf));
+            sink.write(hex_digits(block.start_address, MAX_HEX_DIGITS, HexCase::Lower, &mut hex_buf));
             sink.write(MID_LENGTH);
-            sink.write(fmt_hex8(block.length, &mut hex_buf));
+            sink.write(hex_digits(block.length, MAX_HEX_DIGITS, HexCase::Lower, &mut hex_buf));
             sink.write(RAM_END);
         }
     }
@@ -70,11 +56,11 @@ fn for_each_memory_map_chunk(sink: &mut XmlSink) {
         if let Some(block) = bmp::bmp_map_get(bmp::mapping::Flash, i) {
             // <memory type="flash" start="0x{start}" length="0x{size}"><property name="blocksize">0x{block_size}</property></memory>
             sink.write(FLASH_START);
-            sink.write(fmt_hex8(block.start_address, &mut hex_buf));
+            sink.write(hex_digits(block.start_address, MAX_HEX_DIGITS, HexCase::Lower, &mut hex_buf));
             sink.write(MID_LENGTH);
-            sink.write(fmt_hex8(block.length, &mut hex_buf));
+            sink.write(hex_digits(block.length, MAX_HEX_DIGITS, HexCase::Lower, &mut hex_buf));
             sink.write(FLASH_MID_BLOCKSIZE);
-            sink.write(fmt_hex8(block.block_size, &mut hex_buf));
+            sink.write(hex_digits(block.block_size, MAX_HEX_DIGITS, HexCase::Lower, &mut hex_buf));
             sink.write(FLASH_END);
         }
     }
@@ -101,4 +87,10 @@ pub fn send_memory_map_xml_chunk(e: &mut encoder, start_address: usize, length: 
         encoder: e,
     };
     for_each_memory_map_chunk(&mut sink);
+}
+
+/// Dump the whole memory map XML (`qXfer:memory-map:read`, i.e. the RAM and flash blocks
+/// GDB is told about) to the GDB console, one tag per line. Backs `mon xml memory`.
+pub fn dump_memory_map_xml() {
+    for_each_memory_map_chunk(&mut XmlSink::Console);
 }

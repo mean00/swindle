@@ -48,8 +48,7 @@ IO is sampled when clock goes ___---
 
 extern "C"
 {
-#include "jep106.h"
-#include "riscv_debug.h"
+#include "platform_support.h"
 }
 #ifndef __clang__
 #pragma GCC optimize("Ofast")
@@ -220,8 +219,26 @@ bool LN_FAST_CODE rv_dm_read(uint32_t adr, uint32_t *output)
     }
     return true;
 }
+
+/* RISC-V Debug Module (DM) registers */
+#define DMCONTROL               0x10U
+#define DMSTATUS                0x11U
+#define DMDATA0                 0x04U
+#define DMDATA1                 0x05U
+#define DMCOMMAND               0x17U
+#define DMCHIPID                0x7FU
+
+/* DMCONTROL register bits */
+#define DMCONTROL_DMACTIVE      (1U << 0)
+#define DMCONTROL_HALTREQ       (1U << 31)
+
+/* Abstract command & memory constants for probe sequence */
+#define DM_ABSTRACT_CMD_MEM_READ32 0x02200000UL /* Access memory, 32-bit read */
+#define CH32V_FLASH_CHIPID_ADDR    0x1FFFF704UL
+#define RVSWD_CHIPID_INVALID_MASK  0x7FFFU
+
 #define WR(a, b) rv_dm_write(a, b)
-#define RD(a, b) rv_dm_read(a, &out)
+#define RD(a, ...) rv_dm_read(a, &out)
 
 /**
  *
@@ -236,23 +253,31 @@ static bool rv_dm_probe(uint32_t *chip_id)
     //
     // init sequence, reverse eng from capture
     //----------------------------------------------
-    WR(0x10, 0x80000001UL); // write DM CTROL =1
+    WR(DMCONTROL, DMCONTROL_HALTREQ | DMCONTROL_DMACTIVE); // write DMCONTROL: active + halt request
     DELAY();
-    WR(0x10, 0x80000001UL); // write DM CTRL = 0x800000001
+    WR(DMCONTROL, DMCONTROL_HALTREQ | DMCONTROL_DMACTIVE); // write DMCONTROL: active + halt request
     DELAY();
-    RD(0x11, 0x00030382UL); // read DM_STATUS
+    uint32_t dm_status = 0;
+    bool ok_status = rv_dm_read(DMSTATUS, &dm_status);
     DELAY();
-    RD(0x7f, 0x30700518UL); // read 0x7f
+    RD(DMCHIPID);  // read DMCHIPID (0x7F)
     *chip_id = out;         // 0x203xxxx 0x303xxxx 0x305...
     DELAY();
-    WR(0x05, 0x1ffff704UL);
+    WR(DMDATA1, CH32V_FLASH_CHIPID_ADDR);
     DELAY();
-    WR(0x17, 0x02200000UL);
+    WR(DMCOMMAND, DM_ABSTRACT_CMD_MEM_READ32);
     DELAY();
-    RD(0x04, 0x30700518UL);
+    RD(DMDATA0);
+    uint32_t mem_id = out;
     DELAY();
-    RD(0x05, 0x1ffff704UL);
-    return ((*chip_id) & 0x7fff) != 0x7fff;
+    RD(DMDATA1);
+    if (((*chip_id) & RVSWD_CHIPID_INVALID_MASK) == RVSWD_CHIPID_INVALID_MASK)
+    {
+        *chip_id = mem_id;
+    }
+    Logger("RVSWD : rv_dm_probe ok_status=%d dmstatus=0x%x chip_id=0x%x mem_id=0x%x\n",
+           (int)ok_status, (unsigned)dm_status, (unsigned)*chip_id, (unsigned)mem_id);
+    return ((*chip_id) & RVSWD_CHIPID_INVALID_MASK) != RVSWD_CHIPID_INVALID_MASK;
 }
 /**
  * @brief
@@ -367,14 +392,58 @@ extern "C" void target_list_free(void);
  * heap.  Declared here because these templates are C++ TUs, which never see
  * the calloc/malloc/free shim (session_arena_shim.h). */
 extern "C" void *swindle_session_transport_alloc(size_t size);
-extern "C" bool rvswd_scan()
+
+/* Resynchronise the wire after a target reset.
+ *
+ * The ndmreset a `mon reset` performs reaches the core through the same serial frame the
+ * probe is still clocking, so the DM stops answering *inside* that exchange and the
+ * transport stays one frame behind from then on: every later read comes back shifted -
+ * zeros, or the previous content - with a status nibble that still decodes as OK, which is
+ * why a session after a reset could report a sane-looking `dmstatus` for a completely dead
+ * core. Re-running the start pulse train (`rv_dm_reset()`) is what resynchronises it, and
+ * `invalidate_caches` is the hook the DMI layer calls right after a reset, so wire the
+ * resync there instead of leaving the session desynchronised. */
+extern "C" void rvswd_dmi_invalidate_c(riscv_dmi_s *dmi)
+{
+    (void)dmi;
+    rv_dm_reset();
+}
+
+#define RVSWD_POST_SWITCH_SETTLE_MS 5U
+
+extern "C" bool sdi_probe_and_enable_2wire();
+extern "C" bool sdi_scan();
+
+extern "C" bool rvswdp_scan()
 {
     uint32_t id = 0;
     rv_dm_start();
     target_list_free();
     if (!rv_dm_probe(&id))
     {
-        return false;
+        Logger("RVSWD : 2-wire probe failed, attempting SDI unlock & switch to 2-wire\n");
+        if (sdi_probe_and_enable_2wire())
+        {
+            // Switch probe pins and globals back to RVSWD mode
+            bmp_gpio_pinmode(BMP_PINMODE_RVSWD);
+            rv_dm_start();
+            lnDelayMs(RVSWD_POST_SWITCH_SETTLE_MS);
+
+            if (rv_dm_probe(&id))
+            {
+                Logger("RVSWD : target successfully switched to 2-wire, found 0x%x\n", (unsigned)id);
+            }
+            else
+            {
+                Logger("RVSWD : 2-wire probe still failing after switch, falling back to SDI\n");
+                return sdi_scan();
+            }
+        }
+        else
+        {
+            bmp_gpio_pinmode(BMP_PINMODE_RVSWD);
+            return false;
+        }
     }
     Logger("WCH : found 0x%x device\n", id);
     /* Transport object of this session: from the session arena's transport
@@ -396,10 +465,16 @@ extern "C" bool rvswd_scan()
     dmi->address_width = 7U;
     dmi->read = ch32_riscv_dmi_read;
     dmi->write = ch32_riscv_dmi_write;
+    dmi->invalidate_caches = rvswd_dmi_invalidate_c;
 
     riscv_dmi_init(dmi);
 
     return true;
+}
+
+extern "C" bool rvswd_scan()
+{
+    return rvswdp_scan();
 }
 
 // EOF

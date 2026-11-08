@@ -58,6 +58,20 @@ def setup_environment():
     os.environ["PICO_SDK"] = "/opt/pico/pico-sdk"
     os.environ["ROOT"] = os.getcwd()
 
+def firmware_image(build_dir: Path):
+    """The image the link step produced.
+
+    LN (GD32/CH32) builds end with a checksummed `.elf.ck_bin`; RP2040/RP2350 have no
+    checksum step, so their `.elf.bin` is the image. Prefer the checksummed one, and
+    never report a `.uf2` (2x the size, its own container).
+    """
+    for pattern in ("*.ck_bin", "*.elf.bin", "*.bin"):
+        images = sorted(build_dir.glob(pattern))
+        if images:
+            return images[0]
+    return None
+
+
 def runbuild(preset: str):
     cur_dir = Path.cwd()
     folder_name = f"build{preset}"
@@ -90,6 +104,14 @@ def runbuild(preset: str):
     except subprocess.CalledProcessError as e:
         print_error(preset, e.stdout)
         sys.exit(-1)
+    return firmware_image(build_dir)
+
+
+def describe_image(image):
+    "Firmware size in kilobytes, e.g. '173.4 KB (swindle_....elf.ck_bin)'."
+    if image is None:
+        return "no .bin/.ck_bin produced"
+    return f"{image.stat().st_size / 1024.0:.1f} KB ({image.name})"
 
 def main():
     setup_environment()
@@ -105,6 +127,7 @@ def main():
         "ch32v307_inv_ws2812",
         # "ch32v307_net",
     ]
+    sizes = []
     
     if RICH_AVAILABLE:
         console.print(Panel("[bold blue]Starting CI Build Process[/bold blue]", border_style="blue"))
@@ -119,18 +142,32 @@ def main():
             
             for target in targets:
                 task = progress.add_task(f"Building [yellow]{target}[/yellow]...", total=None)
-                runbuild(target)
+                image = runbuild(target)
+                sizes.append((target, image))
                 progress.update(task, completed=1)
-                progress.update(task, description=f"[green]Built [yellow]{target}[/yellow][/green]")
+                progress.update(
+                    task,
+                    description=f"[green]Built [yellow]{target}[/yellow] "
+                    f"[magenta]{describe_image(image)}[/magenta][/green]",
+                )
                 progress.update(overall_task, advance=1)
                 
+        console.print("\n[bold]Firmware sizes[/bold]")
+        for target, image in sizes:
+            console.print(
+                f"  [yellow]{target:<24}[/yellow] [magenta]{describe_image(image)}[/magenta]"
+            )
         console.print("\n[bold green]All builds completed successfully! 🎉[/bold green]\n")
     else:
         print("Starting CI Build Process")
         for i, target in enumerate(targets, 1):
             print_step(f"Building {target} ({i}/{len(targets)})...")
-            runbuild(target)
-            print_success(f"Built {target}")
+            image = runbuild(target)
+            sizes.append((target, image))
+            print_success(f"Built {target} - {describe_image(image)}")
+        print("\nFirmware sizes")
+        for target, image in sizes:
+            print(f"  {target:<24} {describe_image(image)}")
         print("\nAll builds completed successfully!")
 
 if __name__ == "__main__":

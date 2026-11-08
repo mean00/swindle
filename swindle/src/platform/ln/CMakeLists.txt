@@ -34,20 +34,19 @@ if(SWINDLE_WITH_SDI)
   set_source_files_properties(bmp_sdiTap_ln.cpp PROPERTIES COMPILE_OPTIONS "-O2;-fno-omit-frame-pointer")
   set(SDI_SOURCES bmp_sdiTap_ln.cpp)
 else()
-  set(SDI_SOURCES ../../template/bmp_riscv_extra_stubs.cpp)
+  # Nothing to add: with no SDI transport the seam (sdi_pinmode_enter/leave,
+  # sdi_scan, bmp_sdi_dm_*) is Rust (swindle/rs/rs_swindle/src/riscv_extra_sdi_stubs.rs).
+  set(SDI_SOURCES)
 endif()
 
 add_library(swindleio_impl STATIC bmp_adc_ln.cpp bmp_rvTap_ln.cpp bmp_swdTap_ln.cpp bmp_tap_ln.cpp
                                   ${SDI_SOURCES}
                                   ../../template/swd_tap_stubs.cpp)
-# Board package selection -> ln_bsp interface (linked PUBLIC into libswindle by
-# swindle_target.cmake and PRIVATE into swindleio_impl here).
-if(USE_48PIN_PACKAGE)
-  target_compile_definitions(ln_bsp INTERFACE USE_48PIN_PACKAGE)
-elseif(USE_64PIN_PACKAGE)
-  target_compile_definitions(ln_bsp INTERFACE USE_64PIN_PACKAGE)
-else()
-  message(FATAL_ERROR "You must select either USE_48PIN_PACKAGE or USE_64PIN_PACKAGE")
+# The pin mapping (and the 48 / 64 pins package choice) comes from the probe board
+# table: bmp_pinout.h includes the generated bmp_pinout_board.h, so this library
+# has to wait for swindle_board_header (swindle/board.cmake).
+if(TARGET swindle_board_header)
+  add_dependencies(swindleio_impl swindle_board_header)
 endif()
 target_include_directories(swindleio_impl PRIVATE ../..)
 target_include_directories(swindleio_impl PRIVATE ../../template)

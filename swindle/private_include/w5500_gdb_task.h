@@ -51,11 +51,7 @@
 // Blackmagic headers (required by socket runner classes)
 extern "C"
 {
-#include "exception.h"
-#include "gdb_main.h"
-#include "gdb_packet.h"
-#include "general.h"
-#include "target.h"
+#include "platform_support.h"
 #include "version.h"
 }
 

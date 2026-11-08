@@ -25,16 +25,18 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 
+use crate::SyncCell;
 use crate::packet_symbols;
-use crate::parsing_util::{u8_to_ascii, u8_to_ascii_to_buffer};
+use crate::parsing_util::{
+    u8_to_ascii, u8_to_ascii_to_buffer, u32_to_ascii_be_buffer, u32_to_ascii_le_buffer,
+};
 use crate::{rngdb_output_flush, rngdb_send_data, rngdb_send_data_u8};
-use core::ptr::addr_of_mut;
 
 // DF -- not thread safe, not re-entrant,ugly but simple
 const TEMP_BUFFER_SIZE: usize = 64;
 #[repr(align(4))]
 struct AlignedBuffer([u8; TEMP_BUFFER_SIZE]);
-static mut temp_buffer: AlignedBuffer = AlignedBuffer([0; TEMP_BUFFER_SIZE]);
+static TEMP_BUFFER: SyncCell<AlignedBuffer> = SyncCell::new(AlignedBuffer([0; TEMP_BUFFER_SIZE]));
 
 setup_log!(false);
 //use crate::{bmplog, bmpwarning};
@@ -56,7 +58,13 @@ pub struct encoder {
 ///
 /// Not thread-safe — intended for single-shot use within the GDB stub.
 fn get_temp_buffer() -> &'static mut [u8] {
-    unsafe { &mut *addr_of_mut!(temp_buffer.0) }
+    unsafe { &mut TEMP_BUFFER.as_mut().0 }
+}
+//
+impl Default for encoder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 //
 //
@@ -68,6 +76,7 @@ impl encoder {
             escaped: false,
         }
     }
+
     /// Send `$OK#9A` or `$E01#A6` depending on `status`.
     pub fn reply_bool(status: bool) {
         if status {
@@ -88,58 +97,24 @@ impl encoder {
     }
     /// Add a u32 value as 8 hex digits (big-endian).
     pub fn add_u32(&mut self, val: u32) {
-        let mut tmp: [u8; 8] = [0; 8];
-
-        let mut shift = 24;
-        let mut offset = 0;
-        for _i in 0..4 {
-            let digit: u8 = ((val >> shift) & 0xff) as u8;
-            u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
-            shift -= 8;
-            offset += 2;
-        }
+        let mut tmp = [0u8; 8];
+        u32_to_ascii_be_buffer(val, &mut tmp);
         self.add_u8(&tmp);
     }
     /// Add a u32 value as hex digits, omitting leading zeros.
     ///
     /// If the value is zero, sends `"00"`.
     pub fn add_u32_no_padding(&mut self, val: u32) {
-        let mut tmp: [u8; 8] = [0; 8];
-
-        let mut shift = 24;
-        let mut offset = 0;
-        let mut nb_digit: usize = 0;
-
-        for _i in 0..4 {
-            let digit: u8 = ((val >> shift) & 0xff) as u8;
-            if digit == 0 && nb_digit == 0 {
-            } else {
-                u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
-                nb_digit += 2;
-            }
-            shift -= 8;
-            offset += 2;
-        }
-        if nb_digit == 0 {
-            nb_digit = 2;
-            tmp[0] = b'0';
-            tmp[1] = b'0';
-        }
-        self.add_u8(&tmp[(8 - nb_digit)..8]);
+        let mut tmp = [0u8; 8];
+        u32_to_ascii_be_buffer(val, &mut tmp);
+        let leading_zero_bytes = (val.leading_zeros() / 8) as usize;
+        let skip_bytes = leading_zero_bytes.min(3);
+        self.add_u8(&tmp[skip_bytes * 2..8]);
     }
     /// Add a u32 value as 8 hex digits (little-endian byte order).
     pub fn add_u32_le(&mut self, val: u32) {
-        let mut tmp: [u8; 8] = [0; 8];
-
-        let mut shift = 0;
-        let mut offset = 0;
-        for _i in 0..4 {
-            let digit: u8 = ((val >> shift) & 0xff) as u8;
-            u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
-            shift += 8;
-            offset += 2;
-        }
-
+        let mut tmp = [0u8; 8];
+        u32_to_ascii_le_buffer(val, &mut tmp);
         self.add_u8(&tmp);
     }
     /// Convenience: build and send a packet containing a single LE u32.

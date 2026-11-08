@@ -24,6 +24,7 @@
 //! The stub is single-threaded (one GDB command at a time), so a `static mut`
 //! line is safe.
 
+use crate::SyncCell;
 use crate::bmp;
 use crate::bmp::mapping::{Flash, Ram};
 
@@ -48,7 +49,11 @@ struct Line {
     data: [u8; LINE_SIZE],
 }
 
-static mut CACHE: Line = Line { valid: false, base: 0, data: [0; LINE_SIZE] };
+static CACHE: SyncCell<Line> = SyncCell::new(Line {
+    valid: false,
+    base: 0,
+    data: [0; LINE_SIZE],
+});
 
 /// True when `[addr, addr + len)` lies entirely inside a RAM or flash map
 /// region. Performs one map query for RAM and one for flash (both hit the
@@ -77,7 +82,7 @@ pub fn cacheable(addr: u32, len: u32) -> bool {
 /// memory: resume/step/reset, or any memory write.
 pub fn invalidate() {
     unsafe {
-        CACHE.valid = false;
+        CACHE.as_mut().valid = false;
     }
 }
 
@@ -88,7 +93,7 @@ pub fn try_read(addr: u32, n: usize, out: &mut [u8]) -> bool {
         return false;
     }
     unsafe {
-        let c = &CACHE;
+        let c = CACHE.as_ref();
         // base == (addr & ALIGN_MASK) guarantees addr >= base, so the offset
         // math below can't underflow.
         if !c.valid || c.base != (addr & ALIGN_MASK) {
@@ -112,8 +117,9 @@ pub fn fill(base: u32, data: &[u8]) {
         return;
     }
     unsafe {
-        CACHE.base = base & ALIGN_MASK;
-        CACHE.data.copy_from_slice(data);
-        CACHE.valid = true;
+        let c = CACHE.as_mut();
+        c.base = base & ALIGN_MASK;
+        c.data.copy_from_slice(data);
+        c.valid = true;
     }
 }

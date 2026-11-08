@@ -11,102 +11,86 @@
 //! - `z1,addr,kind` — remove hardware breakpoint
 //! - etc.
 //!
-//! Falls back to mass-write (flash patching) if the target has no hardware
-//! breakpoint support.
+//! Falls back to patching the code itself (flash page rewrite or RAM write) when the
+//! target has no hardware breakpoint support, or when the target declines one.
 
 
 use crate::bmp;
 use crate::encoder::encoder;
+use crate::target::BreakwatchType;
 
 use crate::parsing_util::ascii_string_hex_to_u32;
 
 setup_log!(false);
 //use crate::bmplog;
-use crate::sw_breakpoints::{add_mw_breakpoint, remove_mw_breakpoint};
-use crate::sw_breakpoints::{add_sw_breakpoint, remove_sw_breakpoint};
+use crate::sw_breakpoints::{add_ram_breakpoint, add_soft_breakpoint};
+use crate::sw_breakpoints::{remove_ram_breakpoint, remove_soft_breakpoint};
 
-/// Breakpoint/watchpoint type, matching the GDB remote protocol values.
+/// Patch the code at `address` itself: through the flash controller for flash,
+/// with a plain memory write for RAM.
 ///
-/// Same values as BMP internal:
-/// - 0 = TARGET_BREAK_SOFT
-/// - 1 = TARGET_BREAK_HARD
-/// - 2 = TARGET_WATCH_WRITE
-/// - 3 = TARGET_WATCH_READ
-/// - 4 = TARGET_WATCH_ACCESS
-#[derive(PartialEq, Clone, Copy)]
-enum Breakpoints {
-    Execute_SW,
-    Execute_HW,
-    Read,
-    Write,
-    Access,
-}
-impl Breakpoints {
-    pub fn from_int(val: u32) -> Self {
-        match val {
-            0 => Breakpoints::Execute_SW,
-            1 => Breakpoints::Execute_HW,
-            2 => Breakpoints::Write,
-            3 => Breakpoints::Read,
-            4 => Breakpoints::Access,
-            _ => panic!("Invalid watchpoint"),
-        }
+/// The choice is made from the address, not from the target's trigger support: an
+/// `ebreak`/`BKPT` written into flash is silently dropped by the flash controller, so a
+/// target that *does* have hardware breakpoints still needs the page rewrite for its
+/// flash regions.
+fn common_z_patch(set: bool, address: u32) -> bool {
+    // A target without page helpers cannot rewrite a flash page; the plain write is all
+    // that is left (and what this handler did before the address check existed).
+    if bmp::bmp_is_flash_addr(address) && bmp::bmp_has_mw_helpers() {
+        return if set {
+            add_soft_breakpoint(address)
+        } else {
+            remove_soft_breakpoint(address)
+        };
     }
-    pub fn to_bmp(b: &Self) -> u32 {
-        match b {
-            Breakpoints::Execute_SW => 0,
-            Breakpoints::Execute_HW => 1,
-            Breakpoints::Read => 3,
-            Breakpoints::Write => 2,
-            Breakpoints::Access => 4,
-        }
+    if set {
+        add_ram_breakpoint(address, 4)
+    } else {
+        remove_ram_breakpoint(address, 4)
     }
 }
+
 /// Common handler for both set (`Z`) and remove (`z`) breakpoint commands.
 ///
 /// Args: `[type],address,kind`
 fn common_z(set: bool, args: &[&str]) -> bool {
     // zZ addr kind
-    let breakpoint_watchpoint = Breakpoints::from_int(ascii_string_hex_to_u32(args[0]));
+    let Some(kind) = BreakwatchType::from_int(ascii_string_hex_to_u32(args[0])) else {
+        encoder::reply_e01();
+        return true;
+    };
     let address: u32 = ascii_string_hex_to_u32(args[1]);
     // ignore "kind"
-    let len: u32 = 4;
+    let len: usize = 4;
 
-    if !bmp::bmp_has_hw_breakpoint() {
-        if !bmp::bmp_has_mw_helpers() {
-            encoder::reply_e01();
-            return true;
-        }
-
-        // mw breakpoint
-        let ok = if set {
-            add_mw_breakpoint(address)
-        } else {
-            remove_mw_breakpoint(address)
-        };
-        encoder::reply_bool(ok);
+    // Software breakpoint: always a patch of the code, never a hardware trigger.
+    if kind == BreakwatchType::BreakSoft {
+        encoder::reply_bool(common_z_patch(set, address));
         return true;
     }
 
-    if breakpoint_watchpoint == Breakpoints::Execute_SW {
-        let ok = if set {
-            add_sw_breakpoint(address, len)
-        } else {
-            remove_sw_breakpoint(address, len)
-        };
-        encoder::reply_bool(ok);
-        return true;
-    }
-
-    let bmp_type = Breakpoints::to_bmp(&breakpoint_watchpoint);
-    let ok = if set {
+    // Hardware breakpoint / watchpoint: the target's trigger unit gets first refusal,
+    // and a target that has none (or declines: it answers "unsupported")
+    // falls back to patching the code, which is what GDB asked for in the end.
+    let result = if set {
         bmplog!("adding breakpoint at 0x{:x}\n", address);
-        bmp::bmp_add_breakpoint(bmp_type, address, len)
+        crate::target::breakwatch::set(kind, address, len)
     } else {
         bmplog!("removing breakpoint at 0x{:x}\n", address);
-        bmp::bmp_remove_breakpoint(bmp_type, address, len)
+        crate::target::breakwatch::clear(kind, address, len)
     };
-    encoder::reply_bool(ok);
+    if result.is_ok() {
+        encoder::reply_ok();
+        return true;
+    }
+
+    // An execute breakpoint can still be a code patch. A watchpoint cannot: there is
+    // nothing to patch, so report the failure instead of corrupting memory.
+    if kind == BreakwatchType::BreakHard {
+        encoder::reply_bool(common_z_patch(set, address));
+        return true;
+    }
+    encoder::reply_e01();
     true
 }
 /*

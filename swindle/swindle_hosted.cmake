@@ -40,35 +40,10 @@ include_directories(${HOSTED} ${BMP_EXTRA}/hosted/)
 # ${BMP}/src{,/include,/target} now come from bmp_core (linked below).
 # ===========================================================================================
 set(BRIDGE_SRCS
-    ${B}/bmp_helpers.cpp
+    ""
     CACHE INTERNAL "")
 
 set(BM_HOSTED
-    ${HOSTED}/bmp_remote.c
-    ${HOSTED}/platform.c
-    ${HOSTED}/debug.c
-    ${HOSTED}/remote/protocol_v0.c
-    ${HOSTED}/remote/protocol_v0_swd.c
-    ${HOSTED}/remote/protocol_v0_jtag.c
-    ${HOSTED}/remote/protocol_v0_adiv5.c
-    ${HOSTED}/remote/protocol_v1.c
-    ${HOSTED}/remote/protocol_v1_adiv5.c
-    ${HOSTED}/remote/protocol_v2.c
-    ${HOSTED}/remote/protocol_v3.c
-    ${HOSTED}/remote/protocol_v3_adiv5.c
-    ${HOSTED}/remote/protocol_v4.c
-    ${HOSTED}/remote/protocol_v4_adiv5.c
-    ${HOSTED}/remote/protocol_v4_riscv.c
-    ${BMP_EXTRA}/hosted/remote_rv_protocol.c
-    ${BMP_EXTRA}/hosted/remote_sdi_protocol.c
-    ${BMP_EXTRA}/hosted/remote_adiv5.c
-    ${PC}/utils.c
-    ${PC}/cli.c
-    ${PC}/probe_info.c
-    ${T}/jtag_scan.c
-    ${T}/jtag_devs.c
-    ${T}/adiv5_jtag.c
-    ${T}/spi.c
     CACHE INTERNAL "")
 # ===========================================================================================
 
@@ -94,6 +69,14 @@ include(rnCmake)
 message(STATUS "Rust, enabling hosted feature")
 # RUST_ADD( rsbmp rs/rs_swindle/Cargo.toml    "${LN_LTO_RUST_FLAGS}" "hosted")
 corrosion_import_crate(MANIFEST_PATH rs/rs_swindle_wrapper/Cargo.toml FLAGS ${LN_LTO_RUST_FLAGS})
-corrosion_set_features(rsbmp_wrapper NO_DEFAULT_FEATURES FEATURES hosted)
+# Pure Rust ARM drivers: enabled by swindle_common.cmake for the ported families whose C
+# source is built (SWINDLE_RUST_ARM_TARGETS). Each family name maps to its cargo feature; the
+# probe chain (rs_swindle_wrapper/src/arm_probe_chain.rs) then dispatches to the Rust driver.
+set(HOSTED_RUST_FEATURES hosted)
+foreach(family ${SWINDLE_RUST_ARM_TARGETS})
+  list(APPEND HOSTED_RUST_FEATURES rust_${family})
+endforeach()
+corrosion_set_features(rsbmp_wrapper NO_DEFAULT_FEATURES FEATURES ${HOSTED_RUST_FEATURES})
 corrosion_add_target_rustflags(rsbmp_wrapper --cfg feature="hosted")
+corrosion_add_target_rustflags(rsbmp_wrapper -C opt-level=1 -C debuginfo=2)
 # ===========================================================================================

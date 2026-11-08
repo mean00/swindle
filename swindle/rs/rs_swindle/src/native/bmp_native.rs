@@ -2,40 +2,49 @@
 // These functions are only used by the native (embedded) rpc_target code.
 // They are re-exported from crate::bmp when not(feature = "hosted").
 
-use crate::rn_bmp_cmd_c;
-
-pub fn rpc_init_swd() -> bool {
-    unsafe { rn_bmp_cmd_c::bmp_rpc_init_swd_c() }
+unsafe extern "C" {
+    fn swindleRedirectLog_c(onoff: bool);
+    fn platform_target_clk_output_enable(enable: bool);
+    fn rv_dm_start_c();
+    fn bmp_rv_dm_read_c(adr: u8, value: *mut u32) -> bool;
+    fn bmp_rv_dm_write_c(adr: u8, value: u32) -> bool;
 }
 
 pub fn swindleRedirectLog(onoff: bool) {
     unsafe {
-        rn_bmp_cmd_c::swindleRedirectLog_c(onoff);
+        swindleRedirectLog_c(onoff);
     }
 }
 
 pub fn bmp_platform_nrst_set_val(ass: bool) {
-    unsafe {
-        rn_bmp_cmd_c::platform_nrst_set_val(ass);
-    }
+    crate::reset_pin::set(ass);
 }
 
 pub fn bmp_platform_nrst_get_val() -> bool {
-    unsafe { rn_bmp_cmd_c::platform_nrst_get_val() }
+    crate::reset_pin::is_asserted()
 }
 
 pub fn bmp_platform_target_clk_output_enable(enable: bool) {
-    unsafe { rn_bmp_cmd_c::platform_target_clk_output_enable(enable) }
+    unsafe { platform_target_clk_output_enable(enable) }
 }
 
+/// Read an AP register.
+///
+/// The return value cannot carry a fault: it is latched in the platform layer, so
+/// a failed access reads as 0 here and callers that care query
+/// [`bmp_get_dp_fault`] (or use the RPC `ap_read` verb, which reports it).
 pub fn bmp_adiv5_ap_read(device_index: u32, ap_selection: u32, address: u32) -> u32 {
-    unsafe { rn_bmp_cmd_c::bmp_adiv5_ap_read_c(device_index, ap_selection, address) }
+    let mut dp = crate::arm::adi::adiv5::DebugPort::new(crate::arm::adi::swd::HardwareSwd);
+    dp.dev_index = device_index as u8;
+    dp.ap_read(ap_selection as u8, address as u16).unwrap_or(0)
 }
 
 pub fn bmp_clear_dp_fault() {
-    unsafe {
-        rn_bmp_cmd_c::bmp_clear_dp_fault_c();
-    }
+    crate::platform::swd::clear_fault();
+}
+
+pub fn bmp_get_dp_fault() -> u32 {
+    crate::platform::swd::fault()
 }
 
 pub fn bmp_adiv5_mem_read(
@@ -45,16 +54,15 @@ pub fn bmp_adiv5_mem_read(
     address: u32,
     buffer: &mut [u8],
 ) -> i32 {
-    unsafe {
-        rn_bmp_cmd_c::bmp_adiv5_mem_read_c(
-            device_index,
-            ap_selection,
-            csw,
-            address,
-            buffer.as_ptr() as *mut u8,
-            buffer.len() as u32,
-        )
+    let mut dp = crate::arm::adi::adiv5::DebugPort::new(crate::arm::adi::swd::HardwareSwd);
+    dp.dev_index = device_index as u8;
+    let mut ap = crate::arm::adi::adiv5::AccessPort::new(&mut dp, ap_selection as u8);
+    ap.csw = csw;
+    let res = ap.mem_read_bytes(buffer, address);
+    if res.is_err() && dp.fault == 0 {
+        dp.fault = 1;
     }
+    dp.fault as i32
 }
 
 pub fn bmp_adiv5_mem_write(
@@ -65,23 +73,21 @@ pub fn bmp_adiv5_mem_write(
     align: u32,
     buffer: &[u8],
 ) -> i32 {
-    unsafe {
-        rn_bmp_cmd_c::bmp_adiv5_mem_write_c(
-            device_index,
-            ap_selection,
-            csw,
-            address,
-            align,
-            buffer.as_ptr(),
-            buffer.len() as u32,
-        )
+    let mut dp = crate::arm::adi::adiv5::DebugPort::new(crate::arm::adi::swd::HardwareSwd);
+    dp.dev_index = device_index as u8;
+    let mut ap = crate::arm::adi::adiv5::AccessPort::new(&mut dp, ap_selection as u8);
+    ap.csw = csw;
+    let res = ap.mem_write_aligned(address, buffer, align);
+    if res.is_err() && dp.fault == 0 {
+        dp.fault = 1;
     }
+    dp.fault as i32
 }
 
 pub fn bmp_adiv5_ap_write(device_index: u32, ap_selection: u32, address: u32, value: u32) {
-    unsafe {
-        rn_bmp_cmd_c::bmp_adiv5_ap_write_c(device_index, ap_selection, address, value);
-    }
+    let mut dp = crate::arm::adi::adiv5::DebugPort::new(crate::arm::adi::swd::HardwareSwd);
+    dp.dev_index = device_index as u8;
+    let _ = dp.ap_write(ap_selection as u8, address as u16, value);
 }
 
 pub fn bmp_adiv5_full_dp_low_level(
@@ -90,75 +96,35 @@ pub fn bmp_adiv5_full_dp_low_level(
     address: u16,
     value: u32,
 ) -> (i32, u32) {
-    unsafe {
-        let mut outvalue: u32 = 0;
-        let ptr: *mut u32 = &mut outvalue;
-
-        let mut ret: i32 = -1;
-        let ret_ptr: *mut i32 = &mut ret;
-
-        rn_bmp_cmd_c::bmp_adiv5_full_dp_low_level_c(
-            device_index,
-            ap_selection,
-            address,
-            value,
-            ret_ptr,
-            ptr,
-        );
-        (ret, outvalue)
-    }
+    let mut dp = crate::arm::adi::adiv5::DebugPort::new(crate::arm::adi::swd::HardwareSwd);
+    dp.dev_index = device_index as u8;
+    use crate::arm::adi::swd::SwdTransport;
+    let out = dp.transport.raw_access(ap_selection as u8, address, value);
+    (dp.wire_fault() as i32, out)
 }
 
-pub fn bmp_adiv5_full_dp_read(device_index: u32, ap_selection: u32, address: u16) -> (i32, u32) {
-    unsafe {
-        let mut value: u32 = 0;
-        let ptr: *mut u32 = &mut value;
-
-        let mut ret: i32 = -1;
-        let ret_ptr: *mut i32 = &mut ret;
-
-        rn_bmp_cmd_c::bmp_adiv5_full_dp_read_c(device_index, ap_selection, address, ret_ptr, ptr);
-        (ret, value)
-    }
+pub fn bmp_adiv5_full_dp_read(device_index: u32, _ap_selection: u32, address: u16) -> (i32, u32) {
+    let mut dp = crate::arm::adi::adiv5::DebugPort::new(crate::arm::adi::swd::HardwareSwd);
+    dp.dev_index = device_index as u8;
+    use crate::arm::adi::swd::SwdTransport;
+    let val = dp.transport.dp_read(address);
+    (dp.wire_fault() as i32, val)
 }
 
 pub fn rv_dm_start() {
     unsafe {
-        rn_bmp_cmd_c::rv_dm_start_c();
+        rv_dm_start_c();
     }
 }
 
 pub fn bmp_rv_read(adr: u8) -> (bool, u32) {
     unsafe {
         let mut ret: u32 = 0;
-        let ret_ptr: *mut u32 = &mut ret;
-
-        let status: bool = rn_bmp_cmd_c::bmp_rv_dm_read_c(adr, ret_ptr);
+        let status: bool = bmp_rv_dm_read_c(adr, &mut ret);
         (status, ret)
     }
 }
 
 pub fn bmp_rv_write(adr: u8, data: u32) -> bool {
-    unsafe { rn_bmp_cmd_c::bmp_rv_dm_write_c(adr, data) }
-}
-
-// NOTE: the SDI debug-module wrappers that used to sit here (sdi_dm_start,
-// bmp_sdi_read, bmp_sdi_write) moved to the optional SDI module
-// (crate::riscv_extra, riscv_extra_sdi.rs) — see
-// swindle/include/bmp_riscv_extra.h for the C half of the seam.
-pub fn bmp_adiv5_swd_write_no_check(addr: u16, data: u32) -> bool {
-    unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_write_no_check_c(addr, data) }
-}
-
-pub fn bmp_adiv5_swd_read_no_check(addr: u16) -> u32 {
-    unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_read_no_check_c(addr) }
-}
-
-pub fn bmp_raw_swd_write(tick: u32, value: u32) {
-    unsafe { rn_bmp_cmd_c::bmp_raw_swd_write_c(tick, value) }
-}
-
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn bmp_adiv5_swd_raw_access(rnw: u8, addr: u16, value: u32, fault: *mut u32) -> u32 {
-    unsafe { rn_bmp_cmd_c::bmp_adiv5_swd_raw_access_c(rnw, addr, value, fault) }
+    unsafe { bmp_rv_dm_write_c(adr, data) }
 }

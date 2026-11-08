@@ -5,6 +5,7 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use crate::SyncCell;
 use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
 
 // ---------------------------------------------------------------------------
@@ -34,7 +35,8 @@ pub struct UsbLogger {
     connected: AtomicBool,
 }
 
-static mut LOGGER_CDC: core::mem::MaybeUninit<UsbLogger> = core::mem::MaybeUninit::uninit();
+static LOGGER_CDC: SyncCell<core::mem::MaybeUninit<UsbLogger>> =
+    SyncCell::new(core::mem::MaybeUninit::uninit());
 static LOGGER_CDC_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 unsafe impl Sync for UsbLogger {}
@@ -48,7 +50,7 @@ impl UsbLogger {
 
         // Write uninitialised placeholder into static first
         unsafe {
-            LOGGER_CDC.write(UsbLogger {
+            (*LOGGER_CDC.as_ptr()).write(UsbLogger {
                 cdc: core::mem::zeroed(),
                 connected: AtomicBool::new(false),
             });
@@ -61,7 +63,7 @@ impl UsbLogger {
     }
 
     fn instance() -> &'static mut UsbLogger {
-        unsafe { &mut *LOGGER_CDC.as_mut_ptr() }
+        unsafe { (*LOGGER_CDC.as_ptr()).assume_init_mut() }
     }
 
     /// Write data to the logger CDC.

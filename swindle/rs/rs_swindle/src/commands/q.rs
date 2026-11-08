@@ -55,6 +55,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qLaunchGDBServer),
         start_separator: b':',
         next_separator: b':',
+        help: "",
     },
     CommandTree {
         command: "qHostInfo",
@@ -63,6 +64,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qHostInfo),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "qQueryGDBServer",
@@ -71,6 +73,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qQueryGDBServer),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "qGetWorkingDir",
@@ -79,6 +82,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qGetWorkingDir),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     },
     CommandTree {
         command: "qRegisterInfo",
@@ -87,6 +91,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qRegisterInfo),
         start_separator: b'#',
         next_separator: 0,
+        help: "",
     },
     //
     CommandTree {
@@ -96,6 +101,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qSymbol),
         start_separator: b':',
         next_separator: b':',
+        help: "",
     }, // read symbol
     CommandTree {
         command: "qSupported", // : qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev
@@ -104,6 +110,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qSupported),
         start_separator: b':',
         next_separator: b';',
+        help: "",
     }, // supported features
     CommandTree {
         command: "qXfer", // qXfer:features:read:target.xml:d9c,83b
@@ -112,6 +119,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qXfer),
         start_separator: b':',
         next_separator: b':',
+        help: "",
     }, // read memory map
     CommandTree {
         command: "qTStatus",
@@ -120,6 +128,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qTStatus),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // trace status
     CommandTree {
         command: "qRcmd",
@@ -128,6 +137,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qRcmd),
         start_separator: b',',
         next_separator: 0,
+        help: "",
     }, // execute command
     CommandTree {
         command: "qAttached",
@@ -136,6 +146,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qAttached),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // remote thread
     CommandTree {
         command: "qfThreadInfo",
@@ -144,6 +155,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qfThreadInfo),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // thread info begin
     CommandTree {
         command: "qsThreadInfo",
@@ -152,6 +164,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qsThreadInfo),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // List threads
     CommandTree {
         command: "qThreadExtraInfo",
@@ -160,6 +173,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qThreadExtraInfo),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // List threads
     CommandTree {
         command: "qP",
@@ -168,6 +182,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qP),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // List threads
     CommandTree {
         command: "qCRC", //  qCRC:0,61b4
@@ -176,6 +191,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qCRC),
         start_separator: b':',
         next_separator: b',',
+        help: "",
     }, // set code/data/.. offset
     CommandTree {
         command: "qC",
@@ -184,6 +200,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qC),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // Current thread Id
     CommandTree {
         command: "qOffsets",
@@ -192,6 +209,7 @@ const q_command_tree: [CommandTree; 18] = [
         cb: CallbackType::text(_qOffsets),
         start_separator: 0,
         next_separator: 0,
+        help: "",
     }, // set code/data/.. offset
 ];
 
@@ -202,7 +220,7 @@ const q_command_tree: [CommandTree; 18] = [
 /// Dispatch `q*` query packets to the appropriate handler.
 #[unsafe(no_mangle)]
 pub fn _q(command: &[u8]) -> bool {
-    exec_one(&q_command_tree, command)
+    exec_one(&q_command_tree, command, true)
 }
 //
 //  qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-ev

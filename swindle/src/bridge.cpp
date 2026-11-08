@@ -6,17 +6,13 @@
  * Debug GDB stub: timing, target-voltage sensing, pin init, etc.
  */
 #include "bmp_string.h"
+#include "bmp_pinout.h"
 #include "esprit.h"
 #include "lnBmpTask.h"
 #include "lnStopWatch.h"
 extern "C"
 {
-#include "gdb_main.h"
-#include "gdb_packet.h"
-#include "general.h"
-#include "morse.h"
-#include "target.h"
-#include "target_internal.h"
+#include "platform_support.h"
 #include "version.h"
 
     extern "C" float bmp_get_target_voltage_c();
@@ -42,19 +38,22 @@ extern "C"
     {
     }
 
-    /**
-     * @brief Read and format the target supply voltage.
-     * @return A pointer to a static string like "3.30 v".
-     */
-    static char buffer[10];
-    const char *platform_target_voltage(void)
+    uint32_t platform_get_adc_nreset_pin(void)
     {
-        float v = bmp_get_target_voltage_c();
-        uint32_t by_100 = (uint32_t)(v * 100.f);
-        uint32_t left = by_100 / 100;
-        uint32_t right = by_100 - (left * 100);
-        snprintf(buffer, 9, "%d.%02d v", left, right);
-        return buffer;
+#ifdef PIN_ADC_NRESET_DIV_BY_TWO
+        return (uint32_t)PIN_ADC_NRESET_DIV_BY_TWO;
+#else
+        return 0;
+#endif
+    }
+
+    float platform_get_adc_nreset_multiplier(void)
+    {
+#ifdef PIN_ADC_NRESET_MULTIPLIER
+        return (float)PIN_ADC_NRESET_MULTIPLIER;
+#else
+        return 1.0f;
+#endif
     }
 
     /** @brief Get the system time in milliseconds. */
@@ -67,16 +66,6 @@ extern "C"
     void platform_delay(uint32_t ms)
     {
         lnDelayMs(ms);
-    }
-
-    /** @brief Stub — max frequency set (not configurable). */
-    void platform_max_frequency_set(uint32_t freq)
-    {
-    }
-    /** @brief Get the maximum supported SWJ frequency. @return 72 MHz. */
-    uint32_t platform_max_frequency_get()
-    {
-        return 72 * 1000 * 1000;
     }
 
     /** @brief Set a platform timeout from now + @p ms. */
@@ -92,31 +81,6 @@ extern "C"
         if ((int32_t)(now - t->time) >= 0)
             return true;
         return false;
-    }
-
-    /** @brief Stub — direct ADC voltage sense not supported. @return 0. */
-    uint32_t platform_target_voltage_sense(void)
-    {
-        return 0;
-    }
-    /** @brief Stub — hardware version not available. @return 0. */
-    int platform_hwversion(void)
-    {
-        return 0;
-    }
-    /** @brief Stub — target power control not supported. @return false. */
-    bool platform_target_get_power(void)
-    {
-        return false;
-    }
-    /** @brief Stub — target power set not supported. @return false. */
-    bool platform_target_set_power(bool power)
-    {
-        return false;
-    }
-    /** @brief Stub — bootloader request not supported. */
-    void platform_request_boot(void)
-    {
     }
 } // extern "C"
 // EOF

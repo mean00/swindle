@@ -14,16 +14,19 @@
 #![allow(dead_code)]
 //#![allow(unused_imports)]
 
+use crate::SyncCell;
 use crate::hosted::transport::{platform_buffer_flush, platform_buffer_write};
 use crate::packet_symbols;
-use crate::parsing_util::{u8_to_ascii, u8_to_ascii_to_buffer};
+use crate::rpc_wire::{ESCAPE_XOR, RPC_ESCAPE};
+use crate::parsing_util::{
+    u8_to_ascii, u8_to_ascii_to_buffer, u32_to_ascii_be_buffer, u32_to_ascii_le_buffer,
+};
 //use crate::{rngdb_output_flush, rngdb_send_data, rngdb_send_data_u8};
 use crate::rngdb_send_data_u8;
-use core::ptr::addr_of_mut;
 
 // DF -- not thread safe, not re-entrant,ugly but simple
 const TEMP_BUFFER_SIZE: usize = 64;
-static mut temp_buffer: [u8; TEMP_BUFFER_SIZE] = [0; TEMP_BUFFER_SIZE];
+static TEMP_BUFFER: SyncCell<[u8; TEMP_BUFFER_SIZE]> = SyncCell::new([0; TEMP_BUFFER_SIZE]);
 
 setup_log!(false);
 //use crate::{bmplog, bmpwarning};
@@ -37,7 +40,7 @@ pub struct rpc_encoder {
 // only in a single shot
 
 fn get_temp_buffer() -> &'static mut [u8] {
-    unsafe { &mut *addr_of_mut!(temp_buffer) }
+    unsafe { TEMP_BUFFER.as_mut() }
 }
 //
 //
@@ -65,55 +68,16 @@ impl rpc_encoder {
         Self::flush();
     }
     //
-    pub fn add_u32(&mut self, val: u32) {
-        let mut tmp: [u8; 8] = [0; 8];
-
-        let mut shift = 24;
-        let mut offset = 0;
-        for _i in 0..4 {
-            let digit: u8 = ((val >> shift) & 0xff) as u8;
-            u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
-            shift -= 8;
-            offset += 2;
-        }
-        self.add_u8(&tmp);
-    }
     pub fn add_u32_no_padding(&mut self, val: u32) {
-        let mut tmp: [u8; 8] = [0; 8];
-
-        let mut shift = 24;
-        let mut offset = 0;
-        let mut nb_digit: usize = 0;
-
-        for _i in 0..4 {
-            let digit: u8 = ((val >> shift) & 0xff) as u8;
-            if digit == 0 && nb_digit == 0 {
-            } else {
-                u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
-                nb_digit += 2;
-            }
-            shift -= 8;
-            offset += 2;
-        }
-        if nb_digit == 0 {
-            nb_digit = 2;
-            tmp[0] = b'0';
-            tmp[1] = b'0';
-        }
-        self.add_u8(&tmp[(8 - nb_digit)..8]);
+        let mut tmp = [0u8; 8];
+        u32_to_ascii_be_buffer(val, &mut tmp);
+        let leading_zero_bytes = (val.leading_zeros() / 8) as usize;
+        let skip_bytes = leading_zero_bytes.min(3);
+        self.add_u8(&tmp[skip_bytes * 2..8]);
     }
     pub fn add_u32_le(&mut self, val: u32) {
-        let mut tmp: [u8; 8] = [0; 8];
-
-        let mut shift = 0;
-        let mut offset = 0;
-        for _i in 0..4 {
-            let digit: u8 = ((val >> shift) & 0xff) as u8;
-            u8_to_ascii_to_buffer(digit, &mut tmp[offset..(offset + 2)]);
-            shift += 8;
-            offset += 2;
-        }
-
+        let mut tmp = [0u8; 8];
+        u32_to_ascii_le_buffer(val, &mut tmp);
         self.add_u8(&tmp);
     }
     pub fn add_u8_hex(&mut self, val: u32) {
@@ -125,13 +89,6 @@ impl rpc_encoder {
         let v = val as u16;
         u8_to_ascii_to_buffer((v & 0xff) as u8, &mut tmp[0..2]);
         u8_to_ascii_to_buffer(((v >> 8) & 0xff) as u8, &mut tmp[2..4]);
-        self.add_u8(&tmp);
-    }
-    pub fn add_u16_be(&mut self, val: u32) {
-        let mut tmp: [u8; 4] = [0; 4];
-        let v = val as u16;
-        u8_to_ascii_to_buffer(((v >> 8) & 0xff) as u8, &mut tmp[0..2]);
-        u8_to_ascii_to_buffer((v & 0xff) as u8, &mut tmp[2..4]);
         self.add_u8(&tmp);
     }
     pub fn simple_send_u32_le(val: u32) {
@@ -175,27 +132,27 @@ impl rpc_encoder {
         }
     }
     //
+    /// Add raw bytes to the current packet, escaping the frame markers.
+    ///
+    /// The payload is CBOR now, so this is the normal path: every byte that
+    /// may not appear in a frame body (`!`, `#`, `$`, `{`, `}` — see
+    /// [`crate::rpc_wire::must_escape`]) goes out as `}` + byte XOR `0x20`,
+    /// and both bytes are summed into the checksum.
     pub fn add_u8(&mut self, byt: &[u8]) {
         let mut n = 0;
         let buffer = get_temp_buffer();
 
         for c in byt {
-            match *c {
-                packet_symbols::CHAR_ESCAPE2
-                | packet_symbols::CHAR_ESCAPE
-                | packet_symbols::CHAR_START
-                | packet_symbols::CHAR_END => {
-                    buffer[n] = packet_symbols::CHAR_ESCAPE;
-                    buffer[n + 1] = *c ^ 0x20;
-                    n += 2;
-                    self.checksum += (*c ^ 0x20) as usize;
-                    self.checksum += packet_symbols::CHAR_ESCAPE as usize;
-                }
-                _ => {
-                    buffer[n] = *c;
-                    n += 1;
-                    self.checksum += *c as usize;
-                }
+            if crate::rpc_wire::must_escape(*c) {
+                buffer[n] = RPC_ESCAPE;
+                buffer[n + 1] = *c ^ ESCAPE_XOR;
+                n += 2;
+                self.checksum += (*c ^ ESCAPE_XOR) as usize;
+                self.checksum += RPC_ESCAPE as usize;
+            } else {
+                buffer[n] = *c;
+                n += 1;
+                self.checksum += *c as usize;
             };
             if n > TEMP_BUFFER_SIZE - 2 {
                 Self::raw_send_u8(&buffer[0..n]);
@@ -205,6 +162,22 @@ impl rpc_encoder {
         if n > 0 {
             Self::raw_send_u8(&buffer[0..n]);
         }
+    }
+    /// A CBOR encoder writing the parameter array of this request.
+    ///
+    /// ```ignore
+    /// let mut e = rpc_encoder::new();
+    /// e.begin();
+    /// e.add_u8(&[RPC_GEN_PACKET, RPC_GEN_NRST_SET]);
+    /// {
+    ///     let mut cbor = e.cbor();
+    ///     let _ = cbor.array(1);
+    ///     let _ = cbor.bool(assert);
+    /// }
+    /// e.end();
+    /// ```
+    pub fn cbor(&mut self) -> minicbor::Encoder<&mut Self> {
+        minicbor::Encoder::new(self)
     }
     //
     pub fn add(&mut self, data: &str) {
@@ -245,5 +218,16 @@ impl rpc_encoder {
     }
     pub fn flush() {
         platform_buffer_flush();
+    }
+}
+
+/// The CBOR encoder writes straight into the packet: every byte goes through
+/// [`rpc_encoder::add_u8`], which escapes it and folds it into the checksum.
+impl minicbor::encode::Write for rpc_encoder {
+    type Error = core::convert::Infallible;
+
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
+        self.add_u8(buf);
+        Ok(())
     }
 }

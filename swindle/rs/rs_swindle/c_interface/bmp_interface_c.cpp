@@ -1,20 +1,11 @@
 #include "lnBMPArduino.h"
+#include <stdlib.h>
 extern "C"
 {
 
 #include "ctype.h"
-// #include "gdb_hostio.h"
-#include "exception.h"
-#include "gdb_if.h"
-#include "gdb_packet.h"
-#include "general.h"
-#include "hex_utils.h"
+#include "platform_support.h"
 #include "platform.h"
-#include "rtt_if.h"
-#include "target.h"
-#include "target_internal.h"
-#include "riscv_debug.h"
-#include "adiv5.h"
 }
 //
 // C++
@@ -22,19 +13,12 @@ bool rv_dm_probe(uint32_t *chip_id); // C++
 // C
 extern "C"
 {
-    extern "C" bool ch32v3xx_write_user_byte(target_s *target, uint8_t user);
-    extern "C" uint8_t ch32v3xx_read_user_byte(target_s *target);
     extern "C" size_t xPortGetFreeHeapSize(void);
     extern "C" size_t xPortGetMinimumEverFreeHeapSize(void);
-    extern "C" int command_process(target_s *const t, const char *cmd_buffer);
-    extern "C" bool bmd_crc32(target_s *const target, uint32_t *const result, const uint32_t base, const size_t len);
     extern "C" void poll_rtt(target_s *const cur_target);
     extern "C" void swindle_enable_rtt(bool);
     extern "C" void bmp_gpio_reset();
-    target_s *cur_target;
-    target_s *last_target;
     bool shutdown_bmda;
-    bool connect_assert_nrst = false;
     unsigned cortexm_wait_timeout = 2000;
     bool debug_bmp = false;
 
@@ -44,22 +28,11 @@ extern "C"
     // ---------------------------------------------------------------
     volatile uint32_t ln_swd_tx_count = 0;
     volatile uint32_t ln_rv_tx_count = 0;
-    // When true, bmp_mem_read_c/bmp_mem_write_c log (len, tx delta, us).
-    bool bmp_mem_log_enabled = false;
-    // NOTE: the SDI side of this file ('mon sdi_wire' knobs + bmp_set_sdi_wire_c)
-    // moved to bmp_riscv_extra_sdi_c.cpp, next to the seam header that declares
-    // it: see swindle/include/bmp_riscv_extra.h.
 
 #define STUB_BUFFER_SIZE 256
     static uint8_t stub_buffer[STUB_BUFFER_SIZE];
 }
-/**
- * @brief Enable/disable per-call memory access logging (Phase 0).
- */
-extern "C" void bmp_set_mem_log_c(bool enable)
-{
-    bmp_mem_log_enabled = enable;
-}
+
 /**
  * @brief Snapshot the global wire-transaction counters.
  */
@@ -77,6 +50,23 @@ extern "C" void bmp_mem_counts_reset_c()
     ln_rv_tx_count = 0;
 }
 
+extern "C" void bmp_log_mem_c(bool is_write, uint32_t addr, uint32_t length)
+{
+    static uint32_t t0, swd0, rv0;
+    if (length == 0)
+    {
+        t0 = lnGetUs();
+        swd0 = ln_swd_tx_count;
+        rv0 = ln_rv_tx_count;
+    }
+    else
+    {
+        const uint32_t elapsed = lnGetUs() - t0;
+        Logger("[MEMLOG] %c addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", is_write ? 'W' : 'R', addr, length,
+               ln_swd_tx_count - swd0, ln_rv_tx_count - rv0, (long)elapsed);
+    }
+}
+
 extern "C" void *bmp_get_temporary_buffer(uint32_t asked)
 {
     if (asked > STUB_BUFFER_SIZE)
@@ -84,90 +74,6 @@ extern "C" void *bmp_get_temporary_buffer(uint32_t asked)
         xAssert(0);
     }
     return stub_buffer;
-}
-/*
- *
- */
-extern "C" const char *bmp_get_driver_name_c()
-{
-    if (!cur_target)
-        return "";
-    return cur_target->driver;
-}
-
-void gdb_target_destroy_callback(target_controller_s *tc, target_s *t)
-{
-    if (t == cur_target)
-    {
-        cur_target = NULL;
-    }
-}
-extern "C" void gdb_target_printf(target_controller_s *tc, const char *fmt, va_list ap)
-{
-
-    // xAssert(0);
-}
-target_controller_s gdb_controller = {
-    .destroy_callback = gdb_target_destroy_callback,
-    .printf = gdb_target_printf,
-    .semihosting_buffer_ptr = NULL,
-};
-extern "C" bool bmp_is_riscv_c()
-{
-    if (!cur_target)
-        return false;
-    // FIXME #warning INCORRECT HACK only RV32 supported
-    const char *name = cur_target->core;
-    if (!name)
-        return false;
-    if ((name[0] == 'r') && (name[1] == 'v'))
-        return true;
-    return false;
-}
-
-/*
-
-*/
-extern "C" bool bmp_attached_c()
-{
-    if (!cur_target)
-        return false;
-
-    return cur_target->attached;
-}
-/**
- */
-extern "C" bool bmp_attach_c(uint32_t target)
-{
-    cur_target = target_attach_n(target, &gdb_controller);
-    if (cur_target)
-    {
-        return true;
-    }
-    return false;
-}
-/**
- */
-extern "C" bool bmp_detach_c(uint32_t target)
-{
-    if (cur_target)
-    {
-        SET_RUN_STATE(true);
-        TRY(EXCEPTION_ALL)
-        {
-            swindle_enable_rtt(false);
-            bmp_gpio_reset();
-            target_detach(cur_target);
-            last_target = cur_target;
-        }
-        CATCH()
-        {
-        default:
-            break;
-        }
-        cur_target = NULL;
-    }
-    return true;
 }
 
 static char tmpBuffer[128];
@@ -178,379 +84,11 @@ extern "C" void gdb_outf(const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    char *buf;
-    // this is suboptimal
     vsnprintf((char *)tmpBuffer, 127, fmt, ap);
     gdb_out(tmpBuffer);
     va_end(ap);
 }
 
-extern "C" bool bmp_custom_crc32_c(uint32_t adr, uint32_t size_in_bytes, uint32_t *crc)
-{
-    if (!cur_target->crc32)
-        return false;
-    return cur_target->crc32(cur_target, adr, size_in_bytes, crc);
-}
-extern "C" int bmp_map_count_c(int kind)
-{
-    if (!bmp_attached_c())
-    {
-        return 0; // DF ?
-    }
-    int count = 0;
-    switch (kind)
-    {
-    case 0: // flash
-    {
-        target_flash_s *f = cur_target->flash;
-        while (f)
-        {
-            count++;
-            f = f->next;
-        }
-        return count;
-    }
-    break;
-    case 1: // ram
-    {
-        target_ram_s *f = cur_target->ram;
-        while (f)
-        {
-            count++;
-            f = f->next;
-        }
-        return count;
-    }
-    break;
-    default:
-        xAssert(0);
-    }
-    return 0;
-}
-/**
- * @brief
- *
- * @return uint32_t
- */
-extern "C" uint32_t bmp_get_cpuid_c()
-{
-    if (!bmp_attached_c())
-    {
-        return 0; // DF ?
-    }
-    return cur_target->cpuid;
-}
-/**
- * @brief
- *
- * @param kind
- * @param index
- * @param start
- * @param size
- * @param blockSize
- * @return true
- * @return false
- */
-extern "C" bool bmp_map_get_c(int kind, int index, uint32_t *start, uint32_t *size, uint32_t *blockSize)
-{
-    if (!bmp_attached_c())
-    {
-        return false; // DF ?
-    }
-    int count = 0;
-    switch (kind)
-    {
-    case 0: // flash
-    {
-        target_flash_s *f = cur_target->flash;
-        while (f && index != 0)
-        {
-            count++;
-            f = f->next;
-            index--;
-        }
-        if (f)
-        {
-            *start = f->start;
-            *size = f->length;
-            *blockSize = f->blocksize;
-            return true;
-        }
-        return false;
-    }
-    break;
-    case 1: // ram
-    {
-        target_ram_s *f = cur_target->ram;
-        while (f && index != 0)
-        {
-            count++;
-            f = f->next;
-            index--;
-        }
-        if (f)
-        {
-            *start = f->start;
-            *size = f->length;
-            *blockSize = 0;
-            return true;
-        }
-        return false;
-    }
-    break;
-    default:
-        xAssert(0);
-    }
-    return 0;
-}
-
-extern "C" unsigned int bmp_registers_count_c()
-{
-    if (!bmp_attached_c())
-    {
-        return 0;
-    }
-    return target_regs_size(cur_target) / 4;
-}
-extern "C" bool bmp_read_register_c(const unsigned int reg, uint32_t *val)
-{
-    if (!target_reg_read(cur_target, reg, val, 4))
-        return false;
-    return true;
-}
-extern "C" bool bmp_read_all_registers_c(unsigned int *regs)
-{
-    if (!bmp_attached_c())
-    {
-        return false;
-    }
-    target_regs_read(cur_target, regs);
-    return true;
-}
-
-// Stubbed out: target XML generation is now handled directly in Rust (target_xml.rs)
-extern "C" const char *bmp_target_description_c()
-{
-    return "";
-}
-
-extern "C" void bmp_target_description_clear_c(const unsigned char *data)
-{
-    (void)data;
-}
-//
-extern "C" bool bmp_ch32v3xx_write_user_option_byte_c(uint8_t memory_conf)
-{
-    if (!bmp_attached_c())
-        return 0;
-    // return ch32v3xx_write_user_byte(cur_target, memory_conf);
-    return 0;
-}
-//
-extern "C" uint8_t bmp_ch32v3xx_read_user_option_byte_c()
-{
-    if (!bmp_attached_c())
-        return 0;
-    //   return ch32v3xx_read_user_byte(cur_target);
-    return 0;
-}
-//
-extern "C" bool bmp_write_reg_c(const unsigned int reg, const unsigned int val)
-{
-    if (!bmp_attached_c())
-        return false;
-    if (target_reg_write(cur_target, reg, &val, sizeof(val)) > 0)
-        return true;
-    return false;
-}
-/*
- *
- */
-extern "C" bool bmp_read_reg_c(const unsigned int reg, unsigned int *val)
-{
-    if (!bmp_attached_c())
-        return false;
-    if (target_reg_read(cur_target, reg, val, sizeof(*val)) > 0)
-        return true;
-    return false;
-}
-//
-/*
- *
- */
-extern "C" bool bmp_flash_erase_c(const unsigned int addr, const unsigned int length)
-{
-    if (!bmp_attached_c())
-        return false;
-    if (target_flash_erase(cur_target, addr, length))
-        return true;
-    return false;
-}
-//
-extern "C" bool bmp_mem_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
-{
-    if (!bmp_attached_c())
-        return false;
-    if (!bmp_mem_log_enabled)
-        return target_mem32_write(cur_target, addr, data, length) ? false : true;
-    // Phase 0 instrumentation: per-call (len, tx delta, elapsed us) log.
-    const uint32_t t0 = lnGetUs();
-    const uint32_t swd0 = ln_swd_tx_count;
-    const uint32_t rv0 = ln_rv_tx_count;
-    const bool ok = !target_mem32_write(cur_target, addr, data, length);
-    const uint32_t elapsed = lnGetUs() - t0;
-    Logger("[MEMLOG] W addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length, ln_swd_tx_count - swd0,
-           ln_rv_tx_count - rv0, (long)elapsed);
-    return ok;
-}
-
-/*
- * Non-halting memory I/O: RTT (and friends) use these to read/write target
- * memory while the CPU keeps executing, without knowing which chip it is.
- */
-extern "C" bool bmp_mem_read_nostop_c(const unsigned int addr, const unsigned int length, uint8_t *data)
-{
-    if (!bmp_attached_c())
-        return false;
-    return target_mem_read_nostop(cur_target, data, addr, length);
-}
-/*
- *
- */
-extern "C" bool bmp_mem_write_nostop_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
-{
-    if (!bmp_attached_c())
-        return false;
-    return target_mem_write_nostop(cur_target, addr, data, length);
-}
-/*
- * Generic capability query: does memory access on the current target require
- * halting the CPU first?
- */
-extern "C" bool bmp_mem_access_needs_halt_c()
-{
-    if (!bmp_attached_c())
-        return true; /* safest: assume halting is required */
-    return target_mem_access_needs_halt(cur_target);
-}
-//
-extern "C" bool bmp_flash_write_c(const unsigned int addr, const unsigned int length, const uint8_t *data)
-{
-    if (!bmp_attached_c())
-        return false;
-    if (!target_flash_write(cur_target, addr, data, length))
-        return false;
-#if 0 // Verify			
-	if (!target_mem_read(cur_target, tmp, addr, length))
-			return false;
-	for(int i=0;i<length;i++)
-	{
-		if( tmp[i]!=data[i])
-		{
-			printf("Flash write mismatch at %x %x => %x\n",addr+i,data[i],tmp[i]);
-		}
-	}
-#endif
-    return true;
-}
-/*
- *
- */
-extern "C" bool bmp_flash_complete_c()
-{
-    if (!bmp_attached_c())
-        return false;
-    if (target_flash_complete(cur_target))
-        return true;
-    return false;
-}
-/*
- *
- */
-extern "C" bool bmp_mem_read_c(const unsigned int addr, const unsigned int length, uint8_t *data)
-{
-    if (!bmp_attached_c())
-        return false;
-    if (!bmp_mem_log_enabled)
-        return target_mem32_read(cur_target, data, addr, length) ? false : true;
-    // Phase 0 instrumentation: per-call (len, tx delta, elapsed us) log.
-    const uint32_t t0 = lnGetUs();
-    const uint32_t swd0 = ln_swd_tx_count;
-    const uint32_t rv0 = ln_rv_tx_count;
-    const bool ok = !target_mem32_read(cur_target, data, addr, length);
-    const uint32_t elapsed = lnGetUs() - t0;
-    Logger("[MEMLOG] R addr=0x%x len=%u swd_tx=%u rv_tx=%u us=%ld\n", addr, length, ln_swd_tx_count - swd0,
-           ln_rv_tx_count - rv0, (long)elapsed);
-    return ok;
-}
-
-/*
- *
- */
-extern "C" bool bmp_reset_target_c()
-{
-    if (!bmp_attached_c())
-        return false;
-    target_reset(cur_target);
-    return true;
-}
-/*
- *
- */
-extern "C" bool bmp_add_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
-{
-    if (!bmp_attached_c())
-        return false;
-    // Error code inverted 0 means success
-    if (target_breakwatch_set(cur_target, (target_breakwatch)type, address, len))
-        return false;
-    return true;
-}
-/*
- *
- */
-extern "C" bool bmp_remove_breakpoint_c(const unsigned int type, const unsigned int address, const unsigned int len)
-{
-    if (!bmp_attached_c())
-        return false;
-    // Error code inverted 0 means success
-    if (target_breakwatch_clear(cur_target, (target_breakwatch)type, address, len))
-        return false;
-    return true;
-}
-/*
- *
- */
-extern "C" bool bmp_target_halt_c()
-{
-    if (!bmp_attached_c())
-        return false;
-    target_halt_request(cur_target);
-    return true;
-}
-/*
- *
- */
-extern "C" bool bmp_target_halt_resume_c(bool step)
-{
-    if (!bmp_attached_c())
-        return false;
-    target_halt_resume(cur_target, step);
-    return true;
-}
-/**
- *
- */
-extern "C" unsigned int bmp_poll_target_c(unsigned int *watchpoint)
-{
-    if (!bmp_attached_c())
-        return 0;
-
-    target_addr64_t watch;
-    target_halt_reason_e reason = cur_target->halt_poll(cur_target, &watch);
-    *watchpoint = watch; // warning ! 32 bits address only!
-    return reason;
-}
 extern "C" bool parse_enable_or_disable(const char *value, bool *out)
 {
     const size_t value_len = strlen(value);
@@ -564,150 +102,6 @@ extern "C" bool parse_enable_or_disable(const char *value, bool *out)
         return false;
     }
     return true;
-}
-
-static void display_target(size_t idx, target_s *target, void *context)
-{
-    (void)context;
-    const char attached = target->attached ? '*' : ' ';
-    const char *const core_name = target->core;
-    if (!strcmp(target->driver, "ARM Cortex-M"))
-        gdb_outf("***%2u %c Unknown %s Designer 0x%x Part ID 0x%x %s\n", (unsigned)idx, attached, target->driver,
-                 target->designer_code, target->part_id, core_name ? core_name : "");
-    else
-        gdb_outf("%2u %3c  %s %s\n", (unsigned)idx, attached, target->driver, core_name ? core_name : "");
-}
-
-#if CONFIG_BMDA == 1
-extern "C" bool bmda_swd_scan_targetid(uint32_t targetid);
-extern "C" bool bmda_rvswd_scan(void);
-#else
-extern "C" bool adiv5_swd_scan_targetid(uint32_t targetid);
-extern "C" bool rvswd_scan(void);
-#endif
-
-extern "C" bool cmd_swd_scan(const target_s *target, int argc, const char **argv)
-{
-    (void)target;
-    volatile uint32_t targetid = 0;
-    if (argc > 1 && argv && argv[1])
-        targetid = strtoul(argv[1], NULL, 0);
-
-    const char *volt = platform_target_voltage();
-    if (volt)
-        gdb_outf("Target voltage: %s\n", volt);
-
-    if (connect_assert_nrst)
-        platform_nrst_set_val(true);
-
-    bool scan_result = false;
-    TRY(EXCEPTION_ALL)
-    {
-#if CONFIG_BMDA == 1
-        scan_result = bmda_swd_scan_targetid(targetid);
-#else
-        scan_result = adiv5_swd_scan_targetid(targetid);
-#endif
-    }
-    CATCH()
-    {
-    case EXCEPTION_TIMEOUT:
-        gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
-        break;
-    case EXCEPTION_ERROR:
-        gdb_outf("Exception: %s\n", exception_frame.msg);
-        break;
-    default:
-        break;
-    }
-
-    if (!scan_result)
-    {
-        platform_target_clk_output_enable(false);
-        platform_nrst_set_val(false);
-        gdb_out("SWD scan failed!\n");
-        return false;
-    }
-
-    target_foreach(display_target, NULL);
-    platform_target_clk_output_enable(false);
-    return true;
-}
-
-extern "C" bool cmd_rvswd_scan(const target_s *target, int argc, const char **argv)
-{
-    (void)target;
-    (void)argc;
-    (void)argv;
-
-    const char *volt = platform_target_voltage();
-    if (volt)
-        gdb_outf("Target voltage: %s\n", volt);
-
-    if (connect_assert_nrst)
-        platform_nrst_set_val(true);
-
-    bool scan_result = false;
-    TRY(EXCEPTION_ALL)
-    {
-#if CONFIG_BMDA == 1
-        scan_result = bmda_rvswd_scan();
-#else
-        scan_result = rvswd_scan();
-#endif
-    }
-    CATCH()
-    {
-    case EXCEPTION_TIMEOUT:
-        gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
-        break;
-    case EXCEPTION_ERROR:
-        gdb_outf("Exception: %s\n", exception_frame.msg);
-        break;
-    default:
-        break;
-    }
-
-    if (!scan_result)
-    {
-        platform_target_clk_output_enable(false);
-        platform_nrst_set_val(false);
-        gdb_out("RVSWD scan failed!\n");
-        return false;
-    }
-
-    target_foreach(display_target, NULL);
-    platform_target_clk_output_enable(false);
-    return true;
-}
-
-extern "C" int command_process(target_s *const target, const char *cmd_buffer)
-{
-    if (!target || !cmd_buffer || !*cmd_buffer)
-        return -1;
-
-    char buf[128];
-    strncpy(buf, cmd_buffer, sizeof(buf) - 1);
-    buf[sizeof(buf) - 1] = '\0';
-
-    const char *argv[16];
-    int argc = 0;
-    char *token_state = NULL;
-    for (char *part = strtok_r(buf, " \t", &token_state); part && argc < 15; part = strtok_r(NULL, " \t", &token_state))
-        argv[argc++] = part;
-    argv[argc] = NULL;
-
-    if (argc == 0)
-        return -1;
-
-    return target_command(target, argc, argv);
-}
-
-extern "C" bool bmp_mon_c(const char *str)
-{
-    if (command_process(cur_target, str) == 0)
-        return true;
-    return false;
 }
 
 /**
@@ -760,72 +154,71 @@ extern "C" void bmp_tweak_options(uint32_t *opt)
     }
 }
 /*
- *
+ * `DEBUG_WARN()` for Rust: the probe chain (`rs_swindle_wrapper/src/arm_probe_chain.rs`)
+ * reports the designers it has no driver for through it, as the C chain it replaced did.
  */
-extern "C" void bmp_breakpoint_watchpoint_count_c(uint32_t *brk, uint32_t *wtch)
+extern "C" void bmp_debug_warn_c(const char *msg)
 {
-    if (cur_target)
-    {
-        target_breakpoint_watchpoint_count(cur_target, brk, wtch);
-        return;
-    }
-    *brk = 0;
-    *wtch = 0;
-}
-/*
- *
- */
-extern "C" bool bmp_has_hw_breakpoint_c()
-{
-    if (!cur_target)
-        return true;
-    return target_has_hw_breakpoint(cur_target);
+    DEBUG_WARN("%s", msg);
 }
 
-/*
- *
- */
-extern "C" bool target_has_mw_helpers(void)
+#if !PC_HOSTED
+#include "lnBMP_version.h"
+#include "swindle_build_options.h"
+
+#ifndef CONFIG_IDF_TARGET
+extern "C" bool ln_adiv5_swd_write_no_check(const uint16_t addr, const uint32_t data);
+extern "C" uint32_t ln_adiv5_swd_read_no_check(const uint16_t addr);
+extern "C" uint32_t ln_adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr,
+                                            const uint32_t value);
+#endif
+
+static void local_adiv5_swd_abort(adiv5_debug_port_s *dp, uint32_t abort_mask)
 {
-    if (!cur_target)
-    {
-        Logger("No target \n");
-        return false;
-    }
-    return target_get_mw_helpers(cur_target) != NULL;
-}
-/*
- *
- */
-extern "C" uint32_t target_mw_page_size(void)
-{
-    if (!cur_target)
-    {
-        Logger("No target \n");
-        return 0;
-    }
-    const sw_breakpoint_helpers *helpers = target_get_mw_helpers(cur_target);
-    if (!helpers)
-    {
-        Logger("No helper \n");
-        return 0;
-    }
-    return helpers->page_size(cur_target);
-}
-/*
- *
- */
-extern "C" uint32_t bmp_get_arch_c()
-{
-    if (!cur_target)
-        return 0;
-    return TOPT_GET_ARCH(cur_target->target_options);
+#ifndef CONFIG_IDF_TARGET
+    ln_adiv5_swd_raw_access(dp, ADIV5_LOW_WRITE, ADIV5_DP_ABORT, abort_mask);
+#endif
 }
 
-extern "C" uint32_t bmp_get_target_options_c()
+static adiv5_debug_port_s local_dp = {
+#ifndef CONFIG_IDF_TARGET
+    .write_no_check = ln_adiv5_swd_write_no_check,
+    .read_no_check = ln_adiv5_swd_read_no_check,
+    .low_access = ln_adiv5_swd_raw_access,
+    .abort = local_adiv5_swd_abort,
+#endif
+};
+
+extern "C" void bmp_clear_dp_fault_c()
 {
-    if (!cur_target)
-        return 0;
-    return cur_target->target_options;
+    local_dp.fault = 0;
 }
+
+extern "C" uint32_t bmp_get_dp_fault_c()
+{
+    return local_dp.fault;
+}
+
+extern "C" uint32_t bmp_adiv5_swd_raw_access_c(const uint8_t rnw, const uint16_t addr, const uint32_t value,
+                                               uint32_t *fault)
+{
+#ifdef CONFIG_IDF_TARGET
+    xAssert(0);
+    return 0;
+#else
+    uint32_t ret = ln_adiv5_swd_raw_access(&local_dp, rnw, addr, value);
+    if (fault)
+    {
+        *fault = local_dp.fault;
+    }
+    return ret;
+#endif
+}
+
+extern "C" const char *bmp_get_version_string(void)
+{
+    return "Version " LN_BMP_VERSION " build with flags " SWINDLE_BUILD_OPTIONS " Generated on " LN_BMP_GEN_DATE
+           " (hash " LN_BMP_GIT_HASH ")\n";
+}
+#endif
 // EOF

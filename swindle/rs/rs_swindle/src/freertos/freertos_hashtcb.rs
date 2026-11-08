@@ -3,11 +3,11 @@
 //! Maintains a persistent hash map mapping raw TCB memory addresses to deterministic,
 //! sequential integer Thread IDs for GDB. This ensures that even if FreeRTOS 
 //! compilation options change, the debugger presents stable thread IDs.
-use core::mem::MaybeUninit;
 setup_log!(false);
 //use crate::gdb_print;
 //use crate::{bmplog, bmpwarning};
 crate::gdb_print_init!();
+use crate::SyncCell;
 use crate::bmp;
 
 use heapless::LinearMap;
@@ -20,22 +20,20 @@ pub struct hashed_tcb {
     map: LinearMap<u32, u32, MAX_FREERTOS_TASKS>,
     index: u32,
 }
-// SAFETY: hashed_tcb is only used in a single-threaded debugger context.
-unsafe impl Sync for hashed_tcb {}
 
 impl hashed_tcb {
-    /// Creates a new empty `hashed_tcb` starting at index 1.
-    pub fn new() -> Self {
+    /// Creates a new empty `hashed_tcb` (all zeros so `HASH` lives in `.bss`).
+    pub const fn new() -> Self {
         hashed_tcb {
             map: LinearMap::new(),
-            index: 1,
+            index: 0,
         }
     }
     
-    /// Clears the thread map, resetting the index counter back to 1.
+    /// Clears the thread map, resetting the index counter.
     pub fn clear(&mut self) {
         self.map.clear();
-        self.index = 1;
+        self.index = 0;
     }
 
     /// Prune any TCB entry from the map that is no longer in the set of live tasks.
@@ -67,11 +65,11 @@ impl hashed_tcb {
             }
         }
 
-        let tid = self.index;
         self.index = self.index.wrapping_add(1);
         if self.index == 0 {
             self.index = 1; // Thread ID 0 is invalid in GDB protocol
         }
+        let tid = self.index;
         let _ = self.map.insert(tcb, tid);
         tid
     }
@@ -79,16 +77,10 @@ impl hashed_tcb {
 
 //--
 
+static HASH: SyncCell<hashed_tcb> = SyncCell::new(hashed_tcb::new());
+
 pub fn get_hashtcb() -> &'static mut hashed_tcb {
-    static mut HASH: MaybeUninit<hashed_tcb> = MaybeUninit::uninit();
-    static mut HASH_INIT: bool = false;
-    unsafe {
-        if !HASH_INIT {
-            HASH.write(hashed_tcb::new());
-            HASH_INIT = true;
-        }
-        HASH.assume_init_mut()
-    }
+    unsafe { HASH.as_mut() }
 }
 /*
  *

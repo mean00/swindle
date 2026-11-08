@@ -18,8 +18,7 @@
 //! 4. GDB command packets are dispatched to `commands::exec()`.
 //! 5. Responses are sent back via `encoder` and the transport layer.
 
-#![allow(static_mut_refs)]
-//
+use crate::SyncCell;
 use crate::bmp;
 use crate::commands;
 use crate::commands::run;
@@ -66,20 +65,19 @@ pub(crate) fn rngdb_send_data_u8(data: &[u8]) {
 setup_log!(false);
 //use crate::{bmplog,bmpwarning};
 
-static mut autoauto: gdb_stream<INPUT_BUFFER_SIZE> = gdb_stream::new();
+static AUTOAUTO: SyncCell<gdb_stream<INPUT_BUFFER_SIZE>> = SyncCell::new(gdb_stream::new());
 /*
  *
  */
 fn get_autoauto() -> &'static mut gdb_stream<INPUT_BUFFER_SIZE> {
-    unsafe { &mut autoauto }
+    unsafe { AUTOAUTO.as_mut() }
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn rngdbstub_init() {
     settings::init_settings();
-    unsafe {
-        autoauto.init();
-        get_autoauto().set_ready();
-    }
+    let engine = get_autoauto();
+    engine.init();
+    engine.set_ready();
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn rngdbstub_shutdown() {
@@ -90,7 +88,7 @@ pub extern "C" fn rngdbstub_shutdown() {
 /// the pointer is expected to be valid !
 ///
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const cty::c_uchar) {
+pub unsafe extern "C" fn rngdbstub_run(l: usize, d: *const u8) {
     let data_as_slice: &[u8] = unsafe { core::slice::from_raw_parts(d, l) };
     // The target is running, the only valid thing we are expecting is 3 or 4 (i.e. stop request)
     // i'm not sure what happens escaping-wise if we let the parser handle it

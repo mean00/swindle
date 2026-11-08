@@ -15,33 +15,39 @@ This document defines the architectural guidelines, conventions, and procedures 
                                          |
                                          v
 +---------------------------------------------------------------------------------+
-|                       1. Swindle Rust Core (`rs_swindle`)                       |
+|          1. Swindle Rust Core (`rs_swindle`, `rs_targets`, wrapper)             |
 |   - GDB packet engine, stream automaton, command dispatch (vCont, m, X, g, z)  |
 |   - Rust Target Subsystem (`rs_swindle::target` - replaces target.c)            |
 |   - Rust Flash Subsystem (`rs_swindle::flash` - replaces target_flash.c)        |
+|   - Rust ARM Subsystem (`rs_swindle::arm` - replaces cortexm.c, cortex.c,      |
+|     adiv5.c, adiv6.c, adiv5_swd.c)                                              |
+|   - Rust RISC-V Subsystem (`rs_swindle::riscv` - replaces riscv32.c,            |
+|     riscv_debug.c, riscv_adi_dtm.c)                                             |
+|   - Target Driver Crates (`rs_targets`: STM32, RP, NRF, CH32V)                  |
+|   - Probe Chains (`rs_swindle_wrapper`: arm_probe_chain.rs, riscv_shim.rs)      |
 |   - Zero-allocation XML streaming (replaces gdb_main.c)                         |
 |   - FreeRTOS introspection & SEGGER RTT polling engine                          |
-|   - C-ABI Export Shims (`target::c_adapter.rs`, `flash::c_adapter.rs`)          |
+|   - Minimal C-ABI Stubs (`target::c_adapter.rs` only; flash & riscv eliminated) |
 +---------------------------------------------------------------------------------+
                          |                             |
-                         | (C-ABI Shims)               | (FFI Bridge)
+                         | (Wire & TAP I/O)            | (Hosted Remoting RPC)
                          v                             v
 +---------------------------------------+   +-------------------------------------+
-| 2. Swindle C/C++ Infrastructure Layer |   | 3. Retained Blackmagic C Drivers    |
-|    (`swindle/src/`, `swindleio_impl`) |   |    (`blackmagic/src/target/`)       |
-| - bmp_helpers.cpp (replaces           |   | - Silicon Probes & Flash Algorithms |
-|   exception.c, hex_utils.c,           |   |   (stm32*.c, rp2040.c, rp2350.c,    |
-|   maths_utils.c, gdb_reg.c,           |   |   ch32*.c, nrf*.c, lpc*.c)          |
-|   stm32_common.c)                     |   | - CPU Architecture Debug            |
-| - Diagnostic logger (tc_printf)       |   |   (cortexm.c, riscv32.c,            |
-| - Target breakpoint query helpers     |   |   riscv_debug.c, riscv_adi_dtm.c)   |
-| - Platform TAP Bit-Bangers            |   | - CoreSight AP/DP & Transports      |
-|   (bmp_swdTap_ln.cpp,                 |   |   (adiv5.c, adiv6.c, adiv5_swd.c,   |
-|   bmp_rvTap_ln.cpp, bmp_sdiTap_ln.cpp)|   |   spi.c, sfdp.c, jtag_scan.c)       |
-| - Hardware reset & pin controls       |   | - Hosted Remoting (protocol_v*.c)   |
-|   (bmp_reset_pin.cpp,                 |   | * Pure In-Band Fault Propagation    |
-|   bmp_reset_inv.cpp)                  |   |   (setjmp/longjmp completely        |
-|                                       |   |    removed)                         |
+| 2. Swindle C/C++ Infrastructure Layer |   | 3. Retained Blackmagic C Code       |
+|    (`swindle/src/`, `swindleio_impl`, |   |    (`blackmagic/src/platforms/      |
+|     `c_interface`)                    |   |     hosted/`)                       |
+| - C interface bridge                  |   | - Hosted Remoting                   |
+|   (bmp_interface_c.cpp, bmp_rpc.cpp,  |   |   (bmp_remote.c, protocol_v*.c,    |
+|   bmp_stubs_c.cpp)                    |   |    platform.c, cli.c, spi.c)        |
+| - Wire transaction counters & memlog  |   | * Zero Blackmagic target or wire    |
+|   (ln_swd_tx_count, ln_rv_tx_count)   |   |   drivers in embedded firmware:     |
+| - Platform TAP Bit-Bangers            |   |   all silicon probes, flash, CPU    |
+|   (bmp_swdTap_ln.cpp,                 |   |   debug, and CoreSight ADI/SWD      |
+|   bmp_rvTap_ln.cpp, bmp_sdiTap_ln.cpp)|   |   transports are 100% Rust!         |
+| - Hardware reset & pin controls       |   |                                     |
+|   (bmp_reset_pin.cpp,                 |   |                                     |
+|   bmp_reset_inv.cpp)                  |   |                                     |
+| - Board stubs (bmp_disabledBoard.cpp) |   |                                     |
 +---------------------------------------+   +-------------------------------------+
                          \                             /
                           \                           /
@@ -60,11 +66,11 @@ The diagram is organized into 7 distinct top-down layers:
 | Layer | Subgraph Name | Language / Component | Purpose |
 |---|---|---|---|
 | **Layer 1** | `1. Client Layer` | Client Applications | GDB, LLDB, RTT/Serial terminal consoles. |
-| **Layer 2** | `2. Transport Layer` | Transport Adapters | USB CDC (TinyUSB) and TCP/IP socket servers (Hosted). |
-| **Layer 3** | `3. Swindle Protocol & Command Engine (Rust)` | Rust (`rs_swindle`) | GDB protocol decoding, command execution, Rust Target/Flash engines, zero-alloc XML streaming, and prefetch read cache. |
+| **Layer 2** | `2. Transport Layer` | Transport Adapters | USB CDC (TinyUSB) and TCP/IP socket servers (Hosted, RP2040 W5500). |
+| **Layer 3** | `3. Swindle Protocol & Command Engine (Rust)` | Rust (`rs_swindle`, `rs_targets`, `rs_swindle_wrapper`) | GDB protocol decoding, command execution, Rust Target/Flash engines, ARM Cortex-M & CoreSight ADIv5/v6/SWD, RISC-V Hart/Mem/DMI, target driver crates (`rs_targets`), probe chains (`rs_swindle_wrapper`), zero-alloc XML streaming, and prefetch read cache. |
 | **Layer 4** | `4. Introspection & Services (Rust)` | Rust (`rs_swindle`) | FreeRTOS TCB crawler/stack unwinder, RTT buffer discovery, and RPC subsystem. |
-| **Layer 5** | `5. Swindle C/C++ Infrastructure & C-ABI Seam` | Rust Shims + Swindle C/C++ | Rust C-ABI export layer (`c_adapter.rs`), Swindle C/C++ helpers (`bmp_helpers.cpp`), and high-speed platform bit-bang TAP drivers (`swindleio_impl`). |
-| **Layer 6** | `6. Blackmagic Upstream Drivers (Retained C, Patched)` | C (`blackmagic/src/target/`) | Retained silicon flash drivers, Cortex-M/RISC-V architecture debug, and CoreSight ADI/SWD/JTAG/SPI transports. All patched for **in-band fault propagation (no setjmp/longjmp)**. |
+| **Layer 5** | `5. Swindle C/C++ Infrastructure & C Bridge` | Rust Shims + Swindle C/C++ | Rust C-ABI export stubs (`target::c_adapter.rs`), Swindle C/C++ bridge (`bmp_interface_c.cpp`, `bmp_rpc.cpp`), and high-speed platform bit-bang TAP drivers (`swindleio_impl`). |
+| **Layer 6** | `6. Blackmagic Hosted Remoting (Retained C, Hosted Only)` | C (`blackmagic/src/platforms/hosted/`) | Retained hosted remoting client and platform utilities. (Embedded firmware compiles zero Blackmagic C drivers). |
 | **Layer 7** | `7. Physical Target & Hardware Pins` | Hardware & PHY | Target MCU, debug pins (SWCLK, SWDIO, NRST), PIO, and fast GPIO. |
 
 ---
@@ -88,9 +94,9 @@ classDef neutralGroup fill:#fafafa,stroke:#90a4ae,stroke-width:1px;       %% Cli
 ```
 
 ### Class Assignment Rules
-- **Swindle Rust** (`rs_swindle`, `target_xml.rs`, `c_adapter.rs`, etc.): assign `swindleRust`.
-- **Swindle C/C++** (`bmp_helpers.cpp`, `bmp_interface_c.cpp`, `bmp_swdTap_ln.cpp`, etc.): assign `swindleC`.
-- **Blackmagic C** (`stm32*.c`, `cortexm.c`, `riscv32.c`, `adiv5.c`, `adiv5_swd.c`, etc.): assign `blackmagicC`.
+- **Swindle Rust** (`rs_swindle`, `rs_targets`, `rs_swindle_wrapper`, `target_xml.rs`, etc.): assign `swindleRust`.
+- **Swindle C/C++** (`bmp_interface_c.cpp`, `bmp_rpc.cpp`, `bmp_swdTap_ln.cpp`, etc.): assign `swindleC`.
+- **Blackmagic C** (`bmp_remote.c`, `protocol_v*.c`, `platform.c`, `spi.c`): assign `blackmagicC`.
 - **Transports & Clients** (GDB, USB CDC, TCP socket): assign `external`.
 - **Physical Pins & Targets** (GPIO, PIO, Target MCU): assign `hw`.
 - **Subgraphs** get the matching group tint: `class Layer3 swindleGroup;` (also `Layer4`, `Layer5`),
@@ -124,9 +130,9 @@ To ensure `doc/arch.mmd` renders cleanly across GitHub, IDE extensions, and Merm
 Follow these steps whenever code is migrated, refactored, or added:
 
 ### Step 1: Identify What Changed
-- **New Rust module replacing C code**: Note the deleted/commented C files in `swindle/swindle_common.cmake` and the new Rust module in `swindle/rs/rs_swindle/`.
+- **New Rust module replacing C code**: Note the deleted/commented C files in `swindle/swindle_common.cmake` and the new Rust module in `swindle/rs/rs_swindle/` or `swindle/rs/rs_targets/`.
 - **Patchset cleanup**: When patches in `patches_1.10/` or `cmake/patch_blackmagic.cmake` drop obsolete C file hunks, verify whether those files should be removed from Layer 6.
-- **New hardware TAP or board driver**: Check whether it is implemented in `swindle/src/platform/` (Swindle C/C++) or `blackmagic/src/target/` (Blackmagic C).
+- **New hardware TAP or board driver**: Check whether it is implemented in `swindle/src/platform/` (Swindle C/C++) or `swindle/rs/rs_targets/` (Swindle Rust).
 
 ### Step 2: Update Layer 3 / 4 (Rust Subsystems)
 - If new protocol commands, XML formats, or introspection capabilities are added, add nodes to `Layer3` or `Layer4`.
@@ -135,15 +141,15 @@ Follow these steps whenever code is migrated, refactored, or added:
   TargetXML["Register XML Generator (target_xml.rs)<br/>(Replaces gdb_main.c XML)"]
   ```
 
-### Step 3: Update Layer 5 (C-ABI Shims & Swindle C/C++)
-- If new C symbols are exported from Rust to C drivers, update `RustCABIShims`.
-- If new helpers or stubs are added to `bmp_helpers.cpp` or TAP drivers, update `SwindleCHelpers` or `SwindleTAP`.
+### Step 3: Update Layer 5 (C Bridge & Swindle C/C++)
+- If new C symbols or bridges are exported, update `RustCABIShims` or `SwindleCBridge`.
+- If TAP drivers or reset pin controls change, update `SwindleTAP` or `ResetPin`.
 
 ### Step 4: Update Layer 6 (Blackmagic Upstream C)
-- If a Blackmagic C module is no longer compiled (e.g., `target.c`, `target_flash.c`, `command.c`, `gdb_main.c`, `remote.c`):
+- If a Blackmagic C module is no longer compiled (e.g., all target probes, flash drivers, Cortex-M, and ADIv5 are now in Rust):
   - **Remove it** from Layer 6.
   - Ensure its replacement is marked in Layer 3 or Layer 5.
-- If architectural behavior in Blackmagic changes (such as the removal of `setjmp`/`longjmp`), update the driver labels to reflect the new calling convention.
+- Retain only genuinely compiled C modules (e.g. hosted remoting in `blackmagic/src/platforms/hosted/`).
 
 ### Step 5: Update Node Connections & Styling
 - Add or update arrows (`-->`) connecting caller and callee layers.
@@ -159,4 +165,15 @@ Follow these steps whenever code is migrated, refactored, or added:
 2. **Build Consistency**: Ensure the diagram matches current build files:
    - Check `BM_TARGET` and `BM_SRC` in `swindle/swindle_common.cmake`.
    - Check active patches in `cmake/patch_blackmagic.cmake`.
-   - Check active Rust exports in `swindle/rs/rs_swindle/src/target/c_adapter.rs` and `swindle/rs/rs_swindle/src/flash/c_adapter.rs`.
+   - Check active Rust exports in `swindle/rs/rs_swindle/src/target/c_adapter.rs` (note that `flash::c_adapter.rs` and `riscv::c_adapter.rs` were eliminated).
+
+
+### Step 7: now data oriented
+
+   The previous steps where about source code dependencies.
+   Do the same job resulting in arch_data.mmd (next to arch.mmd).
+   The goal of this diagram is to represent the *data* relationship 
+   between different structs.
+   Also add a small explanation next to the struct to explain what it is
+   , what it represents and what it used for. Be brief.
+

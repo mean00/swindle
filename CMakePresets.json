@@ -142,6 +142,17 @@
       }
     },
     {
+      "name": "ch32v205",
+      "inherits": "base_usb",
+      "displayName": "CH32V205 in 48 pins package",
+      "cacheVariables": {
+        "USE_CH32V3x": "True",
+        "USE_CH32v3x_HW_IRQ_STACK": "True",
+        "USE_HW_FPU": "False",
+        "USE_64PIN_PACKAGE": "true"
+      }
+    },
+    {
       "name": "rp2040_w5500",
       "displayName": "RP2040 + W5500 (full size)",
       "inherits": "base_net",

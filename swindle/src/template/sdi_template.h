@@ -24,11 +24,14 @@
  * callout inside a bit cell.
  *
  * It also relies on what both platform taps already include: bmp_pinmode.h
- * (bmp_gpio_pinmode / BMP_PINMODE_SDI), pReset (SwdReset *), Logger(),
- * lnDelayMs()/lnDelayUs(), <cstring>, and the blackmagic RISC-V target
+ * (bmp_gpio_pinmode / BMP_PINMODE_SDI), platform_nrst_set_val_internal()
+ * (the target nRST line: Rust on the LN probes, the C++ SwdReset on RP2040),
+ * Logger(), lnDelayMs()/lnDelayUs(), <cstring>, and the blackmagic RISC-V target
  * framework (jep106.h / riscv_debug.h / target_list_free) that sdi_scan() uses
  * for the stage-2 attach.
  */
+
+extern "C" void platform_nrst_set_val_internal(bool assert);
 
 /* WCH debug module (DM) register used by the transport (QingKeV2 debug manual,
  * ch. 3, Table 3-5): dmstatus [3:0] version (0010 = V0.13, reset value 0x2),
@@ -67,9 +70,18 @@
 #define SDI_KEY 0x5AA5U
 #define SDI_KEYED(data) (((uint32_t)(SDI_KEY) << 16) | (uint32_t)(data))
 #define SDI_CFGR_OUTEN (1U << 10) /* CFGR[10] enable / CPBR[10] OUTSTA */
+#define SDI_CFGR_IOMODE_SHIFT 11U
+#define SDI_CFGR_IOMODE_MASK (3U << SDI_CFGR_IOMODE_SHIFT) /* CFGR[12:11] / CPBR[12:11] */
+#define SDI_CFGR_IOMODE_FREE (0U << SDI_CFGR_IOMODE_SHIFT) /* 00: IO_FREE mode */
+#define SDI_CFGR_IOMODE_SINGLE (1U << SDI_CFGR_IOMODE_SHIFT) /* 01: Single_IO mode */
+#define SDI_CFGR_IOMODE_DUAL (2U << SDI_CFGR_IOMODE_SHIFT) /* 10: Dual_IO 2-wire mode */
+#define SDI_CFGR_IOMODE_QUAD (3U << SDI_CFGR_IOMODE_SHIFT) /* 11: Quad_IO mode */
 #define SDI_TDIVCFG_MASK 0x3U     /* CFGR[1:0] field mask / CPBR[1:0] TDIV */
 #define SDI_TDIVCFG_DIV1 0x0U     /* 00: divided by 1 -> fast 1x, T = 125 ns */
 #define SDI_TDIVCFG_DIV2 0x1U     /* 01: divided by 2 -> normal 2x (reset)   */
+#define SDI_CONFIG_DELAY_MS 2U
+#define SDI_DMSTATUS_RETRY_COUNT 5U
+#define SDI_DMSTATUS_RETRY_DELAY_MS 1U
 
 /* The word written by sdi_reset(): §2.4(1) only, i.e. slave output enabled.
  * Read the mask, not the value - CFGR[1:0] = 0b00 means TDIVCFG is *not*
@@ -175,9 +187,9 @@ static const char *sdi_tdiv_name(const uint32_t tdiv)
 static bool sdi_log_config(const char *const tag)
 {
     const uint32_t cpbr = sdiFrameRead(SDI_CPBR);
-    if (cpbr == 0xFFFFFFFFUL)
+    if (cpbr == 0xFFFFFFFFUL || !(cpbr & SDI_CFGR_OUTEN))
     {
-        Logger("SDI : CPBR %s = all ones (no slave output, OUTSTA=0)\n", tag);
+        Logger("SDI : CPBR %s = 0x%x (no slave output, OUTSTA=0)\n", tag, (unsigned)cpbr);
         return false;
     }
     Logger("SDI : CPBR %s = 0x%x (VERSION=0x%x, OUTSTA=%u, TDIV=0x%x/%s)\n", tag, (unsigned)cpbr,
@@ -232,12 +244,9 @@ bool LN_FAST_CODE sdi_dm_start()
     for (uint32_t attempt = 1u; attempt <= SDI_DM_START_ATTEMPTS; attempt++)
     {
         bmp_gpio_pinmode(BMP_PINMODE_SDI);
-        if (pReset)
-        {
-            pReset->on(); // assert NRST
-            lnDelayMs(20);
-            pReset->off(); // release NRST
-        }
+        platform_nrst_set_val_internal(true); // assert NRST
+        lnDelayMs(20);
+        platform_nrst_set_val_internal(false); // release NRST
         sdi_reset(20); // §2.4(3) hold-low, then §2.4(1) configuration
 
         /* Report what the interface thinks it is doing. Read-only: the validated
@@ -267,6 +276,39 @@ bool LN_FAST_CODE sdi_dm_write(const uint8_t adr, const uint32_t val)
     return true;
 }
 
+/** Attempts per DM read frame before an unanswered access is given up (see
+ * sdi_read_frame_retried): the wire has no per-frame acknowledge, so a lost frame
+ * can only be detected by asking again. */
+#define SDI_READ_ATTEMPTS 3u
+
+/**
+ * @brief Read one DM register, retrying a frame that got no answer.
+ *
+ * SDI has no per-frame acknowledge, so "nothing drove the wire" arrives as an
+ * all-ones word - indistinguishable from a register that legitimately holds
+ * 0xFFFFFFFF. A single lost read is not harmless: a lost STATR read looks exactly
+ * like a write-protection fault and aborts an erase.
+ *
+ * The two cases are told apart with a second frame: DMSTATUS has a fixed version
+ * field (0b0010 in bits 3:0), so a live debug module can never answer all ones. If
+ * it answers, the all-ones word was real data and is returned as is; only a silent
+ * DMSTATUS means the frame was lost and the access is repeated.
+ *
+ * @param adr Register address (7 bits).
+ * @return The register value as read (all ones when the slave never answered).
+ */
+static uint32_t sdi_read_frame_retried(const uint8_t adr)
+{
+    for (unsigned attempt = 0;; attempt++)
+    {
+        const uint32_t value = sdiFrameRead(adr);
+        if (value != 0xFFFFFFFFUL || attempt + 1 >= SDI_READ_ATTEMPTS)
+            return value;
+        if (sdiFrameRead(DMSTATUS) != 0xFFFFFFFFUL)
+            return value;
+    }
+}
+
 /**
  * @brief Read one DM register over SDI.
  * @param adr    Register address (7 bits; see SDI_MAX_ADDRESS).
@@ -282,7 +324,7 @@ bool LN_FAST_CODE sdi_dm_read(const uint8_t adr, uint32_t *const output)
         Logger("SDI : read of out-of-range address 0x%02x rejected\n", (unsigned)adr);
         return false;
     }
-    *output = sdiFrameRead(adr);
+    *output = sdi_read_frame_retried(adr);
     return true;
 }
 
@@ -307,6 +349,36 @@ extern "C"
     bool bmp_sdi_dm_read_c(const uint8_t adr, uint32_t *const value)
     {
         return sdi_dm_read(adr, value);
+    }
+    /** @brief Probe over SDI and switch target to 2-wire Dual_IO mode. */
+    bool sdi_probe_and_enable_2wire()
+    {
+        if (!sdi_dm_start())
+        {
+            return false;
+        }
+
+        uint32_t status = 0;
+        for (int retry = 0; retry < SDI_DMSTATUS_RETRY_COUNT; retry++)
+        {
+            (void)sdi_dm_read(DMSTATUS, &status);
+            if (status != 0xFFFFFFFFUL) break;
+            lnDelayMs(SDI_DMSTATUS_RETRY_DELAY_MS);
+        }
+
+        if (status == 0xFFFFFFFFUL)
+        {
+            return false;
+        }
+
+        Logger("SDI : target detected (DMSTATUS=0x%x), enabling 2-wire mode\n", (unsigned)status);
+        // Write value to shadow, then mask to CFGR to commit IOMODECFG (bits [12:11]) and OUTEN (bit 10)
+        sdiFrameWrite(SDI_SHDWCFGR, SDI_KEYED(SDI_CFGR_OUTEN | SDI_CFGR_IOMODE_DUAL));
+        lnDelayMs(SDI_CONFIG_DELAY_MS);
+        sdiFrameWrite(SDI_CFGR, SDI_KEYED(SDI_CFGR_OUTEN | SDI_CFGR_IOMODE_MASK));
+        lnDelayMs(SDI_CONFIG_DELAY_MS);
+
+        return true;
     }
 }
 
@@ -352,8 +424,9 @@ static bool ch32_sdi_dmi_write(riscv_dmi_s *const dmi, const uint32_t address, c
  * Stage 1 unlocked the CH32V0xx and reported DMSTATUS only. Stage 2 mirrors
  * rvswd_template.h::rvswd_scan(): after the unlock it clears the blackmagic
  * target list and hands riscv_dmi_init() an SDI-backed riscv_dmi_s (designer =
- * WCH), so the C RISC-V framework discovers the hart and runs the per-family
- * probe (riscv32_probe -> riscv_rust_target_probe) exactly as it does over RVSWD.
+ * WCH), so the RISC-V framework discovers the hart and runs the per-family
+ * probe (riscv32_probe -> riscv_silicon_probe -> riscv_rust_target_probe)
+ * exactly as it does over RVSWD.
  * A missing / unresponsive target leaves the SDI bus idle-high, which reads
  * back as all-ones.
  * @return true when a target responded to the unlock (attach attempted).

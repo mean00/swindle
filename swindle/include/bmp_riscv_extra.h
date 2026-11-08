@@ -71,15 +71,16 @@ extern "C"
      */
     void bmp_set_sdi_wire_c(uint32_t tbit_ns, uint32_t low1_ns, uint32_t low0_ns, uint32_t sample_ns, bool no_trim);
 
+    /* Pin hand-over: the platform's bmp_gpio_pinmode() calls these two when the SDI
+     * mode is selected and when it is left. The default definitions do nothing, which
+     * is what an SWD/RVSWD-only build wants - both taps set their own pins. Rust
+     * provides them in a build without SDI (src/riscv_extra_sdi_stubs.rs), hence the
+     * C linkage. */
+    void sdi_pinmode_enter();
+    void sdi_pinmode_leave();
+
 #ifdef __cplusplus
 }
 #endif
-
-/* Pin hand-over (C++ linkage, like bmp_gpio_pinmode() itself): the platform's
- * bmp_gpio_pinmode() calls these two when the SDI mode is selected and when it is
- * left. The default definitions do nothing, which is what an SWD/RVSWD-only build
- * wants - both taps set their own pins. */
-void sdi_pinmode_enter();
-void sdi_pinmode_leave();
 
 // EOF

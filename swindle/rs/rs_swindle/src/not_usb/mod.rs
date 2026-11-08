@@ -1,5 +1,5 @@
 unsafe extern "C" {
-    fn rngdb_send_data_c(sz: u32, ptr: *const cty::c_uchar);
+    fn rngdb_send_data_c(sz: u32, ptr: *const u8);
     fn rngdb_output_flush_c();
 }
 

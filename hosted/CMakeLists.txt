@@ -55,7 +55,7 @@ set(Rust_CARGO_TARGET
 # SET(CMAKE_CXX_AR /usr/bin/llvm-ar  CACHE INTERNAL "") SET(CMAKE_CXX_RANLIB /usr/bin/llvm-ranlib  CACHE INTERNAL "")
 #
 set(LN_ENABLED_BOARDS
-    CH32F1 RP2350 RP2040 STM32F1
+    CH32F1 RP2350 RP2040 STM32F1 STM32F4 STM32G0 NRF51 NRF54L NRF91
     CACHE INTERNAL "")
 #
 include(swindle_version)
@@ -64,7 +64,8 @@ gen_version_file()
 set(BMP_VERSION_BRANCH 1.10)
 set(BMP_PATCH_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/../patches_${BMP_VERSION_BRANCH})
 set(LNBMP_TOP_FOLDER ${CMAKE_SOURCE_DIR}/../blackmagic)
-include(patch_blackmagic)
+# The blackmagic tree is not patched any more (see the top level CMakeLists.txt).
+# include(patch_blackmagic)
 #
 
 add_library(esprit_dev INTERFACE)
@@ -88,12 +89,10 @@ include(${ARDUINO_GD32_FREERTOS}/cmake/lnEmbeddedPrint.cmake)
 
 include_directories(include)
 include_directories(${CMAKE_BINARY_DIR})
-include_directories(${BMP}/)
-include_directories(${BMP}/src/include)
-include_directories(${BMP}/src/platforms/pc)
-include_directories(${BMP}/src/platforms/hosted)
-include_directories(${BMP}/src/target)
-include_directories(${BMP}/../lnBlackmagic/include)
+# The blackmagic sources are no longer part of the build: swindle/private_include
+# carries the minimal stand-ins for the headers it used to provide.
+include_directories(${CMAKE_SOURCE_DIR}/../swindle/private_include)
+include_directories(${CMAKE_SOURCE_DIR}/../swindle/include)
 #
 # The blackmagic context (PC_HOSTED, ENABLE_DEBUG, BMD_IS_STDC) is no longer
 # passed as -D flags here: the hosted-variant platformgenerated.h
@@ -114,10 +113,13 @@ add_subdirectory(../swindle lnswindle)
 # CFLAGS ${LN_LTO_RUST_FLAGS} ) corrosion_add_target_rustflags( rsbmp --cfg feature="hosted")
 
 set(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
+# The probe-side entry points this build cannot serve (SPI, SWD tap, SWJ pins, RTT,
+# heap counters) are defined in Rust now: swindle/rs/rs_swindle/src/hosted/c_stubs.rs.
+# src/stubs.cpp is kept as the reference but is no longer compiled.
 set(COMMON_SRC
     ${H}/timeout.cpp
     ${H}/lnDebug.cpp
-    ${H}/stubs.cpp
+    ${H}/bmp_functions.cpp
     ${H}/dm_decoder.cpp
     ${H}/gdb_decoder.cpp
     ${H}/bmp_qtserial.cpp
@@ -136,28 +138,26 @@ add_executable(swindle_hosted ${H}/main.cpp ${COMMON_SRC})
 target_include_directories(swindle_hosted PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(swindle_hosted PRIVATE -include platformgenerated.h)
 target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
-target_link_libraries(swindle_hosted PRIVATE rsbmp_wrapper)
-target_link_libraries(swindle_hosted PRIVATE esprit_dev)
-target_link_libraries(swindle_hosted PRIVATE swindle_interface)
-target_link_libraries(swindle_hosted PRIVATE libswindle)
-target_link_libraries(swindle_hosted PRIVATE swindle_interface)
-target_link_libraries(swindle_hosted PRIVATE libswindle)
-target_link_libraries(swindle_hosted PRIVATE embeddedPrintf usb-1.0)
-target_link_libraries(swindle_hosted PRIVATE Qt6::Core Qt6::Network Qt6::SerialPort)
+target_link_libraries(swindle_hosted PRIVATE
+    rsbmp_wrapper
+    esprit_dev
+    embeddedPrintf
+    usb-1.0
+    Qt6::Core Qt6::Network Qt6::SerialPort
+)
 
 # Qt6 GUI executable
 add_executable(swindle_hosted_qt ${H}/main_qt.cpp ${COMMON_SRC})
 target_include_directories(swindle_hosted_qt PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(swindle_hosted_qt PRIVATE -include platformgenerated.h)
 target_compile_definitions(swindle_hosted_qt PRIVATE LN_ARCH=LN_ARCH_ARM)
-target_link_libraries(swindle_hosted_qt PRIVATE rsbmp_wrapper)
-target_link_libraries(swindle_hosted_qt PRIVATE esprit_dev)
-target_link_libraries(swindle_hosted_qt PRIVATE swindle_interface)
-target_link_libraries(swindle_hosted_qt PRIVATE libswindle)
-target_link_libraries(swindle_hosted_qt PRIVATE swindle_interface)
-target_link_libraries(swindle_hosted_qt PRIVATE libswindle)
-target_link_libraries(swindle_hosted_qt PRIVATE embeddedPrintf usb-1.0)
-target_link_libraries(swindle_hosted_qt PRIVATE Qt6::Core Qt6::Widgets Qt6::Network Qt6::SerialPort)
+target_link_libraries(swindle_hosted_qt PRIVATE
+    rsbmp_wrapper
+    esprit_dev
+    embeddedPrintf
+    usb-1.0
+    Qt6::Core Qt6::Widgets Qt6::Network Qt6::SerialPort
+)
 
 # Qt6 adds -mno-direct-extern-access which clang rejects
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

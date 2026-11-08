@@ -58,6 +58,39 @@ pub enum DmiError {
     NotSupported,
 }
 
+/// Which wire the Debug Module is reached on.
+///
+/// The per-op RPC leaves split this into two classes (`RV.DM_READ` /
+/// `RV.DM_WRITE` for RVSWD, `SDI.DM_READ` / `SDI.DM_WRITE` for WCH single-wire).
+/// The bulk memory leaves ([`DmiLeg::wire_id`]) carry it as a parameter instead,
+/// so one leaf serves both legs and both ends still agree on the numbering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DmiLeg {
+    /// The RVSWD leg (`bmp_rv_read` / `bmp_rv_write`).
+    Rvswd,
+    /// The WCH SDI leg (`riscv_extra::bmp_sdi_read` / `bmp_sdi_write`).
+    Sdi,
+}
+
+impl DmiLeg {
+    /// Wire value of the `leg` parameter of `RV.MEM_READ` / `RV.MEM_WRITE`.
+    pub const fn wire_id(self) -> u8 {
+        match self {
+            Self::Rvswd => 0,
+            Self::Sdi => 1,
+        }
+    }
+
+    /// Decode a [`Self::wire_id`]; `None` for a value this build does not know.
+    pub const fn from_wire_id(id: u32) -> Option<Self> {
+        match id {
+            0 => Some(Self::Rvswd),
+            1 => Some(Self::Sdi),
+            _ => None,
+        }
+    }
+}
+
 /// Abstract Debug Module Interface transport.
 pub trait DmiTransport {
     /// Read a 32-bit DMI register at `addr`.
@@ -197,3 +230,24 @@ impl DmiTransport for CDmiTransport {
         self.dmi_ref().is_some_and(|dmi| dmi.read_confirm)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::DmiLeg;
+
+    /// The `leg` byte of `RV.MEM_READ` / `RV.MEM_WRITE` is a wire value: it has
+    /// to survive the round trip and stay stable, since one leaf serves both DM
+    /// wires.
+    #[test]
+    fn dmi_leg_wire_ids_round_trip() {
+        for leg in [DmiLeg::Rvswd, DmiLeg::Sdi] {
+            assert_eq!(DmiLeg::from_wire_id(leg.wire_id() as u32), Some(leg));
+        }
+        // The numbering is part of the wire format, not an implementation detail.
+        assert_eq!(DmiLeg::Rvswd.wire_id(), 0);
+        assert_eq!(DmiLeg::Sdi.wire_id(), 1);
+        // An unknown leg is rejected instead of silently driving the other wire.
+        assert_eq!(DmiLeg::from_wire_id(2), None);
+    }
+}
+

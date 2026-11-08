@@ -6,6 +6,7 @@ setup_log!(false);
 //use crate::bmplog;
 crate::gdb_print_init!();
 
+use crate::SyncCell;
 use crate::bmp::bmp_read_mem32;
 use crate::freertos::LN_MCU_CORE;
 use crate::freertos::freertos_arm_m3::freertos_switch_handler_m3;
@@ -17,9 +18,12 @@ use crate::freertos::freertos_trait::freertos_switch_handler;
 /// One instance per handler variant, in `.bss` — `mon fos` used to box one of
 /// these on **every** invocation. They are plain state (`[u32; N]` + a pointer
 /// field), so a `static` is enough; only one is ever installed at a time.
-static mut HANDLER_M3: freertos_switch_handler_m3 = freertos_switch_handler_m3::new();
-static mut HANDLER_M4F: freertos_switch_handler_m4f = freertos_switch_handler_m4f::new();
-static mut HANDLER_M33: freertos_switch_handler_m33 = freertos_switch_handler_m33::new();
+static HANDLER_M3: SyncCell<freertos_switch_handler_m3> =
+    SyncCell::new(freertos_switch_handler_m3::new());
+static HANDLER_M4F: SyncCell<freertos_switch_handler_m4f> =
+    SyncCell::new(freertos_switch_handler_m4f::new());
+static HANDLER_M33: SyncCell<freertos_switch_handler_m33> =
+    SyncCell::new(freertos_switch_handler_m33::new());
 
 const ARM_PARTNO_MASK: u32 = 0xfff0;
 
@@ -40,7 +44,7 @@ const mul: u32 = 0;
 /// Returns a borrowed handler implementation (see the `HANDLER_*` statics), or
 /// `None` if the core is unsupported.
 ///
-/// SAFETY of the `unsafe { &mut HANDLER_x }` borrows below: the debugger command
+/// SAFETY of the `unsafe { HANDLER_x.as_mut() }` borrows below: the debugger command
 /// loop is single-threaded, `os_attach()` keeps at most one handler installed in
 /// `FreeRTOS_switcher`, and overwriting it drops the previous borrow, so no two
 /// live `&mut` to the same static can exist.
@@ -51,9 +55,9 @@ pub fn create_arm_switch_handler(
     // First, if the firmware exported a layout type via freeRTOSDebug, trust it completely.
     if let Some(offsets) = get_symbols().debug_offsets {
         if offsets.layout_type == LAYOUT_ARM_NOFPU {
-            return Some(unsafe { &mut HANDLER_M3 });
+            return Some(unsafe { HANDLER_M3.as_mut() });
         } else if offsets.layout_type == LAYOUT_ARM_FPU {
-            return Some(unsafe { &mut HANDLER_M4F });
+            return Some(unsafe { HANDLER_M4F.as_mut() });
         }
     }
 
@@ -70,8 +74,8 @@ pub fn create_arm_switch_handler(
     }
 
     match core {
-        LN_MCU_CORE::LN_MCU_CM0 => Some(unsafe { &mut HANDLER_M3 }),
-        LN_MCU_CORE::LN_MCU_CM3 => Some(unsafe { &mut HANDLER_M3 }),
+        LN_MCU_CORE::LN_MCU_CM0 => Some(unsafe { HANDLER_M3.as_mut() }),
+        LN_MCU_CORE::LN_MCU_CM3 => Some(unsafe { HANDLER_M3.as_mut() }),
         LN_MCU_CORE::LN_MCU_CM4 => {
             // Check if FPU is enabled via CPACR (0xE000ED88)
             let mut cpacr = [0u32; 1];
@@ -83,12 +87,12 @@ pub fn create_arm_switch_handler(
                 }
             }
             if has_fpu {
-                Some(unsafe { &mut HANDLER_M4F })
+                Some(unsafe { HANDLER_M4F.as_mut() })
             } else {
-                Some(unsafe { &mut HANDLER_M3 })
+                Some(unsafe { HANDLER_M3.as_mut() })
             }
         }
-        LN_MCU_CORE::LN_MCU_CM33 => Some(unsafe { &mut HANDLER_M33 }),
+        LN_MCU_CORE::LN_MCU_CM33 => Some(unsafe { HANDLER_M33.as_mut() }),
         _ => None,
     }
 }

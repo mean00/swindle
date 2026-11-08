@@ -19,6 +19,9 @@
 
 #include "gdb_server_thread.h"
 
+// Memory access mode (swindle/rs/rs_swindle/src/hosted/bulk_mem.rs).
+extern "C" void swindleSetRawDmi_c(int on);
+
 class StatusIndicator : public QWidget
 {
     Q_OBJECT
@@ -158,21 +161,31 @@ extern "C" void exit_from_bmp()
 
 int main(int argc, char **argv)
 {
+    // Memory access mode (swindle/rs/rs_swindle/src/hosted/bulk_mem.rs). Blocks
+    // are the default; --raw-dmi goes back to one round trip per DMI op.
+    bool raw_dmi = false;
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "--decode-gdb") == 0 || strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "-g") == 0)
         {
             gdb_decoder_set_enabled(true);
         }
+        else if (strcmp(argv[i], "--raw-dmi") == 0)
+        {
+            raw_dmi = true;
+        }
         else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
         {
             printf("Usage: swindle_hosted_qt [options]\n");
             printf("Options:\n");
             printf("  --decode-gdb, -d, -g  Decode GDB commands on the fly in human-readable format\n");
+            printf("  --raw-dmi             Access target memory one DMI op at a time instead of\n");
+            printf("                        whole blocks (slower; for probes without RV.MEM_*)\n");
             printf("  --help, -h            Show this help message\n");
             return 0;
         }
     }
+    swindleSetRawDmi_c(raw_dmi ? 1 : 0);
 
     if (getenv("SWINDLE_DECODE_GDB") != nullptr)
     {

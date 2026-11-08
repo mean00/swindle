@@ -37,10 +37,29 @@
 
 //! Sector write buffer with dirty window tracking and automatic flush.
 
-use super::driver::{FlashDriver, FlashError, FlashOperation};
+use super::driver::{FlashDriver, FlashError};
 use super::geometry::FlashGeometry;
 
 pub const MAX_FLASH_BUFFER_SIZE: usize = 2048;
+
+/// Buffer size usable for `geometry`: the driver's preferred write buffer capped by the
+/// static array and rounded down to whole write units. A write unit that does not fit in the
+/// buffer can never be programmed, so such a geometry is rejected here instead of indexing
+/// past the end of the array later.
+fn buffer_size(geometry: &FlashGeometry) -> Option<usize> {
+    let write_size = geometry.write_size;
+    let size = geometry.write_buf_size.min(MAX_FLASH_BUFFER_SIZE);
+    if write_size == 0 || size < write_size {
+        return None;
+    }
+    Some(size - size % write_size)
+}
+
+/// Aligns `addr` down to a `size` bytes boundary.
+#[inline]
+fn align_down(addr: u32, size: usize) -> u32 {
+    addr & !((size as u32) - 1)
+}
 
 /// Manages a sector-sized in-memory buffer to batch sub-sector writes
 /// and flush them aligned to `write_size`.
@@ -52,13 +71,20 @@ pub struct FlashSectorBuffer {
     dirty_high: u32,
 }
 
+impl Default for FlashSectorBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FlashSectorBuffer {
-    /// Creates a new uninitialized sector buffer.
+    /// Creates a new uninitialized sector buffer (all zeros so it lives in `.bss`;
+    /// `write()` fills the buffer with `geometry.erased_value` before loading a window).
     pub const fn new() -> Self {
         Self {
-            data: [0xff; MAX_FLASH_BUFFER_SIZE],
+            data: [0; MAX_FLASH_BUFFER_SIZE],
             base_addr: None,
-            dirty_low: u32::MAX,
+            dirty_low: 0,
             dirty_high: 0,
         }
     }
@@ -66,7 +92,7 @@ impl FlashSectorBuffer {
     /// Clears the buffer and resets base and dirty tracking without freeing memory.
     pub fn clear(&mut self) {
         self.base_addr = None;
-        self.dirty_low = u32::MAX;
+        self.dirty_low = 0;
         self.dirty_high = 0;
     }
 
@@ -84,13 +110,10 @@ impl FlashSectorBuffer {
         mut dest: u32,
         mut src: &[u8],
     ) -> Result<(), FlashError> {
-        let buf_size = geometry.write_buf_size.min(MAX_FLASH_BUFFER_SIZE);
-        if buf_size == 0 {
-            return Err(FlashError::BufferAllocationFailed);
-        }
+        let buf_size = buffer_size(geometry).ok_or(FlashError::BufferAllocationFailed)?;
 
         while !src.is_empty() {
-            let base = geometry.align_buffer_down(dest);
+            let base = align_down(dest, buf_size);
 
             if self.base_addr != Some(base) {
                 self.flush(geometry, driver)?;
@@ -132,12 +155,15 @@ impl FlashSectorBuffer {
             None => return Ok(()),
         };
 
-        driver.prepare(FlashOperation::Write)?;
+        // No `prepare()` here: the region prepared `FlashOperation::Write` before it buffered
+        // anything (`FlashRegion::set_operation`), and a driver that parks a flashstub in RAM
+        // keeps it across the flushes of one session, so a per-flush prepare could only cost
+        // round trips (or, before the stub flag existed, a full stub upload).
 
         let write_size = geometry.write_size;
-        if write_size == 0 {
-            return Err(FlashError::UnalignedAccess);
-        }
+        // Reject geometries whose write unit does not fit the buffer: the chunks below index
+        // `self.data` in `write_size` steps, so they would run past its end.
+        buffer_size(geometry).ok_or(FlashError::UnalignedAccess)?;
 
         let aligned_low = self.dirty_low & !((write_size as u32) - 1);
         let src_start = (aligned_low - base) as usize;

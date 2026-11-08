@@ -16,13 +16,7 @@
 
 extern "C"
 {
-#include "exception.h"
-#include "gdb_if.h"
-#include "gdb_main.h"
-#include "gdb_packet.h"
-#include "general.h"
-#include "morse.h"
-#include "target.h"
+#include "platform_support.h"
 }
 
 #define LN_ARCH LN_ARCH_ARM

@@ -1,18 +1,16 @@
+use super::freertos_riscv_common::{STACKED_REGISTER_SIZE, get_current_layout, rv32_gprs};
+use crate::freertos::freertos_symbols::LAYOUT_CH32_FPU;
 /// \brief WCH/Bumblebee RISC-V FreeRTOS support
 ///
-/// This module implements the FreeRTOS context switch handling for the WCH / Bumblebee 
-/// RISC-V RV32 layout (such as the CH32V30x series). 
-///
+/// This module implements the FreeRTOS context switch handling for the WCH / Bumblebee
+/// RISC-V RV32 layout (such as the CH32V30x series).
 /// Stack layout for WCH RV32:
 /// - PC (mepc)
 /// - mstatus
 /// - [FPU registers if FPU dirty bit is set]
 /// - ra/x1
 /// - x5..x31
-
 use crate::freertos::freertos_trait::freertos_switch_handler;
-use crate::freertos::freertos_symbols::LAYOUT_CH32_FPU;
-use super::freertos_riscv_common::{rv32_gprs, get_current_layout, STACKED_REGISTER_SIZE};
 
 /// Handler for the WCH / Bumblebee RISC-V FreeRTOS layout
 pub struct FreeRTOSSwitchHandlerCH32 {
@@ -29,13 +27,13 @@ impl FreeRTOSSwitchHandlerCH32 {
 }
 
 impl freertos_switch_handler for FreeRTOSSwitchHandlerCH32 {
-    /// Pushes the cached internal state (`gprs`, `mstatus`, `pc`) back into the 
+    /// Pushes the cached internal state (`gprs`, `mstatus`, `pc`) back into the
     /// physical hardware via the debugger interface.
     fn write_cur_registers(&self) -> bool {
         self.gprs.write_cur_registers()
     }
 
-    /// Reads the physical hardware state (`gprs`, `mstatus`, `pc`) via the debugger 
+    /// Reads the physical hardware state (`gprs`, `mstatus`, `pc`) via the debugger
     /// interface and caches it internally.
     fn read_cur_registers(&mut self) -> bool {
         self.gprs.read_cur_registers()
@@ -65,17 +63,17 @@ impl freertos_switch_handler for FreeRTOSSwitchHandlerCH32 {
         self.gprs.pointer = address;
         self.gprs.pc = self.gprs.pop32(); // PC
         self.gprs.mstatus = self.gprs.pop32(); // mstatus
-        
+
         if layout == LAYOUT_CH32_FPU {
             // Check if FPU is dirty (bit 14 of mstatus)
             if (self.gprs.mstatus & (1 << 14)) != 0 {
                 self.gprs.pointer += 128; // Skip FPU registers (32 * 4)
             }
         }
-        
+
         self.gprs.gprs[1] = self.gprs.pop32(); // ra/x1
         self.gprs.pop(5, 32); // x5..x31
-        
+
         self.gprs.sp = self.gprs.pointer;
         self.gprs.gprs[2] = self.gprs.sp; // Fix: Set SP in GPRs so it gets written to hardware
         true

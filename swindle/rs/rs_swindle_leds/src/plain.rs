@@ -1,31 +1,28 @@
 //! Plain LEDs: the open drain LEDs blink, as in src/swindle_gd32.cpp.
+//!
+//! Platform-neutral on purpose: the pins come from the probe board table and the
+//! line is driven through the esprit `GpioPin` trait, so nothing here names an MCU
+//! backend crate.
 
-use crate::registers::*;
-use rs_gpio_bluepill::{Mode, Pin, open_drain_close, set_mode};
-use rs_rcu_bluepill::{Peripheral, enable};
-use rust_esprit::delay_ms;
-
-/// Number of pins per GPIO port (port = pin / PINS_PER_PORT)
-const PINS_PER_PORT: u32 = 16;
-
-fn port_clock(pin: Pin) -> Peripheral {
-    match (pin as u32) / PINS_PER_PORT {
-        0 => Peripheral::GpioA,
-        1 => Peripheral::GpioB,
-        _ => Peripheral::GpioC,
-    }
-}
+use crate::registers::BLINK_HALF_PERIOD_MS;
+use rs_swindle_board::BOARD;
+use rust_esprit::hal::GpioMode;
+use rust_esprit::{HalGpioPin, Pin, delay_ms};
 
 pub fn run() -> ! {
-    for pin in LED_PINS {
-        enable(port_clock(pin));
-        set_mode(pin, Mode::OutputOpenDrain, GPIO_DEFAULT_SPEED_MHZ);
+    /* The GPIO port clocks are already on: esprit's C++ main() resets and enables
+     * GPIOA / GPIOB / GPIOC (and AF) before any Rust code runs
+     * (esprit/mcus/common_bluepill/lnSystemInit.cpp). */
+    for led in BOARD.leds {
+        let mut pin = Pin::from(*led as u32);
+        HalGpioPin::set_mode(&mut pin, GpioMode::OutputOpenDrain);
     }
     let mut on = true;
     loop {
         delay_ms(BLINK_HALF_PERIOD_MS);
-        for pin in LED_PINS {
-            open_drain_close(pin, on);
+        for led in BOARD.leds {
+            let mut pin = Pin::from(*led as u32);
+            HalGpioPin::open_drain_close(&mut pin, on);
         }
         on = !on;
     }

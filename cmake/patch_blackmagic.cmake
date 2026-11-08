@@ -37,8 +37,9 @@ apply_patch_if_needed5(patched44 44blackmagic_gd32_crc32.patch "stub CRC32 compu
 apply_patch_if_needed5(patched48 48blackmagic_enable_native_rvswd.patch "enable rvswd for native mode")
 apply_patch_if_needed5(patched49 49blackmagic_hook_rvswd_to_host_mode.patch "enable rvswd for hosted mode")
 apply_patch_if_needed5(patched56 56blackmagic_fix_rp2320_flash_cache.patch "Fix aligned check for cache flush (RP2350) ")
-apply_patch_if_needed5(patched114 114blackmagic_rp2350_crc32.patch
-                       "CRC32 on RP2350 (M33 + Hazard3) through the DMA sniffer stub, so qCRC stops reading the range")
+# 114blackmagic_rp2350_crc32.patch moved to patches_1.10/attic2 (needs the removed riscv_run_stub_ret_c)
+#apply_patch_if_needed5(patched114 114blackmagic_rp2350_crc32.patch
+#                       "CRC32 on RP2350 (M33 + Hazard3) through the DMA sniffer stub, so qCRC stops reading the range")
 
 # ---------------------------------------------------------------------------
 # Merged patches (replaces previously overlapping individual patches)
@@ -94,6 +95,17 @@ apply_patch_if_needed5(patched112 112blackmagic_target_flash_merged.patch
                        "Target common & flash headers, sw breakpoints, variable erase (merged 47, 50, 51, 55, and common parts of 82bis, 85bis, 105)")
 apply_patch_if_needed5(patched113 113blackmagic_remove_setjmp_longjmp.patch
                        "remove setjmp/longjmp, in-band fault propagation")
+apply_patch_if_needed5(patched115 115blackmagic_remove_dead_helper_decls.patch
+                       "drop declarations of helpers nobody calls any more (target_get_mw_helpers, breakpoint_available)")
+apply_patch_if_needed5(patched116 116blackmagic_rust_probe_chain.patch
+                       "cortexm.c: replace the designer_code switch with the Rust probe chain (cortexm_probe_chain)")
+apply_patch_if_needed5(patched117 117blackmagic_drop_breakwatch_s.patch
+                       "drop struct breakwatch / target->bw_list and the target_breakwatch_set/clear declarations (Rust owns the trigger table)")
+# The RP2040/RP2350 CRC stub images moved into the crates that load them (rs_rp_common,
+# rs_rp2350_common); this re-points the includes that patches 60 and 114 added.
+# 118blackmagic_rp_flashstub_paths.patch moved to patches_1.10/attic2 (depends on patch 114)
+#apply_patch_if_needed5(patched118 118blackmagic_rp_flashstub_paths.patch
+#                       "point the RP2040/RP2350 CRC stub includes at the Rust crates that own the images")
 
 # ---------------------------------------------------------------------------
 # Previously merged / disabled patches (preserved comments)

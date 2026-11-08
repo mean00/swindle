@@ -9,10 +9,13 @@
 /// Bytes reserved for the per-target session objects: the `target_s`, the
 /// RAM/Flash/command descriptors, the per-target privs and the breakwatch nodes.
 ///
-/// Measured worst case on the probes is well under this (472 B for an RVSWD
-/// RISC-V session); the rest is headroom, because exhausting the region aborts
-/// the probe instead of silently falling back to the heap.
-pub const POOL_SIZE: usize = 1728;
+/// The worst case is a chip that answers more than once on the bus, because it
+/// carries one of everything per core: an RP2040 session peaks at 2148 B (3 DP,
+/// 2 AP, 2 `target_s`, two 336 B Cortex-M privs, 2 RAM and 2 flash descriptors,
+/// plus the rescue pseudo-target), and an RP2350 Arm + Hazard3 session is the
+/// same shape. The rest is headroom, because exhausting the region aborts the
+/// probe instead of silently falling back to the heap.
+pub const POOL_SIZE: usize = 3072;
 
 /// Bytes reserved for the transport: the probe DP plus one DP+AP pair per
 /// discovered device (`adiv5_swd.c` allocates a DP per multidrop instance),

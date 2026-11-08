@@ -17,6 +17,13 @@
 
 #include "gdb_server_thread.h"
 
+// Keyboard hand-off with the probe-selection prompt in bmp_qtserial.cpp (shared
+// with the Qt build, hence the C ABI).
+extern "C" bool hosted_stdin_prompt_is_active();
+extern "C" void hosted_stdin_prompt_push(int ch);
+// Memory access mode (swindle/rs/rs_swindle/src/hosted/bulk_mem.rs).
+extern "C" void swindleSetRawDmi_c(int on);
+
 /**
  * @brief Custom Qt message handler that redirects messages to stderr.
  */
@@ -78,22 +85,37 @@ extern "C" void exit_from_bmp()
  */
 int main(int argc, char **argv)
 {
+    // Keep the log / decoded GDB trace visible line by line even when stdout is
+    // redirected to a file or a pipe (default would be block buffered).
+    setvbuf(stdout, nullptr, _IOLBF, 0);
+
     // Check command line arguments and environment for GDB decoding flag
+    bool raw_dmi = false;
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "--decode-gdb") == 0 || strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "-g") == 0)
         {
             gdb_decoder_set_enabled(true);
         }
+        else if (strcmp(argv[i], "--raw-dmi") == 0)
+        {
+            raw_dmi = true;
+        }
         else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
         {
             printf("Usage: swindle_hosted [options]\n");
             printf("Options:\n");
             printf("  --decode-gdb, -d, -g  Decode GDB commands on the fly in human-readable format\n");
+            printf("  --raw-dmi             Access target memory one DMI op at a time instead of\n");
+            printf("                        whole blocks (slower; for probes without RV.MEM_*)\n");
             printf("  --help, -h            Show this help message\n");
             return 0;
         }
     }
+
+    // Memory blocks are the default: the per-op path costs one round trip per
+    // DMI transaction (~11 per word).
+    swindleSetRawDmi_c(raw_dmi ? 1 : 0);
 
     if (getenv("SWINDLE_DECODE_GDB") != nullptr)
     {
@@ -125,6 +147,13 @@ int main(int argc, char **argv)
             stdin_notifier.setEnabled(false);
             return;
         }
+        if (hosted_stdin_prompt_is_active())
+        {
+            // A prompt is asking a question: hand the key over instead of acting
+            // on it ('q' must not quit while the operator types a probe number).
+            hosted_stdin_prompt_push(static_cast<int>(static_cast<unsigned char>(ch)));
+            return;
+        }
         if (ch == 'q' || ch == 'Q')
         {
             printf("\n[Host] 'q' pressed, exiting cleanly...\n");
@@ -136,6 +165,8 @@ int main(int argc, char **argv)
         }
     });
 
+    printf("[Host] Memory access: %s\n",
+           raw_dmi ? "raw DMI, one round trip per DM op" : "blocks, RV.MEM_READ / RV.MEM_WRITE");
     printf("[Host] Press 'q' to quit.\n");
     fflush(stdout);
 

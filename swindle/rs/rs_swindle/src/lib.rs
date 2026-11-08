@@ -38,32 +38,47 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(feature = "std"), no_main)]
-#![allow(static_mut_refs)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
+// Both are deny-by-default clippy lints that any `extern "C"` shim trips on
+// purpose: the exported entry points take raw pointers handed over by C
+// (src/bmp.rs), and the driver registry hands out `&'static mut` from
+// `&'static self`, which is its whole point (src/target/registry.rs).
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+#![allow(clippy::mut_from_ref)]
 //
 extern crate alloc;
 #[cfg(feature = "hosted")]
 extern crate std;
 //#![allow(unused_imports)]
-mod bmp;
+// `bmp`, `bmplogger`, `commands`, `encoder` and `parsing_util` are public
+// because target driver crates declare their own `mon` commands
+// (`RustRiscvTargetDriver::commands()`) in terms of `commands::{CommandTree, HelpTree}`.
+pub mod bmp;
 #[macro_use]
-mod bmplogger;
-mod commands;
+pub mod bmplogger;
+pub mod commands;
 mod crc;
 mod decoder;
-mod encoder;
+pub mod encoder;
 pub mod flash;
 pub use flash as flash_manager;
+pub mod platform;
+pub mod reset_pin;
 pub mod target;
+pub mod arm;
 pub mod riscv;
+/// Exit codes the on-target flash stubs publish at their trap instruction
+/// (`STUB_EXIT_OK` / `STUB_EXIT_FAIL`), shared by the ARM and RISC-V runners.
+pub mod stub_exit;
 mod freertos;
 mod glue;
 mod mem_cache;
 mod packet_symbols;
-mod parsing_util;
-mod rn_bmp_cmd_c;
+/// Hex formatting, the inverse direction of [`parsing_util`].
+pub mod format_util;
+pub mod parsing_util;
 // The SDI (WCH CH32V0xx single-wire) support is optional and sits behind this
 // seam: see swindle/include/bmp_riscv_extra.h for the C half. With the `sdi`
 // cargo feature on (CMake: SWINDLE_WITH_SDI, wired in swindle/rs/CMakeLists.txt)
@@ -101,6 +116,8 @@ mod sync_cell;
 pub use sync_cell::SyncCell;
 pub mod rpc_common;
 pub mod rpc_common_generated;
+/// Framing, escaping and the CBOR payload shared by both RPC halves.
+pub mod rpc_wire;
 // Feature-gated modules: native vs hosted
 #[cfg(not(feature = "hosted"))]
 pub mod native;

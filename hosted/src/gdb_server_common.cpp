@@ -40,3 +40,9 @@ extern "C" uint8_t *get_temp_buffer_c(uint32_t size)
     }
     return reinterpret_cast<uint8_t *>(s_temp_buffer);
 }
+
+void ln_set_connected_state(bool connected)
+{
+    (void)connected;
+}
+

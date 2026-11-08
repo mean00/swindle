@@ -8,7 +8,7 @@
 //! - `mon rtt status` — show current RTT state
 //! - `mon rtt help` — show RTT help
 
-use crate::commands::{CallbackType, CommandTree, HelpTree, exec_one};
+use crate::commands::{CallbackType, CommandTree, exec_one};
 use crate::encoder::encoder;
 use crate::parsing_util;
 use crate::setting_keys::RTT_SETTING_KEY;
@@ -55,6 +55,7 @@ const rtt_command_tree: [CommandTree; 4] = [
         cb: CallbackType::text(_help),
         start_separator: b' ',
         next_separator: b' ',
+        help: "Display help.",
     },
     CommandTree {
         command: "enable",
@@ -63,6 +64,7 @@ const rtt_command_tree: [CommandTree; 4] = [
         cb: CallbackType::text(_enable),
         start_separator: b' ',
         next_separator: b' ',
+        help: "enable rtt.",
     },
     CommandTree {
         command: "disable",
@@ -71,6 +73,7 @@ const rtt_command_tree: [CommandTree; 4] = [
         cb: CallbackType::text(_disable),
         start_separator: b' ',
         next_separator: b' ',
+        help: "disable rtt .",
     },
     CommandTree {
         command: "status",
@@ -79,26 +82,6 @@ const rtt_command_tree: [CommandTree; 4] = [
         cb: CallbackType::text(_status),
         start_separator: b' ',
         next_separator: b' ',
-    },
-];
-/*
- *
- */
-const rtt_help_tree: [HelpTree; 4] = [
-    HelpTree {
-        command: "help",
-        help: "Display help.",
-    },
-    HelpTree {
-        command: "enable",
-        help: "enable rtt.",
-    },
-    HelpTree {
-        command: "disable",
-        help: "disable rtt .",
-    },
-    HelpTree {
-        command: "status",
         help: "print status.",
     },
 ];
@@ -128,7 +111,7 @@ pub fn _rtt(_command: &str, args: &[&str]) -> bool {
         encoder::reply_e01();
         return true;
     }
-    exec_one(&rtt_command_tree, as_string.as_bytes())
+    exec_one(&rtt_command_tree, as_string.as_bytes(), false)
 }
 
 /*
@@ -136,7 +119,7 @@ pub fn _rtt(_command: &str, args: &[&str]) -> bool {
  */
 /// Show RTT help.
 fn _help(_command: &str, _args: &[&str]) -> bool {
-    crate::commands::mon::print_help_tree("mon rtt  ", &rtt_help_tree);
+    crate::commands::mon::print_help_tree("mon rtt  ", &rtt_command_tree);
     encoder::reply_ok();
     true
 }

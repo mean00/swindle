@@ -16,11 +16,13 @@ void socketRunnerRtt::hook_disconnected()
 {
     _connected = false;
 }
+extern "C" bool bmp_attached_c();
+
 void socketRunnerRtt::hook_poll()
 {
     if (_connected) // connected to a debugger
     {
-        if (cur_target) // and we are connected to a target...
+        if (bmp_attached_c()) // and we are connected to a target...
         {
             if (swindle_rtt_enabled())
             {

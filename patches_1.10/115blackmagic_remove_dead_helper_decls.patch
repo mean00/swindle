@@ -1,0 +1,19 @@
+diff --git a/src/target/target_internal.h b/src/target/target_internal.h
+--- a/src/target/target_internal.h
++++ b/src/target/target_internal.h
+@@ -234,7 +234,6 @@
+ extern const command_s platform_cmd_list[];
+ #endif
+ 
+-const sw_breakpoint_helpers *target_get_mw_helpers(target_s *const target);
+ void target_breakpoint_watchpoint_count(target_s *const target, uint32_t *brk, uint32_t *wtch);
+ bool target_has_hw_breakpoint(target_s *const target);
+ void target_print_progress(platform_timeout_s *timeout);
+@@ -242,7 +241,6 @@
+ void target_flash_map_free(target_s *target);
+ void target_mem_map_free(target_s *target);
+ void target_add_commands(target_s *target, const command_s *cmds, const char *name);
+-bool breakpoint_available(target_s *target);
+ void target_add_ram32(target_s *target, target_addr32_t start, uint32_t len);
+ void target_add_ram64(target_s *target, target_addr64_t start, uint64_t len);
+ void target_add_flash(target_s *target, target_flash_s *flash);

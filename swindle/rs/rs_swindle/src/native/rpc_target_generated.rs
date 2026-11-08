@@ -7,7 +7,7 @@
 #![allow(unused_imports)]
 
 use crate::rpc_common_generated::*;
-use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+use crate::native::rpc_target::rpc_parser::RpcParameterParser;
 use crate::native::rpc_target::*;
 use crate::native::rpc_target::rpc_reply::*;
 use crate::bmp;
@@ -24,111 +24,117 @@ pub fn rpc_dispatch(input: &[u8]) -> bool {
         bmplog!("**short rpc\n");
         return false;
     }
-    let mut parser = rpc_parameter_parser::new(input);
-    match parser.next_cmd() {
-        RPC_GEN_PACKET => rpc_gen_impl::dispatch(&mut parser),
-        RPC_SWDP_PACKET => rpc_swdp_impl::dispatch(&mut parser),
-        RPC_HL_PACKET => rpc_hl_impl::dispatch(&mut parser),
-        RPC_SDI_PACKET => rpc_sdi_impl::dispatch(&mut parser),
-        RPC_RV_PACKET => rpc_rv_impl::dispatch(&mut parser),
-        RPC_LNADIV_PACKET => rpc_lnadiv_impl::dispatch(&mut parser),
-        RPC_ADIV5_PACKET => rpc_adiv5_impl::dispatch(&mut parser),
-        RPC_SWINDLE_PACKET => rpc_swindle_impl::dispatch(&mut parser),
+    let mut parser = RpcParameterParser::new(input);
+    let class_byte = parser.next_cmd();
+    let res = match RpcClass::try_from(class_byte) {
+        Ok(RpcClass::Gen) => rpc_gen_impl::dispatch(&mut parser),
+        Ok(RpcClass::Swdp) => rpc_swdp_impl::dispatch(&mut parser),
+        Ok(RpcClass::Hl) => rpc_hl_impl::dispatch(&mut parser),
+        Ok(RpcClass::Sdi) => rpc_sdi_impl::dispatch(&mut parser),
+        Ok(RpcClass::Rv) => rpc_rv_impl::dispatch(&mut parser),
+        Ok(RpcClass::Lnadiv) => rpc_lnadiv_impl::dispatch(&mut parser),
+        Ok(RpcClass::Adiv5) => rpc_adiv5_impl::dispatch(&mut parser),
+        Ok(RpcClass::Swindle) => rpc_swindle_impl::dispatch(&mut parser),
         _ => {
-            bmplog!("wrong RPC header\n");
+            bmplog!("wrong RPC header: {}\n", class_byte);
             false
         }
+    };
+    if !res {
+        rpc_reply_error(RPC_ERROR_UNRECOGNISED as i32);
     }
+    res
 }
 
 // ── GEN dispatch ──
 pub mod rpc_gen_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_GEN_START => cmd_start(parser),
-            RPC_GEN_VOLTAGE => cmd_voltage(parser),
-            RPC_GEN_NRST_SET => cmd_nrst_set(parser),
-            RPC_GEN_NRST_GET => cmd_nrst_get(parser),
-            RPC_GEN_TARGET_CLK_OE => cmd_target_clk_oe(parser),
-            RPC_GEN_FREQ_SET => cmd_freq_set(parser),
-            RPC_GEN_FREQ_GET => cmd_freq_get(parser),
-            RPC_GEN_PWR_SET => cmd_pwr_set(parser),
-            RPC_GEN_PWR_GET => cmd_pwr_get(parser),
-            RPC_GEN_GPIO_RESET => cmd_gpio_reset(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match GenCommand::try_from(cmd_byte) {
+            Ok(GenCommand::Start) => cmd_start(parser),
+            Ok(GenCommand::Voltage) => cmd_voltage(parser),
+            Ok(GenCommand::NrstSet) => cmd_nrst_set(parser),
+            Ok(GenCommand::NrstGet) => cmd_nrst_get(parser),
+            Ok(GenCommand::TargetClkOe) => cmd_target_clk_oe(parser),
+            Ok(GenCommand::FreqSet) => cmd_freq_set(parser),
+            Ok(GenCommand::FreqGet) => cmd_freq_get(parser),
+            Ok(GenCommand::PwrSet) => cmd_pwr_set(parser),
+            Ok(GenCommand::PwrGet) => cmd_pwr_get(parser),
+            Ok(GenCommand::GpioReset) => cmd_gpio_reset(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(GEN));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(GEN));
                 false
             }
         }
     }
 
-    fn cmd_start(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_start(parser: &mut RpcParameterParser) -> bool {
         let s = crate::native::rpc_target_impl::rpc_gen_impl::start();
         rpc_reply_string(s);
         true
     }
 
-    fn cmd_voltage(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_voltage(parser: &mut RpcParameterParser) -> bool {
         let s = crate::native::rpc_target_impl::rpc_gen_impl::voltage();
         rpc_reply_string(s);
         true
     }
 
-    fn cmd_nrst_set(parser: &mut rpc_parameter_parser) -> bool {
-        let assert = parser.next_cmd() != b'0';
+    fn cmd_nrst_set(parser: &mut RpcParameterParser) -> bool {
+        let assert = parser.next_bool();
         crate::native::rpc_target_impl::rpc_gen_impl::nrst_set(assert);
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 
-    fn cmd_nrst_get(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_nrst_get(parser: &mut RpcParameterParser) -> bool {
         let val = crate::native::rpc_target_impl::rpc_gen_impl::nrst_get();
         #[allow(clippy::unnecessary_cast)]
-        rpc_reply_ok(val as u8);
+        rpc_reply_u8(val as u8);
         true
     }
 
-    fn cmd_target_clk_oe(parser: &mut rpc_parameter_parser) -> bool {
-        let enable = parser.next_cmd() != b'0';
+    fn cmd_target_clk_oe(parser: &mut RpcParameterParser) -> bool {
+        let enable = parser.next_bool();
         crate::native::rpc_target_impl::rpc_gen_impl::target_clk_oe(enable);
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 
-    fn cmd_freq_set(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_freq_set(parser: &mut RpcParameterParser) -> bool {
         let freq_khz = parser.next_u32();
         crate::native::rpc_target_impl::rpc_gen_impl::freq_set(freq_khz);
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 
-    fn cmd_freq_get(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_freq_get(parser: &mut RpcParameterParser) -> bool {
         let value = crate::native::rpc_target_impl::rpc_gen_impl::freq_get();
-        rpc_reply32_le_ok(value);
+        rpc_reply_u32(value);
         true
     }
 
-    fn cmd_pwr_set(parser: &mut rpc_parameter_parser) -> bool {
-        let enabled = parser.next_cmd() != b'0';
+    fn cmd_pwr_set(parser: &mut RpcParameterParser) -> bool {
+        let enabled = parser.next_bool();
         crate::native::rpc_target_impl::rpc_gen_impl::pwr_set(enabled);
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 
-    fn cmd_pwr_get(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_pwr_get(parser: &mut RpcParameterParser) -> bool {
         let val = crate::native::rpc_target_impl::rpc_gen_impl::pwr_get();
         #[allow(clippy::unnecessary_cast)]
-        rpc_reply_ok(val as u8);
+        rpc_reply_u8(val as u8);
         true
     }
 
-    fn cmd_gpio_reset(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_gpio_reset(parser: &mut RpcParameterParser) -> bool {
         crate::native::rpc_target_impl::rpc_gen_impl::gpio_reset();
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 
@@ -137,22 +143,23 @@ pub mod rpc_gen_impl {
 // ── SWDP dispatch ──
 pub mod rpc_swdp_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_SWDP_INIT => cmd_init(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match SwdpCommand::try_from(cmd_byte) {
+            Ok(SwdpCommand::Init) => cmd_init(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(SWDP));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(SWDP));
                 false
             }
         }
     }
 
-    fn cmd_init(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_init(parser: &mut RpcParameterParser) -> bool {
         crate::native::rpc_target_impl::rpc_swdp_impl::init();
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 
@@ -161,31 +168,32 @@ pub mod rpc_swdp_impl {
 // ── HL dispatch ──
 pub mod rpc_hl_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_HL_CHECK => cmd_check(parser),
-            RPC_HL_ACCEL => cmd_accel(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match HlCommand::try_from(cmd_byte) {
+            Ok(HlCommand::Check) => cmd_check(parser),
+            Ok(HlCommand::Accel) => cmd_accel(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(HL));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(HL));
                 false
             }
         }
     }
 
-    fn cmd_check(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_check(parser: &mut RpcParameterParser) -> bool {
         let val = crate::native::rpc_target_impl::rpc_hl_impl::check();
         #[allow(clippy::unnecessary_cast)]
-        rpc_reply_ok(val as u8);
+        rpc_reply_u8(val as u8);
         true
     }
 
-    fn cmd_accel(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_accel(parser: &mut RpcParameterParser) -> bool {
         let val = crate::native::rpc_target_impl::rpc_hl_impl::accel();
         #[allow(clippy::unnecessary_cast)]
-        rpc_reply_ok(val as u8);
+        rpc_reply_u8(val as u8);
         true
     }
 
@@ -194,51 +202,52 @@ pub mod rpc_hl_impl {
 // ── SDI dispatch ──
 pub mod rpc_sdi_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_SDI_RESET => cmd_reset(parser),
-            RPC_SDI_DM_READ => cmd_dm_read(parser),
-            RPC_SDI_DM_WRITE => cmd_dm_write(parser),
-            RPC_SDI_SET_WIRE => cmd_set_wire(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match SdiCommand::try_from(cmd_byte) {
+            Ok(SdiCommand::Reset) => cmd_reset(parser),
+            Ok(SdiCommand::DmRead) => cmd_dm_read(parser),
+            Ok(SdiCommand::DmWrite) => cmd_dm_write(parser),
+            Ok(SdiCommand::SetWire) => cmd_set_wire(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(SDI));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(SDI));
                 false
             }
         }
     }
 
-    fn cmd_reset(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_reset(parser: &mut RpcParameterParser) -> bool {
         let (ok, value) = crate::native::rpc_target_impl::rpc_sdi_impl::reset();
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_dm_read(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_dm_read(parser: &mut RpcParameterParser) -> bool {
         let address = parser.next_u8();
         let (ok, value) = crate::native::rpc_target_impl::rpc_sdi_impl::dm_read(address);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_dm_write(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_dm_write(parser: &mut RpcParameterParser) -> bool {
         let address = parser.next_u8();
         let value = parser.next_u32();
         let (ok, value) = crate::native::rpc_target_impl::rpc_sdi_impl::dm_write(address, value);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_set_wire(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_set_wire(parser: &mut RpcParameterParser) -> bool {
         let tbit_ns = parser.next_u32();
         let low1_ns = parser.next_u32();
         let low0_ns = parser.next_u32();
         let sample_ns = parser.next_u32();
-        let no_trim = parser.next_cmd() != b'0';
+        let no_trim = parser.next_bool();
         crate::native::rpc_target_impl::rpc_sdi_impl::set_wire(tbit_ns, low1_ns, low0_ns, sample_ns, no_trim);
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 
@@ -247,39 +256,64 @@ pub mod rpc_sdi_impl {
 // ── RV dispatch ──
 pub mod rpc_rv_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_RV_RESET => cmd_reset(parser),
-            RPC_RV_DM_READ => cmd_dm_read(parser),
-            RPC_RV_DM_WRITE => cmd_dm_write(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match RvCommand::try_from(cmd_byte) {
+            Ok(RvCommand::Reset) => cmd_reset(parser),
+            Ok(RvCommand::DmRead) => cmd_dm_read(parser),
+            Ok(RvCommand::DmWrite) => cmd_dm_write(parser),
+            Ok(RvCommand::MemRead) => cmd_mem_read(parser),
+            Ok(RvCommand::MemWrite) => cmd_mem_write(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(RV));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(RV));
                 false
             }
         }
     }
 
-    fn cmd_reset(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_reset(parser: &mut RpcParameterParser) -> bool {
         let (ok, value) = crate::native::rpc_target_impl::rpc_rv_impl::reset();
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_dm_read(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_dm_read(parser: &mut RpcParameterParser) -> bool {
         let address = parser.next_u8();
         let (ok, value) = crate::native::rpc_target_impl::rpc_rv_impl::dm_read(address);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_dm_write(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_dm_write(parser: &mut RpcParameterParser) -> bool {
         let address = parser.next_u8();
         let value = parser.next_u32();
         let (ok, value) = crate::native::rpc_target_impl::rpc_rv_impl::dm_write(address, value);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
+        true
+    }
+
+    fn cmd_mem_read(parser: &mut RpcParameterParser) -> bool {
+        let method = parser.next_u8();
+        let leg = parser.next_u8();
+        let address = parser.next_u32();
+        let length = parser.next_u32();
+        let buffer = crate::native::rpc_target::rpc_reply::get_temp_buffer();
+        let (fault, len) = crate::native::rpc_target_impl::rpc_rv_impl::mem_read(method, leg, address, length, buffer);
+        rpc_reply_fault_bytes(fault, &buffer[..len]);
+        true
+    }
+
+    fn cmd_mem_write(parser: &mut RpcParameterParser) -> bool {
+        let method = parser.next_u8();
+        let leg = parser.next_u8();
+        let address = parser.next_u32();
+        let length = parser.next_u32();
+        let data = parser.end();
+        let (fault, value) = crate::native::rpc_target_impl::rpc_rv_impl::mem_write(method, leg, address, length, data);
+        rpc_reply_fault_u32(fault, value);
         true
     }
 
@@ -288,53 +322,55 @@ pub mod rpc_rv_impl {
 // ── LNADIV dispatch ──
 pub mod rpc_lnadiv_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_LNADIV_WRITE => cmd_write(parser),
-            RPC_LNADIV_READ => cmd_read(parser),
-            RPC_LNADIV_RAW_WRITE => cmd_raw_write(parser),
-            RPC_LNADIV_LOWLEVEL => cmd_lowlevel(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match LnadivCommand::try_from(cmd_byte) {
+            Ok(LnadivCommand::Write) => cmd_write(parser),
+            Ok(LnadivCommand::Read) => cmd_read(parser),
+            Ok(LnadivCommand::RawWrite) => cmd_raw_write(parser),
+            Ok(LnadivCommand::Lowlevel) => cmd_lowlevel(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(LNADIV));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(LNADIV));
                 false
             }
         }
     }
 
-    fn cmd_write(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_write(parser: &mut RpcParameterParser) -> bool {
         let address = parser.next_u16();
         let data = parser.next_u32();
         let (ok, value) = crate::native::rpc_target_impl::rpc_lnadiv_impl::write(address, data);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_read(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_read(parser: &mut RpcParameterParser) -> bool {
         let address = parser.next_u16();
         let (ok, value) = crate::native::rpc_target_impl::rpc_lnadiv_impl::read(address);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_raw_write(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_raw_write(parser: &mut RpcParameterParser) -> bool {
         let tick_count = parser.next_u32();
         let value = parser.next_u32();
         let (ok, value) = crate::native::rpc_target_impl::rpc_lnadiv_impl::raw_write(tick_count, value);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_lowlevel(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_lowlevel(parser: &mut RpcParameterParser) -> bool {
         let rnw = parser.next_u8();
         let address = parser.next_u16();
         let value = parser.next_u32();
         let (response, fault) = crate::native::rpc_target_impl::rpc_lnadiv_impl::lowlevel(rnw, address, value);
         let mut reply = rpc_reply_encoder::new();
-        reply.add_u32_le_wrapped(response);
-        reply.add_u32_le_wrapped(fault);
+        reply.array(2);
+        reply.u32(response);
+        reply.u32(fault);
         reply.end();
         true
     }
@@ -344,95 +380,93 @@ pub mod rpc_lnadiv_impl {
 // ── ADIV5 dispatch ──
 pub mod rpc_adiv5_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_ADIV5_RAW_ACCESS_V3 => cmd_raw_access_v3(parser),
-            RPC_ADIV5_DP_READ => cmd_dp_read(parser),
-            RPC_ADIV5_AP_READ => cmd_ap_read(parser),
-            RPC_ADIV5_AP_WRITE => cmd_ap_write(parser),
-            RPC_ADIV5_MEM_READ => cmd_mem_read(parser),
-            RPC_ADIV5_MEM_WRITE => cmd_mem_write(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match Adiv5Command::try_from(cmd_byte) {
+            Ok(Adiv5Command::RawAccessV3) => cmd_raw_access_v3(parser),
+            Ok(Adiv5Command::DpRead) => cmd_dp_read(parser),
+            Ok(Adiv5Command::ApRead) => cmd_ap_read(parser),
+            Ok(Adiv5Command::ApWrite) => cmd_ap_write(parser),
+            Ok(Adiv5Command::MemRead) => cmd_mem_read(parser),
+            Ok(Adiv5Command::MemWrite) => cmd_mem_write(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(ADIV5));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(ADIV5));
                 false
             }
         }
     }
 
-    fn cmd_raw_access_v3(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_raw_access_v3(parser: &mut RpcParameterParser) -> bool {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
-        let address = parser.next_u16_be();
-        let value = parser.next_u32_be();
+        let address = parser.next_u16();
+        let value = parser.next_u32();
         let (outvalue, fault) = crate::native::rpc_target_impl::rpc_adiv5_impl::raw_access_v3(device_index, ap_selection, address, value);
         if fault != 0 {
-            rpc_reply_error(RPC_ERROR_FAULT);
+            rpc_reply_error(fault as i32);
             return true;
         }
         let mut reply = rpc_reply_encoder::new();
-        reply.add_u32_le_wrapped(outvalue);
-        reply.add_u32_le_wrapped(fault);
+        reply.array(2);
+        reply.u32(outvalue);
+        reply.u32(fault);
         reply.end();
         true
     }
 
-    fn cmd_dp_read(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_dp_read(parser: &mut RpcParameterParser) -> bool {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
-        let address = parser.next_u32_be();
+        let address = parser.next_u32();
         let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::dp_read(device_index, ap_selection, address);
-        reply_adiv5_32(fault, value);
+        rpc_reply_fault_u32(fault, value);
         true
     }
 
-    fn cmd_ap_read(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_ap_read(parser: &mut RpcParameterParser) -> bool {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
-        let address = parser.next_u16_be();
+        let address = parser.next_u16();
         let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::ap_read(device_index, ap_selection, address);
-        reply_adiv5_32(fault, value);
+        rpc_reply_fault_u32(fault, value);
         true
     }
 
-    fn cmd_ap_write(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_ap_write(parser: &mut RpcParameterParser) -> bool {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
-        let address = parser.next_u16_be();
-        let value = parser.next_u32_be();
+        let address = parser.next_u16();
+        let value = parser.next_u32();
         let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::ap_write(device_index, ap_selection, address, value);
-        reply_adiv5_32(fault, value);
+        rpc_reply_fault_u32(fault, value);
         true
     }
 
-    fn cmd_mem_read(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_mem_read(parser: &mut RpcParameterParser) -> bool {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
-        let csw = parser.next_u32_be();
-        let address = parser.next_u32_be();
-        let length = parser.next_u32_be();
+        let csw = parser.next_u32();
+        let address = parser.next_u32();
+        let length = parser.next_u32();
         let buffer = crate::native::rpc_target::rpc_reply::get_temp_buffer();
         let (fault, len) = crate::native::rpc_target_impl::rpc_adiv5_impl::mem_read(device_index, ap_selection, csw, address, length, buffer);
-        if fault != 0 {
-            rpc_reply_error(fault as u8);
-            return true;
-        }
-        rpc_reply_hex_string(RPC_RESP_OK, &buffer[..len]);
+        rpc_reply_fault_bytes(fault, &buffer[..len]);
         true
     }
 
-    fn cmd_mem_write(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_mem_write(parser: &mut RpcParameterParser) -> bool {
         let device_index = parser.next_u8();
         let ap_selection = parser.next_u8();
-        let csw = parser.next_u32_be();
+        let csw = parser.next_u32();
         let align = parser.next_u8();
-        let address = parser.next_u32_be();
-        let length = parser.next_u32_be();
+        let address = parser.next_u32();
+        let length = parser.next_u32();
         let data = parser.end();
         let (fault, value) = crate::native::rpc_target_impl::rpc_adiv5_impl::mem_write(device_index, ap_selection, csw, align, address, length, data);
-        reply_adiv5_32(fault, value);
+        rpc_reply_fault_u32(fault, value);
         true
     }
 
@@ -441,39 +475,40 @@ pub mod rpc_adiv5_impl {
 // ── SWINDLE dispatch ──
 pub mod rpc_swindle_impl {
     use crate::native::rpc_target::*;
-    use crate::native::rpc_target::rpc_parser::rpc_parameter_parser;
+    use crate::native::rpc_target::rpc_parser::RpcParameterParser;
     use crate::rpc_common_generated::*;
 
-    pub fn dispatch(parser: &mut rpc_parameter_parser) -> bool {
-        match parser.next_cmd() {
-            RPC_SWINDLE_CRC32 => cmd_crc32(parser),
-            RPC_SWINDLE_GET_FQ => cmd_get_fq(parser),
-            RPC_SWINDLE_SET_FQ => cmd_set_fq(parser),
+    pub fn dispatch(parser: &mut RpcParameterParser) -> bool {
+        let cmd_byte = parser.next_cmd();
+        match SwindleCommand::try_from(cmd_byte) {
+            Ok(SwindleCommand::Crc32) => cmd_crc32(parser),
+            Ok(SwindleCommand::GetFq) => cmd_get_fq(parser),
+            Ok(SwindleCommand::SetFq) => cmd_set_fq(parser),
             _ => {
-                bmplog!("unknown command in {} packet\n", stringify!(SWINDLE));
+                bmplog!("unknown command {:#x} in {} packet\n", cmd_byte, stringify!(SWINDLE));
                 false
             }
         }
     }
 
-    fn cmd_crc32(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_crc32(parser: &mut RpcParameterParser) -> bool {
         let address = parser.next_u32();
         let length = parser.next_u32();
         let (ok, value) = crate::native::rpc_target_impl::rpc_swindle_impl::crc32(address, length);
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_get_fq(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_get_fq(parser: &mut RpcParameterParser) -> bool {
         let (ok, value) = crate::native::rpc_target_impl::rpc_swindle_impl::get_fq();
-        rpc_reply_bool_32le(ok, value);
+        rpc_reply_bool_u32(ok, value);
         true
     }
 
-    fn cmd_set_fq(parser: &mut rpc_parameter_parser) -> bool {
+    fn cmd_set_fq(parser: &mut RpcParameterParser) -> bool {
         let freq_hz = parser.next_u32();
         crate::native::rpc_target_impl::rpc_swindle_impl::set_fq(freq_hz);
-        rpc_reply_encoder::new().end();
+        rpc_reply_ok();
         true
     }
 

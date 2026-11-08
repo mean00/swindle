@@ -1,0 +1,8 @@
+[package]
+name = "rs_stm32f1"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rsbmp = { path = "../../rs_swindle" }
+rs_stm32_common = { path = "../rs_stm32_common" }

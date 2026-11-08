@@ -1,16 +1,17 @@
 // rpc_gen_impl.rs — GEN class command implementations
 // Called by rpc_target_generated.rs
 
+use crate::SyncCell;
 use crate::bmp;
 
 /// Start session — returns "LNBMP"
 pub fn start() -> &'static [u8] {
     b"LNBMP"
 }
-static mut vol: [u8; 5] = [0; 5];
+static VOL: SyncCell<[u8; 5]> = SyncCell::new([0; 5]);
 /// Get voltage — returns "????"
 pub fn voltage() -> &'static [u8] {
-    let r = unsafe { &mut vol };
+    let r = unsafe { VOL.as_mut() };
     let mut tail: usize = 0;
     let voltage: f32 = bmp::bmp_get_target_voltage();
     let left: u32 = (voltage) as u32;
@@ -27,7 +28,7 @@ pub fn voltage() -> &'static [u8] {
     tail += 1;
     r[tail] = b'0' + right;
     tail += 1;
-    unsafe { &vol[0..tail] }
+    &r[0..tail]
 }
 
 /// Set NRST

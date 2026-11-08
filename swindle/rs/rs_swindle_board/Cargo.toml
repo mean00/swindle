@@ -1,0 +1,38 @@
+[package]
+name = "rs_swindle_board"
+version = "0.1.0"
+edition.workspace = true
+
+# Probe board wiring: pinout, ADC sense, UART / USB assignation, LEDs, and how the
+# target nRST line of the board is driven.
+#
+# The board is a *file*, under its family directory (`src/bluepill/ln_48pins.rs`,
+# `src/rp2xxx/rp_carrier.rs`, ...), selected by
+# swindle/board.cmake from the CMake options and handed to cargo as the feature
+# below (swindle/rs/CMakeLists.txt). The same file is rendered as
+# `bmp_pinout_board.h` by swindle/tools/gen_board_header so the C side keeps
+# compile-time pin constants: there is one source of truth, in Rust. That tool
+# `include!`s `board_desc.rs` and the selected board file into a dependency-free
+# binary, so those two must stay plain data — the per-target code (today
+# `ln/reset_pin.rs`) lives beside them but is only part of the crate.
+#
+# Exactly one of these must be enabled when the crate is built for a probe.
+[features]
+# GD32F303 / CH32V307, 48 pins package (CMake: USE_48PIN_PACKAGE)
+ln48 = ["rust_esprit/bluepill", "rust_esprit/bluepill48"]
+# GD32F303 / CH32V307, 64 pins package (CMake: USE_64PIN_PACKAGE)
+ln64 = ["rust_esprit/bluepill", "rust_esprit/bluepill64"]
+# Inverted target nRST line (CMake: USE_INVERTED_NRST, a MOSFET on the board):
+# the line is push-pull / active high instead of open drain / active low. A
+# property of the board, so it is declared here and not in rs_swindle.
+nrst_inverted = []
+# RP2040 / RP2350 (CMake: USE_RP2040 / USE_RP2350), the plain "zero" board
+rp_zero = ["rust_esprit/rp2040"]
+# RP2040 / RP2350 on the carrier board (CMake: + USE_RP_CARRIER)
+rp_carrier = ["rust_esprit/rp2040"]
+
+[dependencies]
+# GPIO access of the board's own signals (ln/reset_pin.rs). `default-features` is
+# already off in the workspace dependency: the platform backend is chosen by the
+# board feature above, so the pin table and the backend cannot disagree.
+rust_esprit = { workspace = true }

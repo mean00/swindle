@@ -36,9 +36,7 @@ Original license header
 #include "esprit.h"
 extern "C"
 {
-#include "adiv5.h"
-#include "general.h"
-#include "timing.h"
+#include "platform_support.h"
 }
 
 #include "bmp_pinout.h"
@@ -53,8 +51,11 @@ extern "C"
 }
 #include "bmp_pio_rvswd.h"
 #include "bmp_pio_swd.h"
-#include "lnBMP_reset.h"
-#include "platform_support.h"
+/* The target nRST line comes from the probe board table and is driven in Rust
+ * (swindle/rs/rs_swindle_board/src/rp2xxx/reset_pin.rs, rs_gpio_rp2xxx), which is
+ * also where the two C entry points below are defined. */
+extern "C" void reset_pin_init(void);
+extern "C" void platform_nrst_set_val_internal(bool assert);
 
 #include <new> // placement new for the .bss rpPIO instance
 /* SDI pin hand-over (sdi_pinmode_enter/leave): the one thing this file needs from
@@ -68,7 +69,6 @@ static bmp_pin_mode currentPioMode;
 uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
 rpPIO *swdpio = NULL;
 rpPIO_SM *xsm = NULL;
-SwdReset *pReset;
 /* PIO instructions per bit clock, per wire program. The state machine is clocked at
  * swd_frequency * <factor>, so a program spending N instructions per bit ends up at
  * swd_frequency * factor / N:
@@ -130,10 +130,8 @@ void bmp_gpio_init_once()
      * rpPIO has a virtual destructor, so a plain function-local static would drag
      * newlib's exit machinery in (__cxa_atexit + on_exits, 384 B) for a destructor
      * nobody calls -> placement new into .bss storage instead. */
-    static SwdReset reset(TRESET_PIN); // automatically add delay after toggle
     alignas(rpPIO) static uint8_t pio_storage[sizeof(rpPIO)];
-    pReset = &reset;
-    pReset->setup();
+    reset_pin_init(); // released, polarity from the board (Rust)
     swdpio = new (pio_storage) rpPIO(LN_SWD_PIO_ENGINE);
     xsm = swdpio->getSm(0);
     currentPioMode = BMP_PINMODE_NONE;
@@ -262,12 +260,12 @@ extern "C" uint32_t bmp_get_wait_state_c()
  */
 extern "C" void bmp_io_begin_session()
 {
-    pReset->off(); // hi-z by default
+    platform_nrst_set_val_internal(false); // release
 }
 /**
  * @brief End SWD session: release target reset (Hi-Z).
  */
 extern "C" void bmp_io_end_session()
 {
-    pReset->off(); // hi-z by default
+    platform_nrst_set_val_internal(false); // release
 } // EOF

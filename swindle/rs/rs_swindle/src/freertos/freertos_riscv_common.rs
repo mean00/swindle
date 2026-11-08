@@ -1,16 +1,17 @@
 /// \brief Shared GPRs structure and OS layout detection for RISC-V FreeRTOS support
 ///
 /// This module provides the `rv32_gprs` struct used to cache the general purpose
-/// registers (`x0` through `x31`), the PC, the `mstatus` CSR, and the stack pointer 
+/// registers (`x0` through `x31`), the PC, the `mstatus` CSR, and the stack pointer
 /// offset (`pointer`) during context switching.
-///
-/// It also provides the handler factory `create_rv32_switch_handler()` that 
-/// instantiates the correct handler layout (Standard vs. WCH/Bumblebee) based on 
+/// It also provides the handler factory `create_rv32_switch_handler()` that
+/// instantiates the correct handler layout (Standard vs. WCH/Bumblebee) based on
 /// debug symbols.
-
+use crate::SyncCell;
 use crate::bmp::{bmp_read_mem32, bmp_write_mem32};
+use crate::freertos::freertos_symbols::{
+    LAYOUT_CH32, LAYOUT_RV_STD, LAYOUT_RV_STD_FPU, get_symbols,
+};
 use crate::freertos::freertos_trait::freertos_switch_handler;
-use crate::freertos::freertos_symbols::{get_symbols, LAYOUT_CH32, LAYOUT_RV_STD, LAYOUT_RV_STD_FPU};
 use crate::riscv::{RV_CSR_GDB_OFFSET, RV_CSR_MSTATUS};
 
 use super::freertos_riscv_rv32_std::FreeRTOSSwitchHandlerRV32Std;
@@ -51,7 +52,7 @@ impl rv32_gprs {
             pointer: 0,
         }
     }
-    
+
     /// Pushes a slice of GPRs to target memory (stack) and increments the internal pointer.
     pub fn push(&mut self, first: usize, last: usize) -> bool {
         let to_push = last - first;
@@ -59,14 +60,14 @@ impl rv32_gprs {
         self.pointer += 4 * to_push as u32;
         bmp_write_mem32(current, &self.gprs[first..last])
     }
-    
+
     /// Pops a slice of GPRs from target memory (stack) and increments the internal pointer.
     pub fn pop(&mut self, first: usize, last: usize) -> bool {
         let current = self.pointer;
         self.pointer += 4 * (last - first) as u32;
         bmp_read_mem32(current, &mut self.gprs[first..last])
     }
-    
+
     /// Pops a single 32-bit word from target memory and increments the internal pointer.
     pub fn pop32(&mut self) -> u32 {
         let current = self.pointer;
@@ -75,7 +76,7 @@ impl rv32_gprs {
         bmp_read_mem32(current, &mut out[0..1]);
         out[0]
     }
-    
+
     /// Pushes a single 32-bit word to target memory and increments the internal pointer.
     pub fn push32(&mut self, reg: u32) {
         let xin: [u32; 1] = [reg];
@@ -122,18 +123,20 @@ impl rv32_gprs {
 
 /// The two RISC-V handler instances, in `.bss` — `mon fos` used to box one of
 /// these on **every** invocation. Only one is ever installed at a time.
-static mut HANDLER_RV32_STD: FreeRTOSSwitchHandlerRV32Std = FreeRTOSSwitchHandlerRV32Std::new();
-static mut HANDLER_RV32_CH32: FreeRTOSSwitchHandlerCH32 = FreeRTOSSwitchHandlerCH32::new();
+static HANDLER_RV32_STD: SyncCell<FreeRTOSSwitchHandlerRV32Std> =
+    SyncCell::new(FreeRTOSSwitchHandlerRV32Std::new());
+static HANDLER_RV32_CH32: SyncCell<FreeRTOSSwitchHandlerCH32> =
+    SyncCell::new(FreeRTOSSwitchHandlerCH32::new());
 
 /// Factory function that inspects the binary's debug symbols to determine which RISC-V
 /// FreeRTOS stack layout to use, and returns the matching handler from the statics above.
 ///
-/// SAFETY of the `unsafe { &mut HANDLER_RV32_* }` borrows: the command loop is
+/// SAFETY of the `unsafe { HANDLER_RV32_*.as_mut() }` borrows: the command loop is
 /// single-threaded and `os_attach()` installs at most one handler, dropping the
 /// previous borrow when it is replaced.
 pub fn create_rv32_switch_handler() -> &'static mut dyn freertos_switch_handler {
     match get_current_layout() {
-        LAYOUT_RV_STD | LAYOUT_RV_STD_FPU => unsafe { &mut HANDLER_RV32_STD },
-        _ => unsafe { &mut HANDLER_RV32_CH32 },
+        LAYOUT_RV_STD | LAYOUT_RV_STD_FPU => unsafe { HANDLER_RV32_STD.as_mut() },
+        _ => unsafe { HANDLER_RV32_CH32.as_mut() },
     }
 }

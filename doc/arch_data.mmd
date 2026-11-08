@@ -1,0 +1,221 @@
+graph LR
+    %% -------------------------------------------------------------
+    %% doc/arch_data.mmd - DATA-Oriented architecture (see doc/update_arch.md step 7)
+    %% Companion of doc/arch.mmd: that one shows code dependencies between
+    %% layers, this one shows how the *data structures* of rs_swindle hold each
+    %% other (ownership, pointers, trait objects, static state).
+    %% Same colour classes as arch.mmd.
+    %% -------------------------------------------------------------
+    classDef swindleRust fill:#bbdefb,stroke:#0d47a1,stroke-width:2px;
+    classDef swindleC fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef blackmagicC fill:#ffe3c2,stroke:#bf360c,stroke-width:2px;
+    classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;
+    classDef hw fill:#eceff1,stroke:#455a64,stroke-width:1.5px;
+    classDef swindleGroup fill:#f4faff,stroke:#5b9bd5,stroke-width:1.5px;
+    classDef neutralGroup fill:#fafafa,stroke:#90a4ae,stroke-width:1px;
+
+    %% -------------------------------------------------------------
+    %% SESSION, WIRE & GLOBAL STATE
+    %% -------------------------------------------------------------
+    subgraph SessionData ["Session, Wire & Global State"]
+        GdbStream["gdb_stream<N><br/>Per-port packet automaton: partial packet buffer, running checksum, RPC escape flag.<br/>One static per CDC / socket, no allocation."]
+        CommandTree["CommandTree<br/>One row of the dispatch table: command name, arg separators, min args,<br/>callback (text/raw) and help text; target drivers append their own mon rows."]
+        SessionArena["SessionArena (POOL + TRANSPORT bump regions)<br/>Static memory every scan allocation comes from; wiped by swindle_session_open()<br/>at each target_list_free(), so connect/disconnect never fragments the heap."]
+        SyncCellT["SyncCell&lt;T&gt;<br/>UnsafeCell + scoped borrow guard; the primitive behind every static knob,<br/>symbol cache and USB singleton of the crate."]
+        GdbCdc["GdbCdc<br/>GDB CDC singleton: TinyUSB Cdc handle, event group, in-session flag,<br/>GDB_BUFFER_SIZE packet buffer."]
+        UsbBridge["UsbSerialBridge<br/>Bridge singleton: Cdc + Serial handles, event group, and one DirectionChannel<br/>per direction (usb2serial / serial2usb)."]
+        UsbLogger["UsbLogger<br/>Logger CDC singleton: Cdc handle + connected flag; log lines are pushed, never blocked on."]
+        RpcParams["RpcParams&lt;'a&gt;<br/>Borrowed view of one decoded RPC call: class, method, payload slices.<br/>No copy, no allocation."]
+        EscapingWriter["EscapingWriter&lt;F&gt;<br/>Write adapter that escapes RPC payload bytes on the way to the packet encoder."]
+        RpcReplyEncoder["rpc_reply_encoder<br/>Builds the reply frame (class/method/status + CBOR body) into the shared<br/>encoder buffer."]
+    end
+    class GdbStream,CommandTree,SessionArena,SyncCellT,GdbCdc,UsbBridge,UsbLogger,RpcParams,EscapingWriter,RpcReplyEncoder swindleRust;
+    class SessionData swindleGroup;
+
+    %% -------------------------------------------------------------
+    %% TARGET CORE DATA
+    %% -------------------------------------------------------------
+    subgraph TargetData ["Target Core Data (rs_swindle::target)"]
+        Target["Target<br/>The live target instance: driver/core names, cpuid, designer/part id,<br/>target_options, regs_size, flags, priv_state + attach/detach/mass_erase hooks,<br/>next link. repr(C), shared with the remaining C ABI callers."]
+        TargetView["TargetView<br/>Copyable handle on a *mut Target; the safe facade the commands use<br/>(is_cortexm, options, mem map helpers). Null-checked on every call."]
+        TargetC["TargetC (repr(C), c_adapter.rs)<br/>Legacy-compatible mirror of Target: same field order, C function pointers.<br/>Only still-legacy C code and the C TAP scanners see this type."]
+        AttachedTarget["AttachedTarget (bmp.rs)<br/>Zero-sized attached-session token: only constructible while a target is attached,<br/>bundles mem_read/write and register access into a checked API."]
+        DriverTag["DriverTag(&amp;'static str)<br/>Readable key of the family whose driver is installed, so a mismatched<br/>dispatcher is diagnosable instead of silently wrong."]
+        DriverStorage["DriverStorage (static DRIVER_STORAGE)<br/>One cell holding the single live driver instance (largest family) as raw bytes,<br/>plus its DriverTag; avoids a static per family."]
+        DriverSlot["DriverSlot&lt;D&gt; / ActiveDriverSlot&lt;D&gt;<br/>Zero-sized per-family install handle, and the architecture dispatcher's<br/>(DriverTag, *mut dyn Driver) pair."]
+        PartDescriptor["trait PartDescriptor<br/>Architecture-neutral half of the driver contract: name, part_id,<br/>target_options, has_hw_breakpoints, memory_map, extra mon commands."]
+        TargetDriver["trait TargetDriver<br/>Architecture-neutral run-control / memory / register interface:<br/>mem_read(_nostop), reg_read, reset, halt_request/poll/resume, attach, detach."]
+        RustArmTargetDriver["trait RustArmTargetDriver<br/>ARM half: adds flash session + CRC32 and breakpoint hooks that take<br/>&amp;mut CortexMAccess. Supertrait of PartDescriptor."]
+        RustRiscvTargetDriver["trait RustRiscvTargetDriver<br/>RISC-V half: same split, hooks take &amp;mut RiscvHart."]
+        MemoryMap["MemoryMap<br/>The map a driver reports: fixed FlashDesc array (MAX_FLASH_REGIONS) and<br/>RamDesc array (MAX_RAM_REGIONS) with lengths; Copy, built from probe data."]
+        FlashDesc["FlashDesc<br/>One flash region: start, length, blocksize, writesize, extra erase sizes,<br/>erased byte (0xff/0x00). What vFlash and the mem-map XML consume."]
+        RamDesc["RamDesc<br/>One RAM region: start + length, as reported to GDB."]
+        RamRegion["RamRegion<br/>Smallest RAM range type used by the typed accessors and driver heuristics<br/>(contains/end)."]
+        MemoryBlock["MemoryBlock (bmp.rs)<br/>Borrowed view of one descriptor (start, length, block size) returned to C<br/>without exposing the whole map."]
+        Breakwatch["Breakwatch<br/>One armed trigger: kind (soft/hard break, watch r/w/a), address, size and<br/>the comparator slot once a unit programmed it."]
+        BreakwatchTable["BreakwatchTable<br/>heapless Vec&lt;Breakwatch, MAX_BREAKWATCHES&gt; owned by the core priv;<br/>armed/cleared by the driver, read back on halt to name a watchpoint."]
+        CortexMAccess["CortexMAccess<br/>Adapter that lets an ARM driver talk memory/registers without owning a<br/>Target: the argument type of every RustArmTargetDriver hook."]
+    end
+    class Target,TargetView,TargetC,AttachedTarget,DriverTag,DriverStorage,DriverSlot,PartDescriptor,TargetDriver,RustArmTargetDriver,RustRiscvTargetDriver,MemoryMap,FlashDesc,RamDesc,RamRegion,MemoryBlock,Breakwatch,BreakwatchTable,CortexMAccess swindleRust;
+    class TargetData swindleGroup;
+
+    %% -------------------------------------------------------------
+    %% FLASH DATA
+    %% -------------------------------------------------------------
+    subgraph FlashData ["Flash Data (rs_swindle::flash)"]
+        FlashManager["FlashManager&lt;D: FlashDriver&gt;<br/>Owner of the flash session: heapless Vec of regions, the active index and<br/>one sector buffer; all bookkeeping is static, zero heap."]
+        FlashRegion["FlashRegion&lt;D&gt;<br/>A registered region: its geometry, extra erase sizes, the driver value<br/>itself and the operation currently in flight."]
+        FlashGeometry["FlashGeometry<br/>Erase/write granularity of one region: start, end, blocksize, writesize,<br/>erased byte; decides alignment and which block size to erase."]
+        FlashSectorBuffer["FlashSectorBuffer<br/>Read-modify-write staging buffer for sub-block writes: holds one sector's<br/>original bytes, tracks dirty state, flushes through the geometry."]
+        FlashDriverTrait["trait FlashDriver<br/>prepare(op) / erase_block / write_block / done, plus optional native<br/>mass_erase; implemented by target, QMI/SPI and C-ABI adapters."]
+        FlashOperationE["FlashOperation<br/>Erase / MassErase / Write / None: the state a region's driver was prepared for,<br/>so prepare/done are only called on change."]
+    end
+    class FlashManager,FlashRegion,FlashGeometry,FlashSectorBuffer,FlashDriverTrait,FlashOperationE swindleRust;
+    class FlashData swindleGroup;
+
+    %% -------------------------------------------------------------
+    %% ARM / CoreSight DATA
+    %% -------------------------------------------------------------
+    subgraph ArmData ["ARM / CoreSight Data (rs_swindle::arm)"]
+        DebugPortT["DebugPort&lt;T: SwdTransport&gt;<br/>One CoreSight debug port: DPIDR fields, wire fault latch, SELECT/SELECT1<br/>caches, TARGETSEL, refcount of the Aps that reference it."]
+        AccessPortT["AccessPort<br/>One memory access port: back-pointer to its DebugPort, APSEL, IDR/BASE,<br/>CSW (+cache), MEM-AP designer/partno, DEMCR shadow, refcount."]
+        SwdTransportT["trait SwdTransport / HardwareSwd<br/>'Read/write one ADIv5 register on the wire'; HardwareSwd calls the platform<br/>SWD TAP and its fault latch - the only ARM path that touches C."]
+        CortexPriv["CortexPriv<br/>Architecture-neutral Cortex state hung off Target::priv_state: access port,<br/>debug base, cached DHCSR, breakpoint/watchpoint slot masks."]
+        CortexMPriv["CortexMPriv<br/>Cortex-M state: CortexPriv + stepping/on_bkpt/icache/dcache flags,<br/>FPB revision, DEMCR copy and its BreakwatchTable."]
+        CortexMTargetDriverT["CortexMTargetDriver<br/>The Cortex-M driver value: per-core behaviour implemented on top of<br/>CortexMPriv; what the ARM dispatcher keeps behind dyn RustArmTargetDriver."]
+    end
+    class DebugPortT,AccessPortT,SwdTransportT,CortexPriv,CortexMPriv,CortexMTargetDriverT swindleRust;
+    class ArmData swindleGroup;
+
+    %% -------------------------------------------------------------
+    %% RISC-V DATA
+    %% -------------------------------------------------------------
+    subgraph RiscvData ["RISC-V Data (rs_swindle::riscv)"]
+        RiscvHartT["RiscvHart<br/>One hart: its DMI transport, ISA, hartsel, vendor/arch/impl/hart ids,<br/>progbuf size, sysbus/abstauto capability, active mem-access method, triggers."]
+        RiscvMemT["RiscvMem<br/>Zero-sized accessor type: the memory methods (abstract, AbstAuto, progbuf,<br/>sysbus) that take a &amp;mut RiscvHart - no state of its own."]
+        CDmiTransportT["CDmiTransport<br/>Rust DMI transport wrapping a C riscv_dmi_s pointer: copies the entry points<br/>out of the borrow, then talks to the TAP. Null-safe (reports bus error)."]
+        RiscvDmiC["RiscvDmiC (repr(C) 'riscv_dmi_s')<br/>The C DMI object built by a scan: designer code, version, address width,<br/>fault + read_confirm flags and the read/write/quiesce function table."]
+        DmiTransportT["trait DmiTransport<br/>read/write one DMI register, quiesce, invalidate_caches and<br/>needs_read_confirm (the 1-wire SDI two-pass rule)."]
+        RiscvTargetContextT["RiscvTargetContext<br/>What hangs off Target::priv_state for RISC-V: the probed hart(s), the<br/>selected hart and the DM access used by the hooks."]
+        RiscvTargetDriverT["RiscvTargetDriver<br/>The RISC-V driver value on top of RiscvTargetContext; kept behind<br/>dyn RustRiscvTargetDriver, implements PartDescriptor."]
+        TriggerUnitT["TriggerUnit<br/>Breakpoint/watchpoint comparator description of the hart (count, types,<br/>size encoding); TriggerUnit::NONE until the probe resolved it."]
+        HwTriggerSupport["HwTriggerSupport<br/>Capability detail of a trigger unit: which kinds and sizes it accepts,<br/>used to decide hardware vs software breakpoints."]
+        BenchResult["BenchResult<br/>Outcome of the RISC-V benchmark (bytes/time per access method) printed by<br/>mon riscv_benchmark / riscv_memory_benchmark; data, never state."]
+    end
+    class RiscvHartT,RiscvMemT,CDmiTransportT,RiscvDmiC,DmiTransportT,RiscvTargetContextT,RiscvTargetDriverT,TriggerUnitT,HwTriggerSupport,BenchResult swindleRust;
+    class RiscvData swindleGroup;
+
+    %% -------------------------------------------------------------
+    %% INTROSPECTION DATA (FreeRTOS / RTT)
+    %% -------------------------------------------------------------
+    subgraph IntrospectionData ["Introspection Data (FreeRTOS / RTT)"]
+        FreeRTOSSymbolsT["FreeRTOSSymbols (static SYMBOLS)<br/>Global cache: running/valid flags, resolved address per symbol index,<br/>detected cpuid, MCU core layout and the debug offsets below."]
+        FreeRTOSDebugOffsetsT["FreeRTOSDebugOffsets<br/>Mirror of the target's freeRTOSDebug struct: list/TCB field offsets,<br/>priority count, layout type, task name/num offsets."]
+        FreeRTOSSwitcher["FreeRTOS_switcher<br/>The OS hook: resolves symbols/offsets, then walks the TCB lists and unwinds<br/>the stack of the running task with the layout-specific handler."]
+        HashedTcb["hashed_tcb<br/>One discovered task: TCB address, name pointer, priority, state and the<br/>hash slot that keeps lookups O(1)."]
+        FreertosTaskInfo["freertos_task_info<br/>Normalised task record handed to the GDB thread list: name, id, state,<br/>stack frame - architecture independent."]
+        RttControlBlockT["RttControlBlock (repr(C))<br/>SEGGER block header: 'SEGGER RTT' id, max up/down buffer counts; polled<br/>from target RAM on every RTT read."]
+        RttBufferT["RttBuffer (repr(C))<br/>One channel: name/ring pointers, size, read/write offsets, flags.<br/>Read offset is advanced on the target to drain device data."]
+    end
+    class FreeRTOSSymbolsT,FreeRTOSDebugOffsetsT,FreeRTOSSwitcher,HashedTcb,FreertosTaskInfo,RttControlBlockT,RttBufferT swindleRust;
+    class IntrospectionData swindleGroup;
+
+    %% -------------------------------------------------------------
+    %% DISPATCH DATA
+    %% -------------------------------------------------------------
+    subgraph DispatchData ["Driver Dispatch Data"]
+        RuntimeDispatch["ARM / RISC-V dispatcher<br/>(arm::driver_registry, riscv::driver_registry)<br/>Holds the installed driver behind dyn RustArmTargetDriver /<br/>dyn RustRiscvTargetDriver and notices an overwrite through DriverTag."]
+        ActiveDriverSlot["ActiveDriverSlot&lt;D&gt;<br/>The dispatcher's own cell: (DriverTag, *mut dyn D), so a stale pointer<br/>from a previous probe of another family is detectable."]
+    end
+    class RuntimeDispatch,ActiveDriverSlot swindleRust;
+    class DispatchData swindleGroup;
+
+    %% -------------------------------------------------------------
+    %% RELATIONS (ownership / pointer / static state, top-down)
+    %% -------------------------------------------------------------
+    GdbStream --> CommandTree
+    GdbStream --> RpcParams
+    RpcParams --> EscapingWriter
+    RpcReplyEncoder --> EscapingWriter
+    GdbCdc --- GdbStream
+    UsbBridge --- GdbStream
+    UsbLogger --- GdbCdc
+    SyncCellT -.-> DriverStorage
+    SyncCellT -.-> FreeRTOSSymbolsT
+    SyncCellT -.-> GdbCdc
+    SyncCellT -.-> UsbBridge
+    SyncCellT -.-> UsbLogger
+
+    Target --> TargetView
+    TargetView --> Target
+    TargetC -.-> Target
+    Target --> MemoryMap
+    Target --> BreakwatchTable
+    Target -.-> SessionArena
+    AttachedTarget --> Target
+    DriverSlot --> DriverStorage
+    DriverStorage --> DriverTag
+    DriverSlot -.-> ActiveDriverSlot
+    RuntimeDispatch --> ActiveDriverSlot
+    RuntimeDispatch -.-> RustArmTargetDriver
+    RuntimeDispatch -.-> RustRiscvTargetDriver
+    PartDescriptor --> MemoryMap
+    PartDescriptor --> CommandTree
+    TargetDriver -.-> PartDescriptor
+    RustArmTargetDriver -.-> PartDescriptor
+    RustRiscvTargetDriver -.-> PartDescriptor
+    MemoryMap --> FlashDesc
+    MemoryMap --> RamDesc
+    FlashDesc --> MemoryBlock
+    RamDesc -.-> MemoryBlock
+    RamDesc -.-> RamRegion
+    BreakwatchTable --> Breakwatch
+    SessionArena --- AccessPortT
+    SessionArena --- DebugPortT
+
+    %% Flash session
+    FlashManager --> FlashRegion
+    FlashManager --> FlashSectorBuffer
+    FlashRegion --> FlashGeometry
+    FlashRegion --> FlashDriverTrait
+    FlashRegion --> FlashOperationE
+    FlashSectorBuffer --> FlashGeometry
+    FlashSectorBuffer -.-> FlashDriverTrait
+    FlashDriverTrait -.-> FlashOperationE
+    MemoryMap -.-> FlashManager
+
+    %% ARM core state
+    DebugPortT --> SwdTransportT
+    AccessPortT --> DebugPortT
+    CortexPriv --> AccessPortT
+    CortexMPriv --> CortexPriv
+    CortexMPriv --> BreakwatchTable
+    CortexMTargetDriverT -.-> CortexMPriv
+    CortexMTargetDriverT -.-> RustArmTargetDriver
+    CortexMAccess -.-> AccessPortT
+    CortexMAccess --> Target
+
+    %% RISC-V core state
+    RiscvHartT --> CDmiTransportT
+    CDmiTransportT -.-> RiscvDmiC
+    CDmiTransportT -.-> DmiTransportT
+    RiscvHartT --> TriggerUnitT
+    TriggerUnitT --> HwTriggerSupport
+    RiscvMemT --> RiscvHartT
+    RiscvTargetContextT --> RiscvHartT
+    RiscvTargetDriverT --> RiscvTargetContextT
+    RiscvTargetDriverT -.-> RustRiscvTargetDriver
+    RiscvTargetDriverT -.-> RiscvMemT
+    RiscvHartT -.-> BenchResult
+    RiscvTargetContextT -.-> Target
+    RiscvTargetContextT -.-> SessionArena
+
+    %% Introspection
+    FreeRTOSSwitcher --> FreeRTOSSymbolsT
+    FreeRTOSSymbolsT --> FreeRTOSDebugOffsetsT
+    FreeRTOSSwitcher --> HashedTcb
+    HashedTcb --> FreertosTaskInfo
+    RttControlBlockT --> RttBufferT
+    RttBufferT -.-> AttachedTarget
+    FreeRTOSSwitcher -.-> AttachedTarget
+    RttControlBlockT -.-> Target

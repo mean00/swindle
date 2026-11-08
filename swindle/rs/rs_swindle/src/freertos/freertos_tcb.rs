@@ -3,8 +3,8 @@
 //! Handles extracting and parsing task information (TCB) from target memory,
 //! building the thread list for GDB, and caching the OS thread state.
 
+use crate::SyncCell;
 use crate::bmp::{bmp_read_mem, bmp_read_mem32, bmp_write_mem32};
-use core::mem::MaybeUninit;
 
 use crate::freertos::freertos_hashtcb::{get_hashtcb, MAX_FREERTOS_TASKS};
 use crate::freertos::freertos_list::freertos_crawl_list;
@@ -59,30 +59,22 @@ const map_state: [freertos_task_state; 5] = [
 // SAFETY: single-threaded debugger context.
 struct TcbCache {
     data: heapless::Vec<freertos_task_info, MAX_FREERTOS_TASKS>,
-    dirty: bool,
+    clean: bool,
 }
 
-unsafe impl Sync for TcbCache {}
+static CACHE: SyncCell<TcbCache> = SyncCell::new(TcbCache {
+    data: heapless::Vec::new(),
+    clean: false,
+});
 
 fn get_cache() -> &'static mut TcbCache {
-    static mut CACHE: MaybeUninit<TcbCache> = MaybeUninit::uninit();
-    static mut CACHE_INIT: bool = false;
-    unsafe {
-        if !CACHE_INIT {
-            CACHE.write(TcbCache {
-                data: heapless::Vec::new(),
-                dirty: true,
-            });
-            CACHE_INIT = true;
-        }
-        CACHE.assume_init_mut()
-    }
+    unsafe { CACHE.as_mut() }
 }
 
 /// Invalidate the TCB cache. Call this when the target resumes execution.
 pub fn freertos_invalidate_cache() {
     let cache = get_cache();
-    cache.dirty = true;
+    cache.clean = false;
     cache.data.clear();
 }
 
@@ -149,7 +141,7 @@ fn push_cached(
 pub fn freertos_collect_information(
 ) -> &'static heapless::Vec<freertos_task_info, MAX_FREERTOS_TASKS> {
     let cache = get_cache();
-    if !cache.dirty {
+    if cache.clean {
         bmplog!("freertos_collect_information: returning cached data\n");
         return &cache.data;
     }
@@ -158,7 +150,7 @@ pub fn freertos_collect_information(
 
     let symbol = get_symbols();
     if !symbol.running {
-        cache.dirty = false;
+        cache.clean = true;
         return &cache.data;
     }
 
@@ -166,7 +158,7 @@ pub fn freertos_collect_information(
     let mut data: [u32; 1] = [0];
     if !bmp_read_mem32(get_current_tcb_address(), &mut data) {
         bmpwarning!("cannot read value of pxCurrentTCB\n");
-        cache.dirty = false;
+        cache.clean = true;
         return &cache.data;
     }
     // pxCurrentTCB
@@ -216,7 +208,7 @@ pub fn freertos_collect_information(
     }
     bmplog!("---- dumping done----\n");
 
-    cache.dirty = false;
+    cache.clean = true;
     &cache.data
 }
 /// Returns a list of all detected FreeRTOS thread IDs (not raw addresses).

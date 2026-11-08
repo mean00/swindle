@@ -19,7 +19,6 @@
 #include "bmp_pinmode.h"
 #include "bmp_pinout.h"
 #include "lnBMP_pins.h"
-#include "lnBMP_reset.h"
 #include <cstring>
 
 // The blackmagic RISC-V target framework (riscv_debug.h) is needed for the
@@ -27,16 +26,16 @@
 // exactly mirroring what rvswd_template.h::rvswd_scan() does over RVSWD.
 extern "C"
 {
-#include "jep106.h"
-#include "riscv_debug.h"
+#include "platform_support.h"
 }
 extern "C" void target_list_free(void);
 
 // SDI data pin: the same physical wire the PIO state machine is configured on
 // by bmp_gpio_pinmode(BMP_PINMODE_SDI) (bmp_tap_rp2040.cpp), i.e. the SWDIO
 // line _mapping[TSWDIO_PIN] (GPIO13 on the RP2040 carrier/inv probe, where the
-// primitives were validated). NRST sits on GPIO10 there but is driven through
-// the shared SwdReset controller so the build-time polarity option is honored.
+// primitives were validated). NRST sits on GPIO10 there and is driven by
+// rs_swindle_board's rp2xxx::reset_pin (C ABI platform_nrst_set_val_internal),
+// so the build-time polarity option is still honored.
 #define SDI_DATA_PIN _mapping[TSWDIO_PIN]
 
 // ---------------------------------------------------------------------------
@@ -47,8 +46,7 @@ extern "C" void target_list_free(void);
 // expands to exactly the same source the tap used before the protocol layer was
 // moved out (-ffunction-sections: per-function codegen is untouched).
 // ---------------------------------------------------------------------------
-extern rpPIO_SM *xsm;    // shared SWD/RVSWD/SDI PIO state machine (bmp_tap_rp2040.cpp)
-extern SwdReset *pReset; // board NRST controller (bmp_tap_rp2040.cpp)
+extern rpPIO_SM *xsm; // shared SWD/RVSWD/SDI PIO state machine (bmp_tap_rp2040.cpp)
 
 /* Frame primitives, defined at the bottom of this file: a whole frame is one
  * word in (header + payload) and one word out, with the PIO doing the bit

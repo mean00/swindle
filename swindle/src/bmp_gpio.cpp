@@ -8,7 +8,7 @@
 #include "lnGPIO.h"
 extern "C"
 {
-#include "target/spi.h"
+#include "platform_support.h"
 }
 extern "C" void bmp_gpio_write(int pin, int value);
 extern "C" int bmp_gpio_read(int pin);
@@ -42,51 +42,6 @@ int bmp_gpio_read(int pin)
 void platform_target_clk_output_enable(bool enable)
 {
     (void)enable;
-}
-
-/**
- * @brief Stub — SPI init not supported on this platform.
- * @param bus SPI bus identifier.
- * @return false (not implemented).
- */
-bool platform_spi_init(const spi_bus_e bus)
-{
-    (void)bus;
-    return false;
-}
-
-/**
- * @brief Stub — SPI deinit not supported on this platform.
- * @param bus SPI bus identifier.
- * @return false (not implemented).
- */
-bool platform_spi_deinit(const spi_bus_e bus)
-{
-    (void)bus;
-    return false;
-}
-
-/**
- * @brief Stub — SPI chip select not supported on this platform.
- * @param device_select Device select index.
- * @return false (not implemented).
- */
-bool platform_spi_chip_select(const uint8_t device_select)
-{
-    (void)device_select;
-    return false;
-}
-
-/**
- * @brief Stub — SPI transfer returns the sent byte unchanged.
- * @param bus   SPI bus identifier.
- * @param value Byte to send.
- * @return The same @p value (loopback).
- */
-uint8_t platform_spi_xfer(const spi_bus_e bus, const uint8_t value)
-{
-    (void)bus;
-    return value;
 }
 
 // EOF

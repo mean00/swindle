@@ -6,7 +6,268 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 
-// ── Packet class bytes ──
+// ── Strongly-typed RPC Packet Classes ──
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum RpcClass {
+    Gen = b'G',
+    Swdp = b'S',
+    Hl = b'H',
+    Sdi = b'I',
+    Rv = b'B',
+    Lnadiv = b'L',
+    Adiv5 = b'A',
+    Swindle = b'Z',
+    Jtag = b'J',
+    Spi = b's',
+}
+
+impl TryFrom<u8> for RpcClass {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'G' => Ok(Self::Gen),
+            b'S' => Ok(Self::Swdp),
+            b'H' => Ok(Self::Hl),
+            b'I' => Ok(Self::Sdi),
+            b'B' => Ok(Self::Rv),
+            b'L' => Ok(Self::Lnadiv),
+            b'A' => Ok(Self::Adiv5),
+            b'Z' => Ok(Self::Swindle),
+            b'J' => Ok(Self::Jtag),
+            b's' => Ok(Self::Spi),
+            _ => Err(b),
+        }
+    }
+}
+
+// ── Strongly-typed Command Enums ──
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum GenCommand {
+    Start = b'A',
+    Voltage = b'V',
+    NrstSet = b'Z',
+    NrstGet = b'z',
+    TargetClkOe = b'E',
+    FreqSet = b'F',
+    FreqGet = b'f',
+    PwrSet = b'P',
+    PwrGet = b'p',
+    GpioReset = b'R',
+}
+
+impl TryFrom<u8> for GenCommand {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'A' => Ok(Self::Start),
+            b'V' => Ok(Self::Voltage),
+            b'Z' => Ok(Self::NrstSet),
+            b'z' => Ok(Self::NrstGet),
+            b'E' => Ok(Self::TargetClkOe),
+            b'F' => Ok(Self::FreqSet),
+            b'f' => Ok(Self::FreqGet),
+            b'P' => Ok(Self::PwrSet),
+            b'p' => Ok(Self::PwrGet),
+            b'R' => Ok(Self::GpioReset),
+            _ => Err(b),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum SwdpCommand {
+    Init = b'S',
+}
+
+impl TryFrom<u8> for SwdpCommand {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'S' => Ok(Self::Init),
+            _ => Err(b),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum HlCommand {
+    Check = b'C',
+    Accel = b'A',
+}
+
+impl TryFrom<u8> for HlCommand {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'C' => Ok(Self::Check),
+            b'A' => Ok(Self::Accel),
+            _ => Err(b),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum SdiCommand {
+    Reset = b'S',
+    DmRead = b'r',
+    DmWrite = b'w',
+    SetWire = b'T',
+}
+
+impl TryFrom<u8> for SdiCommand {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'S' => Ok(Self::Reset),
+            b'r' => Ok(Self::DmRead),
+            b'w' => Ok(Self::DmWrite),
+            b'T' => Ok(Self::SetWire),
+            _ => Err(b),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum RvCommand {
+    Reset = b'S',
+    DmRead = b'r',
+    DmWrite = b'w',
+    MemRead = b'R',
+    MemWrite = b'M',
+}
+
+impl TryFrom<u8> for RvCommand {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'S' => Ok(Self::Reset),
+            b'r' => Ok(Self::DmRead),
+            b'w' => Ok(Self::DmWrite),
+            b'R' => Ok(Self::MemRead),
+            b'M' => Ok(Self::MemWrite),
+            _ => Err(b),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum LnadivCommand {
+    Write = b'W',
+    Read = b'R',
+    RawWrite = b'A',
+    Lowlevel = b'B',
+}
+
+impl TryFrom<u8> for LnadivCommand {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'W' => Ok(Self::Write),
+            b'R' => Ok(Self::Read),
+            b'A' => Ok(Self::RawWrite),
+            b'B' => Ok(Self::Lowlevel),
+            _ => Err(b),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Adiv5Command {
+    RawAccessV3 = b'R',
+    DpRead = b'd',
+    ApRead = b'a',
+    ApWrite = b'A',
+    MemRead = b'm',
+    MemWrite = b'M',
+}
+
+impl TryFrom<u8> for Adiv5Command {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'R' => Ok(Self::RawAccessV3),
+            b'd' => Ok(Self::DpRead),
+            b'a' => Ok(Self::ApRead),
+            b'A' => Ok(Self::ApWrite),
+            b'm' => Ok(Self::MemRead),
+            b'M' => Ok(Self::MemWrite),
+            _ => Err(b),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum SwindleCommand {
+    Crc32 = b'C',
+    GetFq = b'G',
+    SetFq = b'S',
+}
+
+impl TryFrom<u8> for SwindleCommand {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'C' => Ok(Self::Crc32),
+            b'G' => Ok(Self::GetFq),
+            b'S' => Ok(Self::SetFq),
+            _ => Err(b),
+        }
+    }
+}
+
+// ── Response codes ──
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum RpcResponseStatus {
+    Ok = b'K',
+    ParityError = b'P',
+    Error = b'E',
+    NotSupported = b'N',
+}
+
+impl TryFrom<u8> for RpcResponseStatus {
+    type Error = u8;
+    #[inline]
+    fn try_from(b: u8) -> Result<Self, u8> {
+        match b {
+            b'K' => Ok(Self::Ok),
+            b'P' => Ok(Self::ParityError),
+            b'E' => Ok(Self::Error),
+            b'N' => Ok(Self::NotSupported),
+            _ => Err(b),
+        }
+    }
+}
+
+// ── Error codes ──
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum RpcErrorCode {
+    Unrecognised = 1,
+    WrongLength = 2,
+    Fault = 3,
+    Exception = 4,
+}
+
+// ── Backward-compatible Packet Class Constants ──
 pub const RPC_GEN_PACKET: u8 = b'G';
 pub const RPC_SWDP_PACKET: u8 = b'S';
 pub const RPC_HL_PACKET: u8 = b'H';
@@ -18,7 +279,7 @@ pub const RPC_SWINDLE_PACKET: u8 = b'Z';
 pub const RPC_JTAG_PACKET: u8 = b'J';
 pub const RPC_SPI_PACKET: u8 = b's';
 
-// ── Command bytes ──
+// ── Backward-compatible Command Constants ──
 pub const RPC_GEN_START: u8 = b'A';
 pub const RPC_GEN_VOLTAGE: u8 = b'V';
 pub const RPC_GEN_NRST_SET: u8 = b'Z';
@@ -39,6 +300,8 @@ pub const RPC_SDI_SET_WIRE: u8 = b'T';
 pub const RPC_RV_RESET: u8 = b'S';
 pub const RPC_RV_DM_READ: u8 = b'r';
 pub const RPC_RV_DM_WRITE: u8 = b'w';
+pub const RPC_RV_MEM_READ: u8 = b'R';
+pub const RPC_RV_MEM_WRITE: u8 = b'M';
 pub const RPC_LNADIV_WRITE: u8 = b'W';
 pub const RPC_LNADIV_READ: u8 = b'R';
 pub const RPC_LNADIV_RAW_WRITE: u8 = b'A';
@@ -53,14 +316,13 @@ pub const RPC_SWINDLE_CRC32: u8 = b'C';
 pub const RPC_SWINDLE_GET_FQ: u8 = b'G';
 pub const RPC_SWINDLE_SET_FQ: u8 = b'S';
 
-// ── Response codes ──
+// ── Backward-compatible Response & Error Constants ──
 pub const RPC_RESP_OK: u8 = b'K';
 pub const RPC_RESP_PARERR: u8 = b'P';
 pub const RPC_RESP_ERR: u8 = b'E';
 pub const RPC_RESP_NOTSUP: u8 = b'N';
 pub const RPC_REMOTE_RESP: u8 = b'&';
 
-// ── Error codes ──
 pub const RPC_ERROR_UNRECOGNISED: u8 = 1;
 pub const RPC_ERROR_WRONGLEN: u8 = 2;
 pub const RPC_ERROR_FAULT: u8 = 3;

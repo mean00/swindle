@@ -7,6 +7,7 @@ use ufmt::uWrite;
 //---------------------------------
 
 use ufmt::uwrite;
+use crate::format_util::{hex_digits, hex_padded, hex_width, HexCase, HEX_BUFFER_SIZE, MAX_HEX_DIGITS};
 pub struct G;
 
 impl uWrite for G {
@@ -27,27 +28,26 @@ impl G {
     pub fn print_int(val: i64) {
         let _ = uwrite!(&mut G, "{}", val);
     }
+    /// Print `0x` and `value` in lower-case hex without leading zeros (C `%x`).
     #[inline(never)]
-    pub fn print_hex(mut n: u32) {
-        Self::print_str("0x");
-        if n == 0 {
-            Self::print_str("0");
-            return;
-        }
-        let mut buf = [0u8; 8];
-        let mut i = 7;
-        const HEX_CHARS: &[u8] = b"0123456789abcdef";
-        while n > 0 {
-            buf[i] = HEX_CHARS[(n & 0xf) as usize];
-            n >>= 4;
-            if n == 0 {
-                break;
-            }
-            i -= 1;
-        }
-        unsafe {
-            Self::print_str(core::str::from_utf8_unchecked(&buf[i..]));
-        }
+    pub fn print_hex(value: u32) {
+        Self::print_hex_padded(value, hex_width(value), HexCase::Lower);
+    }
+
+    /// Print `value` as exactly `digits` hex digits, without a `0x` prefix.
+    #[inline(never)]
+    pub fn print_hex_digits(value: u32, digits: usize, case: HexCase) {
+        let mut buf = [0u8; MAX_HEX_DIGITS];
+        Self::print_str(hex_digits(value, digits, case, &mut buf));
+    }
+
+    /// Print `0x` and `value` as exactly `digits` hex digits (C `%08x` / `%08X`).
+    ///
+    /// The prefix and the digits go out in one write: see [`hex_padded`].
+    #[inline(never)]
+    pub fn print_hex_padded(value: u32, digits: usize, case: HexCase) {
+        let mut buf = [0u8; HEX_BUFFER_SIZE];
+        Self::print_str(hex_padded(value, digits, case, &mut buf));
     }
 }
 pub struct Hex<T>(pub T);
@@ -293,6 +293,24 @@ macro_rules! gdb_print {
 }
 #[macro_export]
 macro_rules! gdb_println {
+    ($label:literal) => {{
+        $crate::bmplogger::G::print_str(core::concat!($label, "\n"));
+    }};
+    ($label:literal, Hex($val:expr)) => {{
+        $crate::bmplogger::G::print_str($label);
+        $crate::bmplogger::G::print_hex($val as u32);
+        $crate::bmplogger::G::print_str("\n");
+    }};
+    ($label:literal, Hex($val:expr), $suffix:literal) => {{
+        $crate::bmplogger::G::print_str($label);
+        $crate::bmplogger::G::print_hex($val as u32);
+        $crate::bmplogger::G::print_str(core::concat!($suffix, "\n"));
+    }};
+    ($label:literal, $val:expr, $suffix:literal) => {{
+        $crate::bmplogger::G::print_str($label);
+        $crate::bmplogger::ToLog::log($val);
+        $crate::bmplogger::G::print_str(core::concat!($suffix, "\n"));
+    }};
     ($($arg:tt)*) => {
         {
             $crate::gdb_print!($($arg)*);

@@ -6,22 +6,38 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <atomic>
+#include <chrono>
+#include <poll.h>
 #include <unistd.h>
+#include <vector>
 
 extern "C"
 {
-#include "../hosted/bmp_hosted.h"
-#include "../hosted/cli.h"
+#include "platform_support.h"
 }
 
 #include <QDateTime>
+#include <QFile>
 #include <QSerialPort>
 #include <QSerialPortInfo>
 
 #include "bmp_logger.h"
 #include "hosted_constants.h"
+
+/**
+ * @brief Probe selected for the session.
+ *
+ * All the transport needs is the serial port its GDB CDC is reachable on, so
+ * the blackmagic probe description is reduced to that one field.
+ */
+typedef struct bmda_probe
+{
+    char port[512];
+} bmda_probe_s;
 
 #define ASSERT_OR_EXIT(condition)                                                                                      \
     if (!(condition))                                                                                                  \
@@ -38,6 +54,43 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize);
 extern "C" int platform_buffer_write(const uint8_t *data, int size);
 void decoderRequest(int size, const uint8_t *data);
 void decoderReply(int size, const uint8_t *data);
+
+// Keyboard hand-off with the CLI's 'q' handler (see ask_probe_choice()). The
+// prompt lives here rather than in main.cpp because this file is part of both
+// executables (CLI and Qt), while main.cpp is only the CLI one.
+static std::atomic<bool> s_stdin_prompt_active{false};
+static std::atomic<int> s_stdin_prompt_char{-1};
+
+/** True while a foreground prompt owns the keyboard. */
+extern "C" bool hosted_stdin_prompt_is_active()
+{
+    return s_stdin_prompt_active.load();
+}
+
+/** Hand a character read by the caller's key handler to the active prompt. */
+extern "C" void hosted_stdin_prompt_push(int ch)
+{
+    s_stdin_prompt_char.store(ch);
+}
+
+/** Take the character handed over by the key handler, -1 when none. */
+static int hosted_stdin_prompt_take()
+{
+    return s_stdin_prompt_char.exchange(-1);
+}
+
+/** Start / end the keyboard hand-off. */
+static void hosted_stdin_prompt_begin()
+{
+    s_stdin_prompt_char.store(-1);
+    s_stdin_prompt_active.store(true);
+}
+
+static void hosted_stdin_prompt_end()
+{
+    s_stdin_prompt_active.store(false);
+    s_stdin_prompt_char.store(-1);
+}
 
 // Outgoing write buffer
 static int s_platform_write_index = 0;
@@ -58,51 +111,59 @@ enum class SerialParserState
 /**
  * @brief Read a single character from the serial ring buffer, refilling from QSerialPort as needed.
  */
-static bool readChar(uint8_t *data)
+static bool readChar(uint8_t *data, int wait_ms = 100)
 {
-    if (s_serial_head == s_serial_tail)
+    if (s_serial_head != s_serial_tail)
     {
-        s_serial_head = s_serial_tail = 0;
+        *data = s_serial_ring_buffer[s_serial_head++];
+        return true;
     }
 
-    while (true)
+    if (!s_serial_port || !s_serial_port->isOpen())
     {
-        if (s_serial_head != s_serial_tail)
+        return false;
+    }
+
+    s_serial_head = s_serial_tail = 0;
+
+    int space = SERIAL_BUFFER_SIZE;
+    int available = s_serial_port->bytesAvailable();
+    if (available > 0)
+    {
+        int to_read = (available > space) ? space : available;
+        int bytes_read = s_serial_port->read(reinterpret_cast<char *>(s_serial_ring_buffer), to_read);
+        if (bytes_read > 0)
         {
+            s_serial_tail = bytes_read;
             *data = s_serial_ring_buffer[s_serial_head++];
             return true;
         }
-
-        if (!s_serial_port || !s_serial_port->isOpen())
+        if (bytes_read < 0)
         {
+            fprintf(stderr, "[Serial] Read error encountered on port\n");
             return false;
         }
+    }
 
-        int available = s_serial_port->bytesAvailable();
-        if (available > 0)
+    if (s_serial_port->waitForReadyRead(wait_ms))
+    {
+        available = s_serial_port->bytesAvailable();
+        int to_read = (available > space) ? space : available;
+        int bytes_read = s_serial_port->read(reinterpret_cast<char *>(s_serial_ring_buffer), to_read);
+        if (bytes_read > 0)
         {
-            if (available > SERIAL_BUFFER_SIZE)
-            {
-                available = SERIAL_BUFFER_SIZE;
-            }
-            int bytes_read = s_serial_port->read(reinterpret_cast<char *>(s_serial_ring_buffer + s_serial_tail), available);
-            if (bytes_read > 0)
-            {
-                s_serial_tail += bytes_read;
-                continue;
-            }
-            if (bytes_read < 0)
-            {
-                fprintf(stderr, "[Serial] Read error encountered on port\n");
-                return false;
-            }
+            s_serial_tail = bytes_read;
+            *data = s_serial_ring_buffer[s_serial_head++];
+            return true;
         }
-
-        if (!s_serial_port->waitForReadyRead(SERIAL_WAIT_TIMEOUT_MS))
+        if (bytes_read < 0)
         {
-            // Timeout: continue waiting
+            fprintf(stderr, "[Serial] Read error encountered on port\n");
+            return false;
         }
     }
+
+    return false;
 }
 
 /**
@@ -113,6 +174,14 @@ extern "C" int platform_buffer_write_buffered(const uint8_t *data, int size)
     if (size + s_platform_write_index >= PLATFORM_BUFFER_SIZE)
     {
         platform_write_flush();
+    }
+
+    // A chunk that cannot fit the buffer even when empty (a whole RV.MEM_WRITE block)
+    // goes straight to the port; the flush above kept the byte order.
+    if (size >= PLATFORM_BUFFER_SIZE)
+    {
+        platform_buffer_write(data, size);
+        return size;
     }
 
     ASSERT_OR_EXIT(size + s_platform_write_index < PLATFORM_BUFFER_SIZE);
@@ -141,13 +210,21 @@ extern "C" int platform_buffer_read(uint8_t *data, int maxsize)
 {
     SerialParserState state = SerialParserState::WAIT_FRAME_START;
     int payload_len = 0;
+    auto start_time = std::chrono::steady_clock::now();
+    const auto timeout = std::chrono::milliseconds(2000);
 
     while (true)
     {
         uint8_t c = 0;
-        if (!readChar(&c))
+        if (!readChar(&c, 100))
         {
-            return SERIAL_READ_ERROR_IO;
+            if (std::chrono::steady_clock::now() - start_time > timeout)
+            {
+                fprintf(stderr, "[Serial] Timeout waiting for RPC frame reply (state: %d, bytes: %d)\n",
+                        static_cast<int>(state), payload_len);
+                return SERIAL_READ_ERROR_IO;
+            }
+            continue;
         }
 
         switch (state)
@@ -210,94 +287,245 @@ extern "C" int platform_buffer_write(const uint8_t *data, int size)
     }
 
     s_serial_port->flush();
+    // QSerialPort::write() above already put the bytes on the wire; only when it
+    // had to buffer a partial write (bytesToWrite() > 0) is a drain needed.
+    // Calling waitForBytesWritten() unconditionally costs the full timeout per
+    // RPC because the write notification never fires once the buffer is empty.
+    if (s_serial_port->bytesToWrite() > 0)
+    {
+        s_serial_port->waitForBytesWritten(SERIAL_WRITE_DRAIN_TIMEOUT_MS);
+    }
     return 0;
+}
+
+/** Time the operator has to answer the probe-selection prompt, in seconds. */
+static constexpr int PROBE_PROMPT_TIMEOUT_S = 30;
+/** How often the prompt looks for a typed character, in milliseconds. */
+static constexpr int PROBE_PROMPT_POLL_MS = 50;
+
+/** One supported probe found on the USB serial ports. */
+struct HostedProbe
+{
+    QString port; // system location, e.g. /dev/ttyACM0
+    quint16 vid;
+    quint16 pid;
+};
+
+/**
+ * @brief Is @p portName the GDB CDC of a probe (its first CDC)?
+ *
+ * A Swindle board exposes several CDC-ACM ports — GDB, UART bridge, logger —
+ * which all carry the same VID/PID, so an unfiltered list would offer ports no
+ * GDB session can use. On Linux they differ by `bInterfaceNumber` and the GDB one
+ * is the first. Where that file cannot be read the port is kept, so the list
+ * degrades to "all of them" instead of "none".
+ */
+static bool is_gdb_cdc_port(const QString &portName)
+{
+    QFile number(QStringLiteral("/sys/class/tty/%1/device/bInterfaceNumber").arg(portName));
+    if (!number.open(QIODevice::ReadOnly))
+    {
+        return true;
+    }
+    return number.readAll().trimmed() == QByteArrayLiteral("00");
+}
+
+/** Model string of a supported probe PID. */
+static const char *probe_model_name(quint16 pid)
+{
+    switch (pid)
+    {
+    case USB_PID_SWINDLE_LN:
+        return "Swindle GD32/CH32 Debugger";
+    case USB_PID_SWINDLE_PICO:
+        return "pSwindle RP2040 Pico Debugger";
+    case USB_PID_BMP_CLASSIC:
+        return "Classic Black Magic Probe";
+    default:
+        return "OpenMoko / BMP Debugger";
+    }
+}
+
+/** Fill the probe the rest of the startup uses. */
+static void select_probe(bmda_probe_s *info, const char *port)
+{
+    memset(info, 0, sizeof(*info));
+    strncpy(info->port, port, sizeof(info->port) - 1);
+}
+
+/**
+ * @brief Read one character from the terminal, waiting at most @p timeout_ms.
+ * @return the character, or -1 on timeout / end of input.
+ */
+static int read_stdin_char(int timeout_ms)
+{
+    struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
+    if (poll(&pfd, 1, timeout_ms) <= 0)
+    {
+        return -1;
+    }
+    uint8_t c = 0;
+    if (read(STDIN_FILENO, &c, 1) != 1)
+    {
+        return -1;
+    }
+    return static_cast<int>(c);
+}
+
+/**
+ * @brief Ask the operator which of the probes to use.
+ *
+ * The terminal is in raw mode (`main.cpp` clears ICANON and ECHO so a single
+ * 'q' can quit the app), so the number is assembled and echoed here. The 'q'
+ * handler is suspended meanwhile — `hosted_stdin_prompt_begin/end()` — and any
+ * character it still receives is handed back through
+ * `hosted_stdin_prompt_take()` instead of being swallowed.
+ *
+ * @param count number of probes to choose from (>= 1)
+ * @return 1-based index of the chosen probe; 1 when nothing usable was entered
+ */
+static size_t ask_probe_choice(size_t count)
+{
+    if (!isatty(STDIN_FILENO))
+    {
+        fprintf(stderr, "[Serial] stdin is not a terminal: using probe 1 (set BMP_DEVICE to pick another)\n");
+        return 1;
+    }
+
+    printf("\nSelect the probe to use [1-%zu, enter for 1]: ", count);
+    fflush(stdout);
+
+    hosted_stdin_prompt_begin();
+    size_t value = 0;
+    bool have_digit = false;
+    bool answered = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(PROBE_PROMPT_TIMEOUT_S);
+    while (!answered && std::chrono::steady_clock::now() < deadline)
+    {
+        int ch = hosted_stdin_prompt_take();
+        if (ch < 0)
+        {
+            ch = read_stdin_char(PROBE_PROMPT_POLL_MS);
+        }
+        if (ch < 0)
+        {
+            continue;
+        }
+        if (ch == '\r' || ch == '\n')
+        {
+            answered = true;
+        }
+        else if (ch >= '0' && ch <= '9')
+        {
+            value = value * 10 + static_cast<size_t>(ch - '0');
+            have_digit = true;
+            putchar(ch);
+            fflush(stdout);
+        }
+    }
+    hosted_stdin_prompt_end();
+    printf("\n");
+
+    if (!have_digit || value < 1 || value > count)
+    {
+        printf("[Serial] No valid choice: using probe 1\n");
+        return 1;
+    }
+    return value;
 }
 
 /**
  * @brief Find and enumerate compatible BMP/Swindle probes connected via USB serial.
+ *
+ * Several probes are normal on a bench (an LN probe and a pico, say), and the
+ * port order is not stable, so the choice is explicit: `BMP_DEVICE=<port>` when
+ * set, a prompt when more than one probe is present and the operator has a
+ * terminal, probe 1 otherwise.
  */
-extern "C" bool find_debuggers(bmda_cli_options_s *cl_opts, bmda_probe_s *info)
+static bool find_debuggers(bmda_probe_s *info)
 {
-    (void)cl_opts;
-    const auto ports = QSerialPortInfo::availablePorts();
-
-    for (const QSerialPortInfo &portInfo : ports)
+    std::vector<HostedProbe> probes;
+    for (const QSerialPortInfo &portInfo : QSerialPortInfo::availablePorts())
     {
         if (!portInfo.hasVendorIdentifier() || !portInfo.hasProductIdentifier())
         {
             continue;
         }
 
-        quint16 vid = portInfo.vendorIdentifier();
-        quint16 pid = portInfo.productIdentifier();
-
-        if (vid == USB_VID_OPENMOKO)
+        const quint16 vid = portInfo.vendorIdentifier();
+        const quint16 pid = portInfo.productIdentifier();
+        const bool is_supported_probe = (pid == USB_PID_SWINDLE_LN ||
+                                         pid == USB_PID_SWINDLE_PICO ||
+                                         pid == USB_PID_BMP_CLASSIC);
+        if (vid != USB_VID_OPENMOKO || !is_supported_probe)
         {
-            bool is_supported_probe = (pid == USB_PID_SWINDLE_LN ||
-                                       pid == USB_PID_SWINDLE_PICO ||
-                                       pid == USB_PID_BMP_CLASSIC);
-            if (is_supported_probe)
-            {
-                memset(info, 0, sizeof(*info));
-                info->type = PROBE_TYPE_BMP;
-                strncpy(info->manufacturer, portInfo.systemLocation().toLatin1().constData(), sizeof(info->manufacturer) - 1);
-
-                printf("Found Probe: VID=0x%04x, PID=0x%04x on %s\n", vid, pid, info->manufacturer);
-                switch (pid)
-                {
-                case USB_PID_SWINDLE_LN:
-                    printf("\tModel: Swindle GD32/CH32 Debugger\n");
-                    break;
-                case USB_PID_SWINDLE_PICO:
-                    printf("\tModel: pSwindle RP2040 Pico Debugger\n");
-                    break;
-                case USB_PID_BMP_CLASSIC:
-                    printf("\tModel: Classic Black Magic Probe\n");
-                    break;
-                default:
-                    printf("\tModel: OpenMoko / BMP Debugger\n");
-                    break;
-                }
-                return true;
-            }
+            continue;
         }
+        // Only the GDB CDC answers GDB: skip the UART bridge and the logger.
+        if (!is_gdb_cdc_port(portInfo.portName()))
+        {
+            continue;
+        }
+
+        probes.push_back({portInfo.systemLocation(), vid, pid});
     }
 
-    fprintf(stderr, "[Serial] No compatible Black Magic / Swindle probe found.\n");
-    return false;
-}
-
-/**
- * @brief Clean up and close the serial port on shutdown.
- */
-extern "C" void libusb_exit_function(bmda_probe_s *info)
-{
-    (void)info;
-    if (s_serial_port)
+    // Non-interactive override: BMP_DEVICE=/dev/ttySwindleGdb2 (a udev symlink)
+    // or /dev/ttyACM0. Checked before the enumeration so it also works for a port
+    // QtSerialPort does not list.
+    const char *requested = getenv("BMP_DEVICE");
+    if (requested != nullptr && requested[0] != '\0')
     {
-        s_serial_port->close();
-        delete s_serial_port;
-        s_serial_port = nullptr;
+        if (access(requested, R_OK | W_OK) == 0)
+        {
+            select_probe(info, requested);
+            printf("[Serial] Using probe: %s (BMP_DEVICE override)\n", requested);
+            return true;
+        }
+        fprintf(stderr, "[Serial] BMP_DEVICE=%s is not usable: falling back to the probe list\n", requested);
     }
+
+    if (probes.empty())
+    {
+        fprintf(stderr, "[Serial] No compatible Black Magic / Swindle probe found.\n");
+        return false;
+    }
+
+    printf("Found %zu compatible probe(s):\n", probes.size());
+    for (size_t i = 0; i < probes.size(); ++i)
+    {
+        printf("  %zu) %s  VID=0x%04x PID=0x%04x  %s\n", i + 1,
+               probes[i].port.toLatin1().constData(), probes[i].vid, probes[i].pid,
+               probe_model_name(probes[i].pid));
+    }
+
+    size_t chosen = 0;
+    if (probes.size() > 1)
+    {
+        chosen = ask_probe_choice(probes.size()) - 1;
+    }
+
+    select_probe(info, probes[chosen].port.toLatin1().constData());
+    printf("[Serial] Using probe: %s  VID=0x%04x PID=0x%04x  Model: %s\n",
+           probes[chosen].port.toLatin1().constData(), probes[chosen].vid, probes[chosen].pid,
+           probe_model_name(probes[chosen].pid));
+    return true;
 }
 
 /**
  * @brief Create the serial port instance for the probe.
  */
-extern "C" void bmp_ident(bmda_probe_s *info)
+static void bmp_ident(bmda_probe_s *info)
 {
-    printf("[Serial] Selecting port: %s\n", info->manufacturer);
-    s_serial_port = new QSerialPort(QString(info->manufacturer));
+    printf("[Serial] Selecting port: %s\n", info->port);
+    s_serial_port = new QSerialPort(QString(info->port));
 }
 
 /**
  * @brief Open and configure the serial port for 8N1 communication.
  */
-extern "C" bool serial_open(const bmda_cli_options_s *opt, const char *serial)
+static bool serial_open(void)
 {
-    (void)opt;
-    (void)serial;
-
     if (!s_serial_port)
     {
         return false;
@@ -316,8 +544,25 @@ extern "C" bool serial_open(const bmda_cli_options_s *opt, const char *serial)
     s_serial_port->setParity(QSerialPort::NoParity);
     s_serial_port->setStopBits(QSerialPort::OneStop);
     s_serial_port->setFlowControl(QSerialPort::NoFlowControl);
-    s_serial_port->setReadBufferSize(1);
 
     printf("[Serial] Port opened at %d baud (8N1)\n", SERIAL_BAUD_RATE);
     return true;
+}
+
+extern "C" void platform_init(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    bmda_probe_s probe_info = {};
+    if (!find_debuggers(&probe_info))
+    {
+        fprintf(stderr, "[Serial] No compatible probe found.\n");
+        exit(1);
+    }
+    bmp_ident(&probe_info);
+    if (!serial_open())
+    {
+        fprintf(stderr, "[Serial] Failed to open probe serial port.\n");
+        exit(1);
+    }
 }

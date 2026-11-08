@@ -16,7 +16,11 @@ pub const RV_DM_HART_INFO: u8 = 0x12;
 pub const RV_DM_ABSTRACTCS: u8 = 0x16;
 pub const RV_DM_COMMAND: u8 = 0x17;
 pub const RV_DM_ABSTRACTAUTO: u8 = 0x18;
+/// Smallest program buffer a memory transfer can be built in: the access
+/// instruction itself plus the `ebreak` that ends the run.
+pub const RV_DM_PROGBUF_MIN_WORDS: u8 = 2;
 pub const RV_DM_PROGBUF0: u8 = 0x20;
+pub const RV_DM_PROGBUF1: u8 = 0x21;
 pub const RV_DM_SBCS: u8 = 0x38;
 pub const RV_DM_SBADDRESS0: u8 = 0x39;
 pub const RV_DM_SBDATA0: u8 = 0x3c;

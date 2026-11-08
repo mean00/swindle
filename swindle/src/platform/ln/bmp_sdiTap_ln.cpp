@@ -14,11 +14,12 @@
 #include <cstring>
 #include "bmp_riscv_extra.h"
 #include "lnTimerWatch.h"
+#include "lnCpuID.h"
+#include "lnAssert.h"
 
 extern "C"
 {
-#include "jep106.h"
-#include "riscv_debug.h"
+#include "platform_support.h"
     extern "C" void target_list_free(void);
 
     extern "C" bool bmp_mem_log_enabled;
@@ -42,10 +43,6 @@ extern "C"
 #include "sdi_template.h"
 }
 
-#define SDI_TBIT_NS 1400u
-#define SDI_LOW1_NS 200u
-#define SDI_LOW0_NS 1050u
-#define SDI_RX_SAMPLE_NS 630u
 #define TIMER_TO_USE 4 // Remember then our timer starts at 0, not 1 so this is timer6 for STM32
 
 static lnTimerWatch *sdi_watch = NULL;
@@ -108,13 +105,58 @@ static void sdiConfigureTiming()
 {
     sdiInitTimer();
 
+    uint32_t defTbitNs = 0;
+    uint32_t defLow1Ns = 0;
+    uint32_t defLow0Ns = 0;
+    uint32_t defSampleNs = 0;
+
+    const int clockSpeed = lnCpuID::clockSpeed();
+
+    switch (lnCpuID::vendor())
+    {
+    case lnCpuID::LN_VENDOR_GD:
+        switch (clockSpeed)
+        {
+        case 96000000:
+            defTbitNs = 1000u;
+            defLow1Ns = 250u;
+            defLow0Ns = 750u;
+            defSampleNs = 600u;
+            break;
+        default:
+            xAssert(0 && "Unsupported frequency for GD32 SDI (only 96 MHz supported)");
+            break;
+        }
+        break;
+
+    case lnCpuID::LN_VENDOR_WCH:
+        switch (clockSpeed)
+        {
+        case 96000000:
+        case 144000000:
+            defTbitNs = 1000u;
+            defLow1Ns = 250u;
+            defLow0Ns = 750u;
+            defSampleNs = 600u;
+            break;
+        default:
+            xAssert(0 && "Unsupported frequency for CH32 SDI (only 96 and 144 MHz supported currently)");
+            break;
+        }
+        break;
+
+    default:
+        xAssert(0 && "Unsupported chip for LN SDI");
+        break;
+    }
+
     const SdiWire w = sdiWireRead();
     sdiWireUsed = w;
 
-    const uint32_t tbitNs = sdiWireValue(w.tbitNs, SDI_TBIT_NS);
-    const uint32_t low1Ns = sdiWireValue(w.low1Ns, SDI_LOW1_NS);
-    const uint32_t low0Ns = sdiWireValue(w.low0Ns, SDI_LOW0_NS);
-    const uint32_t sampleNs = sdiWireValue(w.sampleNs, SDI_RX_SAMPLE_NS);
+    const uint32_t tbitNs = sdiWireValue(w.tbitNs, defTbitNs);
+    const uint32_t low1Ns = sdiWireValue(w.low1Ns, defLow1Ns);
+    const uint32_t low0Ns = sdiWireValue(w.low0Ns, defLow0Ns);
+    const uint32_t sampleNs = sdiWireValue(w.sampleNs, defSampleNs);
 
     sdi_ticks_low1 = (low1Ns * sdi_ticks_per_us) / 1000u;
     sdi_ticks_low0 = (low0Ns * sdi_ticks_per_us) / 1000u;
@@ -297,8 +339,8 @@ static uint32_t sdiSampleWord()
 
     for (int i = 0; i < SDI_WORD_BITS; i++)
     {
-        sdi_watch->start();
         sdiLevelShifterAsOutput();
+        sdi_watch->start();
         sdiPadLow();
         sdi_watch->waitOffset(sdi_ticks_low1);
         sdiPadRelease();
@@ -341,6 +383,8 @@ static uint32_t sdiReadFrame(const uint8_t adr)
     sdiPadRelease();
     sdiLevelShifterAsOutput();
     lnInterrupts();
+
+    lnDelayUs(INTER_WORD_DELAY);
 
     return word;
 }
