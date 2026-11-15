@@ -87,7 +87,8 @@ RUN rustc --version && cargo --version
             &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv6m-none-eabi  \
             &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7m-none-eabi  \
             &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv7em-none-eabihf  \
-            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi 
+            &&  rustup target add --toolchain nightly-x86_64-unknown-linux-gnu   thumbv8m.main-none-eabi  \
+            &&  rustup component add rust-src
 
 
 ##############################################
