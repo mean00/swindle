@@ -5,6 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Per-preset error logs of the CI driver, and how much of them is echoed on failure.
+ERROR_LOG_DIR = Path("/tmp")
+ERROR_TAIL_LINES = 40
+
 # Try to import rich for modern UI, fallback to standard print if not available
 # Check if we are in a CI environment or non-interactive terminal
 is_ci = (
@@ -81,29 +85,29 @@ def runbuild(preset: str):
         shutil.rmtree(build_dir)
     build_dir.mkdir()
     
-    cmake_cmd = ["cmake", "--preset", preset, ".."]
-    make_cmd = ["make", "-j", "4"]
+    steps = [
+        ("cmake", ["cmake", "--preset", preset, "-S", str(cur_dir), "-B", str(build_dir)], cur_dir),
+        ("make", ["make", "-j", "4"], build_dir),
+    ]
     
-    try:
-        subprocess.run(
-            cmake_cmd, 
-            cwd=build_dir, 
-            check=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT, 
-            text=True
-        )
-        subprocess.run(
-            make_cmd, 
-            cwd=build_dir, 
-            check=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT, 
-            text=True
-        )
-    except subprocess.CalledProcessError as e:
-        print_error(preset, e.stdout)
-        sys.exit(-1)
+    for step, cmd, step_cwd in steps:
+        try:
+            subprocess.run(
+                cmd,
+                cwd=step_cwd,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True
+            )
+        except subprocess.CalledProcessError as e:
+            # Keep the whole output (a CMake error is usually above the tail) and
+            # show the last lines only: the failure used to be scrollback-only.
+            log = ERROR_LOG_DIR / f"ci_{preset}.log"
+            log.write_text(e.stdout or "")
+            tail = "\n".join((e.stdout or "").splitlines()[-ERROR_TAIL_LINES:])
+            print_error(f"{preset}: {step} failed (full output: {log})", tail)
+            sys.exit(-1)
     return firmware_image(build_dir)
 
 
@@ -125,6 +129,7 @@ def main():
         "gd32f303_48_inv_ws2812",
         "ch32v307",
         "ch32v307_inv_ws2812",
+        "rp2040_w5500",
         # "ch32v307_net",
     ]
     sizes = []

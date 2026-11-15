@@ -1,48 +1,24 @@
 /**
  * @file gdb_server_common.cpp
- * @brief Common implementations shared between CLI and GUI hosted applications.
+ * @brief Probe back end for a USB probe: the BMP core behind the GDB server.
+ *
+ * The session itself is served by the Rust runner
+ * (swindle/rs/rs_swindle/src/hosted/qt_runner.rs, `GdbHandler`), which calls the
+ * BMP core; the packet decoders are C++ and stay here.
  */
 
-#include "gdb_server_thread.h"
+#include "hosted_constants.h"
+#include "hosted_probe.h"
 
-// Intercept rngdb_send_data_c from bmp_net_gdb.h to decode replies on the fly
-#define rngdb_send_data_c orig_rngdb_send_data_c
-#include "../../swindle/src/net/bmp_net_gdb.h"
-#undef rngdb_send_data_c
+#include "esp_socket_rust.h"
 
-extern "C" void rngdb_send_data_c(uint32_t sz, const uint8_t *ptr)
+/**
+ * @brief Build the GDB runner for a USB probe.
+ *
+ * A null probe endpoint selects the GDB-core back end (the network relay passes
+ * one, see bmp_qttcp.cpp).
+ */
+void *hosted_create_runner(lnFastEventGroup &eventGroup)
 {
-    gdb_decode_outgoing(ptr, sz);
-    orig_rngdb_send_data_c(sz, ptr);
+    return hosted_runner_new(&eventGroup, DEFAULT_GDB_TCP_PORT, nullptr, 0);
 }
-
-static void hosted_rngdbstub_run_intercept(uint32_t len, const uint8_t *data)
-{
-    gdb_decode_incoming(data, len);
-    rngdbstub_run(len, data);
-}
-
-#define DEBUGME(...) do {} while (0)
-// Redirect socketRunnerGdb::process_incoming_data() to the decoding interceptor
-#define rngdbstub_run hosted_rngdbstub_run_intercept
-#include "bmp_net_gdb.cpp"
-#undef rngdbstub_run
-
-static constexpr size_t TEMP_BUFFER_WORDS = 1024;
-static uint32_t s_temp_buffer[TEMP_BUFFER_WORDS];
-
-extern "C" uint8_t *get_temp_buffer_c(uint32_t size)
-{
-    if (size >= sizeof(s_temp_buffer))
-    {
-        fprintf(stderr, "Buffer request size %u exceeds %zu\n", size, sizeof(s_temp_buffer));
-        exit(1);
-    }
-    return reinterpret_cast<uint8_t *>(s_temp_buffer);
-}
-
-void ln_set_connected_state(bool connected)
-{
-    (void)connected;
-}
-

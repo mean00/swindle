@@ -68,6 +68,18 @@ impl ToLog for &&str {
         G::print_str(self);
     }
 }
+impl<const N: usize> ToLog for heapless::String<N> {
+    #[inline(always)]
+    fn log(self) {
+        G::print_str(self.as_str());
+    }
+}
+impl<const N: usize> ToLog for &heapless::String<N> {
+    #[inline(always)]
+    fn log(self) {
+        G::print_str(self.as_str());
+    }
+}
 // Handle characters
 impl ToLog for char {
     #[inline(always)]

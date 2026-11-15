@@ -14,7 +14,9 @@
 #include "stdint.h"
 // Only the instruction array / wrap constants are needed from the pioasm
 // output (no hardware/pio.h structs): esprit drives the PIO directly.
+#ifndef PICO_NO_HARDWARE
 #define PICO_NO_HARDWARE 1
+#endif
 #include "bmp_pio_sdi.h"
 #include "bmp_pinmode.h"
 #include "bmp_pinout.h"

@@ -57,3 +57,6 @@ scratch
 *.pdf
 *.asm
 *.o
+CMakeFiles
+Makefile
+cmake_install.cmake

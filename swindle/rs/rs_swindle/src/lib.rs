@@ -134,9 +134,14 @@ cfg_if::cfg_if! {
 // rtt and sw_breakpoints are at crate root (contents are #[cfg] guarded)
 mod rtt;
 mod sw_breakpoints;
+/// The two C ABI stubs the old `c_interface/bmp_stubs_c.cpp` held (same symbols,
+/// `xAssert(0)` behaviour preserved). Built in both halves, like the C file was.
+mod bmp_stubs;
+#[cfg(not(feature = "hosted"))]
+mod bmp_bridge_stubs;
 pub mod target_xml;
 pub mod memory_map_xml;
-// USB vs non-USB transport
+// USB vs network vs hosted transport
 cfg_if::cfg_if! {
     if #[cfg(not(any(feature = "hosted", feature = "network")))] {
         mod usb;
@@ -144,6 +149,8 @@ cfg_if::cfg_if! {
         mod not_usb;
     }
 }
+#[cfg(feature = "network")]
+pub mod net;
 mod util;
 //
 mod swindle;

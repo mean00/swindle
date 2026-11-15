@@ -11,7 +11,6 @@ option(USE_STLINK_PINOUT "Use SWD pins to control target" OFF)
 option(USE_GD32F3 "Target GD32F303 chip with 256 flash" OFF)
 option(USE_CH32V3x "Target USE_CH32V3x chip with 256 flash" OFF)
 option(USE_RP_ZERO "Change RGB LED to map RP2040 board" OFF)
-option(USE_RP_CARRIER "Use RP2040 carrier board" OFF)
 option(USE_WS2812 "Use WS2812 RGB LED " OFF)
 option(USE_RTT "Use RTT as logger " OFF)
 option(USE_INVERTED_NRST "Inverted Reset signal (with a mosfet)" OFF)
@@ -127,11 +126,35 @@ if(NOT LN_EXTERNAL_GENERATE)
   set(LN_ENABLE_RUST
       TRUE
       CACHE INTERNAL "")
+  set(USE_RUST_LOGGER
+      ON
+      CACHE BOOL "Build the Esprit logger (lnDebug) in Rust" FORCE)
 endif()
 
 # ___________________________________________________
 set(ESPRIT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/esprit)
 include(./mcuSelect.cmake)
+# C++ declarations of the drivers the Rust build owns on the bluepill family (see
+# drop_C.md): they become `extern "C"` so the crates' `#[unsafe(no_mangle)]` exports
+# resolve. A global definition on purpose - esprit_lib, libswindle and the taps all
+# include the same headers and must agree. RP2xxx and ESP32 keep the C++ drivers and
+# are deliberately excluded.
+if(LN_ENABLE_RUST AND (USE_GD32F3 OR USE_CH32V3x))
+  add_definitions(-DLN_RUST_BLUEPILL=1)
+endif()
+
+# USB stack *above* tinyUSB (usb.md): `rs_tinyusb` + `rs_usb` instead of the C++
+# lnUsbStack / lnUsbCDC / lnUsbDFUrt. Family-agnostic on purpose - the same stack is
+# meant to serve GD32/CH32 now and RP2040/RP2350 in P7 - and still OFF: nothing reads
+# it until P2 moves the stack task into Rust, so flipping it early would only make the
+# build believe a migration had happened.
+option(LN_RUST_USB "Build the USB stack above tinyUSB in Rust (usb.md)" OFF)
+# The Rust stack serves every family (P2 bluepill, P7 RP2040/RP2350): rs_tinyusb owns the
+# task and the tud_* callbacks, rs_usb the device above them.
+if(LN_ENABLE_RUST AND SWINDLE_USE_USB)
+  set(LN_RUST_USB ON CACHE BOOL "Build the USB stack above tinyUSB in Rust (usb.md)" FORCE)
+  add_definitions(-DLN_RUST_USB=1)
+endif()
 # The session arena's two regions are `.bss` (rs_swindle/src/session_arena_size.rs).
 # lnFreeRTOS.cmake derives the heap from the board's static RAM
 # (LN_FREERTOS_HEAP_SIZE = RAM - STATIC_RAM - 1), so give the arena its own budget
@@ -197,7 +220,7 @@ include(${ESPRIT_ROOT}/setup.cmake)
 if(SWINDLE_USE_USB)
   if(NOT LN_EXTERNAL_TUSBD)
     use_library(tinyUsb)
-    include(${ESPRIT_ROOT}/libraries/tinyUsb/tiny.cmake)
+    include(${ESPRIT_CPP_ROOT}/libraries/tinyUsb/tiny.cmake)
   endif()
 endif()
 # __________________________________________________________________
@@ -225,16 +248,19 @@ else()
     use_library(ln-rtt)
   endif()
 
-  if(SWINDLE_USE_W5500)
-    use_library(w5500)
-  endif()
-
   #if(USE_WS2812)
   #use_library(WS2812B)
   #endif()
   add_subdirectory(src)
   set(SWINDLE_MAIN swindle_main )
+  if(LN_ENABLE_RUST AND LN_RUST_USB AND ("${LN_EXT}" STREQUAL "arm_gd32fx" OR "${LN_EXT}" STREQUAL "riscv_ch32v3x"))
+    list(APPEND SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/swindle/src/usb/bmp_usb_desc.c)
+  endif()
   generate_gd32_firmware(swindle ${SOURCES})
+  if(LN_ENABLE_RUST AND LN_RUST_USB AND ("${LN_EXT}" STREQUAL "arm_gd32fx" OR "${LN_EXT}" STREQUAL "riscv_ch32v3x"))
+    target_include_directories(swindle PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/swindle/private_include)
+    target_link_libraries(swindle PRIVATE bmp_core)
+  endif()
   hash_gd32_firmware(swindle)
 endif()
 
@@ -248,7 +274,6 @@ target_link_libraries(swindle PUBLIC libswindle)
 # BRIDGE_SRCS). TARGET_LINK_LIBRARIES(swindle PUBLIC lnarduino_c_bindings) FIXME TODO this should be automatic
 if(SWINDLE_USE_NETWORK)
   if(SWINDLE_USE_W5500)
-    target_link_libraries(swindle_main PUBLIC w5500)
     target_include_directories(swindle PRIVATE ${CMAKE_SOURCE_DIR}/src/net ${CMAKE_SOURCE_DIR}/swindle/include ${CMAKE_SOURCE_DIR}/swindle/src ${CMAKE_SOURCE_DIR}/swindle/src/net)
     target_include_directories(swindle PRIVATE ${CMAKE_SOURCE_DIR}/swindle/private_include)
   else()

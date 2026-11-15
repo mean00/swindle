@@ -18,6 +18,7 @@
 #include <cstring>
 
 #include "gdb_server_thread.h"
+#include "hosted_probe.h"
 
 // Memory access mode (swindle/rs/rs_swindle/src/hosted/bulk_mem.rs).
 extern "C" void swindleSetRawDmi_c(int on);
@@ -199,7 +200,7 @@ int main(int argc, char **argv)
 
     platform_timeout_init();
 
-    auto *thread = new GdbServerThread;
+    auto *thread = new GdbServerThread(hosted_create_runner);
     thread->start();
 
     MainWindow window(thread);

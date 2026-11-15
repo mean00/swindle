@@ -39,7 +39,12 @@ else()
   set(SDI_SOURCES)
 endif()
 
-add_library(swindleio_impl STATIC bmp_adc_ln.cpp bmp_rvTap_ln.cpp bmp_swdTap_ln.cpp bmp_tap_ln.cpp
+# bmp_adc_ln.cpp (ADC pin mode + ADC0 clock enable at boot) is no longer built: the
+# target voltage is read through rust_esprit::AdcDriver (rs_swindle/src/platform/
+# voltage.rs), which configures the ADC itself. The file is kept in the tree as the
+# reference for the LN ADC bring-up; restore it here (and the call in bmp_tap_ln.cpp)
+# if `mon voltage` ever needs the boot-time init back.
+add_library(swindleio_impl STATIC bmp_rvTap_ln.cpp bmp_swdTap_ln.cpp bmp_tap_ln.cpp
                                   ${SDI_SOURCES}
                                   ../../template/swd_tap_stubs.cpp)
 # The pin mapping (and the 48 / 64 pins package choice) comes from the probe board
@@ -55,6 +60,6 @@ target_include_directories(swindleio_impl PRIVATE ../../../private_include)
 # lnPinMapping.h - the timer/channel -> DMA engine/channel table), needed by
 # bmp_sdiTap_ln_riscv_extra.cpp. ESPRIT_ROOT is set by the top level
 # CMakeLists.txt before add_subdirectory(swindle).
-target_include_directories(swindleio_impl PRIVATE ${ESPRIT_ROOT}/private_include)
+target_include_directories(swindleio_impl PRIVATE ${ESPRIT_CPP_ROOT}/private_include)
 target_link_libraries(swindleio_impl PRIVATE esprit_dev)
 ln_setup_platform_impl(swindleio_impl)

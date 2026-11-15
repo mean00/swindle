@@ -225,8 +225,8 @@ function(ln_setup_platform_impl tgt)
 endfunction()
 
 # ----------------------------
-# Pure Rust target drivers (rs_stm32f1f4 / rs_stm32g0 / rs_rp2040 / rs_rp2350_arm)
-# plus the RISC-V ones (rs_ch32v00x / rs_ch32v123xx / rs_rp2350_riscv)
+# Pure Rust target drivers (rs_stm32f1f4 / rs_swindle_stm32g0 / rs_swindle_rp2040 / rs_swindle_rp2350_arm)
+# plus the RISC-V ones (rs_swindle_ch32v00x / rs_swindle_ch32v123xx / rs_swindle_rp2350_riscv)
 # ----------------------------
 # The probe chain (rs_swindle_wrapper/src/arm_probe_chain.rs) calls the Rust driver of a
 # ported family instead of the C probe of the same name, so that C probe is dead code and
@@ -284,7 +284,7 @@ endif()
 # spi.c is the SPI-flash manager (`bmp_spi_add_flash()`) and sfdp.c the parameter reader it
 # calls; a driver that programs its flash through a controller uses them to get a
 # `target_flash_s` without writing its own. The Rust RP drivers do not: they drive the QMI
-# directly (rs_rp_common/src/{spi,sfdp}.rs). So the pair is only compiled while at least one
+# directly (rs_swindle_rp_common/src/{spi,sfdp}.rs). So the pair is only compiled while at least one
 # family that still asks for it is built — with every family below ported or disabled, both
 # files leave the build with the C drivers that used them.
 set(SWINDLE_SPI_FLASH_USERS
@@ -309,11 +309,10 @@ endif()
 # ----------------------------
 # Supported boards
 # ----------------------------
-set(BOARDS
-    ${enabled_sources}
-    ${B}/bmp_disabledBoard.cpp
-    #${T}/lpc_common.c
-    CACHE INTERNAL "")
+set(BOARDS ${enabled_sources} CACHE INTERNAL "")
+if(NOT LN_ENABLE_RUST)
+  set(BOARDS ${BOARDS} ${B}/bmp_disabledBoard.cpp CACHE INTERNAL "")
+endif()
 
 # -------
 # BM_SRC is now empty: exception.c, hex_utils.c, and maths_utils.c are replaced by bmp_helpers.cpp

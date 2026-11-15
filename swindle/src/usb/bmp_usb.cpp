@@ -9,11 +9,26 @@
 #include "esprit.h"
 #include "include/lnUsbCDC.h"
 #include "include/lnUsbDFUrt.h"
-#include "include/lnUsbStack.h"
-#include "lnBMP_usb_descriptor.h"
 #include "lnBmpTask.h"
+#include "tusb.h" // the TUD_*_DESC_LEN / TUD_*_DESCRIPTOR macros the descriptor tables use
+#include "lnBMP_usb_descriptor.h"
 
+// The USB device stack above tinyUSB is Rust when LN_RUST_USB (usb.md P2):
+// `rs_tinyusb` owns the `usbd` task, the `tud_*` callbacks and the descriptor
+// plumbing. `lnUsbDcdInit()` is the remaining C piece - it creates the register-level
+// `lnUsbDevice` and hooks its events to `dcd_event_*` (GD32; a no-op on CH32, whose
+// DCD raises them itself). RP2040/RP2350 keep the C++ stack until P7.
+#ifdef LN_RUST_USB
+extern "C" void lnUsbDcdInit(void);
+extern "C" void rn_usb_stack_init(const void *device, const void *qualifier, const void *fs_config,
+                                 const void *hs_config, const char *const *strings, unsigned string_count);
+extern "C" void rn_usb_stack_set_event_handler(void *cookie, void (*cb)(void *, int));
+extern "C" void rn_usb_stack_start(void);
+extern "C" void rn_usb_dfu_init(void);
+#else
+#include "include/lnUsbStack.h"
 #include <new> // placement new for the .bss lnUsbStack instance
+#endif
 
 extern "C"
 {
@@ -78,29 +93,38 @@ extern "C"
     void rngdb_gdb_task();
 }
 
-#define MEVENT(x)                                                                                                      \
-    case lnUsbStack::USB_##x:                                                                                          \
-        Logger(#x);
-void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
+/** The four stack events, mirrored from `rs_tinyusb::stack` (USB_CONNECT .. USB_RESUME). */
+enum
 {
+    USB_EV_CONNECT = 0,
+    USB_EV_DISCONNECT = 1,
+    USB_EV_SUSPEND = 2,
+    USB_EV_RESUME = 3
+};
+
+// Note: `helloUsbEvent` executes inside the high-priority `usbd` task (`tud_*_cb`).
+// It must NEVER call `Logger(...)` or acquire `LOGGER_MUTEX`, because a lower-priority
+// task holding `LOGGER_MUTEX` while waiting on USB CDC TX FIFO drain would deadlock
+// `usbd` and prevent `tud_task()` from servicing USB.
+#ifdef LN_RUST_USB
+extern "C" void helloUsbEvent(void *cookie, int event)
+#else
+void helloUsbEvent(void *cookie, lnUsbStack::lnUsbStackEvents event)
+#endif
+{
+    (void)cookie;
     switch (event)
     {
-        MEVENT(CONNECT)
-        break;
-        MEVENT(DISCONNECT)
-
-        break;
-        MEVENT(SUSPEND)
-        break;
-        MEVENT(RESUME)
+    case USB_EV_CONNECT:
+    case USB_EV_DISCONNECT:
+    case USB_EV_SUSPEND:
+    case USB_EV_RESUME:
         break;
     default:
         xAssert(0);
         break;
     }
 }
-
-lnUsbCDC *uartCdc = NULL;
 
 // usbserial task TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
 LN_BIG_TASK_STORAGE(usbserial, TASK_BMP_SERIAL_STACK_SIZE);
@@ -110,6 +134,7 @@ extern void lnSoftSystemReset(void);
 #if defined(USE_RP2040) || defined(USE_RP2350)
 extern void Rp2040ResetToFwUpload();
 #endif
+#ifndef LN_RUST_USB
 /** @brief Reboot into DFU mode (USB bootloader). */
 void goDfu()
 {
@@ -130,11 +155,21 @@ void goDfu()
     Rp2040ResetToFwUpload();
 #endif
 }
+#endif // LN_RUST_USB
 
 /** @brief Initialise the USB GDB interface (CDC-ACM + optional logger + bridge). @return 0 on success. */
-extern "C" int gdb_if_init(void)
+extern "C" bool gdb_if_init(void)
 {
     Logger("Starting CDC \n");
+    /* The device controller comes up first (register level, below tinyUSB), then the
+     * Rust stack gets the board's descriptors and its own `usbd` task. The task stack
+     * and the `lnUsbDevice` object are static, both live as long as the probe. */
+#ifdef LN_RUST_USB
+    lnUsbDcdInit();
+    rn_usb_stack_init(&desc_device, &desc_device_qualifier, desc_fs_configuration, desc_hs_configuration, descriptor,
+                      (unsigned)(sizeof(descriptor) / sizeof(descriptor[0])));
+    rn_usb_stack_set_event_handler(NULL, helloUsbEvent);
+#else
     /* There is exactly one USB stack per probe and it has to outlive this call
      * (it owns the TinyUSB callbacks), so keep it in .bss instead of the heap.
      * Placement new, not a plain function-local static: lnUsbStack has a virtual
@@ -145,6 +180,7 @@ extern "C" int gdb_if_init(void)
     usb->init(sizeof(descriptor) / sizeof(descriptor[0]), descriptor);
     usb->setConfiguration(desc_hs_configuration, desc_fs_configuration, &desc_device, &desc_device_qualifier);
     usb->setEventHandler(NULL, helloUsbEvent);
+#endif
 
     // start GDB CDC/ACM via Rust-owned instance
     rngdb_cdc_init(0);
@@ -161,9 +197,17 @@ extern "C" int gdb_if_init(void)
     LN_CREATE_BIG_TASK(reinterpret_cast<TaskFunction_t>(rn_serial_bridge_task), usbserial, "usbserial",
                        TASK_BMP_SERIAL_STACK_SIZE, NULL, TASK_BMP_SERIAL_PRIORITY);
     // init DFU
+#ifdef LN_RUST_USB
+    rn_usb_dfu_init();
+#else
     lnUsbDFURT::addDFURTCb(goDfu);
+#endif
+#ifdef LN_RUST_USB
+    rn_usb_stack_start();
+#else
     usb->start();
-    return 0;
+#endif
+    return true;
 }
 /** @brief Stub — FreeRTOS init not needed (tasks managed by the RTOS). */
 void initFreeRTOS()

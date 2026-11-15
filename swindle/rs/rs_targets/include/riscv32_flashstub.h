@@ -23,7 +23,7 @@
 
 /*
  * Stub exit helper shared by every RISC-V flashstub source in the Rust tree:
- * `rs_ch32v00x/flashstub`, `rs_ch32v123xx/flashstub` and `rs_rp2350_common/flashstub`
+ * `rs_swindle_ch32v00x/flashstub`, `rs_swindle_ch32v123xx/flashstub` and `rs_swindle_rp2350_common/flashstub`
  * (which also has the RP2350 C twin). It lives here, next to the crates, so a stub build
  * never has to reach into the blackmagic tree.
  *

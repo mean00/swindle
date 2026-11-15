@@ -5,7 +5,7 @@
 //! sense input, UART / USB assignation and LEDs.
 //!
 //! One file per board, under its family (`ln/ln_48pins.rs`, `ln/ln_64pins.rs`,
-//! `rp2xxx/rp_zero.rs`, `rp2xxx/rp_carrier.rs`), selected by
+//! `rp2xxx/rp_carrier.rs`), selected by
 //! `swindle/board.cmake` from the CMake options and enabled here as a feature
 //! (`swindle/rs/CMakeLists.txt`). The C side does not carry a second copy of these
 //! numbers: the selected file is rendered as `bmp_pinout_board.h` by
@@ -26,10 +26,6 @@ mod board;
 #[path = "bluepill/ln_64pins.rs"]
 mod board;
 
-#[cfg(feature = "rp_zero")]
-#[path = "rp2xxx/rp_zero.rs"]
-mod board;
-
 #[cfg(feature = "rp_carrier")]
 #[path = "rp2xxx/rp_carrier.rs"]
 mod board;
@@ -37,11 +33,10 @@ mod board;
 #[cfg(not(any(
     feature = "ln48",
     feature = "ln64",
-    feature = "rp_zero",
     feature = "rp_carrier"
 )))]
 compile_error!(
-    "exactly one board feature must be enabled (ln48, ln64, rp_zero, rp_carrier) — see swindle/board.cmake"
+    "exactly one board feature must be enabled (ln48, ln64, rp_carrier) — see swindle/board.cmake"
 );
 
 /// LN target code (GD32F303 / CH32V307): how this board drives its own signals, and
@@ -50,7 +45,7 @@ compile_error!(
 pub mod bluepill;
 
 /// RP2040 / RP2350 target code, same idea.
-#[cfg(any(feature = "rp_zero", feature = "rp_carrier"))]
+#[cfg(feature = "rp_carrier")]
 pub mod rp2xxx;
 
 /// The pin encoding of the selected family, under one name: a board file writes
@@ -59,14 +54,14 @@ pub mod rp2xxx;
 /// supplies this module from `SWINDLE_BOARD_PINS_RS`.
 #[cfg(any(feature = "ln48", feature = "ln64"))]
 pub(crate) use bluepill::pins;
-#[cfg(any(feature = "rp_zero", feature = "rp_carrier"))]
+#[cfg(feature = "rp_carrier")]
 pub(crate) use rp2xxx::pins;
 
 /// The selected board's own code under one path, whatever the target is: this is
 /// what `rs_swindle::reset_pin` drives.
 #[cfg(any(feature = "ln48", feature = "ln64"))]
 pub use bluepill::reset_pin;
-#[cfg(any(feature = "rp_zero", feature = "rp_carrier"))]
+#[cfg(feature = "rp_carrier")]
 pub use rp2xxx::reset_pin;
 
 pub use board::BOARD;

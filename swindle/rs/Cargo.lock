@@ -12,15 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atomic-polyfill"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cf2bce30dfe09ef0bfaef228b9d414faaf7e563035494d7fe092dba54b300f4"
-dependencies = [
- "critical-section",
-]
-
-[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -61,15 +52,6 @@ checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
 name = "hash32"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0c35f58762feb77d74ebe43bdbc3210f09be9fe6742234d573bacc26ed92b67"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
-name = "hash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
@@ -79,25 +61,11 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.7.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdc6457c0eb62c71aac4bc17216026d8410337c4126773b9c5daba343f17964f"
-dependencies = [
- "atomic-polyfill",
- "hash32 0.2.1",
- "rustc_version",
- "spin",
- "stable_deref_trait",
- "ufmt-write",
-]
-
-[[package]]
-name = "heapless"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25ba4bd83f9415b58b4ed8dc5714c76e626a105be4646c02630ad730ad3b5aa4"
 dependencies = [
- "hash32 0.3.1",
+ "hash32",
  "stable_deref_trait",
  "ufmt",
  "ufmt-write",
@@ -108,15 +76,6 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "lock_api"
-version = "0.4.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
-dependencies = [
- "scopeguard",
-]
 
 [[package]]
 name = "minicbor"
@@ -163,17 +122,22 @@ version = "0.1.0"
 dependencies = [
  "rs_bluepill",
  "rs_dma_bluepill",
- "rs_esprit",
  "rs_gpio_bluepill",
+ "rs_mcu_traits",
  "rs_rcu_bluepill",
- "rs_timer_bluepill",
+ "rs_rtos",
 ]
 
 [[package]]
 name = "rs_adc_rp2xxx"
 version = "0.1.0"
 dependencies = [
- "rs_esprit",
+ "rs_dma_rp2xxx",
+ "rs_gpio_rp2xxx",
+ "rs_mcu_traits",
+ "rs_rcu_rp2xxx",
+ "rs_rp2xxx",
+ "rs_rtos",
 ]
 
 [[package]]
@@ -181,14 +145,16 @@ name = "rs_adc_wrapped"
 version = "0.1.0"
 dependencies = [
  "cty",
- "rs_esprit",
+ "rs_mcu_traits",
 ]
 
 [[package]]
 name = "rs_afio_bluepill"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "rs_bluepill",
+ "rs_mcu_traits",
  "rs_rcu_bluepill",
 ]
 
@@ -197,17 +163,12 @@ name = "rs_bluepill"
 version = "0.1.0"
 
 [[package]]
-name = "rs_ch32v00x"
+name = "rs_ch32v3x"
 version = "0.1.0"
 dependencies = [
- "rsbmp",
-]
-
-[[package]]
-name = "rs_ch32v123xx"
-version = "0.1.0"
-dependencies = [
- "rsbmp",
+ "rs_bluepill",
+ "rs_fmc_bluepill",
+ "rs_rcu_bluepill",
 ]
 
 [[package]]
@@ -215,15 +176,18 @@ name = "rs_dma_bluepill"
 version = "0.1.0"
 dependencies = [
  "rs_bluepill",
- "rs_esprit",
+ "rs_mcu_traits",
  "rs_rcu_bluepill",
+ "rs_rtos",
 ]
 
 [[package]]
-name = "rs_esprit"
+name = "rs_dma_rp2xxx"
 version = "0.1.0"
 dependencies = [
- "cty",
+ "portable-atomic",
+ "rs_mcu_traits",
+ "rs_rp2xxx",
  "rs_rtos",
 ]
 
@@ -231,10 +195,20 @@ dependencies = [
 name = "rs_exti_bluepill"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "rs_afio_bluepill",
  "rs_bluepill",
- "rs_esprit",
  "rs_gpio_bluepill",
+ "rs_mcu_traits",
+]
+
+[[package]]
+name = "rs_exti_rp2xxx"
+version = "0.1.0"
+dependencies = [
+ "portable-atomic",
+ "rs_mcu_traits",
+ "rs_rp2xxx",
 ]
 
 [[package]]
@@ -242,22 +216,42 @@ name = "rs_exti_wrapped"
 version = "0.1.0"
 dependencies = [
  "cty",
- "rs_esprit",
+ "rs_mcu_traits",
+]
+
+[[package]]
+name = "rs_fmc_bluepill"
+version = "0.1.0"
+dependencies = [
+ "rs_bluepill",
+]
+
+[[package]]
+name = "rs_gd32fx"
+version = "0.1.0"
+dependencies = [
+ "rs_afio_bluepill",
+ "rs_bluepill",
+ "rs_fmc_bluepill",
+ "rs_gpio_bluepill",
+ "rs_rcu_bluepill",
 ]
 
 [[package]]
 name = "rs_gpio_bluepill"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "rs_bluepill",
- "rs_esprit",
+ "rs_mcu_traits",
 ]
 
 [[package]]
 name = "rs_gpio_rp2xxx"
 version = "0.1.0"
 dependencies = [
- "rs_esprit",
+ "rs_mcu_traits",
+ "rs_rp2xxx",
 ]
 
 [[package]]
@@ -265,7 +259,7 @@ name = "rs_gpio_wrapped"
 version = "0.1.0"
 dependencies = [
  "cty",
- "rs_esprit",
+ "rs_mcu_traits",
 ]
 
 [[package]]
@@ -273,22 +267,29 @@ name = "rs_i2c_bluepill"
 version = "0.1.0"
 dependencies = [
  "rs_bluepill",
- "rs_esprit",
  "rs_gpio_bluepill",
+ "rs_mcu_traits",
  "rs_rcu_bluepill",
 ]
 
 [[package]]
 name = "rs_i2c_rp2xxx"
 version = "0.1.0"
+dependencies = [
+ "rs_mcu_traits",
+]
 
 [[package]]
 name = "rs_i2c_wrapped"
 version = "0.1.0"
 dependencies = [
  "cty",
- "rs_esprit",
+ "rs_mcu_traits",
 ]
+
+[[package]]
+name = "rs_mcu_traits"
+version = "0.1.0"
 
 [[package]]
 name = "rs_multi_pulse_bluepill"
@@ -296,17 +297,14 @@ version = "0.1.0"
 dependencies = [
  "rs_bluepill",
  "rs_gpio_bluepill",
+ "rs_mcu_traits",
 ]
 
 [[package]]
 name = "rs_multi_pulse_rp2xxx"
 version = "0.1.0"
-
-[[package]]
-name = "rs_nrf"
-version = "0.1.0"
 dependencies = [
- "rsbmp",
+ "rs_mcu_traits",
 ]
 
 [[package]]
@@ -323,55 +321,51 @@ name = "rs_rcu_bluepill"
 version = "0.1.0"
 dependencies = [
  "rs_bluepill",
+ "rs_mcu_traits",
 ]
 
 [[package]]
-name = "rs_rp2040"
+name = "rs_rcu_rp2xxx"
 version = "0.1.0"
 dependencies = [
- "rs_rp_common",
- "rsbmp",
+ "rs_mcu_traits",
+ "rs_rp2xxx",
 ]
 
 [[package]]
-name = "rs_rp2350_arm"
+name = "rs_rp2040_mcu"
 version = "0.1.0"
 dependencies = [
- "rs_rp2350_common",
- "rs_rp_common",
- "rsbmp",
+ "rs_gpio_rp2xxx",
+ "rs_rp2xxx",
 ]
 
 [[package]]
-name = "rs_rp2350_common"
+name = "rs_rp2350_mcu"
 version = "0.1.0"
 dependencies = [
- "rs_rp_common",
- "rsbmp",
+ "rs_gpio_rp2xxx",
+ "rs_rp2xxx",
 ]
 
 [[package]]
-name = "rs_rp2350_riscv"
+name = "rs_rp2xxx"
 version = "0.1.0"
-dependencies = [
- "rs_rp2350_common",
- "rs_rp_common",
- "rsbmp",
-]
-
-[[package]]
-name = "rs_rp_common"
-version = "0.1.0"
-dependencies = [
- "rsbmp",
-]
 
 [[package]]
 name = "rs_rtos"
 version = "0.1.0"
 dependencies = [
  "cfg-if",
+ "critical-section",
  "cty",
+]
+
+[[package]]
+name = "rs_socketrunner"
+version = "0.1.0"
+dependencies = [
+ "rs_rtos",
 ]
 
 [[package]]
@@ -380,52 +374,31 @@ version = "0.1.0"
 dependencies = [
  "rs_bluepill",
  "rs_dma_bluepill",
- "rs_esprit",
  "rs_gpio_bluepill",
+ "rs_mcu_traits",
  "rs_rcu_bluepill",
+ "rs_rtos",
 ]
 
 [[package]]
 name = "rs_spi_rp2xxx"
 version = "0.1.0"
+dependencies = [
+ "portable-atomic",
+ "rs_dma_rp2xxx",
+ "rs_gpio_rp2xxx",
+ "rs_mcu_traits",
+ "rs_rcu_rp2xxx",
+ "rs_rp2xxx",
+ "rs_rtos",
+]
 
 [[package]]
 name = "rs_spi_wrapped"
 version = "0.1.0"
 dependencies = [
  "cty",
- "rs_esprit",
-]
-
-[[package]]
-name = "rs_stm32_common"
-version = "0.1.0"
-dependencies = [
- "rsbmp",
-]
-
-[[package]]
-name = "rs_stm32f1"
-version = "0.1.0"
-dependencies = [
- "rs_stm32_common",
- "rsbmp",
-]
-
-[[package]]
-name = "rs_stm32f4"
-version = "0.1.0"
-dependencies = [
- "rs_stm32_common",
- "rsbmp",
-]
-
-[[package]]
-name = "rs_stm32g0"
-version = "0.1.0"
-dependencies = [
- "rs_stm32_common",
- "rsbmp",
+ "rs_mcu_traits",
 ]
 
 [[package]]
@@ -436,22 +409,117 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs_swindle_ch32v00x"
+version = "0.1.0"
+dependencies = [
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_ch32v123xx"
+version = "0.1.0"
+dependencies = [
+ "rsbmp",
+]
+
+[[package]]
 name = "rs_swindle_leds"
 version = "0.1.0"
 dependencies = [
+ "rs_rp2xxx",
  "rs_swindle_board",
  "rust_esprit",
  "ws2812b",
 ]
 
 [[package]]
+name = "rs_swindle_nrf"
+version = "0.1.0"
+dependencies = [
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_rp2040"
+version = "0.1.0"
+dependencies = [
+ "rs_swindle_rp_common",
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_rp2350_arm"
+version = "0.1.0"
+dependencies = [
+ "rs_swindle_rp2350_common",
+ "rs_swindle_rp_common",
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_rp2350_common"
+version = "0.1.0"
+dependencies = [
+ "rs_swindle_rp_common",
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_rp2350_riscv"
+version = "0.1.0"
+dependencies = [
+ "rs_swindle_rp2350_common",
+ "rs_swindle_rp_common",
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_rp_common"
+version = "0.1.0"
+dependencies = [
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_stm32_common"
+version = "0.1.0"
+dependencies = [
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_stm32f1"
+version = "0.1.0"
+dependencies = [
+ "rs_swindle_stm32_common",
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_stm32f4"
+version = "0.1.0"
+dependencies = [
+ "rs_swindle_stm32_common",
+ "rsbmp",
+]
+
+[[package]]
+name = "rs_swindle_stm32g0"
+version = "0.1.0"
+dependencies = [
+ "rs_swindle_stm32_common",
+ "rsbmp",
+]
+
+[[package]]
 name = "rs_timer_bluepill"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "rs_bluepill",
  "rs_dma_bluepill",
- "rs_esprit",
  "rs_gpio_bluepill",
+ "rs_mcu_traits",
  "rs_pinout48_bluepill",
  "rs_rcu_bluepill",
 ]
@@ -459,13 +527,16 @@ dependencies = [
 [[package]]
 name = "rs_timer_rp2xxx"
 version = "0.1.0"
+dependencies = [
+ "rs_mcu_traits",
+]
 
 [[package]]
 name = "rs_timer_wrapped"
 version = "0.1.0"
 dependencies = [
  "cty",
- "rs_esprit",
+ "rs_mcu_traits",
 ]
 
 [[package]]
@@ -473,6 +544,7 @@ name = "rs_tinyusb"
 version = "0.1.0"
 dependencies = [
  "cty",
+ "rs_rtos",
 ]
 
 [[package]]
@@ -481,9 +553,22 @@ version = "0.1.0"
 dependencies = [
  "rs_bluepill",
  "rs_dma_bluepill",
- "rs_esprit",
  "rs_gpio_bluepill",
+ "rs_mcu_traits",
  "rs_rcu_bluepill",
+ "rs_rtos",
+]
+
+[[package]]
+name = "rs_uart_rp2xxx"
+version = "0.1.0"
+dependencies = [
+ "portable-atomic",
+ "rs_dma_rp2xxx",
+ "rs_gpio_rp2xxx",
+ "rs_mcu_traits",
+ "rs_rcu_rp2xxx",
+ "rs_rp2xxx",
  "rs_rtos",
 ]
 
@@ -492,7 +577,25 @@ name = "rs_uart_wrapped"
 version = "0.1.0"
 dependencies = [
  "cty",
- "rs_esprit",
+ "rs_mcu_traits",
+]
+
+[[package]]
+name = "rs_usb"
+version = "0.1.0"
+dependencies = [
+ "rs_tinyusb",
+]
+
+[[package]]
+name = "rs_w5500"
+version = "0.1.0"
+dependencies = [
+ "cty",
+ "rs_rtos",
+ "rs_socketrunner",
+ "rust_esprit",
+ "ufmt",
 ]
 
 [[package]]
@@ -503,10 +606,12 @@ dependencies = [
  "cfg-if",
  "crc",
  "cty",
- "heapless 0.9.3",
+ "heapless",
  "minicbor",
  "numtoa",
+ "rs_socketrunner",
  "rs_swindle_board",
+ "rs_w5500",
  "rust_esprit",
  "strum",
  "strum_macros",
@@ -517,16 +622,16 @@ dependencies = [
 name = "rsbmp_wrapper"
 version = "0.1.0"
 dependencies = [
- "rs_ch32v00x",
- "rs_ch32v123xx",
- "rs_nrf",
- "rs_rp2040",
- "rs_rp2350_arm",
- "rs_rp2350_riscv",
- "rs_stm32f1",
- "rs_stm32f4",
- "rs_stm32g0",
+ "rs_swindle_ch32v00x",
+ "rs_swindle_ch32v123xx",
  "rs_swindle_leds",
+ "rs_swindle_nrf",
+ "rs_swindle_rp2040",
+ "rs_swindle_rp2350_arm",
+ "rs_swindle_rp2350_riscv",
+ "rs_swindle_stm32f1",
+ "rs_swindle_stm32f4",
+ "rs_swindle_stm32g0",
  "rsbmp",
  "rust_esprit",
 ]
@@ -538,26 +643,33 @@ dependencies = [
  "cfg-if",
  "critical-section",
  "cty",
- "heapless 0.7.17",
- "portable-atomic",
  "rs_adc_bluepill",
  "rs_adc_rp2xxx",
  "rs_adc_wrapped",
  "rs_afio_bluepill",
+ "rs_bluepill",
+ "rs_ch32v3x",
  "rs_dma_bluepill",
- "rs_esprit",
+ "rs_dma_rp2xxx",
  "rs_exti_bluepill",
+ "rs_exti_rp2xxx",
  "rs_exti_wrapped",
+ "rs_fmc_bluepill",
+ "rs_gd32fx",
  "rs_gpio_bluepill",
  "rs_gpio_rp2xxx",
  "rs_gpio_wrapped",
  "rs_i2c_bluepill",
  "rs_i2c_rp2xxx",
  "rs_i2c_wrapped",
+ "rs_mcu_traits",
  "rs_multi_pulse_bluepill",
  "rs_multi_pulse_rp2xxx",
  "rs_pinout48_bluepill",
  "rs_rcu_bluepill",
+ "rs_rcu_rp2xxx",
+ "rs_rp2040_mcu",
+ "rs_rp2350_mcu",
  "rs_rtos",
  "rs_spi_bluepill",
  "rs_spi_rp2xxx",
@@ -567,38 +679,10 @@ dependencies = [
  "rs_timer_wrapped",
  "rs_tinyusb",
  "rs_uart_bluepill",
+ "rs_uart_rp2xxx",
  "rs_uart_wrapped",
+ "rs_usb",
  "ufmt",
-]
-
-[[package]]
-name = "rustc_version"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
-dependencies = [
- "semver",
-]
-
-[[package]]
-name = "scopeguard"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
-
-[[package]]
-name = "semver"
-version = "1.0.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
-
-[[package]]
-name = "spin"
-version = "0.9.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
-dependencies = [
- "lock_api",
 ]
 
 [[package]]

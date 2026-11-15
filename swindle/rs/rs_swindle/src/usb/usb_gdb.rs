@@ -7,9 +7,9 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
 use rust_esprit::EventGroup;
 use rust_esprit::delay_ms;
+use rust_esprit::{Cdc, CdcEvent, CdcEventHandler};
 
 use crate::SyncCell;
 use crate::bmp;
@@ -36,38 +36,38 @@ impl GdbEvent {
 }
 
 const GDB_MAX_POLLING_PERIOD_MS: u32 = 20;
+const GDB_IDLE_POLL_DELAY_MS: u32 = 20;
+const GDB_ALL_EVENTS: u32 = 0xffff;
+const GDB_WRITE_TIMEOUT_MS: u32 = 1000;
 const GDB_BUFFER_SIZE: usize = 1024;
 
 // ---------------------------------------------------------------------------
 //  GDB CDC event handler
 // ---------------------------------------------------------------------------
 
-/// Handler that implements `CdcEventHandler` for the C++ USB stack.
+/// Handler that implements `CdcEventHandler` for the GDB CDC.
+///
+/// Runs in the `usbd` task context: only updates atomic state and signals the
+/// event group; GPIO reconfiguration (`bmp_io_begin_session` / `bmp_io_end_session`)
+/// is deferred to `rngdb_gdb_task` so it cannot race with `rngdbstub_poll()`.
 struct GdbCdcHandler;
 
 impl CdcEventHandler for GdbCdcHandler {
     fn handle(&self, _interface: i32, event: CdcEvent, _payload: u32) {
-        let gdb = GdbCdc::instance();
         match event {
             CdcEvent::DataAvailable => {
-                gdb.event_group.set_events(GdbEvent::DATA_AVAILABLE.0);
+                SHARED.signal(GdbEvent::DATA_AVAILABLE);
             }
             CdcEvent::WriteAvailable => {
                 // Ignored for GDB CDC
             }
             CdcEvent::SessionStart => {
-                unsafe {
-                    bmp_io_begin_session();
-                }
-                gdb.in_session.store(true, Ordering::Relaxed);
-                gdb.event_group.set_events(GdbEvent::SESSION_START.0);
+                SHARED.in_session.store(true, Ordering::Relaxed);
+                SHARED.signal(GdbEvent::SESSION_START);
             }
             CdcEvent::SessionEnd => {
-                unsafe {
-                    bmp_io_end_session();
-                }
-                gdb.in_session.store(false, Ordering::Relaxed);
-                gdb.event_group.set_events(GdbEvent::SESSION_END.0);
+                SHARED.in_session.store(false, Ordering::Relaxed);
+                SHARED.signal(GdbEvent::SESSION_END);
             }
             CdcEvent::SetSpeed => {
                 // Ignored for GDB CDC
@@ -82,119 +82,108 @@ static GDB_HANDLER: GdbCdcHandler = GdbCdcHandler;
 //  GDB CDC public handle
 // ---------------------------------------------------------------------------
 
-/// Safe wrapper around the GDB CDC instance.
-///
-/// All fields are plain owned values.  Lives in a `static mut` (pinned for
-/// life) so the `GdbCdcHandler` cookie's raw pointer stays valid.
-pub struct GdbCdc {
-    cdc: Cdc,
-    event_group: EventGroup,
+struct GdbShared {
+    event_group: SyncCell<EventGroup>,
     in_session: AtomicBool,
-    buffer: [u8; GDB_BUFFER_SIZE],
+    cdc: SyncCell<core::mem::MaybeUninit<Cdc>>,
+    buffer: SyncCell<[u8; GDB_BUFFER_SIZE]>,
 }
 
-// The GdbCdc lives here — pinned for the lifetime of the USB stack.
-static GDB_CDC: SyncCell<core::mem::MaybeUninit<GdbCdc>> =
-    SyncCell::new(core::mem::MaybeUninit::uninit());
+// SAFETY: `in_session` is atomic, `event_group` delegates to thread-safe FreeRTOS
+// primitives, `cdc` is initialized once before use and delegates to the C CDC driver,
+// and `buffer` is only used by the single GDB task in `process_pending_data`.
+unsafe impl Sync for GdbShared {}
+
+impl GdbShared {
+    #[inline(always)]
+    fn signal(&self, ev: GdbEvent) {
+        unsafe { (*self.event_group.as_ptr()).set_events(ev.0) };
+    }
+
+    #[inline(always)]
+    fn cdc(&self) -> &Cdc {
+        // SAFETY: Initialized in `GdbCdc::init` before any read/write/flush call.
+        unsafe { (*self.cdc.as_ptr()).assume_init_ref() }
+    }
+}
+
+static SHARED: GdbShared = GdbShared {
+    event_group: SyncCell::new(EventGroup::uninit()),
+    in_session: AtomicBool::new(false),
+    cdc: SyncCell::new(core::mem::MaybeUninit::uninit()),
+    buffer: SyncCell::new([0u8; GDB_BUFFER_SIZE]),
+};
 static GDB_CDC_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-// GdbCdc is safe to access from a single task (FreeRTOS task context).
-unsafe impl Sync for GdbCdc {}
+/// Safe wrapper around the GDB CDC instance.
+pub struct GdbCdc;
 
 impl GdbCdc {
     /// Create and initialise the GDB CDC instance.
     ///
     /// Must be called once before any other function.
     pub fn init(instance: u32) {
-        if GDB_CDC_INITIALIZED.load(Ordering::Relaxed) {
+        if GDB_CDC_INITIALIZED.load(Ordering::Acquire) {
             return;
         }
 
-        // Write placeholder into static first (avoids Drop running on stack copy)
-        unsafe {
-            (*GDB_CDC.as_ptr()).write(GdbCdc {
-                cdc: core::mem::zeroed(),
-                event_group: EventGroup::uninit(),
-                in_session: AtomicBool::new(false),
-                buffer: [0u8; GDB_BUFFER_SIZE],
-            });
-        }
-
-        let this = Self::instance();
         // The event group is a `static` we own: create its kernel object now
         // (C-side `.bss` pool, no Arc, no heap).
-        this.event_group.init_static();
-        this.cdc = Cdc::new_static(instance, &GDB_HANDLER);
+        unsafe {
+            (*SHARED.event_group.as_ptr()).init_static();
+            (*SHARED.cdc.as_ptr()).write(Cdc::new_static(instance, &GDB_HANDLER));
+        }
 
-        GDB_CDC_INITIALIZED.store(true, Ordering::Relaxed);
-    }
-
-    /// Get a mutable reference to the global GDB CDC instance.
-    fn instance() -> &'static mut GdbCdc {
-        unsafe { (*GDB_CDC.as_ptr()).assume_init_mut() }
+        GDB_CDC_INITIALIZED.store(true, Ordering::Release);
     }
 
     /// Take ownership of the event group (must be called from the task that owns it).
     pub fn take_ownership() {
-        let this = Self::instance();
-        this.event_group.take_ownership();
+        unsafe { (*SHARED.event_group.as_ptr()).take_ownership() };
     }
 
     /// Wait for CDC events with a timeout.
     pub fn wait_events() -> GdbEvent {
-        let this = Self::instance();
-        GdbEvent(
-            this.event_group
-                .wait_events(0xffff, GDB_MAX_POLLING_PERIOD_MS as i32),
-        )
+        let ev = unsafe {
+            (*SHARED.event_group.as_ptr())
+                .wait_events(GDB_ALL_EVENTS, GDB_MAX_POLLING_PERIOD_MS as i32)
+        };
+        GdbEvent(ev)
     }
 
     /// Check if a GDB session is active.
     pub fn in_session() -> bool {
-        let this = Self::instance();
-        this.in_session.load(Ordering::Relaxed)
+        SHARED.in_session.load(Ordering::Relaxed)
     }
 
     /// Read data from the CDC (non-blocking).
-    pub fn read(buffer: &mut [u8]) -> i32 {
-        let this = Self::instance();
-        this.cdc.read(buffer)
+    pub fn read(buffer: &mut [u8]) -> usize {
+        SHARED.cdc().read(buffer)
     }
 
-    /// Write data to the CDC (blocking).
+    /// Write data to the CDC (bounded so a detached host cannot hang `gdb_task`).
     pub fn write(data: &[u8]) {
-        let this = Self::instance();
-        let mut remaining = data;
-        while !remaining.is_empty() {
-            let n = this.cdc.write(remaining);
-            if n <= 0 {
-                // No space available, yield briefly
-                delay_ms(5);
-                continue;
-            }
-            remaining = &remaining[n as usize..];
-        }
+        let _ = SHARED.cdc().write_timeout(data, GDB_WRITE_TIMEOUT_MS);
     }
 
     /// Flush pending writes.
     pub fn flush() {
-        let this = Self::instance();
-        this.cdc.flush();
+        SHARED.cdc().flush_once();
     }
 
     /// Read all pending CDC data and feed it to the GDB stub.
     /// Returns the number of packets processed.
     pub fn process_pending_data() -> i32 {
-        let this = Self::instance();
+        let buf = unsafe { &mut *SHARED.buffer.as_ptr() };
         let mut count = 0;
         loop {
-            let n = Self::read(&mut this.buffer);
-            if n <= 0 {
+            let n = Self::read(buf);
+            if n == 0 {
                 break;
             }
             // Feed the data to the GDB stub
             unsafe {
-                rngdbstub_run(n as usize, this.buffer.as_ptr());
+                rngdbstub_run(n, buf.as_ptr());
             }
             count += 1;
         }
@@ -261,6 +250,9 @@ pub extern "C" fn rngdb_gdb_task() {
         }
         if ev != GdbEvent::NONE {
             if ev.contains(GdbEvent::SESSION_START) {
+                unsafe {
+                    bmp_io_begin_session();
+                }
                 rtt::swindle_reinit_rtt();
                 unsafe {
                     rngdbstub_init();
@@ -270,6 +262,7 @@ pub extern "C" fn rngdb_gdb_task() {
             if ev.contains(GdbEvent::SESSION_END) {
                 unsafe {
                     rngdbstub_shutdown();
+                    bmp_io_end_session();
                 }
                 connected = false;
             }
@@ -278,7 +271,7 @@ pub extern "C" fn rngdb_gdb_task() {
             }
         }
         if !connected {
-            delay_ms(20);
+            delay_ms(GDB_IDLE_POLL_DELAY_MS);
         }
     }
 }

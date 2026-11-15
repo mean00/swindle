@@ -16,6 +16,8 @@
 #include <unistd.h>
 
 #include "gdb_server_thread.h"
+#include "hosted_common.h"
+#include "hosted_probe.h"
 
 // Keyboard hand-off with the probe-selection prompt in bmp_qtserial.cpp (shared
 // with the Qt build, hence the C ABI).
@@ -103,14 +105,22 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
         {
-            printf("Usage: swindle_hosted [options]\n");
+            printf("Usage: %s [options] [probe]\n", argv[0]);
             printf("Options:\n");
             printf("  --decode-gdb, -d, -g  Decode GDB commands on the fly in human-readable format\n");
             printf("  --raw-dmi             Access target memory one DMI op at a time instead of\n");
             printf("                        whole blocks (slower; for probes without RV.MEM_*)\n");
             printf("  --help, -h            Show this help message\n");
+            hosted_probe_usage();
             return 0;
         }
+    }
+
+    // Probe back end options (serial port selection / probe network endpoint).
+    if (!hosted_probe_parse_args(argc, argv))
+    {
+        hosted_probe_usage();
+        return 1;
     }
 
     // Memory blocks are the default: the per-op path costs one round trip per
@@ -135,7 +145,7 @@ int main(int argc, char **argv)
 
     platform_timeout_init();
 
-    GdbServerThread *thread = new GdbServerThread;
+    GdbServerThread *thread = new GdbServerThread(hosted_create_runner);
     thread->start();
 
     QSocketNotifier stdin_notifier(STDIN_FILENO, QSocketNotifier::Read);
@@ -165,8 +175,7 @@ int main(int argc, char **argv)
         }
     });
 
-    printf("[Host] Memory access: %s\n",
-           raw_dmi ? "raw DMI, one round trip per DM op" : "blocks, RV.MEM_READ / RV.MEM_WRITE");
+    hosted_probe_print_banner(raw_dmi);
     printf("[Host] Press 'q' to quit.\n");
     fflush(stdout);
 

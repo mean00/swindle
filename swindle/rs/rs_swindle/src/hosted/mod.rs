@@ -4,6 +4,7 @@
 pub mod bulk_mem;
 pub mod c_stubs;
 pub mod dmi_scan;
+pub mod qt_runner;
 pub mod rpc_host;
 pub mod rpc_host_generated;
 pub mod transport;

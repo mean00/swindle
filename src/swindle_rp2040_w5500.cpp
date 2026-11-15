@@ -31,7 +31,4 @@ const lnW5500SPI w5500Pins = {
     .intr = GPIO20,
 };
 
-// MAC address (unique per device — customise per build)
-const uint8_t mac[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
-
 #include "swindle_rp2040_w5500_common.cpp"

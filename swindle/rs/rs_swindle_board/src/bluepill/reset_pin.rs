@@ -20,8 +20,7 @@
 use crate::BOARD;
 use crate::board_desc::DEV_NRST;
 use core::sync::atomic::{AtomicBool, Ordering};
-use rust_esprit::hal::GpioMode;
-use rust_esprit::{HalGpioPin, Pin};
+use rust_esprit::{Gpio as HalGpio, Pin, PinMode};
 
 /// Pin mode of the line, and how one level maps onto "asserted".
 #[cfg(not(feature = "nrst_inverted"))]
@@ -29,11 +28,11 @@ mod polarity {
     use super::*;
 
     /// Open drain: releasing the line leaves it to the external pull-up.
-    pub const MODE: GpioMode = GpioMode::OutputOpenDrain;
+    pub const MODE: PinMode = PinMode::OutputOpenDrain;
 
     /// Closing the drain is what pulls nRST low, i.e. what asserts it.
     pub fn drive(pin: &mut Pin, asserted: bool) {
-        HalGpioPin::open_drain_close(pin, asserted);
+        let _ = HalGpio::open_drain(pin, asserted);
     }
 }
 
@@ -42,10 +41,10 @@ mod polarity {
     use super::*;
 
     /// Push-pull: the MOSFET inverts, so driving the pin high asserts.
-    pub const MODE: GpioMode = GpioMode::Output;
+    pub const MODE: PinMode = PinMode::Output;
 
     pub fn drive(pin: &mut Pin, asserted: bool) {
-        HalGpioPin::write(pin, asserted);
+        HalGpio::write(pin, asserted);
     }
 }
 
@@ -54,9 +53,8 @@ mod polarity {
 /// memoised before).
 static ASSERTED: AtomicBool = AtomicBool::new(false);
 
-/// The board table stores pins as plain numbers and `Pin::from` transmutes, so a
-/// number outside the enum would be undefined. `lnPin` stops at `PG15`: a board
-/// file past that is a table bug the build should catch.
+/// The board table stores pins as plain numbers; `lnPin` stops at `PG15`, so a
+/// number outside `0..=PG15` is a board-table bug the build should catch.
 const _: () = assert!(BOARD.dev[DEV_NRST] >= 0 && BOARD.dev[DEV_NRST] <= Pin::PG15 as i32);
 
 /// The target nRST line of the board this firmware was built for.
@@ -70,7 +68,7 @@ fn pin() -> Pin {
 pub fn init() {
     let mut pin = pin();
     polarity::drive(&mut pin, false);
-    HalGpioPin::set_mode(&mut pin, polarity::MODE);
+    let _ = HalGpio::set_mode(&mut pin, polarity::MODE);
     ASSERTED.store(false, Ordering::Relaxed);
 }
 

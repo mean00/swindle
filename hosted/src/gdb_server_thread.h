@@ -12,6 +12,7 @@
 
 #include "lnLWIP.h"
 #include "hosted_constants.h"
+#include "hosted_probe.h"
 #include "gdb_decoder.h"
 
 extern "C"
@@ -20,8 +21,8 @@ extern "C"
 }
 
 #define LN_ARCH LN_ARCH_ARM
-#include "lnSocketRunner.h"
-#include "../../swindle/src/net/bmp_net.h"
+#include "esp_socket_rust.h"
+#include "lnFreeRTOS_pp.h"
 
 #define RUNNER_GDB_PORT DEFAULT_GDB_TCP_PORT
 
@@ -31,29 +32,36 @@ extern "C" void platform_init(int argc, char **argv);
 
 /**
  * @brief Background thread hosting the GDB TCP server.
+ *
+ * The thread itself is back-end agnostic: what sits behind the listening socket
+ * is whatever runner @c factory builds (the BMP core for a USB probe, the relay
+ * for a network probe — see hosted_probe.h).
  */
 class GdbServerThread : public QThread
 {
     Q_OBJECT
 
   public:
-    GdbServerThread(QObject *parent = nullptr) : QThread(parent) {}
+    explicit GdbServerThread(HostedRunnerFactory factory, QObject *parent = nullptr)
+        : QThread(parent), m_factory(factory)
+    {
+    }
 
     bool isClientConnected() const
     {
-        return runnerGdb && runnerGdb->isConnected();
+        return m_runner != nullptr && hosted_runner_is_connected(m_runner);
     }
 
     void disconnectClient()
     {
         m_disconnectRequested = true;
-        m_eventGroup.setEvents(socketRunner::Disconnected);
+        m_eventGroup.setEvents(RUNNER_DISCONNECTED);
     }
 
     void stopServer()
     {
         requestInterruption();
-        m_eventGroup.setEvents(socketRunner::Down);
+        m_eventGroup.setEvents(RUNNER_DOWN);
     }
 
   signals:
@@ -68,12 +76,17 @@ class GdbServerThread : public QThread
         lnLWIP::start(sys_network, nullptr);
 
         m_eventGroup.takeOwnership();
-        runnerGdb = new socketRunnerGdb(m_eventGroup, 0);
-        runnerGdb->sendEvent(socketRunner::Up);
+        m_runner = m_factory(m_eventGroup);
+        if (m_runner == nullptr || !hosted_runner_start(m_runner))
+        {
+            fprintf(stderr, "[GDB Server] Cannot start the runner\n");
+            hosted_runner_free(m_runner);
+            return;
+        }
 
         uint32_t mask = 0xffffffffUL;
-        mask &= ~(socketRunner::CanWrite << 0);
-        const uint32_t global_mask = (socketRunner::Up | socketRunner::Down);
+        mask &= ~RUNNER_CAN_WRITE;
+        const uint32_t global_mask = (RUNNER_UP | RUNNER_DOWN);
 
         printf("[GDB Server] Listening on localhost:%d\n", DEFAULT_GDB_TCP_PORT);
 
@@ -86,18 +99,16 @@ class GdbServerThread : public QThread
             if (m_disconnectRequested)
             {
                 m_disconnectRequested = false;
-                if (runnerGdb)
-                {
-                    runnerGdb->disconnectClient();
-                }
+                hosted_runner_disconnect(m_runner);
             }
 
             uint32_t global_events = events & global_mask;
             uint32_t local_events = events & (~global_mask);
-            uint32_t limited = (local_events >> runnerGdb->shift()) & socketRunner::Mask;
-            runnerGdb->process_events(limited | global_events);
+            uint32_t limited = local_events & RUNNER_SLOT_MASK;
+            hosted_runner_process(m_runner, limited | global_events);
+            hosted_runner_poll(m_runner);
 
-            bool cur_connected = runnerGdb->isConnected();
+            bool cur_connected = hosted_runner_is_connected(m_runner);
             if (cur_connected != last_connected)
             {
                 last_connected = cur_connected;
@@ -106,11 +117,8 @@ class GdbServerThread : public QThread
         }
 
         target_list_free();
-        if (runnerGdb)
-        {
-            delete runnerGdb;
-            runnerGdb = nullptr;
-        }
+        hosted_runner_free(m_runner);
+        m_runner = nullptr;
         if (last_connected)
         {
             emit connectionStateChanged(false);
@@ -125,6 +133,8 @@ class GdbServerThread : public QThread
         printf("[Network] lwIP system event: 0x%x\n", static_cast<unsigned int>(evt));
     }
 
+    HostedRunnerFactory m_factory;      /**< builds the probe side of the session. */
+    void *m_runner{nullptr};            /**< Rust runner; NULL before run() / after it. */
     lnFastEventGroup m_eventGroup;
     bool m_disconnectRequested{false};
 };

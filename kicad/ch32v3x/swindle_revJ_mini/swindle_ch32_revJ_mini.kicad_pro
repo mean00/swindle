@@ -161,182 +161,9 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [
-        {
-          "marker": {
-            "error_type": "DRCET_STARVED_THERMAL",
-            "items": [
-              {
-                "value": "e2aeda1a-289f-44e9-9c5b-c81df07cbc23"
-              },
-              {
-                "value": "456ed133-2275-4bff-bcc0-d42ace39e616"
-              }
-            ],
-            "layer": "BL_F_Cu",
-            "position": {
-              "x_nm": "148455025",
-              "y_nm": "94174975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_STARVED_THERMAL",
-            "items": [
-              {
-                "value": "e2aeda1a-289f-44e9-9c5b-c81df07cbc23"
-              },
-              {
-                "value": "e88db1a9-fe77-48b4-947f-5f1d13add10d"
-              }
-            ],
-            "layer": "BL_F_Cu",
-            "position": {
-              "x_nm": "148455025",
-              "y_nm": "94174975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "456ed133-2275-4bff-bcc0-d42ace39e616"
-              },
-              {
-                "value": "438367fa-e1e0-44a8-9fa0-87743dbefcfd"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "93874975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "e88db1a9-fe77-48b4-947f-5f1d13add10d"
-              },
-              {
-                "value": "438367fa-e1e0-44a8-9fa0-87743dbefcfd"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "93874975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "3f98cc30-d47f-4c49-b91d-52a1e359e3c0"
-              },
-              {
-                "value": "8c59092e-370b-415c-83b2-cbe248348c67"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "88274975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "550f97fe-3313-4894-9ac5-ab81b0822862"
-              },
-              {
-                "value": "8c59092e-370b-415c-83b2-cbe248348c67"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "88274975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "24f44262-6b41-4d23-8e14-d48c12ed00a6"
-              },
-              {
-                "value": "438367fa-e1e0-44a8-9fa0-87743dbefcfd"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "93674975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "fb7abb8f-d221-42b0-aa3d-0251d7ddff45"
-              },
-              {
-                "value": "438367fa-e1e0-44a8-9fa0-87743dbefcfd"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "93674975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "bd705e1b-b25b-4823-8d21-3b2e6acf12d5"
-              },
-              {
-                "value": "8c59092e-370b-415c-83b2-cbe248348c67"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "88074975"
-            }
-          }
-        },
-        {
-          "marker": {
-            "error_type": "DRCET_HOLE_CLEARANCE",
-            "items": [
-              {
-                "value": "dc8f8e4e-bdd2-48a8-9f87-eca8bb34d1b6"
-              },
-              {
-                "value": "8c59092e-370b-415c-83b2-cbe248348c67"
-              }
-            ],
-            "position": {
-              "x_nm": "149035025",
-              "y_nm": "88074975"
-            }
-          }
-        }
-      ],
+      "drc_exclusions": [],
       "meta": {
-        "version": 3
+        "version": 2
       },
       "rule_severities": {
         "annular_width": "error",
@@ -360,7 +187,7 @@
         "footprint_symbol_mismatch": "warning",
         "footprint_type_mismatch": "ignore",
         "hole_aspect_ratio": "error",
-        "hole_clearance": "error",
+        "hole_clearance": "ignore",
         "hole_near_hole": "error",
         "hole_to_hole": "error",
         "holes_co_located": "warning",
@@ -395,7 +222,7 @@
         "silk_overlap": "warning",
         "skew_out_of_range": "error",
         "solder_mask_bridge": "error",
-        "starved_thermal": "error",
+        "starved_thermal": "ignore",
         "text_height": "ignore",
         "text_on_edge_cuts": "error",
         "text_thickness": "warning",
@@ -809,7 +636,7 @@
   },
   "meta": {
     "filename": "swindle_ch32_revJ_mini.kicad_pro",
-    "version": 4
+    "version": 3
   },
   "net_settings": {
     "classes": [
@@ -920,7 +747,7 @@
       "sort_asc": true,
       "sort_field": "Reference"
     },
-    "bus_aliases": null,
+    "bus_aliases": {},
     "compare_symbols": {
       "dnp_flags": false,
       "exclude_from_board_flags": true,
@@ -1018,7 +845,7 @@
   "text_variables": {},
   "tuning_profiles": {
     "meta": {
-      "version": 2
+      "version": 0
     },
     "tuning_profiles_impedance_geometric": []
   }

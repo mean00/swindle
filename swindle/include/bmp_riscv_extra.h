@@ -46,6 +46,11 @@ extern "C"
     bool bmp_sdi_dm_write_c(const uint8_t adr, const uint32_t value);
     uint8_t bmp_sdi_dm_read_status_c(const uint8_t adr, uint32_t *const value);
     uint8_t bmp_sdi_dm_write_status_c(const uint8_t adr, const uint32_t value);
+    /* The RVSWD scan falls back to it when its own probe fails: it parks the wire,
+     * probes over SDI and, if a CH32V0xx answers, switches the target to 2-wire
+     * Dual_IO mode (sdi_template.h). Without SDI there is nothing to fall back to
+     * and it reports false, so rvswdp_scan keeps its "no target" answer. */
+    bool sdi_probe_and_enable_2wire();
 
     /* The bit-bang waveform overrides ('mon sdi_wire'), in ns: the cell, the LOW
      * that carries a 1, the LOW that carries a 0 and the response sample point.

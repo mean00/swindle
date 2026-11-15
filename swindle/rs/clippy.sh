@@ -26,7 +26,7 @@ BASE_FEATURES+=",rust_nrf51,rust_nrf54l,rust_nrf91"
 #   package     bluepill48 / bluepill64 (USE_48PIN_PACKAGE / USE_64PIN_PACKAGE)
 #   led         ws2812 (USE_WS2812, bluepill boards only)
 PRESETS=(
-  "rp2040_inv|thumbv6m-none-eabi|rp2040"
+  "rp2040_inv|thumbv6m-none-eabi|rp2040,rp_carrier"
   "gd32f303_48_inv_ws2812|thumbv7em-none-eabihf|bluepill,bluepill48,ws2812"
   "ch32v307_inv_ws2812|riscv32imafc-unknown-none-elf|bluepill,bluepill64,ws2812"
 )

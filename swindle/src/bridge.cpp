@@ -21,7 +21,7 @@ extern "C"
 #define snprintf snprintf_
 lnStopWatch stopWatch(1);
 
-extern "C" int gdb_if_init(void);
+extern "C" bool gdb_if_init(void);
 
 void gdb_task(void *parameters);
 extern void bmp_gpio_init_once();
@@ -81,6 +81,17 @@ extern "C"
         if ((int32_t)(now - t->time) >= 0)
             return true;
         return false;
+    }
+    /**
+     * @brief Enable/disable the target clock output (SWO trace pin).
+     *
+     * Moved here from bmp_gpio.cpp: every platform ignores it (no probe drives a
+     * trace clock yet), but the GDB `mon` path still calls it. bmp_gpio.cpp's
+     * remaining two functions were `xAssert(0)` with no caller.
+     */
+    void platform_target_clk_output_enable(bool enable)
+    {
+        (void)enable;
     }
 } // extern "C"
 // EOF

@@ -27,6 +27,7 @@ extern "C"
 
 #include "bmp_logger.h"
 #include "hosted_constants.h"
+#include "hosted_probe.h"
 
 /**
  * @brief Probe selected for the session.
@@ -56,41 +57,9 @@ void decoderRequest(int size, const uint8_t *data);
 void decoderReply(int size, const uint8_t *data);
 
 // Keyboard hand-off with the CLI's 'q' handler (see ask_probe_choice()). The
-// prompt lives here rather than in main.cpp because this file is part of both
-// executables (CLI and Qt), while main.cpp is only the CLI one.
-static std::atomic<bool> s_stdin_prompt_active{false};
-static std::atomic<int> s_stdin_prompt_char{-1};
-
-/** True while a foreground prompt owns the keyboard. */
-extern "C" bool hosted_stdin_prompt_is_active()
-{
-    return s_stdin_prompt_active.load();
-}
-
-/** Hand a character read by the caller's key handler to the active prompt. */
-extern "C" void hosted_stdin_prompt_push(int ch)
-{
-    s_stdin_prompt_char.store(ch);
-}
-
-/** Take the character handed over by the key handler, -1 when none. */
-static int hosted_stdin_prompt_take()
-{
-    return s_stdin_prompt_char.exchange(-1);
-}
-
-/** Start / end the keyboard hand-off. */
-static void hosted_stdin_prompt_begin()
-{
-    s_stdin_prompt_char.store(-1);
-    s_stdin_prompt_active.store(true);
-}
-
-static void hosted_stdin_prompt_end()
-{
-    s_stdin_prompt_active.store(false);
-    s_stdin_prompt_char.store(-1);
-}
+// helpers live in hosted_common.cpp because the shared main.cpp needs them for
+// whichever back end is linked in.
+#include "hosted_common.h"
 
 // Outgoing write buffer
 static int s_platform_write_index = 0;
@@ -566,3 +535,28 @@ extern "C" void platform_init(int argc, char **argv)
         exit(1);
     }
 }
+
+void hosted_probe_usage()
+{
+    printf("USB probe options (serial port selection):\n");
+    printf("  BMP_DEVICE=<port>   probe GDB CDC to use, e.g. /dev/ttySwindleGdb2\n");
+    printf("  Without it the OpenMoko probes found on the USB bus are listed and\n");
+    printf("  the operator picks one (probe 1 when stdin is not a terminal).\n");
+}
+
+bool hosted_probe_parse_args(int argc, char **argv)
+{
+    // The serial back end has no option of its own: the port comes from
+    // BMP_DEVICE (find_debuggers()) or from the probe selection prompt.
+    (void)argc;
+    (void)argv;
+    return true;
+}
+
+void hosted_probe_print_banner(bool raw_dmi)
+{
+    printf("[Host] Memory access: %s\n",
+           raw_dmi ? "raw DMI, one round trip per DM op" : "blocks, RV.MEM_READ / RV.MEM_WRITE");
+    fflush(stdout);
+}
+

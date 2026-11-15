@@ -10,6 +10,19 @@
 static constexpr uint16_t DEFAULT_GDB_TCP_PORT = 2000;
 static constexpr uint32_t EVENT_POLL_TIMEOUT_MS = 20;
 
+// Runner slot bits (the layout rs_socketrunner uses; slot 0, i.e. no shift).
+static constexpr uint32_t RUNNER_UP = 1u << 30;
+static constexpr uint32_t RUNNER_DOWN = 1u << 31;
+static constexpr uint32_t RUNNER_DISCONNECTED = 1u << 1;
+static constexpr uint32_t RUNNER_CAN_WRITE = 1u << 3;
+static constexpr uint32_t RUNNER_SLOT_MASK = 0x1Fu;
+
+// Network probe (swindle_hosted_net): time allowed to reach the probe's own TCP
+// server, and how long a relayed request waits for its reply before the poll
+// tick picks it up.
+static constexpr int PROBE_CONNECT_TIMEOUT_MS = 3000;
+static constexpr int RELAY_REPLY_WAIT_MS = 50;
+
 // USB Vendor & Product IDs
 static constexpr uint16_t USB_VID_OPENMOKO = 0x1d50;
 static constexpr uint16_t USB_PID_BMP_CLASSIC = 0x6018;

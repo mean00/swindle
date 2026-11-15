@@ -26,10 +26,8 @@ ln64 = ["rust_esprit/bluepill", "rust_esprit/bluepill64"]
 # the line is push-pull / active high instead of open drain / active low. A
 # property of the board, so it is declared here and not in rs_swindle.
 nrst_inverted = []
-# RP2040 / RP2350 (CMake: USE_RP2040 / USE_RP2350), the plain "zero" board
-rp_zero = ["rust_esprit/rp2040"]
-# RP2040 / RP2350 on the carrier board (CMake: + USE_RP_CARRIER)
-rp_carrier = ["rust_esprit/rp2040"]
+# RP2040 / RP2350 (CMake: USE_RP2040 / USE_RP2350)
+rp_carrier = ["rust_esprit/rp2xxx"]
 
 [dependencies]
 # GPIO access of the board's own signals (ln/reset_pin.rs). `default-features` is

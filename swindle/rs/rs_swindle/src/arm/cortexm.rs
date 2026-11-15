@@ -1,3 +1,30 @@
+/*
+ * This file is part of the Black Magic Debug project.
+ *
+ * Copyright (C) 2012-2020  Black Sphere Technologies Ltd.
+ * Written by Gareth McMullin <gareth@blacksphere.co.nz>,
+ * Copyright (C) 2022-2023 1BitSquared <info@1bitsquared.com>
+ * Modified by Rachel Mant <git@dragonmux.network>
+ * Koen De Vleeschauwer and Uwe Bonnes
+ *
+ * Rust port of `blackmagic/src/target/cortexm.c` (probe, attach, detach, `vector_catch`
+ * and the driver), made for the Swindle firmware. This file is derived from that C source
+ * and stays under the same license as the original Black Magic code reproduced below.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 //! Cortex-M debug layer: the Rust half of `blackmagic/src/target/cortexm.c`.
 //!
 //! Everything the probe does to a Cortex-M core that is not ADIv5 plumbing lives in this

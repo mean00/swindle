@@ -16,8 +16,6 @@
 #include "lnCpuID.h"
 #include "math.h"
 
-extern void gmp_gpio_init_adc();
-
 uint32_t swd_delay_cnt = 4;
 uint32_t swd_frequency = 1000 * 1000; // 1MHz default
 SwdDirectionPin *rSWDIO;
@@ -88,6 +86,18 @@ extern "C" uint32_t bmp_get_wait_state_c()
     return swd_delay_cnt;
 }
 /**
+ * @brief Get the current SWD frequency.
+ * @return SWCLK frequency in Hz.
+ *
+ * Moved here from bmp_reset_pin.cpp: the value it reports is the `swd_frequency`
+ * this file owns (bmp_set_frequency_c() writes it), so the accessor lives next to
+ * the variable. The ESP32 taps still get it from bmp_reset_pin.cpp.
+ */
+extern "C" uint32_t bmp_get_frequency_c()
+{
+    return swd_frequency;
+}
+/**
  * @brief Initialise SWDIO/SWCLK/reset GPIOs once at startup.
  */
 void bmp_gpio_init_once()
@@ -103,7 +113,6 @@ void bmp_gpio_init_once()
     rSWDIO->hiZ();
     rSWCLK->hiZ();
     rSWCLK->hiZ();
-    gmp_gpio_init_adc();
 }
 /**
  * @brief Begin an SWD debug session: drive SWDIO/SWCLK, release reset.

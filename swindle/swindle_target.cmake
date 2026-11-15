@@ -7,37 +7,44 @@ if(USE_RP2040 OR USE_RP2350)
 else()
   set(EXTRA _ln)
 endif()
-set(BRIDGE_SRCS
-      ${B}/bridge.cpp ${B}/bmp_gpio.cpp ${B}/bmp_reset_pin.cpp
-      CACHE INTERNAL "")
+# bridge.cpp carries the platform glue plus the two symbols that used to have a file
+# of their own: `platform_target_clk_output_enable()` (was bmp_gpio.cpp, a no-op every
+# platform shares) and, through the taps, the `swd_frequency` accessor. bmp_gpio.cpp's
+# other two functions (bmp_gpio_write/read) were `xAssert(0)` with no caller.
+# bmp_reset_pin.cpp is no longer needed where the tap owns `swd_frequency`
+# (LN + RP2040/RP2350 define `bmp_get_frequency_c()` themselves); the ESP32 taps
+# still rely on it, so it stays an ESP32-only entry below.
+set(BRIDGE_SRCS "" CACHE INTERNAL "")
+if(NOT LN_ENABLE_RUST)
+  list(APPEND BRIDGE_SRCS ${B}/bridge.cpp)
+endif()
 # Target nRST: driven in Rust on every board that has a table
 # (rs_swindle_board's ln::/rp2xxx::reset_pin — GD32/CH32 and RP2040/RP2350). The
 # ESP32 is the last platform that still goes through the C++ SwdReset (pReset), and
-# that is the only build that may define these symbols and the class.
+# that is the only build that may define these symbols and the class. Its taps
+# also keep using bmp_reset_pin.cpp's bmp_get_frequency_c().
 if("${LN_MCU}" STREQUAL "ESP32")
-  list(APPEND BRIDGE_SRCS ${B}/bmp_nrst_c.cpp ${B}/bmp_reset.cpp ${B}/bmp_reset_inv.cpp)
+  list(APPEND BRIDGE_SRCS ${B}/bmp_nrst_c.cpp ${B}/bmp_reset.cpp ${B}/bmp_reset_inv.cpp
+       ${B}/bmp_reset_pin.cpp)
 endif()
 if(SWINDLE_USE_W5500)
   # W5500 builds provide their own user_init() and don't need bridge.cpp
-  # Also include lnSocketRunner.cpp directly (not compiled via ln_utils when LN_ENABLE_ETH=OFF)
-  set(BRIDGE_SRCS ${BRIDGE_SRCS}   ${ESPRIT_ROOT}/src/lnSocketRunner.cpp CACHE INTERNAL "")
 endif()
 if(SWINDLE_USE_USB)
   if(NOT LN_SWINDLE_AS_EXTERNAL)
-    list(APPEND BRIDGE_SRCS # ${B}/bmp_serial.cpp
-         ${B}/usb/bmp_usb.cpp ${ESPRIT_ROOT}/rust/rust_esprit/c_interface/lnSerial_c.cpp)
+    # lnSerial_c.cpp is NOT listed here: it is the C ABI of the C++ UART drivers, which
+    # a Rust build does not link (esprit/rust/CMakeLists.txt adds it only when
+    # LN_ENABLE_RUST is off). Listing it here too compiled the same TU twice.
+    if(NOT (LN_ENABLE_RUST AND LN_RUST_USB AND ("${LN_EXT}" STREQUAL "arm_gd32fx" OR "${LN_EXT}" STREQUAL "riscv_ch32v3x")))
+      list(APPEND BRIDGE_SRCS # ${B}/bmp_serial.cpp
+           ${B}/usb/bmp_usb.cpp)
+    endif()
     # IF("${LN_USB_NB_CDC}" STREQUAL "3") SET(BRIDGE_SRCS ${BRIDGE_SRCS} ${B}/bmp_cdc_logger.cpp) ENDIF()
   endif()
 endif()
 if(SWINDLE_USE_NETWORK)
-  if(USE_RP2040 OR USE_RP2350)
-    # RP2040 + W5500: include bmp_net.cpp for socketRunner implementation
-    include_directories(${CMAKE_SOURCE_DIR}/src/net)
-    list(APPEND BRIDGE_SRCS ${B}/net/bmp_net.cpp)
-  else()
-    list(APPEND BRIDGE_SRCS ${B}/net/bmp_net.cpp)
-    include_directories(${CMAKE_CURRENT_SOURCE}/net)
-  endif()
+  # Socket runner is now implemented in Rust (rs_socketrunner + rs_swindle::net)
+  include_directories(${CMAKE_CURRENT_SOURCE}/net)
 endif()
 
 # #
@@ -69,11 +76,14 @@ else()
 endif()
 # ===========================================================================================
 
-add_library(libswindle STATIC ${BM_SRC} ${BRIDGE_SRCS} ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE})
-# bmp_pinout.h (bmp_reset*.cpp, bridge.cpp, bmp_gpio.cpp) includes the generated
-# probe board header, rendered by swindle/board.cmake.
-if(TARGET swindle_board_header)
-  add_dependencies(libswindle swindle_board_header)
+set(_libswindle_srcs ${BM_SRC} ${BRIDGE_SRCS} ${BOARDS} ${BM_TARGET} ${BM_HOSTED} ${EXTRA_SOURCE})
+if(_libswindle_srcs)
+  add_library(libswindle STATIC ${_libswindle_srcs})
+  if(TARGET swindle_board_header)
+    add_dependencies(libswindle swindle_board_header)
+  endif()
+else()
+  add_library(libswindle INTERFACE)
 endif()
 # ---------------------------------------------------------------------------
 # Session arena (malloc_used.md): force-include the allocation shim into the
@@ -107,15 +117,20 @@ endif()
 # blackmagic_addon (${BMP_EXTRA}) is a libswindle-only include (the addon
 # sources compile inside libswindle); the rest of the blackmagic context
 # (${BMP}/src* dirs + defines) comes from bmp_core (linked below).
-target_include_directories(libswindle PRIVATE ${BMP_EXTRA})
-target_include_directories(libswindle PRIVATE ${B}/include ${CMAKE_BINARY_DIR}/config)
-target_include_directories(libswindle PRIVATE ${myB}/private_include)
-target_include_directories(libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS})
-target_link_libraries(libswindle PUBLIC esprit_dev)
-target_link_libraries(libswindle PRIVATE bmp_core)
-# Force-include the generated platformgenerated.h (target-own option, see
-# swindle_common.cmake).
-ln_force_platformgen(libswindle)
+if(_libswindle_srcs)
+  target_include_directories(libswindle PRIVATE ${BMP_EXTRA})
+  target_include_directories(libswindle PRIVATE ${B}/include ${CMAKE_BINARY_DIR}/config)
+  target_include_directories(libswindle PRIVATE ${myB}/private_include)
+  target_include_directories(libswindle PUBLIC ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS})
+  target_link_libraries(libswindle PUBLIC esprit_dev)
+  target_link_libraries(libswindle PRIVATE bmp_core)
+  # Force-include the generated platformgenerated.h (target-own option, see
+  # swindle_common.cmake).
+  ln_force_platformgen(libswindle)
+else()
+  target_include_directories(libswindle INTERFACE ${usb_INCLUDE_DIRS} ${ftdi_INCLUDE_DIRS})
+  target_link_libraries(libswindle INTERFACE esprit_dev)
+endif()
 #
 if(USE_RP2040 OR USE_RP2350)
   include_directories(src/platform/rp2040)
@@ -138,13 +153,17 @@ else()
   add_subdirectory(src/platform/ln)
 endif()
 
-target_link_libraries(libswindle PUBLIC swindleio_impl)
-# Board-selection defines (USE_RP_CARRIER, LN_UART_* ...) live on the ln_bsp
-# interface, populated by the platform CMakeLists above. The pinout itself is the
-# probe board table, rendered by swindle/board.cmake.
-target_link_libraries(libswindle PUBLIC ln_bsp)
-if(USE_GD32F3)
-  target_compile_definitions(libswindle PUBLIC USE_GD32F303)
+if(_libswindle_srcs)
+  target_link_libraries(libswindle PUBLIC swindleio_impl)
+  target_link_libraries(libswindle PUBLIC ln_bsp)
+  if(USE_GD32F3)
+    target_compile_definitions(libswindle PUBLIC USE_GD32F303)
+  endif()
+else()
+  target_link_libraries(libswindle INTERFACE swindleio_impl ln_bsp)
+  if(USE_GD32F3)
+    target_compile_definitions(libswindle INTERFACE USE_GD32F303)
+  endif()
 endif()
 
 # ---------

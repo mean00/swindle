@@ -6,22 +6,30 @@
 
 #include "esprit.h"
 //
-#include "../swindle/src/platform/rp2040/lnRP2040_pio.h"
 #include "lnBmpTask.h"
 #include "lnGPIO.h"
 #include "stdint.h"
+#ifndef PICO_NO_HARDWARE
 #define PICO_NO_HARDWARE 1
+#endif
+#ifdef USE_RTT
+#include "LN_RTT.h"
+extern void rttLoggerFunction(int n, const char *data);
+#endif
 
 extern "C" void user_init();
 void gdb_task(void *parameters);
 
-#define PIN_TO_USE GPIO16 // GPIO16 for zero, GPIO23 for normal size RP2040
 // gdbTask TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
 LN_BIG_TASK_STORAGE(gdbTask, TASK_BMP_GDB_STACK_SIZE);
 /*
  */
 void setup()
 {
+#ifdef USE_RTT
+    setLogger(rttLoggerFunction);
+    LN_RTT_Init();
+#endif
 }
 
 /**

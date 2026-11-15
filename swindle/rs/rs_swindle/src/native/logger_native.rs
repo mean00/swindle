@@ -4,14 +4,19 @@
 
 #[macro_export]
 macro_rules! logger {
+    ($x:literal) => {{
+        use ::ufmt::uWrite;
+        let _ = rust_esprit::LoggerWriter.write_str($x);
+    }};
+
     ($x:expr) => {{
         use ::ufmt::uwrite;
-        uwrite!(&mut rust_esprit::LoggerWriter, "{}", $x).unwrap()
+        let _ = uwrite!(&mut rust_esprit::LoggerWriter, "{}", $x);
     }};
 
     ($x:expr, $($y:expr),+) => {{
         use ::ufmt::uwrite;
-        uwrite!(&mut rust_esprit::LoggerWriter, $x, $($y),+).unwrap()
+        let _ = uwrite!(&mut rust_esprit::LoggerWriter, $x, $($y),+);
     }};
 }
 

@@ -29,9 +29,6 @@ const lnW5500SPI w5500Pins = {
     .intr = GPIO7,
 };
 
-// MAC address (unique per device — customise per build)
-const uint8_t mac[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x02};
-
 // WS2812 LED pin (GPIO16 for zero)
 #define PIN_TO_USE GPIO16
 

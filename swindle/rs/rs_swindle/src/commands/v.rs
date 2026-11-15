@@ -83,7 +83,7 @@ const v_command_tree: [CommandTree; 3] = [
 /// worked because it enters through `vCont;c` and needs no reset.
 ///
 /// This matters most for a target whose driver reports no trigger unit, i.e. that
-/// has `no_hw_breakpoint` set (`swindle/rs/rs_targets/rs_ch32v00x/src/driver.rs`,
+/// has `no_hw_breakpoint` set (`swindle/rs/rs_targets/rs_swindle_ch32v00x/src/driver.rs`,
 /// CH32V003): its breakpoints are flash pages patched through the mass-write
 /// helpers, and that patch has to be in place while the hart is parked on the
 /// entry point.

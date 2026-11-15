@@ -1,9 +1,10 @@
 /**
  * @file bmp_pinout_rp2040.h
- * @brief RP2040 standard pin mapping table
+ * @brief RP2040 pin mapping table
  */
 
 #pragma once
+#include "lnGPIO.h"
 
 const lnPin _mapping[9] = {
     GPIO24, // 0 TMS_PIN
@@ -11,11 +12,11 @@ const lnPin _mapping[9] = {
     GPIO24, // 2 TDO_PIN
     GPIO24, // 3 TCK_PIN
     GPIO24, // 4 TRACESWO_PIN
-    GPIO12, // 5 SWDIO_PIN
-    GPIO13, // 6 SWCLK_PIN
+    GPIO13, // 5 SWDIO_PIN
+    GPIO12, // 6 SWCLK_PIN
 
-    GPIO11, // 7 RST
-    GPIO10, // 8 Direction (1: output, 0: input)
+    GPIO10, // 7 RST
+    GPIO11, // 8 Direction (1: output, 0: input)
 };
 
 #define PIN_ADC_NRESET_DIV_BY_TWO GPIO26 // this pins is connected to NRST/2

@@ -107,7 +107,7 @@ const STUB_POLL_INTERVAL_MS: u32 = 1;
 /// Per-page stub hold override, in ms, for `mon stub_hold` sweeps (`u32::MAX` = unset).
 ///
 /// A flash driver computes its hold itself, from the part family (see
-/// `stub_hold_per_page()` in `rs_ch32v00x`). This lets an experiment replace that
+/// `stub_hold_per_page()` in `rs_swindle_ch32v00x`). This lets an experiment replace that
 /// per-page number at runtime instead of rebuilding the probe once per value, which is
 /// what a sweep of the hold over a part's silicon needs: the number is a property of the
 /// part's flash programming time, and it is only visible as "does the page come out

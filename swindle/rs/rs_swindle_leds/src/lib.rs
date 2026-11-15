@@ -9,7 +9,7 @@
 //!
 //! * `bluepill`           : GD32F3 / CH32V3xx, 3 open drain LEDs blinking
 //! * `bluepill` + `ws2812`: GD32F3 / CH32V3xx, one WS2812B breathing (`USE_WS2812`)
-//! * no feature (RP2040 / RP2350): empty crate, the LED code is still in C++
+//! * `rp2040` / `rp2350`  : RP2040 / RP2350, one WS2812B breathing via PIO1
 //!
 //! C++ calls [`swindle_leds_run`] at the end of `loop()`; it never returns.
 
@@ -24,21 +24,26 @@ mod plain;
 #[cfg(all(feature = "bluepill", not(feature = "ws2812")))]
 use plain as variant;
 
-#[cfg(feature = "ws2812")]
+#[cfg(any(feature = "ws2812", feature = "rp2040", feature = "rp2350"))]
 mod sine_table;
 #[cfg(feature = "ws2812")]
 mod ws2812;
 #[cfg(feature = "ws2812")]
 use ws2812 as variant;
 
+#[cfg(any(feature = "rp2040", feature = "rp2350"))]
+mod rp_ws2812;
+#[cfg(any(feature = "rp2040", feature = "rp2350"))]
+use rp_ws2812 as variant;
+
 /// Run the LED activity for the selected variant. Never returns.
-#[cfg(feature = "bluepill")]
+#[cfg(any(feature = "bluepill", feature = "rp2040", feature = "rp2350"))]
 pub fn run() -> ! {
     variant::run()
 }
 
 /// C API for the C++ side (`loop()` in src/swindle_*.cpp). Never returns.
-#[cfg(feature = "bluepill")]
+#[cfg(any(feature = "bluepill", feature = "rp2040", feature = "rp2350"))]
 #[unsafe(no_mangle)]
 pub extern "C" fn swindle_leds_run() -> ! {
     run()

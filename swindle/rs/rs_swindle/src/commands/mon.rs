@@ -218,7 +218,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_bmp_mon),
         start_separator: 0,
         next_separator: 0,
-        help: "Forward the command to bmp mon command.\n\tExample : mon bmp mass_erase is the same as mon mass_erase on a bmp..",
+        help: "Forward to bmp mon command.",
     },
     CommandTree {
         command: "breakpoint_info",
@@ -227,7 +227,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_breakpoint_count),
         start_separator: 0,
         next_separator: 0,
-        help: "Display the total number of hardware breakpoints and watchpoints.",
+        help: "HW breakpoint/watchpoint count.",
     },
     CommandTree {
         command: "boards",
@@ -236,7 +236,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_boards),
         start_separator: 0,
         next_separator: 0,
-        help: "Display supported boards. This is set at build time.",
+        help: "List supported boards.",
     },
     CommandTree {
         command: "csr",
@@ -245,7 +245,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_csr),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Read and dump RISC-V CSR (e.g. mon csr dcsr, mon csr 0x7b0). Only for RISC-V targets.",
+        help: "Dump RISC-V CSR (name or hex).",
     },
     CommandTree {
         command: "delay",
@@ -254,7 +254,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_delay),
         start_separator: 0,
         next_separator: 0,
-        help: "wait <value> ms.",
+        help: "Wait <ms>.",
     },
     CommandTree {
         command: "enable_reset_pin",
@@ -263,7 +263,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_enable_reset_pin),
         start_separator: 0,
         next_separator: 0,
-        help: "Enable reset through RSTn pin, default is enabled (1).",
+        help: "Enable RSTn pin (0|1).",
     },
     CommandTree {
         command: "erase",
@@ -272,7 +272,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_erase),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Erase the target flash pages covering <start>..<start>+<length>; both take decimal or 0x hex.",
+        help: "Erase flash <start> <len>.",
     },
     CommandTree {
         command: "frequency",
@@ -281,7 +281,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_fq),
         start_separator: b' ',
         next_separator: b' ',
-        help: "set/get SWD frequency.",
+        help: "Set/get SWD frequency.",
     },
     CommandTree {
         command: "fq",
@@ -299,7 +299,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_memlog),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Phase 0 instrumentation: enable/disable per-call [MEMLOG] lines; reset SWD/RVSWD tx counters.",
+        help: "MEMLOG on|off|reset.",
     },
     CommandTree {
         command: "fos",
@@ -353,7 +353,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_arena),
         start_separator: 0,
         next_separator: 0,
-        help: "Session arena usage: transport/pool bump regions, frees, rewinds.",
+        help: "Session arena stats.",
     },
     CommandTree {
         command: "stacks",
@@ -362,7 +362,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_stacks),
         start_separator: 0,
         next_separator: 0,
-        help: "Per-task stack high-water marks (free bytes left at the worst moment).",
+        help: "Task stack high-water marks.",
     },
     CommandTree {
         command: "reboot",
@@ -371,7 +371,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_reboot),
         start_separator: 0,
         next_separator: 0,
-        help: "Reboot the debugger.",
+        help: "Reboot debugger.",
     },
     CommandTree {
         command: "riscv_benchmark",
@@ -380,7 +380,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_riscv_benchmark),
         start_separator: 0,
         next_separator: 0,
-        help: "Benchmark the RISC-V memory access methods (abstract, progbuf, sysbus).",
+        help: "Benchmark RISC-V mem access.",
     },
     CommandTree {
         command: "riscv_memory_benchmark",
@@ -389,7 +389,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_riscv_memory_benchmark),
         start_separator: 0,
         next_separator: 0,
-        help: "Benchmark the RISC-V memory access via the generic target API (verifies best-path routing).",
+        help: "Benchmark RISC-V generic mem API.",
     },
     CommandTree {
         command: "redirect",
@@ -398,7 +398,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_redirect),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Redirect log to usb2. mon redirect 1 to redirect, mon redirect 0 to not disable",
+        help: "Redirect log to usb2 (0|1).",
     },
     CommandTree {
         command: "reset",
@@ -407,7 +407,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_target_reset),
         start_separator: 0,
         next_separator: 0,
-        help: "Reset the target by pulsing the reset pin.",
+        help: "Pulse target reset pin.",
     },
     CommandTree {
         command: "rtt",
@@ -416,7 +416,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(crate::commands::mon_rtt::_rtt),
         start_separator: 0,
         next_separator: 0,
-        help: "use mon rtt help to get the details.",
+        help: "RTT (see 'mon rtt help').",
     },
     CommandTree {
         command: "rvswdp_scan",
@@ -425,7 +425,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_rvswdp_scan),
         start_separator: 0,
         next_separator: 0,
-        help: "Probe WCH RISCV device(s).",
+        help: "Probe WCH RISC-V.",
     },
     CommandTree {
         command: "sdi_scan",
@@ -434,7 +434,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(crate::riscv_extra::_sdi_scan),
         start_separator: 0,
         next_separator: 0,
-        help: "Probe WCH CH32V0xx device(s) over the single-wire SDI interface.",
+        help: "Probe CH32V0xx over SDI.",
     },
     CommandTree {
         command: "stub_stats",
@@ -443,7 +443,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_stub_stats),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Show (or 'mon stub_stats reset') the flash-stub statistics: runs, halts seen, register-repair fallbacks, poll wait/hold and the last failing run's state.",
+        help: "Flash-stub stats (or 'reset').",
     },
     CommandTree {
         command: "stub_hold",
@@ -452,7 +452,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_stub_hold),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Show/set the per-page flash-stub hold in ms: 'mon stub_hold <ms>' ('0' = poll from the start) or 'mon stub_hold auto' for the part's own value.",
+        help: "Flash-stub hold <ms>|auto.",
     },
     CommandTree {
         command: "sdi_wire",
@@ -461,7 +461,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(crate::riscv_extra::_sdi_wire),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Override the SDI bit-bang wire timing in ns (0 = keep the tap's default); 'mon sdi_scan' re-calibrates with it.",
+        help: "Override SDI wire ns (0=default).",
     },
     CommandTree {
         command: "riscv_stream",
@@ -470,7 +470,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_riscv_stream),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Select the RISC-V program-buffer streaming sub-path (BMP 103): 'off' makes every word wait for its own command, which is the A/B for the silent read losses (riscv_fault.md 12.9).",
+        help: "RISC-V progbuf stream (on|off).",
     },
     CommandTree {
         command: "riscv_confirm",
@@ -479,7 +479,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_riscv_confirm),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Show (or clear) the RISC-V confirmed-read counters (BMP 103): windows, disagreements, faults, latched command errors, abstractauto retries, and where the last disagreement was.",
+        help: "RISC-V confirmed-read counters.",
     },
     CommandTree {
         command: "set_reset_pin",
@@ -488,7 +488,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_set_reset_pin),
         start_separator: 0,
         next_separator: 0,
-        help: "Set the reset pin value to <value>. 1 means pull to ground, 0 mean floating.",
+        help: "Set reset pin (1=low, 0=float).",
     },
     CommandTree {
         command: "set",
@@ -497,7 +497,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_set),
         start_separator: b' ',
         next_separator: b' ',
-        help: "set [key] [value] , just set to get the current set",
+        help: "set [key] [value].",
     },
     CommandTree {
         command: "unset",
@@ -506,7 +506,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_unset),
         start_separator: b' ',
         next_separator: b' ',
-        help: "unset key",
+        help: "unset <key>.",
     },
     CommandTree {
         command: "swdp_scan",
@@ -515,7 +515,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_swdp_scan),
         start_separator: 0,
         next_separator: 0,
-        help: "Probe device(s) over SWD. You might want to increase wait state if it fails.",
+        help: "Probe SWD targets.",
     },
     CommandTree {
         command: "targets",
@@ -524,7 +524,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_targets),
         start_separator: 0,
         next_separator: 0,
-        help: "Display discovered targets.",
+        help: "List targets.",
     },
     CommandTree {
         command: "vector_catch",
@@ -533,7 +533,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_vector_catch),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Catch exception vectors (enable/disable)",
+        help: "Catch vectors (enable|disable).",
     },
     CommandTree {
         command: "version",
@@ -551,7 +551,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_voltage),
         start_separator: 0,
         next_separator: 0,
-        help: "Display target voltage.",
+        help: "Target voltage.",
     },
     CommandTree {
         command: "ws",
@@ -560,7 +560,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_ws),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Set/get the wait state on SWD channel. mon ws 5 set the wait states to 5, mon ws gets the current wait states.\n\tThe higher the number the slower it is.\nYou should rather use mon frequency.",
+        help: "Set/get SWD wait states.",
     },
     CommandTree {
         command: "xml",
@@ -569,7 +569,7 @@ const mon_command_tree: [CommandTree; 44] = [
         cb: CallbackType::text(_xml),
         start_separator: b' ',
         next_separator: b' ',
-        help: "Dump the GDB XML description: mon xml reg (target.xml / registers), mon xml memory (memory map).",
+        help: "Dump XML: reg|memory.",
     },
     CommandTree {
         command: "crash",
@@ -631,9 +631,6 @@ fn _target_reset(_command: &str, _args: &[&str]) -> bool {
 /// Print the `mon erase` usage lines.
 fn _erase_usage() {
     gdb_print!("usage: mon erase <start> <length>\n");
-    gdb_print!("\t<start> is an address in the first page to erase\n");
-    gdb_print!("\t<length> is the number of bytes after it, rounded up to whole pages\n");
-    gdb_print!("\tboth take decimal (1024) or 0x hexadecimal (0x400)\n");
 }
 
 /// Handle `mon erase <start> <length>` — erase the flash pages covering the range.
@@ -1369,8 +1366,7 @@ fn _map(_command: &str, _args: &[&str]) -> bool {
  */
 /// Print the `mon xml` usage lines.
 fn _xml_usage() {
-    gdb_print!("usage: mon xml reg    -> target.xml : the register description GDB receives\n");
-    gdb_print!("       mon xml memory -> memory-map XML : the memory map GDB receives\n");
+    gdb_print!("usage: mon xml reg|memory\n");
 }
 
 /// Handle `mon xml <reg|memory>` — dump the XML description the probe answers GDB with.

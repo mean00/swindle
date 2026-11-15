@@ -9,8 +9,8 @@ edition = "2024"
 #default = ["native"]
 std = []
 native = ["dep:rust_esprit", "cdc"]
-hosted = []
-network = []
+hosted = ["dep:rs_socketrunner"]
+network = ["dep:rs_socketrunner", "dep:rs_w5500"]
 
 cdc = ["rust_esprit/cdc"]
 
@@ -18,6 +18,13 @@ cdc = ["rust_esprit/cdc"]
 # wired in swindle/rs/CMakeLists.txt. Off selects the no-SDI seam twin
 # (src/riscv_extra_sdi_stubs.rs) in lib.rs.
 sdi = []
+
+# The USB stack above tinyUSB in Rust — `rs_tinyusb::stack` owns the `usbd` task and
+# the `tud_*` callbacks (CMake: LN_RUST_USB, usb.md P2). Off: the C++ `lnUsbStack`
+# does, which is what RP2040/RP2350 still build until P7.
+usb_stack = ["rust_esprit/usb_stack"]
+cdc2 = ["rust_esprit/cdc2"]
+cdc3 = ["rust_esprit/cdc3"]
 
 # Inverted target nRST line — CMake option USE_INVERTED_NRST (a MOSFET on the
 # board), wired in swindle/rs/CMakeLists.txt. Off: open drain / active low, on:
@@ -53,12 +60,18 @@ bluepill = ["rust_esprit/bluepill"]
 # Package of the bluepill chip (USE_48PIN_PACKAGE / USE_64PIN_PACKAGE), see rs_pinout48_bluepill
 bluepill48 = ["rust_esprit/bluepill48", "dep:rs_swindle_board", "rs_swindle_board/ln48"]
 bluepill64 = ["rust_esprit/bluepill64", "dep:rs_swindle_board", "rs_swindle_board/ln64"]
-# RP2040 / RP2350 board table (swindle/rs/rs_swindle_board/src/rp2xxx/): selected by
-# CMake from USE_RP_CARRIER, next to the `rp2040` platform feature. This is what
-# brings the board crate into an RP build (the nRST line comes from it, like on LN).
-rp_zero = ["rp2040", "dep:rs_swindle_board", "rs_swindle_board/rp_zero"]
-rp_carrier = ["rp2040", "dep:rs_swindle_board", "rs_swindle_board/rp_carrier"]
+# RP2040 / RP2350 board table (swindle/rs/rs_swindle_board/src/rp2xxx/): next to the `rp2040`
+# platform feature. This is what brings the board crate into an RP build (the nRST line comes from it).
+rp_carrier = ["rust_esprit/rp2xxx", "dep:rs_swindle_board", "rs_swindle_board/rp_carrier"]
+rp_zero = []
 rp2040 = ["rust_esprit/rp2040"]
+# RP2350 chip (CMake: USE_RP2350): same platform feature plus its own address map
+# for the esprit backends.
+rp2350 = ["rust_esprit/rp2350"]
+# CH32V3 (CMake: USE_CH32V3x): the chip-level selector on top of `bluepill`, for
+# the crates that carry family-specific values (addresses, `AHBENR` bits).
+ch32v3x = ["rust_esprit/ch32v3x"]
+gd32fx = ["rust_esprit/gd32fx"]
 esp32 = ["rust_esprit/esp32"]
 use_esprit = ["dep:rust_esprit"]
 
@@ -66,6 +79,8 @@ use_esprit = ["dep:rust_esprit"]
 [dependencies]
 cty = "0.2.2"
 rust_esprit = { workspace = true, optional = true }
+rs_socketrunner = { workspace = true, optional = true }
+rs_w5500 = { workspace = true, optional = true }
 # Probe board table (pinout / ADC / UART / USB / LEDs), enabled with the package
 # features above — see swindle/rs/rs_swindle_board.
 rs_swindle_board = { path = "../rs_swindle_board", optional = true }

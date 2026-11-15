@@ -2,7 +2,7 @@
 # Write a Rust module holding the flashstub images as `&[u8]` constants.
 #
 # Shared by every flashstub CMake project that embeds its images in a Rust driver
-# (rs_ch32v123xx, rs_rp2350_common, ...): the crate name and the source directory differ
+# (rs_swindle_ch32v123xx, rs_swindle_rp2350_common, ...): the crate name and the source directory differ
 # per caller, so they are passed in rather than baked into this script.
 #
 # Script mode, run at build time by the flashstub_rs target:

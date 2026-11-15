@@ -85,6 +85,14 @@ pub extern "C" fn sdi_pinmode_enter() {}
 #[unsafe(no_mangle)]
 pub extern "C" fn sdi_pinmode_leave() {}
 
+/// No SDI transport to fall back to: `rvswdp_scan()` (rvswd_template.h) asks for the
+/// "unlock over SDI, then switch the target to 2-wire" path when its own probe
+/// fails, and gets a plain no here instead of an undefined symbol.
+#[unsafe(no_mangle)]
+pub extern "C" fn sdi_probe_and_enable_2wire() -> bool {
+    false
+}
+
 /// No SDI debug module to reset.
 #[unsafe(no_mangle)]
 pub extern "C" fn bmp_sdi_dm_reset_c() -> bool {

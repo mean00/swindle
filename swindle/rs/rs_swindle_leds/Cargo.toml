@@ -24,9 +24,13 @@ bluepill = [
 bluepill48 = ["bluepill", "rust_esprit/bluepill48", "ws2812b?/bluepill48", "dep:rs_swindle_board", "rs_swindle_board/ln48"]
 bluepill64 = ["bluepill", "rust_esprit/bluepill64", "ws2812b?/bluepill64", "dep:rs_swindle_board", "rs_swindle_board/ln64"]
 ws2812 = ["bluepill", "dep:ws2812b"]
+rp2040 = ["dep:rust_esprit", "dep:rs_rp2xxx", "rust_esprit/rp2xxx", "rust_esprit/rp2040"]
+rp2350 = ["dep:rust_esprit", "dep:rs_rp2xxx", "rust_esprit/rp2xxx", "rust_esprit/rp2350"]
+rp_zero = []
 
 [dependencies]
 rust_esprit = { workspace = true, optional = true }
+rs_rp2xxx = { path = "../../../esprit/rust/rs_mcus/rp2xxx/rs_rp2xxx", optional = true }
 # WS2812B strip driver: an esprit library, named explicitly (it is bluepill-backed
 # inside). The plain LED variant does not need it.
 ws2812b = { path = "../../../esprit/rust/libraries/ws2812b", optional = true }

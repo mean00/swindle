@@ -23,7 +23,7 @@
 
 /*
  * Stub exit helper shared by Cortex-M flashstub sources in the Rust tree:
- * `rs_stm32f1/src/flashstub` and `rs_rp_common/src/flashstub`.
+ * `rs_swindle_stm32f1/src/flashstub` and `rs_swindle_rp_common/src/flashstub`.
  *
  * Same convention as the RISC-V `riscv_stub_exit()` (`riscv32_flashstub.h`):
  * 1 (= STUB_EXIT_OK) means the stub did its work, 0 (= STUB_EXIT_FAIL) means it

@@ -22,7 +22,6 @@
     any(
         feature = "bluepill48",
         feature = "bluepill64",
-        feature = "rp_zero",
         feature = "rp_carrier"
     )
 ))]
@@ -76,7 +75,6 @@ mod imp {
     any(
         feature = "bluepill48",
         feature = "bluepill64",
-        feature = "rp_zero",
         feature = "rp_carrier"
     )
 )))]

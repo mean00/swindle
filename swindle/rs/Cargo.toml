@@ -12,12 +12,14 @@ resolver = "2"
 # RP2040 build would silently pull in the bluepill Rust backends and fail to
 # link (undefined `_rcuClockApb1`, …).  See esprit/rust/rs_mcus/rp2xxx/README.md.
 rust_esprit = { path = "../../esprit/rust/rust_esprit", default-features = false }
+rs_socketrunner = { path = "../../esprit/rust/libraries/rs_socketrunner" }
+rs_w5500 = { path = "../../esprit/rust/libraries/rs_w5500" }
 ufmt = { version = "0.2.0", default-features = false }
 heapless = { version = "0.9.3", features = ["ufmt"]}
 
 [profile.dev]
 debug = true
-opt-level       ="s" 
+opt-level       ="z" 
 panic = "abort"
 #lto = false  # no lto
 #lto = "thin" # average
@@ -27,11 +29,11 @@ codegen-units = 1
 
 [profile.release]
 debug = true
-opt-level       = "s"
+opt-level       = "z"
 panic = "abort"
 codegen-units = 1
 #lto = false  # no lto
-lto = "thin" # average
-#lto = "fat"  # strong lto
+#lto = "thin" # average
+lto = "fat"  # strong lto
 
 

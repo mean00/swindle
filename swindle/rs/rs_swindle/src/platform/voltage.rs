@@ -1,18 +1,28 @@
 //! Target sense voltage monitoring.
 
 use core::ffi::c_char;
+use heapless::String;
 
 #[cfg(feature = "native")]
-use rust_esprit::HalSimpleAdc;
+use rust_esprit::{Adc, AdcConfig};
 
-/// Measure voltage using any driver implementing the generic `SimpleAdc` trait.
+/// Conversions averaged into one voltage reading: the sense divider is high
+/// impedance, so a handful of readings removes most of the SAR noise.
+const VOLTAGE_AVERAGING: u8 = 16;
+
+/// Acquisition window asked of the ADC: 4 µs covers the 239.5-cycle `SMPT` code of
+/// the GD32 at 72 MHz, and any shorter window a family offers. The RP2xxx ignores
+/// it (its window is fixed by silicon).
+const SENSE_SAMPLE_TIME_NS: u32 = 4_000;
+
+/// Measure voltage using any driver implementing the generic [`Adc`] trait.
 #[cfg(feature = "native")]
-pub fn measure_voltage<A: HalSimpleAdc>(adc: &A, multiplier: f32) -> f32 {
+pub fn measure_voltage<A: Adc>(adc: &mut A, multiplier: f32) -> f32 {
     let mut sample = 0i32;
-    for _ in 0..16 {
-        sample += adc.read();
+    for _ in 0..VOLTAGE_AVERAGING {
+        sample += adc.read().unwrap_or(0) as i32;
     }
-    let avg = (sample as f32) / 16.0;
+    let avg = (sample as f32) / VOLTAGE_AVERAGING as f32;
     (avg * 3.3 * multiplier) / 4095.0
 }
 
@@ -38,9 +48,14 @@ pub fn target_voltage_volts() -> f32 {
             return 0.0;
         }
         let mult = unsafe { platform_get_adc_nreset_multiplier() };
-        let adc = rust_esprit::simple_adc::SimpleAdc::new(0, pin);
-        adc.set_smpt(7);
-        measure_voltage(&adc, mult)
+        let mut adc = rust_esprit::AdcDriver::new(0, pin);
+        // The sense divider is high impedance: the longest acquisition window the
+        // backend can give us, and the averaging of `measure_voltage` on top.
+        let _ = adc.configure(&AdcConfig {
+            sample_time_ns: SENSE_SAMPLE_TIME_NS,
+            averaging: 1,
+        });
+        measure_voltage(&mut adc, mult)
     }
     #[cfg(not(feature = "native"))]
     {
@@ -49,41 +64,39 @@ pub fn target_voltage_volts() -> f32 {
 }
 
 /// Read target voltage as formatted string (e.g. "3.30 v"), if available.
-pub fn target_voltage_str() -> Option<&'static str> {
+pub fn target_voltage_str() -> Option<String<16>> {
     #[cfg(feature = "native")]
     {
         let v = target_voltage_volts();
         if v == 0.0 {
             return None;
         }
-        static mut BUFFER: [u8; 16] = [0u8; 16];
         let by_100 = (v * 100.0) as u32;
         let left = by_100 / 100;
         let right = by_100 % 100;
 
-        unsafe {
-            let buf = &mut *core::ptr::addr_of_mut!(BUFFER);
-            let mut idx = 0;
-            if left >= 10 {
-                buf[idx] = b'0' + ((left / 10) as u8);
-                idx += 1;
+        let mut s = String::<16>::new();
+        // Format "{left}.{right:02} v" without core::fmt
+        let mut buf = [0u8; 10];
+        let mut n = 0;
+        let mut v_left = left;
+        loop {
+            buf[n] = b'0' + (v_left % 10) as u8;
+            n += 1;
+            v_left /= 10;
+            if v_left == 0 {
+                break;
             }
-            buf[idx] = b'0' + ((left % 10) as u8);
-            idx += 1;
-            buf[idx] = b'.';
-            idx += 1;
-            buf[idx] = b'0' + ((right / 10) as u8);
-            idx += 1;
-            buf[idx] = b'0' + ((right % 10) as u8);
-            idx += 1;
-            buf[idx] = b' ';
-            idx += 1;
-            buf[idx] = b'v';
-            idx += 1;
-            buf[idx] = 0;
-
-            core::str::from_utf8(&buf[..idx - 1]).ok()
         }
+        while n > 0 {
+            n -= 1;
+            let _ = s.push(buf[n] as char);
+        }
+        let _ = s.push('.');
+        let _ = s.push((b'0' + (right / 10) as u8) as char);
+        let _ = s.push((b'0' + (right % 10) as u8) as char);
+        let _ = s.push_str(" v");
+        Some(s)
     }
     #[cfg(not(feature = "native"))]
     {
@@ -95,7 +108,12 @@ pub fn target_voltage_str() -> Option<&'static str> {
             if ptr.is_null() {
                 None
             } else {
-                core::ffi::CStr::from_ptr(ptr).to_str().ok()
+                let cstr = core::ffi::CStr::from_ptr(ptr);
+                cstr.to_str().ok().and_then(|str_slice| {
+                    let mut s = String::<16>::new();
+                    s.push_str(str_slice).ok()?;
+                    Some(s)
+                })
             }
         }
     }
@@ -104,13 +122,14 @@ pub fn target_voltage_str() -> Option<&'static str> {
 #[cfg(feature = "native")]
 #[unsafe(no_mangle)]
 pub extern "C" fn platform_target_voltage() -> *const c_char {
-    static mut C_BUF: [u8; 16] = [0u8; 16];
+    static C_BUF: crate::SyncCell<[u8; 16]> = crate::SyncCell::new([0u8; 16]);
     match target_voltage_str() {
         Some(s) => {
             let bytes = s.as_bytes();
             let len = bytes.len().min(15);
+            // SAFETY: Single-threaded C export called synchronously.
             unsafe {
-                let buf = &mut *core::ptr::addr_of_mut!(C_BUF);
+                let buf = C_BUF.as_mut();
                 buf[..len].copy_from_slice(&bytes[..len]);
                 buf[len] = 0;
                 buf.as_ptr() as *const c_char

@@ -16,7 +16,6 @@ extern "C"
 #include "bmp_tap_ln.h"
 #include "lnbmp_parity.h"
 
-extern void gmp_gpio_init_adc();
 extern "C" void bmp_clear_dp_fault_c();
 
 /**

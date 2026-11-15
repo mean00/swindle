@@ -40,8 +40,7 @@
       "inherits": "base_usb",
       "cacheVariables": {
         "USE_RP2040": "true",
-        "USE_RP_ZERO": "true",
-        "USE_RP_CARRIER": "true"
+        "USE_RP_ZERO": "true"
       }
     },
     {
@@ -58,8 +57,7 @@
       "inherits": "base_usb",
       "cacheVariables": {
         "USE_RP2350": "true",
-        "USE_RP_ZERO": "true",
-        "USE_RP_CARRIER": "true"
+        "USE_RP_ZERO": "true"
       }
     },
     {
@@ -158,7 +156,6 @@
       "inherits": "base_net",
       "cacheVariables": {
         "USE_RP2040": "true",
-        "USE_RP_CARRIER": "true",
         "SWINDLE_USE_W5500": "1",
         "SWINDLE_USE_USB": "False",
         "SWINDLE_USE_NETWORK": "True",

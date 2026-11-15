@@ -71,21 +71,21 @@ type ProbeFn = unsafe fn(target: *mut Target) -> bool;
 // are zero-sized — the drivers themselves share the one `DRIVER_STORAGE` cell, which is why a
 // firmware that can probe seven families pays for one driver, not seven.
 #[cfg(feature = "rust_stm32f1")]
-static STM32F1_DRIVER: DriverSlot<rs_stm32f1::F1Driver> = DriverSlot::new();
+static STM32F1_DRIVER: DriverSlot<rs_swindle_stm32f1::F1Driver> = DriverSlot::new();
 #[cfg(feature = "rust_stm32f4")]
-static STM32F4_DRIVER: DriverSlot<rs_stm32f4::F4Driver> = DriverSlot::new();
+static STM32F4_DRIVER: DriverSlot<rs_swindle_stm32f4::F4Driver> = DriverSlot::new();
 #[cfg(feature = "rust_stm32g0")]
-static STM32G0_DRIVER: DriverSlot<rs_stm32g0::G0Driver> = DriverSlot::new();
+static STM32G0_DRIVER: DriverSlot<rs_swindle_stm32g0::G0Driver> = DriverSlot::new();
 #[cfg(feature = "rust_rp2040")]
-static RP2040_DRIVER: DriverSlot<rs_rp2040::Rp2040Driver> = DriverSlot::new();
+static RP2040_DRIVER: DriverSlot<rs_swindle_rp2040::Rp2040Driver> = DriverSlot::new();
 #[cfg(feature = "rust_rp2350")]
-static RP2350_DRIVER: DriverSlot<rs_rp2350_arm::Rp2350Driver> = DriverSlot::new();
+static RP2350_DRIVER: DriverSlot<rs_swindle_rp2350_arm::Rp2350Driver> = DriverSlot::new();
 #[cfg(feature = "rust_nrf51")]
-static NRF51_DRIVER: DriverSlot<rs_nrf::Nrf51Driver> = DriverSlot::new();
+static NRF51_DRIVER: DriverSlot<rs_swindle_nrf::Nrf51Driver> = DriverSlot::new();
 #[cfg(feature = "rust_nrf54l")]
-static NRF54L_DRIVER: DriverSlot<rs_nrf::Nrf54lDriver> = DriverSlot::new();
+static NRF54L_DRIVER: DriverSlot<rs_swindle_nrf::Nrf54lDriver> = DriverSlot::new();
 #[cfg(feature = "rust_nrf91")]
-static NRF91_DRIVER: DriverSlot<rs_nrf::Nrf91Driver> = DriverSlot::new();
+static NRF91_DRIVER: DriverSlot<rs_swindle_nrf::Nrf91Driver> = DriverSlot::new();
 
 // ---------------------------------------------------------------------------
 // Probes of the families that are Rust
@@ -98,7 +98,7 @@ unsafe fn stm32f1_probe(target: *mut Target) -> bool {
         target,
         &STM32F1_DRIVER,
         DriverTag("STM32F1"),
-        rs_stm32f1::families::f1::probe_stm32,
+        rs_swindle_stm32f1::families::f1::probe_stm32,
     )
 }
 
@@ -109,7 +109,7 @@ unsafe fn gd32f1_probe(target: *mut Target) -> bool {
         target,
         &STM32F1_DRIVER,
         DriverTag("STM32F1"),
-        rs_stm32f1::families::f1::probe_gd32,
+        rs_swindle_stm32f1::families::f1::probe_gd32,
     )
 }
 
@@ -120,7 +120,7 @@ unsafe fn at32f40x_probe(target: *mut Target) -> bool {
         target,
         &STM32F1_DRIVER,
         DriverTag("STM32F1"),
-        rs_stm32f1::families::f1_clones::probe_at32f40x,
+        rs_swindle_stm32f1::families::f1_clones::probe_at32f40x,
     )
 }
 
@@ -131,7 +131,7 @@ unsafe fn mm32f3xx_probe(target: *mut Target) -> bool {
         target,
         &STM32F1_DRIVER,
         DriverTag("STM32F1"),
-        rs_stm32f1::families::f1_clones::probe_mm32f3,
+        rs_swindle_stm32f1::families::f1_clones::probe_mm32f3,
     )
 }
 
@@ -142,7 +142,7 @@ unsafe fn mm32l0xx_probe(target: *mut Target) -> bool {
         target,
         &STM32F1_DRIVER,
         DriverTag("STM32F1"),
-        rs_stm32f1::families::f1_clones::probe_mm32l0,
+        rs_swindle_stm32f1::families::f1_clones::probe_mm32l0,
     )
 }
 
@@ -153,7 +153,7 @@ unsafe fn ch32f1_probe(target: *mut Target) -> bool {
         target,
         &STM32F1_DRIVER,
         DriverTag("STM32F1"),
-        rs_stm32f1::families::ch32f1::probe,
+        rs_swindle_stm32f1::families::ch32f1::probe,
     )
 }
 
@@ -164,7 +164,7 @@ unsafe fn stm32f4_probe(target: *mut Target) -> bool {
         target,
         &STM32F4_DRIVER,
         DriverTag("STM32F4"),
-        rs_stm32f4::probe_stm32,
+        rs_swindle_stm32f4::probe_stm32,
     )
 }
 
@@ -175,7 +175,7 @@ unsafe fn gd32f4_probe(target: *mut Target) -> bool {
         target,
         &STM32F4_DRIVER,
         DriverTag("STM32F4"),
-        rs_stm32f4::probe_gd32,
+        rs_swindle_stm32f4::probe_gd32,
     )
 }
 
@@ -186,7 +186,7 @@ unsafe fn stm32g0_probe(target: *mut Target) -> bool {
         target,
         &STM32G0_DRIVER,
         DriverTag("STM32G0"),
-        rs_stm32g0::driver::probe,
+        rs_swindle_stm32g0::driver::probe,
     )
 }
 
@@ -197,7 +197,7 @@ unsafe fn rp2040_probe(target: *mut Target) -> bool {
         target,
         &RP2040_DRIVER,
         DriverTag("RP2040"),
-        rs_rp2040::driver::probe,
+        rs_swindle_rp2040::driver::probe,
     )
 }
 
@@ -209,20 +209,20 @@ unsafe fn rp2040_probe(target: *mut Target) -> bool {
 #[cfg(feature = "rust_rp2040")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rp2040_rescue_probe(ap: *mut c_void) -> bool {
-    rs_rp2040::rescue::probe(ap.cast())
+    rs_swindle_rp2040::rescue::probe(ap.cast())
 }
 
 /// Probe the RP2350 Cortex-M33 cores with the Rust driver (else C `rp2350_probe`).
 ///
 /// The Hazard3 RISC-V cores of the same chip are probed from `crate::riscv_shim` with
-/// `rs_rp2350_riscv`, which is enabled by the same cargo feature.
+/// `rs_swindle_rp2350_riscv`, which is enabled by the same cargo feature.
 #[cfg(feature = "rust_rp2350")]
 unsafe fn rp2350_probe(target: *mut Target) -> bool {
     arm_probe(
         target,
         &RP2350_DRIVER,
         DriverTag("RP2350"),
-        rs_rp2350_arm::driver::probe,
+        rs_swindle_rp2350_arm::driver::probe,
     )
 }
 
@@ -233,7 +233,7 @@ unsafe fn nrf51_probe(target: *mut Target) -> bool {
         target,
         &NRF51_DRIVER,
         DriverTag("NRF51"),
-        rs_nrf::nrf51::probe,
+        rs_swindle_nrf::nrf51::probe,
     )
 }
 
@@ -241,7 +241,7 @@ unsafe fn nrf51_probe(target: *mut Target) -> bool {
 #[cfg(feature = "rust_nrf51")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn nrf51_ctrl_ap_probe(ap: *mut c_void) -> bool {
-    rs_nrf::ctrl_ap::nrf51_ctrl_ap_probe(ap.cast())
+    rs_swindle_nrf::ctrl_ap::nrf51_ctrl_ap_probe(ap.cast())
 }
 
 /// Probe the nRF54L family with the Rust driver (else C `nrf54l_probe`).
@@ -251,7 +251,7 @@ unsafe fn nrf54l_probe(target: *mut Target) -> bool {
         target,
         &NRF54L_DRIVER,
         DriverTag("NRF54L"),
-        rs_nrf::nrf54l::probe,
+        rs_swindle_nrf::nrf54l::probe,
     )
 }
 
@@ -259,7 +259,7 @@ unsafe fn nrf54l_probe(target: *mut Target) -> bool {
 #[cfg(feature = "rust_nrf54l")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn nrf54l_ctrl_ap_probe(ap: *mut c_void) -> bool {
-    rs_nrf::ctrl_ap::nrf54l_ctrl_ap_probe(ap.cast())
+    rs_swindle_nrf::ctrl_ap::nrf54l_ctrl_ap_probe(ap.cast())
 }
 
 /// Probe the nRF91 family with the Rust driver (else C `nrf91_probe`).
@@ -269,7 +269,7 @@ unsafe fn nrf91_probe(target: *mut Target) -> bool {
         target,
         &NRF91_DRIVER,
         DriverTag("NRF91"),
-        rs_nrf::nrf91::probe,
+        rs_swindle_nrf::nrf91::probe,
     )
 }
 

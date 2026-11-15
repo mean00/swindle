@@ -48,9 +48,9 @@ uint32_t platform_time_ms(void);
 /* --- ADI(v5) / SWD (former adiv5.h) -------------------------------------- */
 
 /* SWD transaction acknowledge codes */
-#define SWD_ACK_OK          0x01U
-#define SWD_ACK_WAIT        0x02U
-#define SWD_ACK_FAULT       0x04U
+#define SWD_ACK_OK 0x01U
+#define SWD_ACK_WAIT 0x02U
+#define SWD_ACK_FAULT 0x04U
 #define SWD_ACK_NO_RESPONSE 0x07U
 
 /* Fixed-width wire transaction status shared between C++ taps and Rust FFI.
@@ -58,19 +58,19 @@ uint32_t platform_time_ms(void);
  * with SWD_ACK_OK = 0x01). */
 typedef uint8_t bmp_wire_status_t;
 
-#define BMP_WIRE_OK           0x00U /* Frame succeeded and parity/status verified */
+#define BMP_WIRE_OK 0x00U /* Frame succeeded and parity/status verified */
 /* 0x01U reserved (SWD_ACK_OK on wire) */
-#define BMP_WIRE_ACK_WAIT     0x02U /* Target answered WAIT (SWD 0x2) or DMI BUSY */
-#define BMP_WIRE_ACK_FAULT    0x04U /* Target answered FAULT (SWD 0x4) or DMI FAULT */
-#define BMP_WIRE_NO_RESPONSE  0x07U /* No target driving wire (SWD 0x7 / RVSWD 0xF / SDI 0xFFFFFFFF) */
-#define BMP_WIRE_PARITY_ERR   0x08U /* RX data parity mismatch (SWD 1-bit or RVSWD 2-bit parity) */
+#define BMP_WIRE_ACK_WAIT 0x02U     /* Target answered WAIT (SWD 0x2) or DMI BUSY */
+#define BMP_WIRE_ACK_FAULT 0x04U    /* Target answered FAULT (SWD 0x4) or DMI FAULT */
+#define BMP_WIRE_NO_RESPONSE 0x07U  /* No target driving wire (SWD 0x7 / RVSWD 0xF / SDI 0xFFFFFFFF) */
+#define BMP_WIRE_PARITY_ERR 0x08U   /* RX data parity mismatch (SWD 1-bit or RVSWD 2-bit parity) */
 #define BMP_WIRE_PROTOCOL_ERR 0x09U /* Invalid ACK/status nibble or out-of-range register address */
-#define BMP_WIRE_HW_TIMEOUT   0x0AU /* Probe hardware timeout (PIO RX/TX FIFO stall or pad stuck) */
-#define BMP_WIRE_DISABLED     0x0BU /* Transport not compiled in (e.g. SWINDLE_WITH_SDI=OFF) */
+#define BMP_WIRE_HW_TIMEOUT 0x0AU   /* Probe hardware timeout (PIO RX/TX FIFO stall or pad stuck) */
+#define BMP_WIRE_DISABLED 0x0BU     /* Transport not compiled in (e.g. SWINDLE_WITH_SDI=OFF) */
 
 /* Request direction */
 #define ADIV5_LOW_WRITE 0
-#define ADIV5_LOW_READ  1
+#define ADIV5_LOW_READ 1
 
 /* DP/AP register addresses */
 #define ADIV5_APnDP 0x1000U
@@ -80,9 +80,9 @@ typedef uint8_t bmp_wire_status_t;
 
 /* AP Abort Register (ABORT) */
 #define ADIV5_DP_ABORT_ORUNERRCLR (1U << 4U)
-#define ADIV5_DP_ABORT_WDERRCLR   (1U << 3U)
-#define ADIV5_DP_ABORT_STKERRCLR  (1U << 2U)
-#define ADIV5_DP_ABORT_STKCMPCLR  (1U << 1U)
+#define ADIV5_DP_ABORT_WDERRCLR (1U << 3U)
+#define ADIV5_DP_ABORT_STKERRCLR (1U << 2U)
+#define ADIV5_DP_ABORT_STKCMPCLR (1U << 1U)
 /* Bit 0 is always defined as DAP Abort. */
 #define ADIV5_DP_ABORT_DAPABORT (1U << 0U)
 
@@ -173,9 +173,9 @@ void platform_target_clk_output_enable(bool enable);
 #define PLATFORM_PRINTF printf
 #endif
 
-#define PRINT_NOOP(...)                                                                \
-    do                                                                                 \
-    {                                                                                  \
+#define PRINT_NOOP(...)                                                                                                \
+    do                                                                                                                 \
+    {                                                                                                                  \
     } while (false)
 
 #ifndef ENABLE_DEBUG
@@ -184,15 +184,15 @@ void platform_target_clk_output_enable(bool enable);
 
 #if ENABLE_DEBUG == 1
 #define DEBUG_ERROR(...) PLATFORM_PRINTF(__VA_ARGS__)
-#define DEBUG_WARN(...)  PLATFORM_PRINTF(__VA_ARGS__)
+#define DEBUG_WARN(...) PLATFORM_PRINTF(__VA_ARGS__)
 #else
 #define DEBUG_ERROR(...) PRINT_NOOP(__VA_ARGS__)
-#define DEBUG_WARN(...)  PRINT_NOOP(__VA_ARGS__)
+#define DEBUG_WARN(...) PRINT_NOOP(__VA_ARGS__)
 #endif
 
 /* --- GDB transport (former gdb_if.h) ------------------------------------- */
 
-int gdb_if_init(void);
+bool gdb_if_init(void);
 
 /* --- GDB reply channel (former gdb_packet.h) ----------------------------- */
 

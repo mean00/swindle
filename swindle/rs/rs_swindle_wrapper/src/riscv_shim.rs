@@ -15,8 +15,8 @@
 
 #![allow(unsafe_op_in_unsafe_fn)]
 
-use rs_ch32v00x::Ch32v00xDriver;
-use rs_ch32v123xx::Ch32v123xxDriver;
+use rs_swindle_ch32v00x::Ch32v00xDriver;
+use rs_swindle_ch32v123xx::Ch32v123xxDriver;
 use rsbmp::riscv::driver_registry::probe as riscv_probe;
 use rsbmp::target::{DriverSlot, DriverTag, Target, TargetView, jep106};
 
@@ -28,7 +28,7 @@ static CH32V123XX_DRIVER: DriverSlot<Ch32v123xxDriver> = DriverSlot::new();
 
 /// Storage handle for the RP2350 Hazard3 driver (probed first for a Raspberry Pi part).
 #[cfg(feature = "rust_rp2350")]
-static RP2350_DRIVER: DriverSlot<rs_rp2350_riscv::Rp2350RiscvDriver> = DriverSlot::new();
+static RP2350_DRIVER: DriverSlot<rs_swindle_rp2350_riscv::Rp2350RiscvDriver> = DriverSlot::new();
 
 /// The WCH drivers, in probe order.
 unsafe fn wch_probe(target: *mut Target) -> bool {
@@ -53,7 +53,7 @@ unsafe fn rp2350_probe(target: *mut Target) -> bool {
             target,
             &RP2350_DRIVER,
             DriverTag("RP2350 Hazard3"),
-            rs_rp2350_riscv::driver::probe,
+            rs_swindle_rp2350_riscv::driver::probe,
         )
     }
     #[cfg(not(feature = "rust_rp2350"))]

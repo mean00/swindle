@@ -47,9 +47,7 @@
       "zones",
       "drc_warnings",
       "conflict_shadows",
-      "shapes",
-      "subgrids",
-      "via_stitching"
+      "shapes"
     ],
     "visible_layers": "00000000_00000000_0fffffff_ffffffff",
     "zone_display_mode": 0
@@ -63,7 +61,7 @@
   },
   "meta": {
     "filename": "swindle_ch32_revJ_mini.kicad_prl",
-    "version": 7
+    "version": 5
   },
   "net_inspector_panel": {
     "col_hidden": [

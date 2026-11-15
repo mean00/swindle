@@ -63,8 +63,6 @@ extern "C" void platform_nrst_set_val_internal(bool assert);
  * bmp_tap_rp2040_riscv_extra.cpp. Nothing else in this file is SDI. */
 #include "bmp_riscv_extra.h"
 
-extern void gmp_gpio_init_adc();
-
 static bmp_pin_mode currentPioMode;
 uint32_t swd_frequency = 1000 * 1000; // 1Mhz by default
 rpPIO *swdpio = NULL;
@@ -121,6 +119,18 @@ extern "C" void bmp_set_frequency_c(uint32_t fq)
     rp2040_swd_pio_change_clock(fq * pioRateFactor(currentPioMode));
 }
 /**
+ * @brief Get the current SWD frequency.
+ * @return SWCLK frequency in Hz.
+ *
+ * Moved here from bmp_reset_pin.cpp: the value it reports is the `swd_frequency`
+ * this file owns (bmp_set_frequency_c() writes it), so the accessor lives next to
+ * the variable. The ESP32 taps still get it from bmp_reset_pin.cpp.
+ */
+extern "C" uint32_t bmp_get_frequency_c()
+{
+    return swd_frequency;
+}
+/**
  * @brief One-time init of GPIO, PIO engine, ADC, and reset pin.
  */
 void bmp_gpio_init_once()
@@ -135,7 +145,6 @@ void bmp_gpio_init_once()
     swdpio = new (pio_storage) rpPIO(LN_SWD_PIO_ENGINE);
     xsm = swdpio->getSm(0);
     currentPioMode = BMP_PINMODE_NONE;
-    gmp_gpio_init_adc();
 }
 /**
  * @brief Upload and configure PIO program for SWD/RVSWD.

@@ -15,9 +15,8 @@
 
 #include "stdint.h"
 #include "lnGPIO.h"
-//
-#include "swindle_w5500.h"
-#include "bmp_net.h"
+#include "lnLWIP.h"
+#include "lowlevel_w5500.h"
 #define PICO_NO_HARDWARE 1
 
 #ifdef USE_RTT
@@ -29,29 +28,11 @@ extern void bmp_gpio_init_once();
 // w5500Pins and PIN_TO_USE must be defined in the including file
 extern const lnW5500SPI w5500Pins;
 
-// socketTask TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
-LN_BIG_TASK_STORAGE(socketTask, TASK_BMP_GDB_STACK_SIZE);
+// gdbTask TCB + stack: static when the board can spare the 6 KiB (lnBmpTask.h)
+LN_BIG_TASK_STORAGE(gdbTask, TASK_BMP_GDB_STACK_SIZE);
 
-// Socket runner task — runs the GDB/RTT event loop
-static void socket_task(void *parameters)
-{
-    (void)parameters;
-    Logger("Gdb: TCP task starting...\n");
-    network_eventGroup.takeOwnership();
-    runnerGdb = new socketRunnerGdb(network_eventGroup, MAIN_GDB_SLOT);
-    runnerRtt = new socketRunnerRtt(network_eventGroup, MAIN_RTT_SLOT);
-    uint32_t mask = (0xffffffffUL);
-    mask &= ~(socketRunner::CanWrite << 0);
-    const uint32_t global_mask = (socketRunner::Up | socketRunner::Down);
-    while (1)
-    {
-        uint32_t events = network_eventGroup.waitEvents(mask, 20);
-        uint32_t global_events = events & global_mask;
-        uint32_t local_events = events & (~global_mask);
-        process_sockets(runnerGdb, global_events, local_events);
-        process_sockets(runnerRtt, global_events, local_events);
-    }
-}
+extern "C" void gdb_task(void *parameters);
+extern "C" void NetCb_c(lnLwipEvent evt, void *arg);
 
 // setup() — called once by rp.cpp's initTask before loop()
 void setup()
@@ -71,18 +52,16 @@ void setup()
     mymac[3] = p[0];
     mymac[4] = p[1];
     mymac[5] = p[2];
-    W5500LowLevel::init(0, &w5500Pins);
-    W5500LowLevel::setMac(mymac);
-    W5500LowLevel::start(NetCb_c, NULL);
+    w5500_begin_c(0, &w5500Pins, mymac, NetCb_c, NULL);
 }
 
 // user_init() — called from loop(), overrides bridge.cpp's empty version
-// Initialises SWD pins and creates the socket runner FreeRTOS task.
+// Initialises SWD pins and creates the GDB/RTT network FreeRTOS task.
 extern "C" void user_init()
 {
     Logger("Starting picoSwindle (W5500)\n");
     bmp_gpio_init_once(); // initialise SWD PIO, reset pin, ADC
-    LN_CREATE_BIG_TASK(&socket_task, socketTask, "socketTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
+    LN_CREATE_BIG_TASK(&gdb_task, gdbTask, "gdbTask", TASK_BMP_GDB_STACK_SIZE, NULL, TASK_BMP_GDB_PRIORITY);
 }
 
 #include "swindle_common_rp2040.cpp"

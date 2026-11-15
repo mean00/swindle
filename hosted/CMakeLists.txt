@@ -24,8 +24,14 @@ add_definitions("-DCONFIG_BMDA")
 #
 # Create a dummy setup to build BMP/lnBMP
 #
+set(ESPRIT_ROOT
+    ${CMAKE_SOURCE_DIR}/../esprit
+    CACHE INTERNAL "")
+set(ESPRIT_CPP_ROOT
+    ${ESPRIT_ROOT}/cpp
+    CACHE INTERNAL "")
 set(LN_EXT arm_gd32fx)
-set(LN_MCU_FOLDER ${CMAKE_SOURCE_DIR}/../esprit/mcus/arm_gd32fx/)
+set(LN_MCU_FOLDER ${ESPRIT_CPP_ROOT}/mcus/arm_gd32fx/)
 set(SWINDLE_HOSTED
     True
     CACHE INTERNAL "")
@@ -40,9 +46,6 @@ set(LN_TOOLCHAIN_EXT
     CACHE INTERNAL "")
 set(LN_ENABLE_RUST
     ON
-    CACHE INTERNAL "")
-set(ESPRIT_ROOT
-    ${CMAKE_SOURCE_DIR}/../esprit
     CACHE INTERNAL "")
 set(CMAKE_MODULE_PATH
     ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/../cmake ${ESPRIT_ROOT}/cmake
@@ -71,14 +74,14 @@ set(LNBMP_TOP_FOLDER ${CMAKE_SOURCE_DIR}/../blackmagic)
 add_library(esprit_dev INTERFACE)
 add_library(esprit INTERFACE)
 
-target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/)
-target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/include)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_CPP_ROOT}/)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_CPP_ROOT}/include)
 target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/FreeRTOS/include)
 target_include_directories(esprit_dev INTERFACE ${LN_MCU_FOLDER})
 target_include_directories(esprit_dev INTERFACE ${LN_MCU_FOLDER}/boards/bluepill)
 target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/FreeRTOS/portable/GCC/ARM_CM3/)
-target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/mcus/arm_gd32fx/include)
-target_include_directories(esprit_dev INTERFACE ${ESPRIT_ROOT}/mcus/common_bluepill/include)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_CPP_ROOT}/mcus/arm_gd32fx/include)
+target_include_directories(esprit_dev INTERFACE ${ESPRIT_CPP_ROOT}/mcus/common_bluepill/include)
 
 target_include_directories(esprit_dev INTERFACE ${CMAKE_BINARY_DIR})
 
@@ -93,6 +96,9 @@ include_directories(${CMAKE_BINARY_DIR})
 # carries the minimal stand-ins for the headers it used to provide.
 include_directories(${CMAKE_SOURCE_DIR}/../swindle/private_include)
 include_directories(${CMAKE_SOURCE_DIR}/../swindle/include)
+# The opaque C views rs_rtos binds to (lnfast_event_group_*, …): the hosted shim
+# in src/esp_socket_rust.cpp implements them over esp_eventgroup.cpp's class.
+include_directories(${ESPRIT_ROOT}/rust/rust_esprit/c_interface)
 #
 # The blackmagic context (PC_HOSTED, ENABLE_DEBUG, BMD_IS_STDC) is no longer
 # passed as -D flags here: the hosted-variant platformgenerated.h
@@ -116,25 +122,33 @@ set(H ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # The probe-side entry points this build cannot serve (SPI, SWD tap, SWJ pins, RTT,
 # heap counters) are defined in Rust now: swindle/rs/rs_swindle/src/hosted/c_stubs.rs.
 # src/stubs.cpp is kept as the reference but is no longer compiled.
+#
+# What is shared by every hosted executable lives here; the probe back end is
+# added per target: bmp_qtserial.cpp + gdb_server_common.cpp for a USB probe
+# (BMP core + serial RPC), bmp_qttcp.cpp for a network probe (GDB relay).
 set(COMMON_SRC
     ${H}/timeout.cpp
     ${H}/lnDebug.cpp
     ${H}/bmp_functions.cpp
     ${H}/dm_decoder.cpp
     ${H}/gdb_decoder.cpp
-    ${H}/bmp_qtserial.cpp
+    ${H}/hosted_common.cpp
+    ${H}/hosted_common.h
+    ${H}/hosted_probe.h
     ${H}/esp_qtnetwork.cpp
     ${H}/esp_qtnetwork.h
     ${H}/esp_bridge.cpp
     ${H}/esp_eventgroup.cpp
-    ${H}/gdb_server_thread.h
-    ${H}/gdb_server_common.cpp
-    ../esprit/src/lnSocketRunner.cpp)
+    ${H}/esp_socket_rust.cpp
+    ${H}/esp_socket_rust.h
+    ${H}/gdb_server_thread.h)
 
-include_directories(../swindle/src/net)
+# USB probe back end: the BMP core, talking to the probe over the serial RPC.
+set(USB_PROBE_SRC ${H}/bmp_qtserial.cpp ${H}/gdb_server_common.cpp)
+
 
 # CLI executable
-add_executable(swindle_hosted ${H}/main.cpp ${COMMON_SRC})
+add_executable(swindle_hosted ${H}/main.cpp ${COMMON_SRC} ${USB_PROBE_SRC})
 target_include_directories(swindle_hosted PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(swindle_hosted PRIVATE -include platformgenerated.h)
 target_compile_definitions(swindle_hosted PRIVATE LN_ARCH=LN_ARCH_ARM)
@@ -146,8 +160,22 @@ target_link_libraries(swindle_hosted PRIVATE
     Qt6::Core Qt6::Network Qt6::SerialPort
 )
 
+# Network probe executable: the probe answers GDB on its own TCP port, so this
+# build only relays the session (no BMP core, no serial port).
+add_executable(swindle_hosted_net ${H}/main.cpp ${COMMON_SRC} ${H}/bmp_qttcp.cpp ${H}/hosted_no_rpc.cpp)
+target_include_directories(swindle_hosted_net PRIVATE ${CMAKE_BINARY_DIR}/generated)
+target_compile_options(swindle_hosted_net PRIVATE -include platformgenerated.h)
+target_compile_definitions(swindle_hosted_net PRIVATE LN_ARCH=LN_ARCH_ARM)
+target_link_libraries(swindle_hosted_net PRIVATE
+    rsbmp_wrapper
+    esprit_dev
+    embeddedPrintf
+    usb-1.0
+    Qt6::Core Qt6::Network
+)
+
 # Qt6 GUI executable
-add_executable(swindle_hosted_qt ${H}/main_qt.cpp ${COMMON_SRC})
+add_executable(swindle_hosted_qt ${H}/main_qt.cpp ${COMMON_SRC} ${USB_PROBE_SRC})
 target_include_directories(swindle_hosted_qt PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(swindle_hosted_qt PRIVATE -include platformgenerated.h)
 target_compile_definitions(swindle_hosted_qt PRIVATE LN_ARCH=LN_ARCH_ARM)
@@ -161,7 +189,7 @@ target_link_libraries(swindle_hosted_qt PRIVATE
 
 # Qt6 adds -mno-direct-extern-access which clang rejects
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  foreach(qt_target Qt6::Core Qt6::Widgets Qt6::Network Qt6::SerialPort swindle_hosted swindle_hosted_qt)
+  foreach(qt_target Qt6::Core Qt6::Widgets Qt6::Network Qt6::SerialPort swindle_hosted swindle_hosted_net swindle_hosted_qt)
     get_target_property(qt_iflags ${qt_target} INTERFACE_COMPILE_OPTIONS)
     if(qt_iflags)
       string(REPLACE "-mno-direct-extern-access" "" qt_iflags "${qt_iflags}")
