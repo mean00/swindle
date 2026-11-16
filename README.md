@@ -12,7 +12,7 @@
 
 <blockquote>
   <strong>TL;DR</strong> — Got an RP2040 board lying around? You've got a debug probe.<br>
-  Swindle is a <strong>multi-platform debug probe</strong> for embedded devices, supporting <strong>SWD</strong> (ARM Cortex-M) and <strong>RVSWD</strong> (RISC-V CH32V2xx/CH32V3xx). It's powered by the incredible <a href="https://black-magic.org/index.html">Black Magic Probe</a> engine with a custom Rust-based GDB interface.
+  Swindle is a <strong>multi-platform debug probe</strong> for embedded devices, supporting <strong>SWD</strong> (ARM Cortex-M), <strong>RVSWD</strong> (RISC-V CH32V2xx/CH32V3xx), and <strong>SDI</strong> (WCH CH32V00x). Originally based on <a href="https://black-magic.org/index.html">Black Magic Probe</a>, the firmware has been converted to <strong>Rust</strong> with a decoupled, multi-transport architecture.
 </blockquote>
 
 ---
@@ -21,9 +21,8 @@
 
 | Category | Details |
 |----------|---------|
-| **🧠 Engine** | Built on top of the proven [Black Magic Probe](https://black-magic.org/index.html) firmware engine |
-| **🦀 GDB Interface** | Written in **Rust** — modern, safe, and maintainable |
-| **🔌 Protocols** | SWD (ARM) + RVSWD (RISC-V) — no JTAG |
+| **🦀 Rust Core** | Target drivers, stub runners, GDB/RTT protocol, and transport layers rewritten in **Rust** (`no_std`) |
+| **🔌 Protocols** | SWD (ARM) + RVSWD (RISC-V) + SDI (WCH CH32V00x) — no JTAG |
 | **🎯 Breakpoints** | Infinite breakpoints in RAM (ARM/RV32) + soft flash breakpoints for targets without HW breakpoints (some WCH chips) |
 | **📡 RTOS Support** | **FreeRTOS** awareness and **SEGGER RTT** out of the box — no configuration needed |
 | **💾 DFU Update** | Firmware updates over USB DFU — no programmer required |
@@ -43,6 +42,7 @@ You need **≥256 KB flash** and **≥48 KB RAM**.
 | Platform | Status | Notes |
 |----------|--------|-------|
 | **RP2040** (e.g. RP2040-Zero) | ✅ Stable | The most affordable option |
+| **RP2040 + W5500** | 🧪 Experimental | Ethernet |
 | **RP2350** (e.g. RP2350-Zero) | 🧪 Experimental | |
 | **GD32F303CCT6** (48/64-pin) | ✅ Stable | |
 | **CH32V30xxx** | ✅ Stable | RISC-V based host |
@@ -53,7 +53,7 @@ You need **≥256 KB flash** and **≥48 KB RAM**.
 | Architecture | Protocol | Device Families |
 |-------------|----------|-----------------|
 | **ARM Cortex-M** | SWD | RP2040, RP2350, STM32, GD32, and many ARM Cortex-M with SWD |
-| **RISC-V** | RVSWD | WCH CH32V2xx, CH32V3xx |
+| **RISC-V** | RVSWD / SDI | WCH CH32V2xx, CH32V3xx (RVSWD), CH32V00x (SDI) |
 
 ---
 
@@ -148,31 +148,78 @@ Full documentation is available on the **[Swindle Wiki](https://github.com/mean0
 
 ## 🏗️ Project Architecture
 
-```
-swindle/                    # Debug probe wrapper
-├── rs/                     # Rust GDB interface (rs_swindle / rsbmp)
-│   ├── rs_swindle/         # Core GDB logic
-│   └── rs_swindle_wrapper/ # C → Rust bridge
-└── swindle/                # C++ Black Magic Probe engine + wrapper
+Unlike the original Black Magic Probe (monolithic C firmware with single-threaded polling), Swindle's probe engine has been rewritten in **Rust** (`no_std`) with a layered, multi-transport architecture. Upstream `blackmagic/` C sources are no longer compiled.
 
-esprit/                     # C++ / Rust SDK framework (HAL + RTOS + MCU drivers)
+### Key Architectural Changes
 
-assets/                     # Images and media
-cmake/                      # Project-level CMake utilities
-```
+- **Higher-level transport abstraction, not bit-level**: Abstracts at the word/transaction level (SWD DP/AP, RVSWD, WCH SDI) rather than generic bit-level JTAG/SWD, enabling faster transfers and platform-specific acceleration (RP2040/RP2350 PIO state machines, fast GPIO).
+- **Stricter, smaller codebase (32-bit only)**: Dropping JTAG, 64-bit RISC-V, and legacy targets allows tighter, strongly-typed `no_std` Rust code with less boilerplate and fewer runtime branches.
+- **Two dedicated driver lines (ARM & RISC-V) with ad-hoc APIs**: Separate `arm` and `riscv` subsystems, probe chains, and target traits tailored to each architecture instead of forcing both through a single generic C `target` struct.
+- **CRC32 & target-side flash stubs**: Runs flash programming and CRC32 verification on the target MCU to speed up `gdb compare-sections` and flashing.
+- **Static-first memory & session arena**: Replaces scattered `malloc`/`free` calls with static `.bss` allocations, zero-alloc XML/flash buffers, and a bump-allocated session arena that resets cleanly on every scan to avoid heap fragmentation.
+- **Software breakpoints in flash or RAM**: Supports software breakpoints in both RAM (unlimited breakpoints) and flash (for targets without hardware breakpoint units, such as some WCH chips), alongside a 16-byte prefetch line cache to reduce wire round-trips.
+- **Schema-generated RPC**: A single TOML schema (`rpc_protocol.toml`) generates both probe and host RPC endpoints using compact CBOR (no hex expansion), allowing the same Rust target drivers to run on-probe or on a PC (`swindle_hosted`) over USB/network.
+- **RTOS-backed, multi-transport I/O**: Runs on FreeRTOS via `esprit` instead of a single-threaded polling loop, enabling concurrent USB CDC ports (GDB, UART bridge, logger) as well as TCP/IP networking (CH32V307, RP2040 + W5500).
+- **Explicit error propagation (no `setjmp`/`longjmp`)**: Replaces Black Magic Probe's `setjmp`/`longjmp` exception mechanism with structured `Result`-based error propagation across wire, target, and flash layers.
+- **Native RTOS & RTT introspection**: FreeRTOS TCB crawling/stack unwinding (ARM Cortex-M & RV32/CH32) and SEGGER RTT polling are built directly into the Rust GDB engine.
 
 ---
 
 ## 🖼️ Gallery
 
-| Small probe, big target | RP2040 + CH32V |
-|:------------------------:|:--------------:|
-| <img src="assets/web/swindle_pic.png" alt="RP2040-Zero debugging RP2040" width="300"> | <img src="assets/web/rp2040_ch32.png" alt="RP2040 debugging CH32V" width="300"> |
-|:------------------------:|:--------------:|
+### RP2040 + CH32V
 
----
+<p align="center">
+  <img src="assets/web/rp2040_ch32.png" alt="RP2040 debugging CH32V" width="400">
+</p>
 
+### System Block View
 
+```mermaid
+flowchart TD
+    classDef client fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px,color:#212121
+    classDef rust fill:#bbdefb,stroke:#0d47a1,stroke-width:2px,color:#0d1b2a
+    classDef cpp fill:#e1f5fe,stroke:#0288d1,stroke-width:1.5px,color:#0d1b2a
+    classDef hw fill:#eceff1,stroke:#455a64,stroke-width:1.5px,color:#212121
+    classDef grp fill:#f8fbff,stroke:#90caf9,stroke-width:1px
+
+    subgraph Clients ["Host & Transports"]
+        GDB["GDB / LLDB & RTT Terminal"]
+        Transports["USB CDC · TCP/IP (W5500 / CH32V307) · Hosted CBOR RPC"]
+    end
+
+    subgraph RustCore ["Swindle Rust Core (no_std · swindle/rs)"]
+        Engine["GDB / RTT Engine<br/>Packet I/O · FreeRTOS · SW Breakpoints · Read Cache · Session Arena"]
+        ArmLine["ARM Line<br/>SWD · ADIv5/6 · Cortex-M"]
+        RiscvLine["RISC-V 32 Line<br/>RVSWD · SDI · DM/DMI"]
+        Drivers["Target & Flash Drivers (rs_targets)<br/>STM32 · RP2040/RP2350 · nRF · CH32V · CRC32 Stubs"]
+    end
+
+    subgraph Platform ["Platform & TAP Layer (swindle/src + esprit)"]
+        HAL["FreeRTOS + HAL (esprit)<br/>USB · Net · Reset · VDD ADC"]
+        TAP["High-Speed Word/Transaction TAPs<br/>RP2xx PIO · Fast GPIO"]
+    end
+
+    Target["Target MCU<br/>ARM Cortex-M · RISC-V RV32"]
+
+    GDB <--> Transports
+    Transports <--> Engine
+    Engine --> ArmLine
+    Engine --> RiscvLine
+    ArmLine --> Drivers
+    RiscvLine --> Drivers
+    ArmLine --> TAP
+    RiscvLine --> TAP
+    Transports -.-> HAL
+    HAL --- TAP
+    TAP <-->|"SWD / RVSWD / SDI"| Target
+
+    class GDB,Transports client
+    class Engine,ArmLine,RiscvLine,Drivers rust
+    class HAL,TAP cpp
+    class Target hw
+    class Clients,RustCore,Platform grp
+```
 
 ---
 
@@ -185,4 +232,4 @@ Feel free to check the [issues page](https://github.com/mean00/swindle/issues).
 
 ## 📄 License
 
-This project is built on the [Black Magic Probe](https://black-magic.org/index.html) engine, licensed under **GPL-3.0**.
+This project is a derivative of [Black Magic Probe](https://black-magic.org/index.html), and the corresponding parts are licensed under **GPL-3.0**. The Rust conversion and architectural refactoring were assisted by **Gemini** and **DeepSeek**.
