@@ -387,17 +387,20 @@ pub fn spi_resume(m: &dyn FlashAccess) {
     );
 }
 
-/// Invalidate XIP cache via the XIP_CTRL FLUSH hardware register (0x400C0004).
-pub fn flush_cache(m: &dyn FlashAccess, _addr: u32, _len: usize) {
-    m.write32(0x400c_0004, 1);
-    let mut timeout = 10_000usize;
-    while m.read32(0x400c_0008) & 1 == 0 && timeout > 0 {
-        if m.check_error() {
-            break;
-        }
-        timeout -= 1;
-    }
-}
+/// The RP2350 XIP cache cannot be maintained from the probe, so this is a no-op.
+///
+/// The RP2040 layout this was copied from has `XIP_CTRL` at `0x4000_0000` with a `FLUSH`
+/// trigger at `+0x04` and a pollable status at `+0x08`. The RP2350 moved the block to
+/// `0x400c_8000` and dropped the `FLUSH` register (datasheet 4.4.5, Table 436: `CTRL`
+/// `0x00`, `STAT` `0x08`, then the counters/stream), so the old poll wrote a reserved
+/// address, read `STAT` and waited for a "flush done" bit that never appears: every
+/// transaction faulted and the SWD layer retried it, which is what stalled `vFlashErase`
+/// in `SwdWaitPin::invPulseClock`.
+///
+/// Cache maintenance on the RP2350 is the `0x1800_0000` window (invalidate/clean by
+/// address or by set/way), and the programming flashstub already does it *on the core*,
+/// invalidating each 8-byte line as it programs it (`Qmi::write` / `rp2350_write.c`).
+pub fn flush_cache(_m: &dyn FlashAccess, _addr: u32, _len: usize) {}
 
 /// Discover the flash chip and describe it (C `rp2350_add_flash()`).
 ///

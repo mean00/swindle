@@ -64,6 +64,9 @@ pub const DATA_OUT: u16 = 1 << 12;
 /// Opcode of the 4 KiB sector erase (C `SPI_FLASH_OPCODE_SECTOR_ERASE`).
 pub const SECTOR_ERASE_OPCODE: u8 = 0x20;
 
+/// Upper bound on status-register polls in `SpiFlash::wait_ready` before giving up.
+pub const WAIT_READY_MAX_SPINS: u32 = 50_000;
+
 /// Dummy bytes phase of a command word (C `SPI_FLASH_DUMMY_LEN()`).
 pub const fn dummy_len(len: u16) -> u16 {
     (len << DUMMY_SHIFT) & DUMMY_MASK
@@ -214,12 +217,17 @@ impl SpiFlash {
     /// `false` when the debug link raised a fault on the way, which is the only way out
     /// of the C loops other than the chip clearing its busy bit.
     fn wait_ready(&self, m: &dyn FlashAccess, transport: &dyn SpiTransport) -> bool {
-        while self.read_status(m, transport) & STATUS_BUSY != 0 {
+        // Bounded: a chip that never clears BUSY (or a QMI that reads back 0xff) would
+        // otherwise spin forever and wedge the probe.
+        for _ in 0..WAIT_READY_MAX_SPINS {
+            if self.read_status(m, transport) & STATUS_BUSY == 0 {
+                return true;
+            }
             if m.check_error() {
                 return false;
             }
         }
-        true
+        false
     }
 
     /// Erase the whole chip (C `bmp_spi_mass_erase()`).

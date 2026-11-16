@@ -52,10 +52,14 @@ use rs_swindle_rp_common::spi::SpiFlash;
 use rsbmp::bmplogger::G;
 use rsbmp::flash::{FlashOperation, StubCaps, StubState};
 use rsbmp::format_util::HexCase;
-use rsbmp::target::{CortexMAccess, MemoryMap, PartDescriptor, RustArmTargetDriver};
+use rsbmp::target::{CortexMAccess, MemoryMap, PartDescriptor, RustArmTargetDriver, TargetView};
 
 /// Driver name as the C `target_s` carries it.
 const DRIVER_NAME: &str = "RP2350\0";
+
+/// How many times [`Rp2350Driver::flash_prepare`] polls for the halt request to land before
+/// going on. `halt_poll()` is itself bounded, so this only covers a core that is slow to stop.
+const HALT_SETTLE_POLLS: u32 = 100;
 
 /// The RP2350 driver instance for one probed part.
 ///
@@ -70,8 +74,10 @@ pub struct Rp2350Driver {
     flash: Option<SpiFlash>,
     /// The QMI while `flash_prepare()`..`flash_done()` holds it, `None` between sessions.
     session: Option<QmiEngine>,
-    /// Whether the programming flashstub is currently parked in SRAM.
+    /// Whether the programming flashstub is parked in SRAM and usable.
     stubs: StubState,
+    /// Set when a stub run failed: the rest of the session programs through the QMI FIFO.
+    qmi_fallback: bool,
 }
 
 /// Probe an RP2350 (C `rp2350_probe()`).
@@ -94,11 +100,21 @@ pub fn probe(cm: &mut CortexMAccess) -> Option<Rp2350Driver> {
     // Do not probe flash here: the core may be actively running code from XIP flash.
     // Probing flash takes over QMI, cycles pad pull-ups and sends exit-QPI (0xf5),
     // which crashes running cores. Flash detection is deferred to attach() or flash_prepare().
+    //
+    // The C driver also overrides `enter_flash_mode`/`exit_flash_mode` with
+    // `rp2350_flash_prepare()`/`rp2350_flash_resume()`: entering flash mode must take the QMI
+    // into direct mode, not reset the part. With the generic reset in place the core is
+    // released into the ROM bootloader, which then drives the QMI/pads underneath us, the
+    // core no longer halts on request, the JEDEC/SFDP reads come back garbage and the
+    // flashstub upload fails. The QMI is taken in [`Rp2350Driver::flash_prepare`] and handed
+    // back in [`Rp2350Driver::flash_done`], so the generic reset is exactly what must not run.
+    TargetView::new(cm.target()).set_enter_flash_mode_stub();
     Some(Rp2350Driver {
         part_id,
         flash: None,
         session: None,
         stubs: StubState::new(StubCaps::WRITE),
+        qmi_fallback: false,
     })
 }
 
@@ -138,15 +154,35 @@ impl RustArmTargetDriver for Rp2350Driver {
     }
 
     fn flash_prepare(&mut self, cm: &mut CortexMAccess, op: FlashOperation) -> bool {
-        if self.flash.is_none() {
+        // The QMI and the QSPI pads are shared with the core: a core executing from XIP
+        // faults as soon as the controller goes into direct mode, and the boot ROM (or the
+        // application) would otherwise drive the pads underneath us. GDB keeps the core
+        // halted across a `load`, but a `mon erase`/`mon …` flash operation can arrive with
+        // the core running, so make sure it is stopped for the session.
+        if !cm.halted() {
+            cm.halt_request();
+            for _ in 0..HALT_SETTLE_POLLS {
+                if cm.halted() {
+                    break;
+                }
+            }
+        }
+        if self.session.is_none() {
+            // Fresh session: put the core back at the reset vector (Secure Privileged, QSPI
+            // pads in their POR state) so the flashstub can drive the QMI, and re-detect the
+            // chip from that known state.
+            cm.reset_and_halt();
+            self.stubs.invalidate();
+            self.qmi_fallback = false;
             self.flash = flash::add_flash(cm);
         }
         self.session = self.flash.map(|flash| QmiEngine::engage(cm, flash));
         if self.session.is_none() {
             return false;
         }
-        // Block erase goes through the QMI, so only programming needs the stub: one upload per
-        // session instead of one per write burst.
+        // The stub is what makes programming fast (4 KiB chunks instead of two bytes per AP
+        // write); it is uploaded once per session. Erase does not need it, but the upload is
+        // 358 bytes and it keeps a `load` (erase then write) on the stub throughout.
         if !self.stubs.needs_upload(op) {
             return true;
         }
@@ -163,7 +199,7 @@ impl RustArmTargetDriver for Rp2350Driver {
             engine.release(cm);
         }
         flash::flush_cache(cm, 0, 0);
-        // The session handed the target back: the RAM the stub lives in is the application's.
+        // The RAM the stub sits in belongs to the application again.
         self.stubs.invalidate();
         true
     }
@@ -184,9 +220,17 @@ impl RustArmTargetDriver for Rp2350Driver {
     }
 
     fn flash_write(&mut self, cm: &mut CortexMAccess, dest: u32, data: &[u8]) -> bool {
-        if self.session.is_none() {
+        // The fast path is the flashstub: 4 KiB chunks programmed by the core, which is what
+        // makes this comparable to the RP2040 driver. It needs a Secure Privileged core, which
+        // `flash_prepare()` arranges with `reset_to_halt()`.
+        //
+        // If a run does not report success (the core could not reach the QMI, or the run was
+        // interrupted), the rest of the session falls back to streaming the data out of the
+        // QMI transmit FIFO from the probe: slower, but independent of the core's state.
+        // `QmiEngine` is `Copy`, so taking it out keeps `self` free for the flag.
+        let Some(mut engine) = self.session else {
             return false;
-        }
+        };
         let mut offset = 0;
         let mut remaining = data.len();
         let mut cur_dest = dest;
@@ -195,22 +239,30 @@ impl RustArmTargetDriver for Rp2350Driver {
             let chunk = remaining.min(ATOMIC_FLASHSTUB_WRITE);
             let slice = &data[offset..offset + chunk];
 
-            cm.mem_write(STUB_DATA_LOCATION, slice);
-            let ok = cm.run_stub_with_stack(
-                STUB_CODE_LOCATION_WRITE,
-                STUB_STACKEND_LOCATION,
-                cur_dest,
-                STUB_DATA_LOCATION,
-                chunk as u32,
-                0,
-            );
-            if !ok {
-                // A failed run can leave the core mid-image: the next prepare uploads again.
+            if !self.qmi_fallback {
+                cm.mem_write(STUB_DATA_LOCATION, slice);
+                let ran = cm.run_stub_with_stack(
+                    STUB_CODE_LOCATION_WRITE,
+                    STUB_STACKEND_LOCATION,
+                    cur_dest,
+                    STUB_DATA_LOCATION,
+                    chunk as u32,
+                    0,
+                );
+                if ran {
+                    offset += chunk;
+                    cur_dest += chunk as u32;
+                    remaining -= chunk;
+                    continue;
+                }
+                // A failed run can leave the core mid-image: the next session uploads again,
+                // and this one finishes through the controller.
                 self.stubs.invalidate();
+                self.qmi_fallback = true;
+            }
+            if !engine.write(cm, cur_dest, slice) {
                 return false;
             }
-            flash::flush_cache(cm, cur_dest, chunk);
-
             offset += chunk;
             cur_dest += chunk as u32;
             remaining -= chunk;
