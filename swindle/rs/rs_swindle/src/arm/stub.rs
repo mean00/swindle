@@ -187,6 +187,46 @@ fn run_stub_ret_with_stack(
     run_stub_ret_internal(cm, loadaddr, Some(stack), r0, r1, r2, r3)
 }
 
+/// Dump what the core was doing when a stub run did not report success.
+///
+/// `BFAR`/`MMFAR` are only meaningful when their `VALID` bits are set, but they cost two
+/// reads and name the offending address in the common "the stub touched something it is
+/// not allowed to" case.
+fn report_stub_fault(cm: &CortexMAccess, what: &str, loadaddr: u32) {
+    use crate::arm::cortexm_registers::{CORTEXM_BFAR, CORTEXM_CFSR, CORTEXM_HFSR, CORTEXM_MMFAR};
+    let pc = pc_read(cm).unwrap_or(0);
+    let (r0, r1, r2, r3) = (
+        reg_read_u32(cm, 0).unwrap_or(0),
+        reg_read_u32(cm, 1).unwrap_or(0),
+        reg_read_u32(cm, 2).unwrap_or(0),
+        reg_read_u32(cm, 3).unwrap_or(0),
+    );
+    let lr = reg_read_u32(cm, 14).unwrap_or(0);
+    let cfsr = cm.read32(CORTEXM_CFSR);
+    let hfsr = cm.read32(CORTEXM_HFSR);
+    let bfar = cm.read32(CORTEXM_BFAR);
+    let mmfar = cm.read32(CORTEXM_MMFAR);
+    crate::bmpwarning!(
+        "stub {}! entry=0x{:x} pc=0x{:x} lr=0x{:x} r0=0x{:x} r1=0x{:x} r2=0x{:x} r3=0x{:x}\n",
+        what,
+        loadaddr,
+        pc,
+        lr,
+        r0,
+        r1,
+        r2,
+        r3
+    );
+    crate::bmpwarning!(
+        "stub {}! cfsr=0x{:x} hfsr=0x{:x} bfar=0x{:x} mmfar=0x{:x}\n",
+        what,
+        cfsr,
+        hfsr,
+        bfar,
+        mmfar
+    );
+}
+
 fn run_stub_ret_internal(
     cm: &CortexMAccess,
     loadaddr: u32,
@@ -248,17 +288,11 @@ fn run_stub_ret_internal(
     if timed_out {
         // Yank a hung stub back so the core is left halted rather than spinning.
         cm.halt_request();
-        let pc = pc_read(cm).unwrap_or(0);
-        let cfsr = cm.read32(crate::arm::cortexm_registers::CORTEXM_CFSR);
-        let hfsr = cm.read32(crate::arm::cortexm_registers::CORTEXM_HFSR);
-        crate::bmpwarning!("stub timed out! pc=0x{:x} cfsr=0x{:x} hfsr=0x{:x}\n", pc, cfsr, hfsr);
+        report_stub_fault(cm, "timed out", loadaddr);
         return None;
     }
     if reason != HaltReason::Breakpoint {
-        let pc = pc_read(cm).unwrap_or(0);
-        let cfsr = cm.read32(crate::arm::cortexm_registers::CORTEXM_CFSR);
-        let hfsr = cm.read32(crate::arm::cortexm_registers::CORTEXM_HFSR);
-        crate::bmpwarning!("stub not breakpoint! reason={:?}, pc=0x{:x} cfsr=0x{:x} hfsr=0x{:x}\n", reason as u32, pc, cfsr, hfsr);
+        report_stub_fault(cm, "not breakpoint", loadaddr);
         return None;
     }
 
@@ -274,7 +308,14 @@ fn run_stub_ret_internal(
 
     let imm = (instruction & 0xff) as u8;
     if imm != STUB_EXIT_OK {
-        crate::bmpwarning!("stub bkpt imm != STUB_EXIT_OK! imm={}\n", imm as u32);
+        let r0 = reg_read_u32(cm, 0).unwrap_or(0);
+        let lr = reg_read_u32(cm, 14).unwrap_or(0);
+        crate::bmpwarning!(
+            "stub bkpt imm != STUB_EXIT_OK! imm={} r0=0x{:x} lr=0x{:x}\n",
+            imm as u32,
+            r0,
+            lr
+        );
     }
     Some(imm)
 }

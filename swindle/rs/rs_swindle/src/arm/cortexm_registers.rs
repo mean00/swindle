@@ -43,6 +43,10 @@ pub(crate) const CORTEXM_CCR: u32 = CORTEXM_SCS_BASE + 0xd14;
 pub(crate) const CORTEXM_CFSR: u32 = CORTEXM_SCS_BASE + 0xd28;
 pub(crate) const CORTEXM_HFSR: u32 = CORTEXM_SCS_BASE + 0xd2c;
 pub(crate) const CORTEXM_DFSR: u32 = CORTEXM_SCS_BASE + 0xd30;
+/// Fault address of the last precise data bus fault (`CFSR.BFSR.BFARVALID`).
+pub(crate) const CORTEXM_BFAR: u32 = CORTEXM_SCS_BASE + 0xd38;
+/// Fault address of the last memory-management fault (`CFSR.MMFSR.MMARVALID`).
+pub(crate) const CORTEXM_MMFAR: u32 = CORTEXM_SCS_BASE + 0xd34;
 pub(crate) const CORTEXM_ID_PFR1: u32 = CORTEXM_SCS_BASE + 0xd44;
 pub(crate) const CORTEXM_CTR: u32 = CORTEXM_SCS_BASE + 0xd7c;
 pub(crate) const CORTEXM_CPACR: u32 = CORTEXM_SCS_BASE + 0xd88;

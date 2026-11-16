@@ -335,6 +335,48 @@ impl CortexMAccess {
         }
     }
 
+    /// Reset the core with `SYSRESETREQ` and stop it at the reset vector.
+    ///
+    /// Unlike [`Self::reset`] this never touches the nRST line. That matters two ways:
+    /// the debug logic survives a *system* reset, so the core comes back halted at the
+    /// vector instead of running away into the boot ROM (where a later halt request often
+    /// does not land), and on an ARMv8-M part the core is **Secure Privileged** there,
+    /// which is the only state in which it may touch Secure-only peripherals such as the
+    /// RP2350's QMI and XIP-cache window.
+    ///
+    /// The reset vector catch is dropped again before returning, so a subsequent resume
+    /// runs the application instead of stopping at the vector a second time.
+    pub fn reset_and_halt(&self) -> bool {
+        use crate::arm::cortexm_registers::{
+            CORTEXM_AIRCR, CORTEXM_AIRCR_SYSRESETREQ, CORTEXM_AIRCR_VECTKEY, CORTEXM_DEMCR,
+            CORTEXM_DEMCR_VC_CORERESET, CORTEXM_DFSR, CORTEXM_DFSR_RESETALL, CORTEXM_DHCSR,
+            CORTEXM_DHCSR_C_DEBUGEN, CORTEXM_DHCSR_C_HALT, CORTEXM_DHCSR_DBGKEY,
+        };
+        /// How many times the halt is polled for before giving up. `halt_poll()` is itself
+        /// bounded; this only covers a core that is slow to stop.
+        const POLLS: u32 = 1000;
+        if self.target.is_null() {
+            return false;
+        }
+        let demcr = self.read32(CORTEXM_DEMCR) | CORTEXM_DEMCR_VC_CORERESET;
+        self.write32(CORTEXM_DEMCR, demcr);
+        self.write32(
+            CORTEXM_DHCSR,
+            CORTEXM_DHCSR_DBGKEY | CORTEXM_DHCSR_C_HALT | CORTEXM_DHCSR_C_DEBUGEN,
+        );
+        self.write32(CORTEXM_AIRCR, CORTEXM_AIRCR_VECTKEY | CORTEXM_AIRCR_SYSRESETREQ);
+        let mut halted = false;
+        for _ in 0..POLLS {
+            if self.halted() {
+                halted = true;
+                break;
+            }
+        }
+        self.write32(CORTEXM_DEMCR, demcr & !CORTEXM_DEMCR_VC_CORERESET);
+        self.write32(CORTEXM_DFSR, CORTEXM_DFSR_RESETALL);
+        halted
+    }
+
     /// The plain Cortex-M attach routine (`cortexm_attach()`): halt the core, set up
     /// DVCR/breakpoints/watchpoints. Drivers wrap this with their own peripheral setup.
     pub fn cortexm_attach(&self) -> bool {
